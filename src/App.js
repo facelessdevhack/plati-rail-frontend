@@ -1,16 +1,12 @@
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import store from "./redux/store";
+import { Provider } from "react-redux";
+import StackNavigation from "./Core/Navigation/StackNavigation";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Choo Choo! This is an example of a create-react-app site running on Railway.</p>
-        <a className="App-link" href="https://react.dev/learn" target="_blank" rel="noreferrer noopener">Learn React</a>
-      </header>
-    </div>
-  );
-}
+const App = () => (
+  <Provider store={store}>
+    <StackNavigation />
+  </Provider>
+);
 
 export default App;
