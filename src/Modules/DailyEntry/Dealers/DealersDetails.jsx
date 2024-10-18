@@ -32,7 +32,9 @@ const AdminDealerDetails = () => {
     const dispatch = useDispatch();
     const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount } = useSelector((state) => state.entryDetails);
 
-    const isAdmin = user.roleId === 5;
+    const ROLE_ADMIN = 5
+
+    const isAdmin = user.roleId === ROLE_ADMIN;
 
     useEffect(() => {
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
