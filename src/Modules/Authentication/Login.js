@@ -127,6 +127,7 @@ const Login = () => {
                 placeholder="Password"
                 rules={validationForPassword}
                 intent="loginWhite"
+                isPassword={true}
               />
               <Button type="submit" width="login">
                 Login

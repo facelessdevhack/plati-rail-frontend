@@ -14,7 +14,7 @@ function MissingRoute() {
     // case 4:
     //   return <Navigate to={{ pathname: "/login" }} />;
     case 5:
-      return <Navigate to={{ pathname: "/admin-dashboard" }} />;
+      return <Navigate to={{ pathname: "/admin-daily-entry-dealers" }} />;
     default:
       return <Navigate to={{ pathname: "/login" }} />;
   }

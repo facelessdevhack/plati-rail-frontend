@@ -104,6 +104,12 @@ const AdminDailyEntryDealersPage = () => {
             key: "label",
             render: (text) => <div>{text}</div>,
         },
+        {
+            title: "Unchecked Entries",
+            dataIndex: "uncheckedCount",
+            key: 'uncheckedCount',
+            render: (text) => <div>{text}</div>
+        }
     ];
 
     // Function to handle row click

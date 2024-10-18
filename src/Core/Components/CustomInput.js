@@ -23,7 +23,7 @@ const input = cva(
         searchHome:
           "px-3 py-2 w-full h-10 bg-background-grey hover:bg-background-grey",
         loginWhite:
-          " px-3.5 py-2.25 w-full bg-transparent text-white placeholder:text-white h-12",
+          " px-3.5 py-2.25 w-full bg-transparent text-white placeholder:text-white h-12 focus:bg-transparent hover:bg-transparent",
       },
       border: {
         primary: "primary-border",
@@ -94,9 +94,8 @@ export const CustomInputWithController = ({ ...InputProps }) => {
         )}
       />
       <p
-        className={`font-poppins text-xs font-light leading-4.5 mt-2 ${
-          errors[name] ? "text-alert-red visible" : "invisible"
-        }`}
+        className={`font-poppins text-xs font-light leading-4.5 mt-2 ${errors[name] ? "text-alert-red visible" : "invisible"
+          }`}
       >
         {errors[name]?.message}
       </p>

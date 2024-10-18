@@ -39,7 +39,7 @@ const StackNavigation = () => {
             {/* Admin Routes */}
             {user.roleId === 5 && (
               <>
-                <Route
+                {/* <Route
                   path="admin-dashboard"
                   element={
                     <AdminLayout
@@ -57,8 +57,8 @@ const StackNavigation = () => {
                       content={<OrderList />}
                     />
                   }
-                />
-                <Route
+                /> */}
+                {/* <Route
                   path="admin-order-details/:orderId"
                   loader={({ params }) => {
                     console.log(params.orderId);
@@ -93,7 +93,7 @@ const StackNavigation = () => {
                     />
                   }
                 />
-                <Route path="add-stock" element={<AddStock />} />
+                <Route path="add-stock" element={<AddStock />} /> */}
                 <Route path='admin-daily-entry' element={<AdminLayout title="Daily Entry" content={<DailyEntryAdmin />} />} />
                 <Route path='admin-daily-entry-dealers' element={<AdminLayout title="Daily Entry Dealers" content={<AdminDailyEntryDealersPage />} />} />
                 <Route

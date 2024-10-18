@@ -48,7 +48,7 @@ export const addEntryAPI = async (
       isClaim,
       transportationType,
       transportationCharges,
-      date: moment().format('YYYY-MM-DD HH:MM:SS'),
+      date: moment().format('YYYY-MM-DD HH:mm:ss'),
     });
     console.log(response, 'ADD ENTRY RESPONSE');
     return response;
