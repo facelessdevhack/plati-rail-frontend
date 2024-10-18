@@ -102,13 +102,13 @@ const AdminDailyEntryDealersPage = () => {
             title: "Dealer Name",
             dataIndex: "label",
             key: "label",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div className="cursor-pointer">{text}</div>,
         },
         {
             title: "Unchecked Entries",
             dataIndex: "uncheckedCount",
             key: 'uncheckedCount',
-            render: (text) => <div>{text}</div>
+            render: (text) => <div className="bg-orange-500 text-white px-3 py-1 rounded-full max-w-fit font-bold">{text}</div>
         }
     ];
 
