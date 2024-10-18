@@ -86,9 +86,15 @@ const AdminDailyEntryDealersPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [searchQuery, setSearchQuery] = useState("");
+    const { loggedIn, user } = useSelector((state) => state.userDetails);
 
     useEffect(() => {
-        dispatch(getAllDealers({}));
+        if (user.roleId === 5) {
+            dispatch(getAllDealers({}));
+        } else {
+            console.log(user, 'USERS')
+            dispatch(getAllDealers({ id: user.userId }));
+        }
         console.log(allDealers, "DEALERS");
     }, [dispatch]);
 

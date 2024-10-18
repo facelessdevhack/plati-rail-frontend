@@ -34,6 +34,12 @@ const Login = () => {
       return; // Exit early to prevent further execution
     }
 
+    if (loggedIn && user.roleId === 4) {
+      console.log(JSON.stringify(user, null, 2), "USER");
+      navigate("/admin-daily-entry-dealers");
+      return; // Exit early to prevent further execution
+    }
+
     // Display access denied message if user is logged in but does not have user ID 5
     if (loggedIn) {
       alert("Access Denied. Please contact the administrator for assistance.");

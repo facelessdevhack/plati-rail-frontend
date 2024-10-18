@@ -22,6 +22,8 @@ const AdminDealerDetails = () => {
     const [sortField, setSortField] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
     const [isModalVisible, setIsModalVisible] = useState(false); // State to manage modal visibility
+    const { loggedIn, user } = useSelector((state) => state.userDetails);
+
 
 
     const navigate = useNavigate();
@@ -29,6 +31,8 @@ const AdminDealerDetails = () => {
     const { id, name } = useParams();
     const dispatch = useDispatch();
     const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount } = useSelector((state) => state.entryDetails);
+
+    const isAdmin = user.roleId === 5;
 
     useEffect(() => {
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
@@ -160,7 +164,9 @@ const AdminDealerDetails = () => {
             title: "Amount",
             dataIndex: "price",
             key: "price",
-            render: (text, record) => <div>{record.isClaim === 1 ? "Claimed" : text}</div>,
+            render: (text, record) => (
+                <div>{record.isClaim === 1 ? "Claimed" : text}</div>
+            ),
         },
         {
             title: "Transportation Charges",
@@ -174,14 +180,22 @@ const AdminDealerDetails = () => {
             key: "currentBal",
             render: (text) => <div>{text}</div>,
         },
-        {
-            title: "Checked",
-            dataIndex: "isChecked",
-            key: "isChecked",
-            render: (text, record) => <Button onClick={() => handleCheckEntry(record.entryId)}>{text === 1 ? "Checked" : "Unchecked"}</Button>,
-        },
+        // Conditionally include the "Checked" column
+        ...(isAdmin
+            ? [
+                {
+                    title: "Checked",
+                    dataIndex: "isChecked",
+                    key: "isChecked",
+                    render: (text, record) => (
+                        <Button onClick={() => handleCheckEntry(record.entryId)}>
+                            {text === 1 ? "Checked" : "Unchecked"}
+                        </Button>
+                    ),
+                },
+            ]
+            : []),
     ];
-
     // Columns for Payments
     const paymentColumns = [
         {
@@ -228,12 +242,20 @@ const AdminDealerDetails = () => {
             key: "currentBal",
             render: (text) => <div>{text}</div>,
         },
-        {
-            title: "Checked",
-            dataIndex: "isChecked",
-            key: "isChecked",
-            render: (text, record) => <Button onClick={() => handleCheckPaymentEntry(record.entryId)}>{text === 1 ? "Checked" : "Unchecked"}</Button>,
-        },
+        ...(isAdmin
+            ? [
+                {
+                    title: "Checked",
+                    dataIndex: "isChecked",
+                    key: "isChecked",
+                    render: (text, record) => (
+                        <Button onClick={() => handleCheckEntry(record.entryId)}>
+                            {text === 1 ? "Checked" : "Unchecked"}
+                        </Button>
+                    ),
+                },
+            ]
+            : []),
     ];
 
     const handleDateChange = (dates) => {
