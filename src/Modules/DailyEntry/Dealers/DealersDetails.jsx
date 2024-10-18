@@ -223,6 +223,12 @@ const AdminDealerDetails = () => {
             render: (text) => <div>{text}</div>,
         },
         {
+            title: "Balance After Entry",
+            dataIndex: "currentBal",
+            key: "currentBal",
+            render: (text) => <div>{text}</div>,
+        },
+        {
             title: "Checked",
             dataIndex: "isChecked",
             key: "isChecked",
