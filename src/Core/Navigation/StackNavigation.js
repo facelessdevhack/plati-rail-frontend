@@ -237,6 +237,7 @@ import AdminDealerDetails from "../../Modules/DailyEntry/Dealers/DealersDetails"
 import AddPMEntry from "../../Modules/DataEntry/AddPMEntry";
 import PrivateRoute from "./PrivateRoute";
 import UnauthorizedPage from "./UnauthorizedPage";
+import StockList from "../../Modules/Stock/StockList";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -294,6 +295,15 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[4, 5]}>
             <AdminDealerDetails />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/admin-stock-list"
+        element={
+          <PrivateRoute allowedRoles={[4]}>
+            <AdminLayout title="Stock List" content={<StockList />} />
           </PrivateRoute>
         }
       />

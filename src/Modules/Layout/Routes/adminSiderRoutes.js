@@ -31,11 +31,11 @@ export const adminSiderRoutes = [
   //   "3",
   //   <AlertOutlined />
   // ),
-  // getItemLayout(
-  //   <Link to="/admin-stock-list">Stock</Link>,
-  //   "4",
-  //   <StockOutlined />
-  // ),
+  getItemLayout(
+    <Link to="/admin-stock-list">Stock</Link>,
+    "4",
+    <StockOutlined />
+  ),
   //   getItemLayout("User", "sub1", <UserOutlined />, [
   //     getItemLayout("Tom", "3"),
   //     getItemLayout("Bill", "4"),

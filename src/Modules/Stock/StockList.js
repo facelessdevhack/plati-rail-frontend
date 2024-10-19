@@ -14,7 +14,7 @@ const StockList = () => {
   const { allAlloys } = useSelector((state) => state.stockDetails);
 
   useEffect(() => {
-    dispatch(getAllAlloys({}));
+    dispatch(getAllAlloys({ page: 1 }));
   }, [activeTab]);
 
   const expandedData = [
@@ -129,9 +129,8 @@ const StockList = () => {
                     style={{
                       padding: 4,
                     }}
-                    className={`flex items-center justify-between gap-x-1 ${
-                      activeTab === 1 ? "font-semibold" : "font-medium"
-                    }`}
+                    className={`flex items-center justify-between gap-x-1 ${activeTab === 1 ? "font-semibold" : "font-medium"
+                      }`}
                   >
                     <div>All</div>
                     <div>({allAlloys?.length})</div>
@@ -145,9 +144,8 @@ const StockList = () => {
                     style={{
                       padding: 4,
                     }}
-                    className={`flex items-center justify-between gap-x-1 ${
-                      activeTab === 2 ? "font-semibold" : "font-medium"
-                    }`}
+                    className={`flex items-center justify-between gap-x-1 ${activeTab === 2 ? "font-semibold" : "font-medium"
+                      }`}
                   >
                     <div>Low Stock</div>
                     <div>(10)</div>
@@ -161,9 +159,8 @@ const StockList = () => {
                     style={{
                       padding: 4,
                     }}
-                    className={`flex items-center justify-between gap-x-1 ${
-                      activeTab === 3 ? "font-semibold" : "font-medium"
-                    }`}
+                    className={`flex items-center justify-between gap-x-1 ${activeTab === 3 ? "font-semibold" : "font-medium"
+                      }`}
                   >
                     <div>No Stock</div>
                     <div>(2)</div>

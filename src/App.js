@@ -8,7 +8,6 @@ import { BrowserRouter } from "react-router-dom";
 const App = () => (
   <Provider store={store}>
     <BrowserRouter>
-
       <StackNavigation />
     </BrowserRouter>
   </Provider>
