@@ -333,6 +333,31 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+      <Route path="/add-daily-entry" element={
+        <PrivateRoute allowedRoles={[3]}>
+          <AdminLayout
+            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+            items={entrySiderRoutes}
+            content={<AddDailyEntry />}
+          />
+        </PrivateRoute>
+
+      } />
+
+      {/* Add Inwards Entry */}
+      <Route
+        path="add-inwards-entry"
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
+                }`}
+              items={entrySiderRoutes}
+              content={<AddPMEntry />}
+            />
+          </PrivateRoute>
+        }
+      />
       {/* ...other routes wrapped with PrivateRoute */}
     </Routes>
   );
