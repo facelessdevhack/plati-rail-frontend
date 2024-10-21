@@ -18,15 +18,8 @@ const CustomTable = ({
 }) => {
   // Error handling wrapper for the row click
   const handleRowClick = (record) => {
-    try {
-      if (onRowClick) {
-        onRowClick(record); // Call the onRowClick function passed as a prop
-      } else {
-        throw new Error("onRowClick function is not provided.");
-      }
-    } catch (error) {
-      console.error("Error on row click:", error);
-      message.error("An error occurred while processing the row click.");
+    if (onRowClick) {
+      onRowClick(record); // Call the onRowClick function passed as a prop
     }
   };
 

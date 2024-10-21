@@ -48,7 +48,8 @@ const initialState = {
   dealerEntryCount: 0,
   allPMEntries: [],
   pmEntryCount: 0,
-  allEntriesUser: []
+  allEntriesUser: [],
+  spinLoader: false
 };
 
 export const entrySlice = createSlice({
@@ -134,12 +135,14 @@ export const entrySlice = createSlice({
     builder
       .addCase(getAllEntriesAdmin.pending, (state) => {
         state.loading = true;
+        state.spinLoader = true
         state.status = 'pending';
         state.allDealerEntries = []
         state.dealerEntryCount = 0
       })
       .addCase(getAllEntriesAdmin.fulfilled, (state, { payload }) => {
         state.loading = false;
+        state.spinLoader = false;
         state.status = 'fulfilled';
         state.allDealerEntries = payload.data;
         state.dealerEntryCount = payload.totalCount;
@@ -147,6 +150,7 @@ export const entrySlice = createSlice({
       })
       .addCase(getAllEntriesAdmin.rejected, (state, { payload }) => {
         state.loading = false;
+        state.spinLoader = false;
         state.status = 'rejected';
         state.error = payload;
         state.allDealerEntries = []
@@ -171,11 +175,13 @@ export const entrySlice = createSlice({
       })
       .addCase(getPaymentEntries.pending, (state) => {
         state.loading = true;
+        state.spinLoader = true;
         state.status = 'pending';
         state.allPMEntries = []
       })
       .addCase(getPaymentEntries.fulfilled, (state, { payload }) => {
         state.loading = false;
+        state.spinLoader = false;
         state.status = 'fulfilled';
         state.loggedIn = true;
         state.allPMEntries = payload.data;
@@ -184,6 +190,7 @@ export const entrySlice = createSlice({
       })
       .addCase(getPaymentEntries.rejected, (state, { payload }) => {
         state.loading = false;
+        state.spinLoader = false;
         state.status = 'rejected';
         state.error = payload;
         state.allPMEntries = []

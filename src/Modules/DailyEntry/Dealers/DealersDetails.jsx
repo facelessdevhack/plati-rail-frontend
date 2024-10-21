@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, Flex, Segmented, DatePicker, Modal } from "antd";
+import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin } from "antd";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
@@ -22,6 +22,8 @@ const AdminDealerDetails = () => {
     const [sortField, setSortField] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
     const [isModalVisible, setIsModalVisible] = useState(false); // State to manage modal visibility
+    const [checkedEntry, setCheckedEntry] = useState(false)
+    const [loader, setLoader] = useState(false)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
 
 
@@ -30,7 +32,7 @@ const AdminDealerDetails = () => {
     const { state } = useLocation();
     const { id, name } = useParams();
     const dispatch = useDispatch();
-    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount } = useSelector((state) => state.entryDetails);
+    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader } = useSelector((state) => state.entryDetails);
 
     const ROLE_ADMIN = 5
 
@@ -39,7 +41,7 @@ const AdminDealerDetails = () => {
     useEffect(() => {
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getPaymentEntries({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
-    }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder]);
+    }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
 
     // Filter dealers based on the search query
     const filteredDealers = allDealerEntries?.filter(entry =>
@@ -54,14 +56,18 @@ const AdminDealerDetails = () => {
     // Check Entry Function for Entries
     const handleCheckEntry = async (entryId) => {
         try {
+            setLoader(true)
             const checkEntryResponse = await client.post(`/entries/check-entry`, {
                 entryId
             });
             if (checkEntryResponse) {
                 console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
                 dispatch(updateDealerEntryById({ entryId, checked: 1 }));
+                setCheckedEntry(!checkedEntry)
+                setLoader(false)
             }
         } catch (e) {
+            setLoader(false)
             console.log(e, "CHECK ENTRY ERROR");
         }
     }
@@ -311,7 +317,7 @@ const AdminDealerDetails = () => {
                             position="bottomRight"
                             columns={columns}
                             expandable={false}
-                            totalCount={filteredDealers?.length}
+                            totalCount={dealerEntryCount}
                             currentPage={currentPage}
                             handlePageChange={setCurrentPage}
                             pageSize={pageSize}
@@ -336,7 +342,7 @@ const AdminDealerDetails = () => {
                             position="bottomRight"
                             columns={paymentColumns}
                             expandable={false}
-                            totalCount={filteredPayments?.length}
+                            totalCount={pmEntryCount}
                             currentPage={currentPage}
                             handlePageChange={setCurrentPage}
                             pageSize={pageSize}
@@ -385,6 +391,7 @@ const AdminDealerDetails = () => {
         <AdminLayout title={state?.name} content={
             <div className="w-full h-full p-5 bg-gray-200">
                 <div>
+                    {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} ></Spin>}
                     <Row gutter={16}>
                         <Col span={24}>
                             <div className="flex items-baseline justify-between w-full ">
@@ -458,7 +465,7 @@ const AdminDealerDetails = () => {
                         </div>
                     </Modal>
                 </div>
-            </div>
+            </div >
         } />
     );
 };
