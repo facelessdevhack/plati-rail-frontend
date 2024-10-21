@@ -26,6 +26,11 @@ const EntryDashboard = () => {
       id: 4,
       label: "Add Daily Entry",
       link: '/add-daily-entry'
+    },
+    {
+      id: 5,
+      label: 'Add Cap',
+      link: '/add-cap-stock'
     }
   ];
 

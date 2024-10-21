@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   createAlloyEntry,
   getAllAlloys,
+  getAllCaps,
   getAllCbs,
   getAllDealers,
   getAllFinishes,
@@ -29,7 +30,8 @@ const initialState = {
   allWidths: [],
   allModels: [],
   allDealers: [],
-  allProducts: []
+  allProducts: [],
+  allCaps: []
 };
 
 export const stockSlice = createSlice({
@@ -157,6 +159,17 @@ export const stockSlice = createSlice({
       state.allModels = payload.data;
     });
     builder.addCase(getAllModels.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+    });
+    builder.addCase(getAllCaps.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(getAllCaps.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.allCaps = payload.data;
+    });
+    builder.addCase(getAllCaps.rejected, (state, { payload }) => {
       state.loading = false;
       state.error = payload;
     });

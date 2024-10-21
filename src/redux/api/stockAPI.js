@@ -40,6 +40,18 @@ export const getAllDealers = createAsyncThunk(
   }
 )
 
+export const getAllCaps = createAsyncThunk(
+  "master/getAllDealers",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/master/all-caps`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+
 export const getAllSizes = createAsyncThunk(
   "stock/getAllSizes",
   async ({ }, { rejectWithValue }) => {
@@ -192,6 +204,18 @@ export const getAllProducts = createAsyncThunk(
   async ({ }, { rejectWithValue }) => {
     try {
       const response = await client.get('/master/all-products');
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+
+export const createCap = createAsyncThunk(
+  "master/createCap",
+  async ({ capModel }, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/master/create-cap`, { capModel });
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e));

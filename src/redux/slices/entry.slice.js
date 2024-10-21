@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { userAuthenticate } from '../api/userAPI';
-import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries } from '../api/entriesAPI';
+import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry } from '../api/entriesAPI';
 
 const initialState = {
   loading: false,
@@ -49,7 +49,8 @@ const initialState = {
   allPMEntries: [],
   pmEntryCount: 0,
   allEntriesUser: [],
-  spinLoader: false
+  spinLoader: false,
+  allDailyEntries: []
 };
 
 export const entrySlice = createSlice({
@@ -172,6 +173,23 @@ export const entrySlice = createSlice({
         state.status = 'rejected';
         state.error = payload;
         state.allEntriesUser = []
+      })
+      .addCase(getDailyEntry.pending, (state) => {
+        state.loading = true;
+        state.status = 'pending';
+        state.allDailyEntries = []
+      })
+      .addCase(getDailyEntry.fulfilled, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'fulfilled';
+        state.allDailyEntries = payload.data;
+        state.error = null;
+      })
+      .addCase(getDailyEntry.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'rejected';
+        state.error = payload;
+        state.allDailyEntries = []
       })
       .addCase(getPaymentEntries.pending, (state) => {
         state.loading = true;

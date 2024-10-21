@@ -12,11 +12,11 @@ import {
   deleteEntryById,
   setEditing,
 } from '../../redux/slices/entry.slice';
-import { addEntryAPI, editEntryAPI, getTodayDataEntry, removeEntryAPI } from '../../redux/api/entriesAPI';
+import { addEntryAPI, editEntryAPI, getDailyEntry, getTodayDataEntry, removeEntryAPI } from '../../redux/api/entriesAPI';
 
 const AddDailyEntry = () => {
   const dispatch = useDispatch();
-  const { allEntries, entry, isEditing, editingEntryId } = useSelector(
+  const { allEntries, entry, isEditing, editingEntryId, allDailyEntries } = useSelector(
     (state) => state.entryDetails,
   );
   const { allDealers, allProducts } = useSelector(
@@ -26,7 +26,8 @@ const AddDailyEntry = () => {
   React.useEffect(() => {
     dispatch(getAllDealers({}));
     dispatch(getAllProducts({}));
-    dispatch(getTodayDataEntry({}))
+    dispatch(getDailyEntry({}))
+    console.log(allDailyEntries)
   }, [dispatch]);
 
   const generateUniqueId = () => {
@@ -299,7 +300,7 @@ const AddDailyEntry = () => {
         <div className="h-full col-span-3 border-2">
           <div className="col-span-3 h-[calc(100vh-135px)] bg-white overflow-y-scroll p-5">
             {Object.entries(
-              allEntries?.reduce((acc, entry) => {
+              allDailyEntries?.reduce((acc, entry) => {
                 const { dealerName } = entry;
                 if (!acc[dealerName]) {
                   acc[dealerName] = [];
