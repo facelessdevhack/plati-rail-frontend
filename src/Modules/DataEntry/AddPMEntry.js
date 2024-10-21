@@ -43,8 +43,7 @@ const AddPMEntry = () => {
         try {
             const response = await client.post('entries/create-pm-entry', {
                 ...pmEntry,
-                isCheque: pmEntry.isCheque ? 1 : 0,
-                isNEFT: pmEntry.isNEFT ? 1 : 0,
+                paymentMethod: pmEntry.paymentMethod,
             });
             if (response) {
                 dispatch(resetPMEntry());
@@ -123,18 +122,19 @@ const AddPMEntry = () => {
                                 }
                             />
                         </div>
-                        <div className="col-span-2">
+                        {/* <div className="col-span-2">
                             <div>Payment Method</div>
                             <div>
                                 <label>
                                     <input
+                                        style={{ marginRight: '3px' }}
                                         type="radio"
                                         name="paymentMethod"
                                         value="Cheque"
                                         checked={pmEntry.isCheque === 1}
                                         onChange={() => {
                                             dispatch(
-                                                setPMEntry({ isCheque: 1, isNEFT: 0 })
+                                                setPMEntry({ paymentMethod: 1 })
                                             );
                                         }}
                                     />
@@ -142,19 +142,87 @@ const AddPMEntry = () => {
                                 </label>
                                 <label className="ml-4">
                                     <input
+                                        style={{ marginRight: '3px' }}
                                         type="radio"
                                         name="paymentMethod"
                                         value="NEFT"
                                         checked={pmEntry.isNEFT === 1}
                                         onChange={() => {
                                             dispatch(
-                                                setPMEntry({ isCheque: 0, isNEFT: 1 })
+                                                setPMEntry({ paymentMethod: 2 })
                                             );
                                         }}
                                     />
                                     NEFT
                                 </label>
+                                <label>
+                                    <input
+                                        style={{ marginRight: '3px' }}
+                                        type="radio"
+                                        name="paymentMethod"
+                                        value="RTGS"
+                                        checked={pmEntry.isRTGS === 1}
+                                        onChange={() => {
+                                            dispatch(
+                                                setPMEntry({ paymentMethod: 3 })
+                                            );
+                                        }}
+                                    />
+                                    RTGS
+                                </label>
+                                <label>
+                                    <input
+                                        style={{ marginRight: '3px' }}
+                                        type="radio"
+                                        name="paymentMethod"
+                                        value="MMT"
+                                        checked={pmEntry.isMMT === 1}
+                                        onChange={() => {
+                                            dispatch(
+                                                setPMEntry({ paymentMethod: 4 })
+                                            );
+                                        }}
+                                    />
+                                    MMT
+                                </label>
+                                <label>
+                                    <input
+                                        style={{ marginRight: '3px' }}
+                                        type="radio"
+                                        name="paymentMethod"
+                                        value="INF"
+                                        checked={pmEntry.isINF === 1}
+                                        onChange={() => {
+                                            dispatch(
+                                                setPMEntry({ paymentMethod: 5 })
+                                            );
+                                        }}
+                                    />
+                                    INF
+                                </label>
                             </div>
+                        </div> */}
+                        <div>
+                            <div>Payment Method</div>
+                            <div className='flex justify-start'>
+                                {['Cheque', 'NEFT', 'RTGS', 'MMT', 'INF'].map((method) => (
+                                    <label key={method} className="mr-4 flex justify-start gap-x-2">
+                                        <input
+                                            type="radio"
+                                            name="paymentMethod"
+                                            value={method}
+                                            checked={pmEntry.paymentMethod === method}
+                                            onChange={() =>
+                                                dispatch(setPMEntry({ paymentMethod: method }))
+                                            }
+                                        />
+                                        {method}
+                                    </label>
+                                ))}
+                            </div>
+                            {/* {errors.paymentMethod && (
+                                <div className="error">{errors.paymentMethod}</div>
+                            )} */}
                         </div>
                     </div>
                     <div className="flex items-center justify-end mt-5 gap-x-4">

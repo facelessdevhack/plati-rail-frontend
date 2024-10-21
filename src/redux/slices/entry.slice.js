@@ -16,6 +16,21 @@ const initialState = {
     quantity: null,
     price: null,
     isClaim: false,
+    isRepair: false,
+    transportationType: '',
+    transportationCharges: null,
+  },
+
+  inwardsEntries: [],
+  inwardsEntry: {
+    dealerId: null,
+    dealerName: null,
+    productId: null,
+    productName: null,
+    quantity: null,
+    price: null,
+    isClaim: false,
+    isRepair: false,
     transportationType: '',
     transportationCharges: null,
   },
@@ -25,7 +40,8 @@ const initialState = {
     description: null,
     amount: null,
   },
-  allEntries: [], // Define allEntries here
+  allEntries: [],
+  allInwardsEntries: [], // Define allEntries here
   isEditing: false,
   editingEntryId: null,
   allDealerEntries: [],
@@ -42,8 +58,33 @@ export const entrySlice = createSlice({
     setEntry: (state, action) => {
       state.entry = { ...state.entry, ...action.payload };
     },
+    setInwardsEntry: (state, action) => {
+      state.inwardsEntry = { ...state.inwardsEntry, ...action.payload };
+    },
     resetEntry: (state) => {
       state.entry = initialState.entry;
+    },
+    resetInwardsEntry: (state) => {
+      state.inwardsEntry = initialState.inwardsEntry;
+    },
+    setInwardsEntries: (state, action) => {
+      state.allInwardsEntries = action.payload; // Update allEntries
+    },
+    addInwardsEntry: (state, action) => {
+      state.allInwardsEntries.push(action.payload); // Update allEntries
+    },
+    updateInwardsEntryById: (state, action) => {
+      const index = state.allInwardsEntries.findIndex(
+        (entry) => entry.id === action.payload.id,
+      );
+      if (index !== -1) {
+        state.allInwardsEntries[index] = action.payload; // Update allEntries
+      }
+    },
+    deleteInwardsEntryById: (state, action) => {
+      state.allInwardsEntries = state.allInwardsEntries.filter(
+        (entry) => entry?.entryId !== action.payload,
+      );
     },
     setPMEntry: (state, action) => {
       state.pmEntry = { ...state.pmEntry, ...action.payload };
@@ -162,6 +203,12 @@ export const {
   updateDealerEntryById,
   addPMEntry,
   resetPMEntry,
-  setPMEntry
+  setPMEntry,
+  addInwardsEntry,
+  resetInwardsEntry,
+  setInwardsEntries,
+  updateInwardsEntryById,
+  deleteInwardsEntryById,
+  setInwardsEntry
 } = entrySlice.actions;
 export default entrySlice.reducer;

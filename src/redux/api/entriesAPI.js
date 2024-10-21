@@ -34,6 +34,7 @@ export const addEntryAPI = async (
     isClaim,
     transportationType,
     transportationCharges,
+    isRepair
   },
 ) => {
   try {
@@ -49,6 +50,7 @@ export const addEntryAPI = async (
       transportationType,
       transportationCharges,
       date: moment().format('YYYY-MM-DD HH:mm:ss'),
+      isRepair
     });
     console.log(response, 'ADD ENTRY RESPONSE');
     return response;
@@ -98,6 +100,92 @@ export const editEntryAPI = async (
 export const removeEntryAPI = async ({ entryId }) => {
   try {
     const response = await client.delete(`entries/remove-entry?id=${entryId}`, { entryId });
+    console.log(response, 'RESPONSE FROM DELETE ENTRY');
+    return response;
+  } catch (e) {
+    console.log('ERROR FROM DELETE ENTRY', e);
+    return e;
+  }
+}
+
+export const addInwardsEntryAPI = async (
+  {
+    dealerId,
+    dealerName,
+    productId,
+    productName,
+    productType,
+    quantity,
+    price,
+    isClaim,
+    transportationType,
+    transportationCharges,
+    isRepair
+  },
+) => {
+  try {
+    const response = await client.post('entries/add-inwards-entry', {
+      dealerId,
+      dealerName,
+      productId,
+      productName,
+      productType,
+      quantity,
+      price,
+      isClaim,
+      transportationType,
+      transportationCharges,
+      date: moment().format('YYYY-MM-DD HH:mm:ss'),
+      isRepair
+    });
+    console.log(response, 'ADD ENTRY RESPONSE');
+    return response;
+  } catch (e) {
+    console.log('ADD ENTRY ERROR: ' + e);
+    return e;
+  }
+}
+
+export const editInwardsEntryAPI = async (
+  {
+    entryId,
+    dealerId,
+    dealerName,
+    productId,
+    productName,
+    productType,
+    quantity,
+    price,
+    isClaim,
+    transportationType,
+    transportationCharges,
+  },
+) => {
+  try {
+    const response = await client.put('entries/edit-inwards-entry', {
+      entryId,
+      dealerId,
+      dealerName,
+      productId,
+      productName,
+      productType,
+      quantity,
+      price,
+      isClaim,
+      transportationType,
+      transportationCharges,
+    });
+    console.log(response, 'EDIT ENTRY RESPONSE');
+    return response;
+  } catch (e) {
+    console.log('ERROR FROM EDIT ENTRY', e);
+    return e;
+  }
+}
+
+export const removeInwardsEntryAPI = async ({ entryId }) => {
+  try {
+    const response = await client.delete(`entries/remove-inwards-entry?id=${entryId}`, { entryId });
     console.log(response, 'RESPONSE FROM DELETE ENTRY');
     return response;
   } catch (e) {

@@ -22,13 +22,18 @@ export const entrySiderRoutes = [
     <PieChartOutlined />
   ),
   getItemLayout(
-    <Link to="/add-daily-entry">Add Daily Entry</Link>,
+    <Link to="/add-daily-entry">Add Outwards Entry</Link>,
     "2",
     <StockOutlined />
   ),
   getItemLayout(
     <Link to="/add-inwards-entry">Add Inwards Entry</Link>,
     "3",
+    <StockOutlined />
+  ),
+  getItemLayout(
+    <Link to="/add-payment-entry">Add Payment Entry</Link>,
+    "4",
     <StockOutlined />
   ),
   //   getItemLayout(

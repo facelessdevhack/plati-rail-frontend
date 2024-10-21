@@ -238,6 +238,7 @@ import AddPMEntry from "../../Modules/DataEntry/AddPMEntry";
 import PrivateRoute from "./PrivateRoute";
 import UnauthorizedPage from "./UnauthorizedPage";
 import StockList from "../../Modules/Stock/StockList";
+import AddDailyPurchaseEntry from "../../Modules/DataEntry/AddDailyPurchaseEntry";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -346,7 +347,7 @@ const StackNavigation = () => {
 
       {/* Add Inwards Entry */}
       <Route
-        path="add-inwards-entry"
+        path="add-payment-entry"
         element={
           <PrivateRoute allowedRoles={[3]}>
             <AdminLayout
@@ -354,6 +355,19 @@ const StackNavigation = () => {
                 }`}
               items={entrySiderRoutes}
               content={<AddPMEntry />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="add-inwards-entry"
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
+                }`}
+              items={entrySiderRoutes}
+              content={<AddDailyPurchaseEntry />}
             />
           </PrivateRoute>
         }
