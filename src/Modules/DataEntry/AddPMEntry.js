@@ -9,14 +9,16 @@ import {
     resetPMEntry,
 } from '../../redux/slices/entry.slice';
 import { client } from '../../Utils/axiosClient';
+import { getPaymentMethods } from '../../redux/api/entriesAPI';
 
 const AddPMEntry = () => {
     const dispatch = useDispatch();
-    const { pmEntry, isEditing } = useSelector((state) => state.entryDetails);
+    const { pmEntry, isEditing, allPaymentMethods } = useSelector((state) => state.entryDetails);
     const { allDealers } = useSelector((state) => state.stockDetails);
 
     React.useEffect(() => {
         dispatch(getAllDealers({}));
+        dispatch(getPaymentMethods({}))
     }, []);
 
     const handleAddPMEntry = async () => {
@@ -205,18 +207,18 @@ const AddPMEntry = () => {
                         <div>
                             <div>Payment Method</div>
                             <div className='flex justify-start'>
-                                {['Cheque', 'NEFT', 'RTGS', 'MMT', 'INF'].map((method) => (
+                                {allPaymentMethods?.map((method) => (
                                     <label key={method} className="mr-4 flex justify-start gap-x-2">
                                         <input
                                             type="radio"
                                             name="paymentMethod"
-                                            value={method}
-                                            checked={pmEntry.paymentMethod === method}
+                                            value={method.id}
+                                            checked={pmEntry.paymentMethod === method.id}
                                             onChange={() =>
-                                                dispatch(setPMEntry({ paymentMethod: method }))
+                                                dispatch(setPMEntry({ paymentMethod: method.id }))
                                             }
                                         />
-                                        {method}
+                                        {method.methodName}
                                     </label>
                                 ))}
                             </div>
