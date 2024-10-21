@@ -5,12 +5,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
 import CustomTable from "../../../Core/Components/CustomTable";
 import CustomInput from "../../../Core/Components/CustomInput";
-import { checkEntry, getAllEntriesAdmin, getPaymentEntries } from "../../../redux/api/entriesAPI";
+import { checkEntry, getAllEntriesAdmin, getMiddleDealers, getPaymentEntries } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
 import { updateDealerEntryById } from "../../../redux/slices/entry.slice";
 import { client } from "../../../Utils/axiosClient";
 import moment from "moment";
+import CustomSelect from "../../../Core/Components/CustomSelect";
 
 const AdminDealerDetails = () => {
     const [activeTab, setActiveTab] = useState(1);
@@ -25,6 +26,7 @@ const AdminDealerDetails = () => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [checkedEntry, setCheckedEntry] = useState(false)
     const [cashAmount, setCashAmount] = useState(null)
+    const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
 
@@ -34,7 +36,7 @@ const AdminDealerDetails = () => {
     const { state } = useLocation();
     const { id, name } = useParams();
     const dispatch = useDispatch();
-    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader } = useSelector((state) => state.entryDetails);
+    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers } = useSelector((state) => state.entryDetails);
 
     const ROLE_ADMIN = 5
 
@@ -43,6 +45,7 @@ const AdminDealerDetails = () => {
     useEffect(() => {
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getPaymentEntries({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
+        dispatch(getMiddleDealers({}))
     }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
 
     // Filter dealers based on the search query
@@ -141,8 +144,10 @@ const AdminDealerDetails = () => {
                 description: 'Cash',
                 amount,
                 paymentMethod: 6,
+                middleDealerId
             });
             if (response) {
+                setMiddleDealerId(null)
                 setCashAmount(null)
             }
             return response.data;
@@ -178,11 +183,13 @@ const AdminDealerDetails = () => {
         })
         setShowPaymentModal(false);
         setCashAmount(null)
+        setMiddleDealerId(null)
     };
 
     const handlePaymentModalCancel = () => {
         setShowPaymentModal(false);
         setCashAmount(null)
+        setMiddleDealerId(null)
     };
 
 
@@ -561,6 +568,16 @@ const AdminDealerDetails = () => {
                                 type="number"
                                 value={cashAmount}
                                 onChange={(e) => setCashAmount(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <div>Select Mid-Dealer</div>
+                            <CustomSelect
+                                showSearch={true}
+                                className="w-full"
+                                options={allMiddleDealers}
+                                value={middleDealerId}
+                                onChange={(e, l) => setMiddleDealerId(e)}
                             />
                         </div>
                     </Modal>

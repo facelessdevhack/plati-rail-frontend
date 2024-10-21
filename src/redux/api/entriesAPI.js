@@ -294,6 +294,18 @@ export const getPaymentMethods = createAsyncThunk(
   }
 )
 
+export const getMiddleDealers = createAsyncThunk(
+  "entries/getMiddleDealers",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/master/all-middle-dealers`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+
 
 // export const createPMEntry = createAsyncThunk(
 //   async ({
