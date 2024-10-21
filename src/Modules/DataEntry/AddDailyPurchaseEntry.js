@@ -128,6 +128,14 @@ const AddDailyPurchaseEntry = () => {
     );
   };
 
+  const handleRepairToggle = () => {
+    dispatch(
+      setInwardsEntry({
+        isRepair: !inwardsEntry.isRepair,
+      }),
+    );
+  };
+
   const handleTransportationChange = (e) => {
     dispatch(
       setInwardsEntry({
@@ -262,7 +270,7 @@ const AddDailyPurchaseEntry = () => {
                 </div>
               )}
             </div>
-            {/* <div className="flex justify-between">
+            <div className="flex justify-start gap-x-2">
               <label>
                 <input
                   type="checkbox"
@@ -271,7 +279,15 @@ const AddDailyPurchaseEntry = () => {
                 />
                 <span className="ml-2">Claim</span>
               </label>
-            </div> */}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={inwardsEntry.isRepair}
+                  onChange={handleRepairToggle}
+                />
+                <span className="ml-2">Repair</span>
+              </label>
+            </div>
           </div>
           <div className="flex items-center justify-end mt-5 gap-x-4 ">
             {isEditing && <Button onClick={handleCancelEdit}>Cancel</Button>}
