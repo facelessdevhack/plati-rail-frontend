@@ -22,7 +22,9 @@ const AdminDealerDetails = () => {
     const [sortField, setSortField] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
     const [isModalVisible, setIsModalVisible] = useState(false); // State to manage modal visibility
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [checkedEntry, setCheckedEntry] = useState(false)
+    const [cashAmount, setCashAmount] = useState(null)
     const [loader, setLoader] = useState(false)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
 
@@ -131,9 +133,28 @@ const AdminDealerDetails = () => {
         }
     };
 
+    const handleAddPMEntry = async ({ amount }) => {
+        try {
+            const response = await client.post('entries/create-pm-entry', {
+                dealerId: id,
+                dealerName: state?.name,
+                description: 'Cash',
+                amount,
+                paymentMethod: 6,
+            });
+            if (response) {
+                setCashAmount(null)
+            }
+            return response.data;
+        } catch (e) {
+            console.log(e, 'ERROR');
+        }
+    };
+
     const showDownloadModal = () => {
         setIsModalVisible(true);
     };
+
 
     const handleModalOk = async () => {
         // Call your download logic here
@@ -143,6 +164,25 @@ const AdminDealerDetails = () => {
 
     const handleModalCancel = () => {
         setIsModalVisible(false);
+    };
+
+    const showPaymentModalFunction = () => {
+        setShowPaymentModal(true);
+    };
+
+    const handlePaymentModalOk = async () => {
+        // Call your download logic here
+        // await handleDownloadReport({ dealerId: id, dealerName: state?.name, startDate, endDate });
+        await handleAddPMEntry({
+            amount: cashAmount
+        })
+        setShowPaymentModal(false);
+        setCashAmount(null)
+    };
+
+    const handlePaymentModalCancel = () => {
+        setShowPaymentModal(false);
+        setCashAmount(null)
     };
 
 
@@ -276,8 +316,6 @@ const AdminDealerDetails = () => {
         }
     };
 
-
-
     // Handle Tab Content Render
     const handleTabContentRender = () => {
         switch (activeTab) {
@@ -327,7 +365,7 @@ const AdminDealerDetails = () => {
             case 2:
                 return (
                     <div>
-                        <div className="mt-5 -mb-5">
+                        {/* <div className="mt-5 -mb-5">
                             <CustomInput
                                 placeholder={"Search Entries"}
                                 intent={"search"}
@@ -335,6 +373,41 @@ const AdminDealerDetails = () => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                             <DatePicker.RangePicker onChange={handleDateChange} />
+                        </div> */}
+
+                        <div className="mt-5 flex justify-between items-center">
+                            <CustomInput
+                                placeholder={"Search Entries"}
+                                intent={"search"}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <div className='flex justify-end items-center gap-4'>
+                                {isAdmin && (
+                                    <div onClick={showPaymentModalFunction} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
+                                        <div className='flex items-center gap-x-2'>
+                                            <div>Add Payment</div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div onClick={showDownloadModal} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
+                                    <div className='flex items-center gap-x-2'>
+                                        <DownloadOutlined style={{
+                                            fontSize: 24,
+                                            color: '#f26933', // Change color to match the theme
+                                        }} />
+                                        <div>Export </div>
+                                    </div>
+                                </div>
+                                <DatePicker.RangePicker
+                                    onChange={handleDateChange}
+                                    className="rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all"
+                                    style={{
+                                        padding: '8px 12px', // Add some padding for a better look
+                                        width: '250px' // Adjust the width as needed
+                                    }}
+                                />
+                            </div>
                         </div>
                         <CustomTable
                             data={filteredPayments}
@@ -461,6 +534,33 @@ const AdminDealerDetails = () => {
                             <DatePicker.RangePicker
                                 onChange={handleDateChange}
                                 style={{ width: '100%' }}
+                            />
+                        </div>
+                    </Modal>
+
+                    {/* Modal for downloading report */}
+                    <Modal
+                        title={`Add Payment Entry ${state?.name}`}
+                        open={showPaymentModal}
+                        onOk={handlePaymentModalOk}
+                        onCancel={handlePaymentModalCancel}
+                        footer={
+                            <div className='flex justify-end items-center gap-4'>
+                                <Button key="back" onClick={handlePaymentModalCancel}>
+                                    Cancel
+                                </Button>
+                                <Button key="submit" type="primary" onClick={handlePaymentModalOk}>
+                                    Create Entry
+                                </Button>
+                            </div>
+                        }
+                    >
+                        <div>
+                            <div>Enter Amount</div>
+                            <CustomInput
+                                type="number"
+                                value={cashAmount}
+                                onChange={(e) => setCashAmount(e.target.value)}
                             />
                         </div>
                     </Modal>
