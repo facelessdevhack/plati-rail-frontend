@@ -65,13 +65,13 @@ const Login = () => {
     }
   };
 
-  const validationForEmail = {
-    required: "please enter email address",
-    pattern: {
-      value: /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/,
-      message: "Enter a vaild email",
-    },
-  };
+  // const validationForEmail = {
+  //   required: "please enter email address",
+  //   pattern: {
+  //     value: /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/,
+  //     message: "Enter a vaild email",
+  //   },
+  // };
 
   const validationForPassword = {
     required: "please enter password",
@@ -121,7 +121,7 @@ const Login = () => {
                 formState={formState}
                 name="email"
                 placeholder="Email Address"
-                rules={validationForEmail}
+                // rules={validationForEmail}
                 intent="loginWhite"
               />
 
