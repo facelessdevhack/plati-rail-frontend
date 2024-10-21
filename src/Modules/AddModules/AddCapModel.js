@@ -32,6 +32,8 @@ const AddCapStock = () => {
         })
     };
 
+    console.log(allModels, 'ALLMODELS')
+
     return (
         <div className="w-full h-full p-5 bg-background-grey">
             <Row gutter={16}>
@@ -43,10 +45,10 @@ const AddCapStock = () => {
                             className="w-full"
                             options={allModels}
                             value={capEntry.modelId}
-                            onChange={(e) =>
+                            onChange={(e, label) =>
                                 setCapEntry({
                                     ...capEntry,
-                                    modelId: e,
+                                    modelId: label.label,
                                 })
                             }
                         />

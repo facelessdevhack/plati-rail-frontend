@@ -136,6 +136,15 @@ const AddDailyEntry = () => {
     );
   };
 
+  const handleProductType = () => {
+    console.log(entry.productType, 'PRODUCT TYPE')
+    dispatch(
+      setEntry({
+        productType: entry.productType === 1 ? 2 : 1,
+      }),
+    );
+  };
+
   const handleTransportationChange = (e) => {
     dispatch(
       setEntry({
@@ -286,6 +295,14 @@ const AddDailyEntry = () => {
                   onChange={handleRepairToggle}
                 />
                 <span className="ml-2">Repair</span>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={entry.productType === 2}
+                  onChange={handleProductType}
+                />
+                <span className="ml-2">isCap</span>
               </label>
             </div>
           </div>
