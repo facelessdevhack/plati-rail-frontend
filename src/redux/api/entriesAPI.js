@@ -334,3 +334,14 @@ export const getInwardsDailyEntry = createAsyncThunk(
     }
   }
 )
+export const getPaymentDailyEntry = createAsyncThunk(
+  "entries/getPaymentDailyEntry",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries//get-daily-payment-entries`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)

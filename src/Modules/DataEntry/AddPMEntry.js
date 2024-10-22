@@ -9,16 +9,17 @@ import {
     resetPMEntry,
 } from '../../redux/slices/entry.slice';
 import { client } from '../../Utils/axiosClient';
-import { getPaymentMethods } from '../../redux/api/entriesAPI';
+import { getPaymentDailyEntry, getPaymentMethods } from '../../redux/api/entriesAPI';
 
 const AddPMEntry = () => {
     const dispatch = useDispatch();
-    const { pmEntry, isEditing, allPaymentMethods } = useSelector((state) => state.entryDetails);
+    const { pmEntry, isEditing, allPaymentMethods, allPaymentDailyEntries } = useSelector((state) => state.entryDetails);
     const { allDealers } = useSelector((state) => state.stockDetails);
 
     React.useEffect(() => {
         dispatch(getAllDealers({}));
         dispatch(getPaymentMethods({}))
+        dispatch(getPaymentDailyEntry({}))
     }, []);
 
     const handleAddPMEntry = async () => {
@@ -54,6 +55,13 @@ const AddPMEntry = () => {
         } catch (e) {
             console.log(e, 'ERROR');
         }
+    };
+
+    console.log(allPaymentDailyEntries, 'allPaymentDailyEntries')
+
+    const getPaymentMethodLabel = (methodId) => {
+        const method = allPaymentMethods.find((method) => method.id === methodId);
+        return method ? method.methodName : 'Unknown Method';
     };
 
     return (
@@ -233,8 +241,51 @@ const AddPMEntry = () => {
                         </Button>
                     </div>
                 </div>
-
-                {/* Render entries here... */}
+                <div className="h-full col-span-3 border-2">
+                    <div className="col-span-3 h-[calc(100vh-135px)] bg-white overflow-y-scroll p-5">
+                        {Object.entries(
+                            allPaymentDailyEntries?.reduce((acc, entry) => {
+                                const { dealerName } = entry;
+                                if (!acc[dealerName]) {
+                                    acc[dealerName] = [];
+                                }
+                                acc[dealerName].push(entry);
+                                return acc; // Return the accumulator after processing each entry
+                            }, {}),
+                        ).map(([dealerName, entries]) => (
+                            <div key={dealerName} className="mb-8">
+                                <div className="pb-2 mb-4 text-2xl font-bold border-b border-gray-300">
+                                    {dealerName}
+                                </div>
+                                {entries.map((entry) => (
+                                    <div
+                                        key={entry.id}
+                                        className={`flex items-center justify-between p-4 mb-4 border rounded-lg shadow-md border-gray-300 bg-gray-50`}
+                                    >
+                                        <div>
+                                            <div className="text-lg font-medium">
+                                                {/* {entry.paymentMethod} */}
+                                                {getPaymentMethodLabel(entry.paymentMethod)}
+                                            </div>
+                                            <div className="flex items-center justify-start mt-2 gap-x-5">
+                                                <div>
+                                                    <div className="flex items-center justify-start gap-x-2">
+                                                        <div className="font-medium">Quantity:</div>
+                                                        <div>{entry.description}</div>
+                                                    </div>
+                                                    <div className="flex items-center justify-start gap-x-2">
+                                                        <div className="font-medium">Amount:</div>
+                                                        <div>{entry.isClaim ? 'Claim' : entry.amount}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { userAuthenticate } from '../api/userAPI';
-import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry } from '../api/entriesAPI';
+import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry } from '../api/entriesAPI';
 
 const initialState = {
   loading: false,
@@ -55,7 +55,8 @@ const initialState = {
   allDailyEntries: [],
   allInwardsDailyEntries: [],
   allPaymentMethods: [],
-  allMiddleDealers: []
+  allMiddleDealers: [],
+  allPaymentDailyEntries: []
 };
 
 export const entrySlice = createSlice({
@@ -212,6 +213,23 @@ export const entrySlice = createSlice({
         state.status = 'rejected';
         state.error = payload;
         state.allInwardsDailyEntries = []
+      })
+      .addCase(getPaymentDailyEntry.pending, (state) => {
+        state.loading = true;
+        state.status = 'pending';
+        state.allPaymentDailyEntries = []
+      })
+      .addCase(getPaymentDailyEntry.fulfilled, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'fulfilled';
+        state.allPaymentDailyEntries = payload.data;
+        state.error = null;
+      })
+      .addCase(getPaymentDailyEntry.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'rejected';
+        state.error = payload;
+        state.allPaymentDailyEntries = []
       })
       .addCase(getPaymentMethods.pending, (state) => {
         state.loading = true;
