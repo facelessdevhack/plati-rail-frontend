@@ -322,3 +322,15 @@ export const getMiddleDealers = createAsyncThunk(
 //     }
 //   }
 // )
+
+export const getInwardsDailyEntry = createAsyncThunk(
+  "entries/getInwardsDailyEntry",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries//get-daily-inwards-entries`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)

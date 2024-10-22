@@ -13,11 +13,11 @@ import {
   resetInwardsEntry,
   setInwardsEntry,
 } from '../../redux/slices/entry.slice';
-import { addInwardsEntryAPI, editInwardsEntryAPI, getTodayDataEntry, removeInwardsEntryAPI } from '../../redux/api/entriesAPI';
+import { addInwardsEntryAPI, editInwardsEntryAPI, getInwardsDailyEntry, getTodayDataEntry, removeInwardsEntryAPI } from '../../redux/api/entriesAPI';
 
 const AddDailyPurchaseEntry = () => {
   const dispatch = useDispatch();
-  const { allInwardsEntries, inwardsEntry, isEditing, editingEntryId } = useSelector(
+  const { allInwardsEntries, inwardsEntry, isEditing, editingEntryId, allInwardsDailyEntries } = useSelector(
     (state) => state.entryDetails,
   );
   const { allDealers, allProducts } = useSelector(
@@ -27,7 +27,7 @@ const AddDailyPurchaseEntry = () => {
   React.useEffect(() => {
     dispatch(getAllDealers({}));
     dispatch(getAllProducts({}));
-    dispatch(getTodayDataEntry({}))
+    dispatch(getInwardsDailyEntry({}))
   }, [dispatch]);
 
   const generateUniqueId = () => {
@@ -300,7 +300,7 @@ const AddDailyPurchaseEntry = () => {
         <div className="h-full col-span-3 border-2">
           <div className="col-span-3 h-[calc(100vh-135px)] bg-white overflow-y-scroll p-5">
             {Object.entries(
-              allInwardsEntries?.reduce((acc, entry) => {
+              allInwardsDailyEntries?.reduce((acc, entry) => {
                 const { dealerName } = entry;
                 if (!acc[dealerName]) {
                   acc[dealerName] = [];
