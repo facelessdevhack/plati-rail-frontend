@@ -400,6 +400,19 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+      <Route
+        path="add-model"
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
+                }`}
+              items={entrySiderRoutes}
+              content={<AddModel />}
+            />
+          </PrivateRoute>
+        }
+      />
       {/* ...other routes wrapped with PrivateRoute */}
     </Routes>
   );

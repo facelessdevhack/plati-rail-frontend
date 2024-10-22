@@ -14,8 +14,8 @@ const EntryDashboard = () => {
     },
     {
       id: 2,
-      label: "Add PCD",
-      link: "/add-pcd",
+      label: "Add Model",
+      link: "/add-model",
     },
     {
       id: 3,

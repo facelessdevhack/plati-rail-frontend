@@ -233,3 +233,14 @@ export const addFinishes = createAsyncThunk(
     }
   }
 )
+export const addModel = createAsyncThunk(
+  "alloys/addModel",
+  async ({ model }, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/alloys/add-model`, { model });
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)

@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
   addFinishes,
+  addModel,
   createAlloyEntry,
   createCap,
   getAllAlloys,
@@ -213,6 +214,20 @@ export const stockSlice = createSlice({
       // state.allModels = payload.data;
     });
     builder.addCase(addFinishes.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+      state.success = false
+    });
+    builder.addCase(addModel.pending, (state) => {
+      state.loading = true;
+      state.success = false
+    });
+    builder.addCase(addModel.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.success = true
+      // state.allModels = payload.data;
+    });
+    builder.addCase(addModel.rejected, (state, { payload }) => {
       state.loading = false;
       state.error = payload;
       state.success = false
