@@ -19,6 +19,7 @@ const AddDailyEntry = () => {
   const { allEntries, entry, isEditing, editingEntryId, allDailyEntries } = useSelector(
     (state) => state.entryDetails,
   );
+  const [reloadAPI, setReloadAPI] = React.useState(false);
   const { allDealers, allProducts } = useSelector(
     (state) => state.stockDetails,
   );
@@ -29,6 +30,10 @@ const AddDailyEntry = () => {
     dispatch(getDailyEntry({}))
     console.log(allDailyEntries)
   }, [dispatch]);
+
+  React.useEffect(() => {
+    dispatch(getDailyEntry({}))
+  }, [reloadAPI]);
 
   const generateUniqueId = () => {
     return `entry-${Date.now()}-${Math.random()}`;
@@ -95,6 +100,7 @@ const AddDailyEntry = () => {
     }
 
     dispatch(resetEntry());
+    setReloadAPI(!reloadAPI)
   };
 
   const handleDelete = async (id) => {
