@@ -94,6 +94,7 @@ const AdminDealerDetails = () => {
 
     const handleDownloadReport = async ({ dealerId, dealerName, startDate, endDate }) => {
         try {
+            setLoader(true)
             const response = await client.post('/export/export-entries', {
                 dealerId: +dealerId,
                 dealerName,
@@ -128,9 +129,10 @@ const AdminDealerDetails = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-
+            setLoader(false)
             return response.data; // Return the response data if needed for further processing
         } catch (error) {
+            setLoader(false)
             console.log(error, 'error');
             return error;
         }
@@ -138,6 +140,7 @@ const AdminDealerDetails = () => {
 
     const handleAddPMEntry = async ({ amount }) => {
         try {
+            setLoader(true)
             const response = await client.post('entries/create-pm-entry', {
                 dealerId: id,
                 dealerName: state?.name,
@@ -149,9 +152,11 @@ const AdminDealerDetails = () => {
             if (response) {
                 setMiddleDealerId(null)
                 setCashAmount(null)
+                setLoader(false)
             }
             return response.data;
         } catch (e) {
+            setLoader(false)
             console.log(e, 'ERROR');
         }
     };
@@ -337,6 +342,13 @@ const AdminDealerDetails = () => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                             <div className='flex justify-end items-center gap-4'>
+                                {isAdmin && (
+                                    <div onClick={showPaymentModalFunction} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
+                                        <div className='flex items-center gap-x-2'>
+                                            <div>Add Payment</div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div onClick={showDownloadModal} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
                                     <div className='flex items-center gap-x-2'>
                                         <DownloadOutlined style={{
@@ -471,7 +483,7 @@ const AdminDealerDetails = () => {
         <AdminLayout title={state?.name} content={
             <div className="w-full h-full p-5 bg-gray-200">
                 <div>
-                    {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} ></Spin>}
+                    {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
                     <Row gutter={16}>
                         <Col span={24}>
                             <div className="flex items-baseline justify-between w-full ">
@@ -545,7 +557,7 @@ const AdminDealerDetails = () => {
                         </div>
                     </Modal>
 
-                    {/* Modal for downloading report */}
+                    {/* Modal for Adding Payment Entry */}
                     <Modal
                         title={`Add Payment Entry ${state?.name}`}
                         open={showPaymentModal}
@@ -563,22 +575,25 @@ const AdminDealerDetails = () => {
                         }
                     >
                         <div>
-                            <div>Enter Amount</div>
-                            <CustomInput
-                                type="number"
-                                value={cashAmount}
-                                onChange={(e) => setCashAmount(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <div>Select Mid-Dealer</div>
-                            <CustomSelect
-                                showSearch={true}
-                                className="w-full"
-                                options={allMiddleDealers}
-                                value={middleDealerId}
-                                onChange={(e, l) => setMiddleDealerId(e)}
-                            />
+                            {loader && <Spin size='large' spinning={loader} fullscreen={true} className="z-20" ></Spin>}
+                            <div>
+                                <div>Enter Amount</div>
+                                <CustomInput
+                                    type="number"
+                                    value={cashAmount}
+                                    onChange={(e) => setCashAmount(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <div>Select Mid-Dealer</div>
+                                <CustomSelect
+                                    showSearch={true}
+                                    className="w-full"
+                                    options={allMiddleDealers}
+                                    value={middleDealerId}
+                                    onChange={(e, l) => setMiddleDealerId(e)}
+                                />
+                            </div>
                         </div>
                     </Modal>
                 </div>
