@@ -8,7 +8,7 @@ import CustomInput from "../../../Core/Components/CustomInput";
 import { checkEntry, getAllEntriesAdmin, getMiddleDealers, getPaymentEntries } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
-import { updateDealerEntryById } from "../../../redux/slices/entry.slice";
+import { updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
 import { client } from "../../../Utils/axiosClient";
 import moment from "moment";
 import CustomSelect from "../../../Core/Components/CustomSelect";
@@ -80,14 +80,18 @@ const AdminDealerDetails = () => {
     // Check Entry Function for Payments
     const handleCheckPaymentEntry = async (entryId) => {
         try {
-            const checkEntryResponse = await client.post(`/entries/check-entry`, {
+            setLoader(true)
+            const checkEntryResponse = await client.post(`/entries/check-payment-entry`, {
                 entryId
             });
             if (checkEntryResponse) {
                 console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
-                dispatch(updateDealerEntryById({ entryId, checked: 1 }));
+                dispatch(updatePaymentEntryById({ entryId, checked: 1 }));
+                setCheckedEntry(!checkedEntry)
+                setLoader(false)
             }
         } catch (e) {
+            setLoader(false)
             console.log(e, "CHECK ENTRY ERROR");
         }
     }
@@ -306,10 +310,10 @@ const AdminDealerDetails = () => {
             ? [
                 {
                     title: "Checked",
-                    dataIndex: "isChecked",
-                    key: "isChecked",
+                    dataIndex: "isPaid",
+                    key: "isPaid",
                     render: (text, record) => (
-                        <Button onClick={() => handleCheckEntry(record.entryId)}>
+                        <Button onClick={() => handleCheckPaymentEntry(record.id)}>
                             {text === 1 ? "Checked" : "Unchecked"}
                         </Button>
                     ),

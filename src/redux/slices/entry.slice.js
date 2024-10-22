@@ -137,6 +137,17 @@ export const entrySlice = createSlice({
         };
       }
     },
+    updatePaymentEntryById: (state, action) => {
+      const index = state.allPMEntries.findIndex(
+        (entry) => entry.entryId === action.payload.entryId
+      );
+      if (index !== -1) {
+        state.allPMEntries[index] = {
+          ...state.allPMEntries[index],
+          ...action.payload,
+        };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -310,6 +321,7 @@ export const {
   setInwardsEntries,
   updateInwardsEntryById,
   deleteInwardsEntryById,
-  setInwardsEntry
+  setInwardsEntry,
+  updatePaymentEntryById
 } = entrySlice.actions;
 export default entrySlice.reducer;
