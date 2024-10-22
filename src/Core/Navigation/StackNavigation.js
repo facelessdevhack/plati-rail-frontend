@@ -240,6 +240,7 @@ import UnauthorizedPage from "./UnauthorizedPage";
 import StockList from "../../Modules/Stock/StockList";
 import AddDailyPurchaseEntry from "../../Modules/DataEntry/AddDailyPurchaseEntry";
 import AddCapStock from "../../Modules/AddModules/AddCapModel";
+import AddFinish from "../../Modules/AddModules/AddFinish";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -382,6 +383,19 @@ const StackNavigation = () => {
                 }`}
               items={entrySiderRoutes}
               content={<AddCapStock />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="add-finish"
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
+                }`}
+              items={entrySiderRoutes}
+              content={<AddFinish />}
             />
           </PrivateRoute>
         }

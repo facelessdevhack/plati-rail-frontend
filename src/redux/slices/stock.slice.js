@@ -1,6 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
+  addFinishes,
   createAlloyEntry,
+  createCap,
   getAllAlloys,
   getAllCaps,
   getAllCbs,
@@ -17,6 +19,7 @@ import {
 
 const initialState = {
   loading: false,
+  success: false,
   error: {},
   status: "idle",
   allAlloys: [],
@@ -37,7 +40,11 @@ const initialState = {
 export const stockSlice = createSlice({
   name: "stockDetails",
   initialState,
-  reducers: {},
+  reducers: {
+    setSuccessToInit: (state, action) => {
+      state.success = false;
+    },
+  },
   extraReducers(builder) {
     builder.addCase(getAllAlloys.pending, (state) => {
       state.loading = true;
@@ -184,8 +191,34 @@ export const stockSlice = createSlice({
       state.loading = false;
       state.error = payload;
     });
+
+    builder.addCase(createCap.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(createCap.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      // state.allModels = payload.data;
+    });
+    builder.addCase(createCap.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+    });
+    builder.addCase(addFinishes.pending, (state) => {
+      state.loading = true;
+      state.success = false
+    });
+    builder.addCase(addFinishes.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.success = true
+      // state.allModels = payload.data;
+    });
+    builder.addCase(addFinishes.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+      state.success = false
+    });
   },
 });
 
-// export const {} = stockSlice.actions;
+export const { setSuccessToInit } = stockSlice.actions;
 export default stockSlice.reducer;

@@ -222,3 +222,14 @@ export const createCap = createAsyncThunk(
     }
   }
 )
+export const addFinishes = createAsyncThunk(
+  "alloys/addFinishes",
+  async ({ finish }, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/alloys/add-finishes`, { finish });
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
