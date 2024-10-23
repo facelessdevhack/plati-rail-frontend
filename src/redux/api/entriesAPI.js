@@ -293,6 +293,28 @@ export const getPaymentMethods = createAsyncThunk(
     }
   }
 )
+export const getAdminPaymentMethods = createAsyncThunk(
+  "entries/getAdminPaymentMethods",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries/get-admin-payment-methods`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+export const getAllPaymentMethods = createAsyncThunk(
+  "entries/getAllPaymentMethods",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries/get-all-payment-methods`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
 
 export const getMiddleDealers = createAsyncThunk(
   "entries/getMiddleDealers",

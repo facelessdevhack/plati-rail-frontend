@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { userAuthenticate } from '../api/userAPI';
-import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry } from '../api/entriesAPI';
+import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry, getAdminPaymentMethods, getAllPaymentMethods } from '../api/entriesAPI';
 
 const initialState = {
   loading: false,
@@ -55,6 +55,8 @@ const initialState = {
   allDailyEntries: [],
   allInwardsDailyEntries: [],
   allPaymentMethods: [],
+  adminPaymentMethods: [],
+  allAdminPaymentMethods: [],
   allMiddleDealers: [],
   allPaymentDailyEntries: []
 };
@@ -259,6 +261,42 @@ export const entrySlice = createSlice({
         state.status = 'rejected';
         state.error = payload;
         state.allPaymentMethods = []
+      })
+      .addCase(getAdminPaymentMethods.pending, (state) => {
+        state.loading = true;
+        state.status = 'pending';
+        state.adminPaymentMethods = []
+      })
+      .addCase(getAdminPaymentMethods.fulfilled, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'fulfilled';
+        console.log(payload, 'PAYMENT METHODS')
+        state.adminPaymentMethods = payload;
+        state.error = null;
+      })
+      .addCase(getAdminPaymentMethods.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'rejected';
+        state.error = payload;
+        state.adminPaymentMethods = []
+      })
+      .addCase(getAllPaymentMethods.pending, (state) => {
+        state.loading = true;
+        state.status = 'pending';
+        state.allAdminPaymentMethods = []
+      })
+      .addCase(getAllPaymentMethods.fulfilled, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'fulfilled';
+        console.log(payload, 'PAYMENT METHODS')
+        state.allAdminPaymentMethods = payload;
+        state.error = null;
+      })
+      .addCase(getAllPaymentMethods.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'rejected';
+        state.error = payload;
+        state.allAdminPaymentMethods = []
       })
       .addCase(getMiddleDealers.pending, (state) => {
         state.loading = true;

@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
 import CustomTable from "../../../Core/Components/CustomTable";
 import CustomInput from "../../../Core/Components/CustomInput";
-import { checkEntry, getAllEntriesAdmin, getMiddleDealers, getPaymentEntries } from "../../../redux/api/entriesAPI";
+import { checkEntry, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
 import { updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
@@ -26,7 +26,10 @@ const AdminDealerDetails = () => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [checkedEntry, setCheckedEntry] = useState(false)
     const [cashAmount, setCashAmount] = useState(null)
-    const [entryDate, setEntryDate] = useState(null)
+    const today = moment().format('YYYY-MM-DD')
+    const [entryDate, setEntryDate] = useState(today)
+    const [description, setDescription] = useState(null)
+    const [paymentMethod, setPaymentMethod] = useState(6)
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -37,16 +40,19 @@ const AdminDealerDetails = () => {
     const { state } = useLocation();
     const { id, name } = useParams();
     const dispatch = useDispatch();
-    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers } = useSelector((state) => state.entryDetails);
+    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers, adminPaymentMethods, allAdminPaymentMethods } = useSelector((state) => state.entryDetails);
 
     const ROLE_ADMIN = 5
 
     const isAdmin = user.roleId === ROLE_ADMIN;
 
     useEffect(() => {
+
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getPaymentEntries({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getMiddleDealers({}))
+        dispatch(getAdminPaymentMethods({}))
+        dispatch(getAllPaymentMethods({}))
     }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
 
     // Filter dealers based on the search query
@@ -149,16 +155,20 @@ const AdminDealerDetails = () => {
             const response = await client.post('entries/create-pm-entry', {
                 dealerId: id,
                 dealerName: state?.name,
-                description: 'Cash',
+                description: description,
                 amount,
-                paymentMethod: 6,
+                paymentMethod: paymentMethod,
                 middleDealerId,
                 payment_date: paymentDate
             });
             if (response) {
                 setMiddleDealerId(null)
                 setCashAmount(null)
+                setEntryDate(null)
                 setLoader(false)
+                setPaymentMethod(6)
+                setDescription(false)
+                setCheckedEntry(!checkedEntry)
             }
             return response.data;
         } catch (e) {
@@ -195,17 +205,27 @@ const AdminDealerDetails = () => {
         })
         setShowPaymentModal(false);
         setCashAmount(null)
+        setEntryDate(null)
+        setDescription(null)
+        setPaymentMethod(6)
         setMiddleDealerId(null)
     };
 
     const handlePaymentModalCancel = () => {
         setShowPaymentModal(false);
         setCashAmount(null)
+        setEntryDate(null)
+        setDescription(null)
+        setPaymentMethod(6)
         setMiddleDealerId(null)
     };
 
 
-
+    const getPaymentMethodLabel = (methodId) => {
+        console.log(methodId, 'METHOD ID')
+        const method = allAdminPaymentMethods.find((method) => method.id === methodId);
+        return method ? method.methodName : 'Unknown Method';
+    };
 
     // Columns for Entries
     const columns = [
@@ -285,17 +305,9 @@ const AdminDealerDetails = () => {
         },
         {
             title: "Mode of Payment",
-            dataIndex: "isCheque",
-            key: "isCheque",
-            render: (text, record) => {
-                if (record.isCheque === 1) {
-                    return <div>Cheque</div>;
-                } else if (record.isNeft === 1) {
-                    return <div>NEFT</div>;
-                } else {
-                    return <div>N/A</div>;
-                }
-            },
+            dataIndex: "paymentMethod",
+            key: "paymentMethod",
+            render: (text, record) => <div>{getPaymentMethodLabel(text)}</div>
         },
         {
             title: "Transportation Charges",
@@ -584,6 +596,13 @@ const AdminDealerDetails = () => {
                         <div>
                             {loader && <Spin size='large' spinning={loader} fullscreen={true} className="z-20" ></Spin>}
                             <div>
+                                <div>Enter Description</div>
+                                <CustomInput
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                            </div>
+                            <div>
                                 <div>Enter Amount</div>
                                 <CustomInput
                                     type="number"
@@ -612,6 +631,25 @@ const AdminDealerDetails = () => {
                                     value={middleDealerId}
                                     onChange={(e, l) => setMiddleDealerId(e)}
                                 />
+                            </div>
+                            <div>
+                                <div>Payment Method</div>
+                                <div className='flex justify-start'>
+                                    {adminPaymentMethods?.map((method) => (
+                                        <label key={method} className="mr-4 flex justify-start gap-x-2">
+                                            <input
+                                                type="radio"
+                                                name="paymentMethod"
+                                                value={method.id}
+                                                checked={paymentMethod === method.id}
+                                                onChange={() =>
+                                                    setPaymentMethod(method.id)
+                                                }
+                                            />
+                                            {method.methodName}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </Modal>
