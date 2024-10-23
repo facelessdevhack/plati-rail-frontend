@@ -28,7 +28,7 @@ const AdminDealerDetails = () => {
     const [cashAmount, setCashAmount] = useState(null)
     const today = moment().format('YYYY-MM-DD')
     const [entryDate, setEntryDate] = useState(today)
-    const [description, setDescription] = useState(null)
+    const [description, setDescription] = useState('CASH')
     const [paymentMethod, setPaymentMethod] = useState(6)
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
@@ -164,10 +164,10 @@ const AdminDealerDetails = () => {
             if (response) {
                 setMiddleDealerId(null)
                 setCashAmount(null)
-                setEntryDate(null)
+                setEntryDate(today)
                 setLoader(false)
                 setPaymentMethod(6)
-                setDescription(false)
+                setDescription('CASH')
                 setCheckedEntry(!checkedEntry)
             }
             return response.data;
@@ -205,8 +205,8 @@ const AdminDealerDetails = () => {
         })
         setShowPaymentModal(false);
         setCashAmount(null)
-        setEntryDate(null)
-        setDescription(null)
+        setEntryDate(today)
+        setDescription('CASH')
         setPaymentMethod(6)
         setMiddleDealerId(null)
     };
@@ -214,8 +214,8 @@ const AdminDealerDetails = () => {
     const handlePaymentModalCancel = () => {
         setShowPaymentModal(false);
         setCashAmount(null)
-        setEntryDate(null)
-        setDescription(null)
+        setEntryDate(today)
+        setDescription('CASH')
         setPaymentMethod(6)
         setMiddleDealerId(null)
     };
