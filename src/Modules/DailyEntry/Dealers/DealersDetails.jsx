@@ -26,6 +26,7 @@ const AdminDealerDetails = () => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [checkedEntry, setCheckedEntry] = useState(false)
     const [cashAmount, setCashAmount] = useState(null)
+    const [entryDate, setEntryDate] = useState(null)
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -142,7 +143,7 @@ const AdminDealerDetails = () => {
         }
     };
 
-    const handleAddPMEntry = async ({ amount }) => {
+    const handleAddPMEntry = async ({ amount, paymentDate }) => {
         try {
             setLoader(true)
             const response = await client.post('entries/create-pm-entry', {
@@ -151,7 +152,8 @@ const AdminDealerDetails = () => {
                 description: 'Cash',
                 amount,
                 paymentMethod: 6,
-                middleDealerId
+                middleDealerId,
+                payment_date: paymentDate
             });
             if (response) {
                 setMiddleDealerId(null)
@@ -188,7 +190,8 @@ const AdminDealerDetails = () => {
         // Call your download logic here
         // await handleDownloadReport({ dealerId: id, dealerName: state?.name, startDate, endDate });
         await handleAddPMEntry({
-            amount: cashAmount
+            amount: cashAmount,
+            paymentDate: entryDate
         })
         setShowPaymentModal(false);
         setCashAmount(null)
@@ -264,8 +267,8 @@ const AdminDealerDetails = () => {
     const paymentColumns = [
         {
             title: "Date",
-            dataIndex: "createdAt",
-            key: "createdAt",
+            dataIndex: "paymentDate",
+            key: "paymentDate",
             render: (text) => <div>{moment(text).format('DD/MM/YYYY')}</div>,
         },
         {
@@ -586,6 +589,18 @@ const AdminDealerDetails = () => {
                                     type="number"
                                     value={cashAmount}
                                     onChange={(e) => setCashAmount(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <div>Payment Date</div>
+                                <CustomInput
+                                    type="date"
+                                    value={entryDate}
+                                    onChange={(e) => {
+                                        setEntryDate(e.target.value)
+                                        console.log(e.target.value, 'PAYMENT DATE')
+                                    }
+                                    }
                                 />
                             </div>
                             <div>
