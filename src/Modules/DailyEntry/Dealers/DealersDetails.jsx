@@ -211,8 +211,8 @@ const AdminDealerDetails = () => {
     const columns = [
         {
             title: "Date",
-            dataIndex: "createdAt",
-            key: "createdAt",
+            dataIndex: "date",
+            key: "date",
             render: (text) => <div>{moment(text).format('DD/MM/YYYY')}</div>,
         },
         {
