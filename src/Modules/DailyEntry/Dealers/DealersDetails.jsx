@@ -351,6 +351,8 @@ const AdminDealerDetails = () => {
     const handleTabContentRender = () => {
         switch (activeTab) {
             case 1:
+                const sortedFilteredDealers = [...filteredDealers].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
                 return (
                     <div>
                         <div className="mt-5 flex justify-between items-center">
@@ -388,7 +390,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
-                            data={filteredDealers}
+                            data={sortedFilteredDealers}
                             titleOnTop={false}
                             position="bottomRight"
                             columns={columns}
@@ -401,6 +403,7 @@ const AdminDealerDetails = () => {
                     </div >
                 );
             case 2:
+                const sortedFilteredPayments = [...filteredPayments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 return (
                     <div>
                         {/* <div className="mt-5 -mb-5">
@@ -448,7 +451,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
-                            data={filteredPayments}
+                            data={sortedFilteredPayments}
                             titleOnTop={false}
                             position="bottomRight"
                             columns={paymentColumns}
