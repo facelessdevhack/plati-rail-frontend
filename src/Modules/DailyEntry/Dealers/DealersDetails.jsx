@@ -15,6 +15,7 @@ import CustomSelect from "../../../Core/Components/CustomSelect";
 
 const AdminDealerDetails = () => {
     const [activeTab, setActiveTab] = useState(1);
+    const [dealerInfo, setDealerInfo] = useState(null)
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [searchQuery, setSearchQuery] = useState("");
@@ -46,13 +47,25 @@ const AdminDealerDetails = () => {
 
     const isAdmin = user.roleId === ROLE_ADMIN;
 
-    useEffect(() => {
+    const getDealerInfo = async () => {
+        try {
+            const result = await client.get(`/master/dealer-info?id=${id}`)
+            if (result) {
+                console.log(result.data)
+                setDealerInfo(result.data?.[0])
+            }
+        } catch (e) {
+            console.log(e, 'ERROR OF DEALER INFO')
+        }
+    }
 
+    useEffect(() => {
         dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getPaymentEntries({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
         dispatch(getMiddleDealers({}))
         dispatch(getAdminPaymentMethods({}))
         dispatch(getAllPaymentMethods({}))
+        getDealerInfo()
     }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
 
     // Filter dealers based on the search query
@@ -275,7 +288,18 @@ const AdminDealerDetails = () => {
             title: "Balance After Entry",
             dataIndex: "currentBal",
             key: "currentBal",
-            render: (text) => <div>{text}</div>,
+            render: (value) => (
+                <div>
+                    {value !== null && value !== undefined
+                        ? new Intl.NumberFormat('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        }).format(value)
+                        : '₹0'}
+                </div>
+            ),
         },
         // Conditionally include the "Checked" column
         ...(isAdmin
@@ -329,7 +353,18 @@ const AdminDealerDetails = () => {
             title: "Balance After Entry",
             dataIndex: "currentBal",
             key: "currentBal",
-            render: (text) => <div>{text}</div>,
+            render: (value) => (
+                <div>
+                    {value !== null && value !== undefined
+                        ? new Intl.NumberFormat('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        }).format(value)
+                        : '₹0'}
+                </div>
+            ),
         },
         ...(isAdmin
             ? [
@@ -361,6 +396,16 @@ const AdminDealerDetails = () => {
         setCurrentPage(page);
         setPageSize(currentPageSize);
     }
+
+    const formatINR = (value) => {
+        if (value === null || value === undefined) return 'N/A';
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+    };
 
     // Handle Tab Content Render
     const handleTabContentRender = () => {
@@ -483,164 +528,189 @@ const AdminDealerDetails = () => {
         }
     };
 
+    // Determine the color class based on the balance
+    const getBalanceColor = (value) => {
+        if (value === null || value === undefined) return '';
+        return value < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+    };
+
     return (
-        <AdminLayout title={state?.name} content={
-            <div className="w-full h-full p-5 bg-gray-200">
-                <div>
-                    {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
-                    <Row gutter={16}>
-                        <Col span={24}>
-                            <div className="flex items-baseline justify-between w-full ">
-                                <Flex gap="small" align="flex-start" vertical className="shadow-lg">
-                                    <Segmented
-                                        onChange={setActiveTab}
-                                        options={[
-                                            {
-                                                label: (
-                                                    <div
-                                                        style={{
-                                                            padding: 4,
-                                                        }}
-                                                        className={`flex items-center justify-between gap-x-1 ${activeTab === 1 ? "font-semibold" : "font-medium"
-                                                            }`}
-                                                    >
-                                                        <div>Entries</div>
-                                                        <div>({dealerEntryCount})</div>
-                                                    </div>
-                                                ),
-                                                value: 1,
-                                            },
-                                            {
-                                                label: (
-                                                    <div
-                                                        style={{
-                                                            padding: 4,
-                                                        }}
-                                                        className={`flex items-center justify-between gap-x-1 ${activeTab === 2 ? "font-semibold" : "font-medium"
-                                                            }`}
-                                                    >
-                                                        <div>Payments</div>
-                                                        <div>({pmEntryCount})</div>
-                                                    </div>
-                                                ),
-                                                value: 2,
-                                            },
-                                        ]}
-                                    />
-                                </Flex>
-                            </div>
+        <AdminLayout title={isAdmin ?
+            <div>
+                {state?.name}
+                <div className="text-sm text-gray-700 font-semibold">
+                    {dealerInfo?.currentBal !== null && dealerInfo?.currentBal !== undefined
+                        && <div className="text-sm text-gray-700 font-semibold">
                             <div>
-                                {handleTabContentRender()}
+                                Current Balance -{' '}
+                                {dealerInfo?.currentBal !== null && dealerInfo?.currentBal !== undefined ? (
+                                    <span className={getBalanceColor(dealerInfo?.currentBal)}>
+                                        {formatINR(dealerInfo?.currentBal)}
+                                    </span>
+                                ) : (
+                                    'N/A'
+                                )}
                             </div>
-                        </Col>
-                    </Row>
-
-                    {/* Modal for downloading report */}
-                    <Modal
-                        title={`Download Report for ${state?.name}`}
-                        open={isModalVisible}
-                        onOk={handleModalOk}
-                        onCancel={handleModalCancel}
-                        footer={
-                            <div className='flex justify-end items-center gap-4'>
-                                <Button key="back" onClick={handleModalCancel}>
-                                    Cancel
-                                </Button>
-                                <Button key="submit" type="primary" onClick={handleModalOk}>
-                                    Download
-                                </Button>
-                            </div>
-                        }
-                    >
-                        <div>
-                            <p className='mt-5 mb-3 italic text-xs'>*Please select the start and end date to export the data for specific dates.</p>
-                            <DatePicker.RangePicker
-                                onChange={handleDateChange}
-                                style={{ width: '100%' }}
-                            />
                         </div>
-                    </Modal>
+                    }
+                </div>
+            </div> : state?.name} content={
+                <div className="w-full h-full p-5 bg-gray-200">
+                    <div>
+                        {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
+                        <Row gutter={16}>
+                            <Col span={24}>
+                                <div className="flex items-baseline justify-between w-full ">
+                                    <Flex gap="small" align="flex-start" vertical className="shadow-lg">
+                                        <Segmented
+                                            onChange={setActiveTab}
+                                            options={[
+                                                {
+                                                    label: (
+                                                        <div
+                                                            style={{
+                                                                padding: 4,
+                                                            }}
+                                                            className={`flex items-center justify-between gap-x-1 ${activeTab === 1 ? "font-semibold" : "font-medium"
+                                                                }`}
+                                                        >
+                                                            <div>Entries</div>
+                                                            <div>({dealerEntryCount})</div>
+                                                        </div>
+                                                    ),
+                                                    value: 1,
+                                                },
+                                                {
+                                                    label: (
+                                                        <div
+                                                            style={{
+                                                                padding: 4,
+                                                            }}
+                                                            className={`flex items-center justify-between gap-x-1 ${activeTab === 2 ? "font-semibold" : "font-medium"
+                                                                }`}
+                                                        >
+                                                            <div>Payments</div>
+                                                            <div>({pmEntryCount})</div>
+                                                        </div>
+                                                    ),
+                                                    value: 2,
+                                                },
+                                            ]}
+                                        />
+                                    </Flex>
+                                </div>
+                                <div>
+                                    {handleTabContentRender()}
+                                </div>
+                            </Col>
+                        </Row>
 
-                    {/* Modal for Adding Payment Entry */}
-                    <Modal
-                        title={`Add Payment Entry ${state?.name}`}
-                        open={showPaymentModal}
-                        onOk={handlePaymentModalOk}
-                        onCancel={handlePaymentModalCancel}
-                        footer={
-                            <div className='flex justify-end items-center gap-4'>
-                                <Button key="back" onClick={handlePaymentModalCancel}>
-                                    Cancel
-                                </Button>
-                                <Button key="submit" type="primary" onClick={handlePaymentModalOk}>
-                                    Create Entry
-                                </Button>
-                            </div>
-                        }
-                    >
-                        <div>
-                            {loader && <Spin size='large' spinning={loader} fullscreen={true} className="z-20" ></Spin>}
+                        {/* Modal for downloading report */}
+                        <Modal
+                            title={`Download Report for ${state?.name}`}
+                            open={isModalVisible}
+                            onOk={handleModalOk}
+                            onCancel={handleModalCancel}
+                            footer={
+                                <div className='flex justify-end items-center gap-4'>
+                                    <Button key="back" onClick={handleModalCancel}>
+                                        Cancel
+                                    </Button>
+                                    <Button key="submit" type="primary" onClick={handleModalOk}>
+                                        Download
+                                    </Button>
+                                </div>
+                            }
+                        >
                             <div>
-                                <div>Enter Description</div>
-                                <CustomInput
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
+                                <p className='mt-5 mb-3 italic text-xs'>*Please select the start and end date to export the data for specific dates.</p>
+                                <DatePicker.RangePicker
+                                    onChange={handleDateChange}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
+                        </Modal>
+
+                        {/* Modal for Adding Payment Entry */}
+                        <Modal
+                            title={`Add Payment Entry ${state?.name}`}
+                            open={showPaymentModal}
+                            onOk={handlePaymentModalOk}
+                            onCancel={handlePaymentModalCancel}
+                            footer={
+                                <div className='flex justify-end items-center gap-4'>
+                                    <Button key="back" onClick={handlePaymentModalCancel}>
+                                        Cancel
+                                    </Button>
+                                    <Button key="submit" type="primary" onClick={handlePaymentModalOk}>
+                                        Create Entry
+                                    </Button>
+                                </div>
+                            }
+                        >
                             <div>
-                                <div>Enter Amount</div>
-                                <CustomInput
-                                    type="number"
-                                    value={cashAmount}
-                                    onChange={(e) => setCashAmount(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <div>Payment Date</div>
-                                <CustomInput
-                                    type="date"
-                                    value={entryDate}
-                                    onChange={(e) => {
-                                        setEntryDate(e.target.value)
-                                        console.log(e.target.value, 'PAYMENT DATE')
-                                    }
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <div>Select Mid-Dealer</div>
-                                <CustomSelect
-                                    showSearch={true}
-                                    className="w-full"
-                                    options={allMiddleDealers}
-                                    value={middleDealerId}
-                                    onChange={(e, l) => setMiddleDealerId(e)}
-                                />
-                            </div>
-                            <div>
-                                <div>Payment Method</div>
-                                <div className='flex justify-start'>
-                                    {adminPaymentMethods?.map((method) => (
-                                        <label key={method} className="mr-4 flex justify-start gap-x-2">
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value={method.id}
-                                                checked={paymentMethod === method.id}
-                                                onChange={() =>
-                                                    setPaymentMethod(method.id)
-                                                }
-                                            />
-                                            {method.methodName}
-                                        </label>
-                                    ))}
+                                {loader && <Spin size='large' spinning={loader} fullscreen={true} className="z-20" ></Spin>}
+                                <div>
+                                    <div>Enter Description</div>
+                                    <CustomInput
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <div>Enter Amount</div>
+                                    <CustomInput
+                                        type="number"
+                                        value={cashAmount}
+                                        onChange={(e) => setCashAmount(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <div>Payment Date</div>
+                                    <CustomInput
+                                        type="date"
+                                        value={entryDate}
+                                        onChange={(e) => {
+                                            setEntryDate(e.target.value)
+                                            console.log(e.target.value, 'PAYMENT DATE')
+                                        }
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <div>Select Mid-Dealer</div>
+                                    <CustomSelect
+                                        showSearch={true}
+                                        className="w-full"
+                                        options={allMiddleDealers}
+                                        value={middleDealerId}
+                                        onChange={(e, l) => setMiddleDealerId(e)}
+                                    />
+                                </div>
+                                <div>
+                                    <div>Payment Method</div>
+                                    <div className='flex justify-start'>
+                                        {adminPaymentMethods?.map((method) => (
+                                            <label key={method} className="mr-4 flex justify-start gap-x-2">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value={method.id}
+                                                    checked={paymentMethod === method.id}
+                                                    onChange={() =>
+                                                        setPaymentMethod(method.id)
+                                                    }
+                                                />
+                                                {method.methodName}
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Modal>
-                </div>
-            </div >
-        } />
+                        </Modal>
+                    </div>
+                </div >
+            } />
     );
 };
 
