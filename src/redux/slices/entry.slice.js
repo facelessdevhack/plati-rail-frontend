@@ -252,7 +252,6 @@ export const entrySlice = createSlice({
       .addCase(getPaymentMethods.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.status = 'fulfilled';
-        console.log(payload, 'PAYMENT METHODS')
         state.allPaymentMethods = payload;
         state.error = null;
       })
@@ -270,7 +269,6 @@ export const entrySlice = createSlice({
       .addCase(getAdminPaymentMethods.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.status = 'fulfilled';
-        console.log(payload, 'PAYMENT METHODS')
         state.adminPaymentMethods = payload;
         state.error = null;
       })
@@ -288,7 +286,6 @@ export const entrySlice = createSlice({
       .addCase(getAllPaymentMethods.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.status = 'fulfilled';
-        console.log(payload, 'PAYMENT METHODS')
         state.allAdminPaymentMethods = payload;
         state.error = null;
       })
@@ -306,7 +303,6 @@ export const entrySlice = createSlice({
       .addCase(getMiddleDealers.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.status = 'fulfilled';
-        console.log(payload, 'PAYMENT METHODS')
         state.allMiddleDealers = payload;
         state.error = null;
       })

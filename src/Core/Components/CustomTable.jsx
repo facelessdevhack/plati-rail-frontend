@@ -11,7 +11,7 @@ const CustomTable = ({
   expandedData,
   currentPage,
   handlePageChange,
-  pageSize,
+  currentPageSize,
   expanded = true,
   expandable = true,
   onRowClick,
@@ -53,8 +53,8 @@ const CustomTable = ({
           total: totalCount,
           defaultCurrent: currentPage,
           defaultPageSize: 10,
-          onChange: (page, pageSize) => handlePageChange(page),
-          pageSize: pageSize,
+          onChange: (page, pageSize) => handlePageChange(page, pageSize),
+          pageSize: currentPageSize,
           position: [position],
         }}
       />

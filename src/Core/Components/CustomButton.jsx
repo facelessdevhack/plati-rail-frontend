@@ -8,11 +8,12 @@ const button = cva(["font-poppins text-xs font-medium capitalize rounded-md"], {
       filter: "py-2.75 px-3",
       arrows: "py-1 px-2",
       mobilize: "py-1 px-2",
-      checkIn: "p-1",
+      checkIn: "py-2 px-2",
       kpis: "p-3",
       mapMarkers: "px-3 py-2",
       location: "p-2",
       geofence: "py-1.75 px-2",
+      slim: 'px-2'
     },
     size: {
       primary: ["h-10.5"],

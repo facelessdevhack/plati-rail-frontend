@@ -242,23 +242,33 @@ const AdminDealerDetails = () => {
             render: (text) => <div>{text}</div>,
         },
         {
-            title: "Quantity",
+            title: <div className="flex justify-center items-center">Quantity</div>,
             dataIndex: "quantity",
             key: "quantity",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div className="flex justify-center items-center">{text}</div>,
         },
         {
-            title: "Amount",
+            title: <div className="flex justify-center items-center">Amount</div>,
             dataIndex: "price",
             key: "price",
             render: (text, record) => (
-                <div>{record.isClaim === 1 ? "Claimed" : text}</div>
+                <div className="flex justify-center items-center">
+                    <div>
+                        {record.isClaim === 1 ? "Claimed" : text}
+                    </div>
+                </div>
             ),
         },
         {
-            title: "Transportation Charges",
+            title: "TP Charges",
             dataIndex: "transportationCharges",
             key: "transportationCharges",
+            render: (text) => <div>{text}</div>,
+        },
+        {
+            title: "Entry Type",
+            dataIndex: "sourceType",
+            key: "sourceType",
             render: (text) => <div>{text}</div>,
         },
         {
@@ -275,8 +285,8 @@ const AdminDealerDetails = () => {
                     dataIndex: "isChecked",
                     key: "isChecked",
                     render: (text, record) => (
-                        <Button onClick={() => handleCheckEntry(record.entryId)}>
-                            {text === 1 ? "Checked" : "Unchecked"}
+                        <Button size='slim' padding='slim' onClick={() => handleCheckEntry(record.entryId)}>
+                            <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
                     ),
                 },
@@ -301,7 +311,7 @@ const AdminDealerDetails = () => {
             title: "Amount",
             dataIndex: "amount",
             key: "amount",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div className="flex justify-between items-center">{text}</div>,
         },
         {
             title: "Mode of Payment",
@@ -328,7 +338,7 @@ const AdminDealerDetails = () => {
                     dataIndex: "isPaid",
                     key: "isPaid",
                     render: (text, record) => (
-                        <Button onClick={() => handleCheckPaymentEntry(record.id)}>
+                        <Button size='slim' padding='slim' onClick={() => handleCheckPaymentEntry(record.id)}>
                             {text === 1 ? "Checked" : "Unchecked"}
                         </Button>
                     ),
@@ -346,6 +356,11 @@ const AdminDealerDetails = () => {
             setEndDate(null);
         }
     };
+
+    const handlePages = (page, currentPageSize) => {
+        setCurrentPage(page);
+        setPageSize(currentPageSize);
+    }
 
     // Handle Tab Content Render
     const handleTabContentRender = () => {
@@ -397,7 +412,7 @@ const AdminDealerDetails = () => {
                             expandable={false}
                             totalCount={dealerEntryCount}
                             currentPage={currentPage}
-                            handlePageChange={setCurrentPage}
+                            handlePageChange={handlePages}
                             pageSize={pageSize}
                         />
                     </div >
@@ -464,40 +479,7 @@ const AdminDealerDetails = () => {
                     </div>
                 );
             default:
-                return (
-                    <div>
-                        <div className="mt-5 -mb-5">
-                            <CustomInput
-                                placeholder={"Search Entries"}
-                                intent={"search"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                            <select onChange={(e) => setSortField(e.target.value)}>
-                                <option value="created_at">Date</option>
-                                <option value="productName">Product Name</option>
-                                {/* Add more sorting options as needed */}
-                            </select>
-                            <select onChange={(e) => setSortOrder(e.target.value)}>
-                                <option value="desc">Descending</option>
-                                <option value="asc">Ascending</option>
-                            </select>
-                        </div>
-                        <CustomTable
-                            data={filteredDealers}
-                            titleOnTop={false}
-                            position="bottomRight"
-                            columns={columns}
-                            expandable={false}
-                            totalCount={filteredDealers?.length}
-                            currentPage={currentPage}
-                            handlePageChange={setCurrentPage}
-                            pageSize={pageSize}
-                        />
-                    </div>
-                );
+                return null
         }
     };
 
