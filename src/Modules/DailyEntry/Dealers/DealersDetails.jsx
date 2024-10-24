@@ -97,6 +97,25 @@ const AdminDealerDetails = () => {
         }
     }
 
+    // Check Purchase Entry Function for Entries
+    const handleCheckPurchaseEntry = async (entryId) => {
+        try {
+            setLoader(true)
+            const checkEntryResponse = await client.post(`/entries/check-purchase-entry`, {
+                entryId
+            });
+            if (checkEntryResponse) {
+                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
+                dispatch(updateDealerEntryById({ entryId, checked: 1 }));
+                setCheckedEntry(!checkedEntry)
+                setLoader(false)
+            }
+        } catch (e) {
+            setLoader(false)
+            console.log(e, "CHECK ENTRY ERROR");
+        }
+    }
+
     // Check Entry Function for Payments
     const handleCheckPaymentEntry = async (entryId) => {
         try {
@@ -321,7 +340,9 @@ const AdminDealerDetails = () => {
                     dataIndex: "isChecked",
                     key: "isChecked",
                     render: (text, record) => (
-                        <Button size='slim' padding='slim' onClick={() => handleCheckEntry(record.entryId)}>
+                        <Button size='slim' padding='slim' onClick={() => {
+                            record.sourceType === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
+                        }}>
                             <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
                     ),
