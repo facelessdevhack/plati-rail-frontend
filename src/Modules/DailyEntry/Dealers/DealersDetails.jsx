@@ -240,6 +240,21 @@ const AdminDealerDetails = () => {
         return method ? method.methodName : 'Unknown Method';
     };
 
+    const formatINR = (value) => {
+        if (value === null || value === undefined) return 'N/A';
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+    };
+
+    const getBalanceColor = (value) => {
+        if (value === null || value === undefined) return '';
+        return value < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+    };
+
     // Columns for Entries
     const columns = [
         {
@@ -291,12 +306,9 @@ const AdminDealerDetails = () => {
             render: (value) => (
                 <div>
                     {value !== null && value !== undefined
-                        ? new Intl.NumberFormat('en-IN', {
-                            style: 'currency',
-                            currency: 'INR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                        }).format(value)
+                        ? <span className={getBalanceColor(value)}>
+                            {formatINR(value)}
+                        </span>
                         : '₹0'}
                 </div>
             ),
@@ -356,12 +368,9 @@ const AdminDealerDetails = () => {
             render: (value) => (
                 <div>
                     {value !== null && value !== undefined
-                        ? new Intl.NumberFormat('en-IN', {
-                            style: 'currency',
-                            currency: 'INR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                        }).format(value)
+                        ? <span className={getBalanceColor(value)}>
+                            {formatINR(value)}
+                        </span>
                         : '₹0'}
                 </div>
             ),
@@ -397,15 +406,7 @@ const AdminDealerDetails = () => {
         setPageSize(currentPageSize);
     }
 
-    const formatINR = (value) => {
-        if (value === null || value === undefined) return 'N/A';
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(value);
-    };
+
 
     // Handle Tab Content Render
     const handleTabContentRender = () => {
@@ -529,10 +530,7 @@ const AdminDealerDetails = () => {
     };
 
     // Determine the color class based on the balance
-    const getBalanceColor = (value) => {
-        if (value === null || value === undefined) return '';
-        return value < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
-    };
+
 
     return (
         <AdminLayout title={isAdmin ?
