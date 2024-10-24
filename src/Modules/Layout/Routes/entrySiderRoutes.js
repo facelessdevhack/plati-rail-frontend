@@ -36,6 +36,11 @@ export const entrySiderRoutes = [
     "4",
     <StockOutlined />
   ),
+  getItemLayout(
+    <Link to="/entry-daily-entry-dealers">Select Dealers</Link>,
+    "5",
+    <PieChartOutlined />
+  ),
   //   getItemLayout(
   //     <Link to="/admin-orders">Orders</Link>,
   //     "2",

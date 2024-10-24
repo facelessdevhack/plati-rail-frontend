@@ -241,6 +241,7 @@ import StockList from "../../Modules/Stock/StockList";
 import AddDailyPurchaseEntry from "../../Modules/DataEntry/AddDailyPurchaseEntry";
 import AddCapStock from "../../Modules/AddModules/AddCapModel";
 import AddFinish from "../../Modules/AddModules/AddFinish";
+import EntryLayout from "../../Modules/Layout/entryLayout";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -277,7 +278,7 @@ const StackNavigation = () => {
       <Route
         path="/admin-daily-entry-dealers"
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               title="Daily Entry Dealers"
               content={<AdminDailyEntryDealersPage />}
@@ -288,7 +289,7 @@ const StackNavigation = () => {
       <Route
         path="/admin-daily-entry"
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout title="Daily Entry" content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
@@ -296,7 +297,7 @@ const StackNavigation = () => {
       <Route
         path="/admin-dealers/:id"
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminDealerDetails />
           </PrivateRoute>
         }
@@ -352,7 +353,7 @@ const StackNavigation = () => {
         path="add-payment-entry"
         element={
           <PrivateRoute allowedRoles={[3]}>
-            <AdminLayout
+            <EntryLayout
               title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
                 }`}
               items={entrySiderRoutes}
@@ -365,7 +366,7 @@ const StackNavigation = () => {
         path="add-inwards-entry"
         element={
           <PrivateRoute allowedRoles={[3]}>
-            <AdminLayout
+            <EntryLayout
               title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
                 }`}
               items={entrySiderRoutes}
@@ -378,7 +379,7 @@ const StackNavigation = () => {
         path="add-cap-stock"
         element={
           <PrivateRoute allowedRoles={[3]}>
-            <AdminLayout
+            <EntryLayout
               title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
                 }`}
               items={entrySiderRoutes}
@@ -391,7 +392,7 @@ const StackNavigation = () => {
         path="add-finish"
         element={
           <PrivateRoute allowedRoles={[3]}>
-            <AdminLayout
+            <EntryLayout
               title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
                 }`}
               items={entrySiderRoutes}
@@ -404,7 +405,7 @@ const StackNavigation = () => {
         path="add-model"
         element={
           <PrivateRoute allowedRoles={[3]}>
-            <AdminLayout
+            <EntryLayout
               title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
                 }`}
               items={entrySiderRoutes}
@@ -413,6 +414,26 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/entry-daily-entry-dealers"
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              items={entrySiderRoutes}
+              title="Daily Entry Dealers"
+              content={<AdminDailyEntryDealersPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      {/* <Route
+        path="/entry-daily-entry"
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout items={entrySiderRoutes} title="Daily Entry" content={<DailyEntryAdmin />} />
+          </PrivateRoute>
+        }
+      /> */}
       {/* ...other routes wrapped with PrivateRoute */}
     </Routes>
   );
