@@ -15,6 +15,7 @@ const CustomTable = ({
   expanded = true,
   expandable = true,
   onRowClick,
+  editFunction
 }) => {
   // Error handling wrapper for the row click
   const handleRowClick = (record) => {
@@ -47,6 +48,14 @@ const CustomTable = ({
         columns={columns}
         dataSource={data}
         onRow={(record) => ({
+          onContextMenu: (e) => {
+            e.preventDefault();
+            console.log(record, 'EVENT')
+            message.info("Right-click on a row")
+            if (editFunction) {
+              editFunction(record)
+            }
+          },
           onClick: () => handleRowClick(record), // Use error-handling wrapper
         })}
         pagination={{

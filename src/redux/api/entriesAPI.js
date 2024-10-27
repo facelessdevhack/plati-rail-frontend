@@ -62,7 +62,7 @@ export const addEntryAPI = async (
 
 export const editEntryAPI = async (
   {
-    entryId,
+    id,
     dealerId,
     dealerName,
     productId,
@@ -73,11 +73,15 @@ export const editEntryAPI = async (
     isClaim,
     transportationType,
     transportationCharges,
+    isRepair,
+    amount,
+    sourceType,
+    description
   },
 ) => {
   try {
     const response = await client.put('entries/edit-entry', {
-      entryId,
+      id,
       dealerId,
       dealerName,
       productId,
@@ -88,6 +92,10 @@ export const editEntryAPI = async (
       isClaim,
       transportationType,
       transportationCharges,
+      isRepair,
+      amount,
+      sourceType,
+      description
     });
     console.log(response, 'EDIT ENTRY RESPONSE');
     return response;

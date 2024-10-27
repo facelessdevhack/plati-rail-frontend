@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin } from "antd";
+import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin, message } from "antd";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
 import CustomTable from "../../../Core/Components/CustomTable";
 import CustomInput from "../../../Core/Components/CustomInput";
-import { checkEntry, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
+import { checkEntry, editEntryAPI, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
 import { updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
 import { client } from "../../../Utils/axiosClient";
 import moment from "moment";
 import CustomSelect from "../../../Core/Components/CustomSelect";
+import { getAllProducts } from "../../../redux/api/stockAPI";
 
 const AdminDealerDetails = () => {
     const [activeTab, setActiveTab] = useState(1);
@@ -25,6 +26,7 @@ const AdminDealerDetails = () => {
     const [sortOrder, setSortOrder] = useState('desc');
     const [isModalVisible, setIsModalVisible] = useState(false); // State to manage modal visibility
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [checkedEntry, setCheckedEntry] = useState(false)
     const [cashAmount, setCashAmount] = useState(null)
     const today = moment().format('YYYY-MM-DD')
@@ -33,6 +35,7 @@ const AdminDealerDetails = () => {
     const [paymentMethod, setPaymentMethod] = useState(6)
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
+    const [editingEntry, setEditingEntry] = useState(null)
     const { loggedIn, user } = useSelector((state) => state.userDetails);
 
 
@@ -42,6 +45,9 @@ const AdminDealerDetails = () => {
     const { id, name } = useParams();
     const dispatch = useDispatch();
     const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers, adminPaymentMethods, allAdminPaymentMethods } = useSelector((state) => state.entryDetails);
+    const { allProducts } = useSelector(
+        (state) => state.stockDetails,
+    );
 
     const ROLE_ADMIN = 5
 
@@ -66,6 +72,7 @@ const AdminDealerDetails = () => {
         dispatch(getAdminPaymentMethods({}))
         dispatch(getAllPaymentMethods({}))
         getDealerInfo()
+        dispatch(getAllProducts({}));
     }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
 
     // Filter dealers based on the search query
@@ -229,8 +236,6 @@ const AdminDealerDetails = () => {
     };
 
     const handlePaymentModalOk = async () => {
-        // Call your download logic here
-        // await handleDownloadReport({ dealerId: id, dealerName: state?.name, startDate, endDate });
         await handleAddPMEntry({
             amount: cashAmount,
             paymentDate: entryDate
@@ -250,6 +255,38 @@ const AdminDealerDetails = () => {
         setDescription('CASH')
         setPaymentMethod(6)
         setMiddleDealerId(null)
+    };
+
+    // Model and Functions for Editing Entry
+    const showEditModalFunction = (data) => {
+        setEditingEntry(data)
+        setShowEditModal(true);
+    };
+
+    const handleEditModalOk = async () => {
+        const finalEditingEntry = editingEntry.id === undefined ? { ...editingEntry, id: editingEntry?.inwardsEntryId || editingEntry.entryId } : editingEntry
+        try {
+            setLoader(true)
+            const editEntryResponse = await editEntryAPI(finalEditingEntry)
+            if (editEntryResponse) {
+                setCheckedEntry(!checkedEntry)
+                console.log(editEntryResponse, 'editEntryResponse');
+                setLoader(false)
+                setShowEditModal(false);
+
+            } else {
+                message.error('Unable to edit entry')
+            }
+        } catch (e) {
+            message.info('Unable to edit entry')
+            setLoader(false)
+            setShowEditModal(false);
+        }
+    };
+
+    const handleEditModalCancel = () => {
+        setEditingEntry(null)
+        setShowEditModal(false);
     };
 
 
@@ -301,7 +338,7 @@ const AdminDealerDetails = () => {
             render: (text, record) => (
                 <div className="flex justify-center items-center">
                     <div>
-                        {record.isClaim === 1 ? "Claimed" : text}
+                        {record.isClaim === 1 ? "Claimed" : formatINR(text)}
                     </div>
                 </div>
             ),
@@ -368,7 +405,7 @@ const AdminDealerDetails = () => {
             title: "Amount",
             dataIndex: "amount",
             key: "amount",
-            render: (text) => <div className="flex justify-between items-center">{text}</div>,
+            render: (text) => <div className="flex justify-between items-center">{formatINR(text)}</div>,
         },
         {
             title: "Mode of Payment",
@@ -472,6 +509,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
+                            editFunction={showEditModalFunction}
                             data={sortedFilteredDealers}
                             titleOnTop={false}
                             position="bottomRight"
@@ -533,6 +571,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
+                            editFunction={showEditModalFunction}
                             data={sortedFilteredPayments}
                             titleOnTop={false}
                             position="bottomRight"
@@ -652,7 +691,7 @@ const AdminDealerDetails = () => {
 
                         {/* Modal for Adding Payment Entry */}
                         <Modal
-                            title={`Add Payment Entry ${state?.name}`}
+                            title={`Add Payment Entry For ${state?.name}`}
                             open={showPaymentModal}
                             onOk={handlePaymentModalOk}
                             onCancel={handlePaymentModalCancel}
@@ -725,6 +764,96 @@ const AdminDealerDetails = () => {
                                         ))}
                                     </div>
                                 </div>
+                            </div>
+                        </Modal>
+
+                        {/* Modal for Editing Entry */}
+                        <Modal
+                            title={`Edit Entry`}
+                            open={showEditModal}
+                            onOk={handleEditModalOk}
+                            onCancel={handleEditModalCancel}
+                            footer={
+                                <div className='flex justify-end items-center gap-4'>
+                                    <Button key="back" onClick={handleEditModalCancel}>
+                                        Cancel
+                                    </Button>
+                                    <Button key="submit" type="primary" onClick={handleEditModalOk}>
+                                        Edit Entry
+                                    </Button>
+                                </div>
+                            }
+                        >
+                            <div>
+                                {loader && <Spin size='large' spinning={loader} fullscreen={true} className="z-20" ></Spin>}
+                                {editingEntry && editingEntry.sourceType === 2 ? (
+                                    <div className="flex flex-col gap-y-2">
+                                        <div>
+                                            <div>Change Description</div>
+                                            <CustomInput
+                                                value={editingEntry?.description}
+                                                onChange={(e) => {
+                                                    setEditingEntry({ ...editingEntry, description: e.target.value })
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div>Change Pricing</div>
+                                            <CustomInput
+                                                value={editingEntry?.sourceType === 2 ? editingEntry?.amount : editingEntry?.price}
+                                                onChange={(e) => {
+                                                    if (editingEntry?.sourceType === 2) {
+                                                        setEditingEntry({ ...editingEntry, amount: e.target.value })
+                                                    } else {
+                                                        setEditingEntry({ ...editingEntry, price: e.target.value })
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-y-2">
+                                        <div>
+                                            <div>Select Product</div>
+                                            <CustomSelect
+                                                showSearch={true}
+                                                className="w-full"
+                                                options={allProducts}
+                                                value={editingEntry?.productId}
+                                                onChange={(e, l) => {
+                                                    setEditingEntry({
+                                                        ...editingEntry,
+                                                        productId: e,
+                                                        productName: l ? l.label : null,
+                                                    })
+                                                }
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <div>Change Quantity</div>
+                                            <CustomInput
+                                                value={editingEntry?.quantity}
+                                                onChange={(e) => {
+                                                    setEditingEntry({ ...editingEntry, quantity: e.target.value })
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div>Change Pricing</div>
+                                            <CustomInput
+                                                value={editingEntry?.sourceType === 2 ? editingEntry?.amount : editingEntry?.price}
+                                                onChange={(e) => {
+                                                    if (editingEntry?.sourceType === 2) {
+                                                        setEditingEntry({ ...editingEntry, amount: e.target.value })
+                                                    } else {
+                                                        setEditingEntry({ ...editingEntry, price: e.target.value })
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </Modal>
                     </div>

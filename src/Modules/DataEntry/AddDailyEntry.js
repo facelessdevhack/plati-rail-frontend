@@ -28,7 +28,7 @@ const AddDailyEntry = () => {
     dispatch(getAllDealers({}));
     dispatch(getAllProducts({}));
     dispatch(getDailyEntry({}))
-    console.log(allDailyEntries)
+    // console.log(allDailyEntries)
   }, [dispatch]);
 
   React.useEffect(() => {
@@ -201,13 +201,15 @@ const AddDailyEntry = () => {
                 className="w-full"
                 options={allProducts}
                 value={entry.productId}
-                onChange={(e, l) =>
+                onChange={(e, l) => {
                   dispatch(
                     setEntry({
                       productId: e,
                       productName: l ? l.label : null,
                     }),
                   )
+                  console.log(e, l.label, 'SELECTED PRODUCT')
+                }
                 }
               />
             </div>

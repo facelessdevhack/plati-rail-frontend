@@ -131,7 +131,7 @@ const Login = () => {
                 formState={formState}
                 name="password"
                 placeholder="Password"
-                rules={validationForPassword}
+                // rules={validationForPassword}
                 intent="loginWhite"
                 isPassword={true}
               />
