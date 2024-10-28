@@ -351,8 +351,8 @@ const AdminDealerDetails = () => {
         },
         {
             title: "Entry Type",
-            dataIndex: "sourceType",
-            key: "sourceType",
+            dataIndex: "source",
+            key: "source",
             render: (text) => <div>{text}</div>,
         },
         {
