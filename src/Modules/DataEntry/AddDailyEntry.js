@@ -77,7 +77,8 @@ const AddDailyEntry = () => {
 
     if (isEditing) {
       try {
-        const editEntryResponse = await editEntryAPI({ ...entry, id: editingEntryId })
+        console.log(entry, 'EDITING ENTRY ID')
+        const editEntryResponse = await editEntryAPI({ ...entry, id: editingEntryId || entry.entryId, sourceType: entry.sourceType })
         if (editEntryResponse.status === 200) {
           console.log(editEntryResponse, 'editEntryResponse');
           dispatch(updateEntryById({ ...entry, id: editingEntryId }));
@@ -385,9 +386,9 @@ const AddDailyEntry = () => {
                     </div>
                     <div className="flex items-center gap-x-4">
                       <Button onClick={() => handleEdit(entry)}>Edit</Button>
-                      <Button onClick={() => handleDelete(entry.entryId)}>
+                      {/* <Button onClick={() => handleDelete(entry.entryId)}>
                         Delete
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
                 ))}

@@ -360,9 +360,9 @@ const AddDailyPurchaseEntry = () => {
                     </div>
                     <div className="flex items-center gap-x-4">
                       <Button onClick={() => handleEdit(inwardsEntry)}>Edit</Button>
-                      <Button onClick={() => handleDelete(inwardsEntry.entryId)}>
+                      {/* <Button onClick={() => handleDelete(inwardsEntry.entryId)}>
                         Delete
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
                 ))}
