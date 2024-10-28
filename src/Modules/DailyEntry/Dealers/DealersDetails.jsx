@@ -378,7 +378,7 @@ const AdminDealerDetails = () => {
                     key: "isChecked",
                     render: (text, record) => (
                         <Button size='slim' padding='slim' onClick={() => {
-                            record.sourceType === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
+                            record.source === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
                         }}>
                             <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
