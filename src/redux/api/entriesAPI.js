@@ -34,7 +34,8 @@ export const addEntryAPI = async (
     isClaim,
     transportationType,
     transportationCharges,
-    isRepair
+    isRepair,
+    date
   },
 ) => {
   try {
@@ -49,7 +50,7 @@ export const addEntryAPI = async (
       isClaim,
       transportationType,
       transportationCharges,
-      date: moment().format('YYYY-MM-DD HH:mm:ss'),
+      date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
       isRepair
     });
     console.log(response, 'ADD ENTRY RESPONSE');
@@ -128,7 +129,8 @@ export const addInwardsEntryAPI = async (
     isClaim,
     transportationType,
     transportationCharges,
-    isRepair
+    isRepair,
+    paymentDate
   },
 ) => {
   try {
@@ -143,7 +145,7 @@ export const addInwardsEntryAPI = async (
       isClaim,
       transportationType,
       transportationCharges,
-      date: moment().format('YYYY-MM-DD HH:mm:ss'),
+      date: paymentDate || moment().format('YYYY-MM-DD HH:mm:ss'),
       isRepair
     });
     console.log(response, 'ADD ENTRY RESPONSE');

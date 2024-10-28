@@ -14,6 +14,7 @@ import {
   setInwardsEntry,
 } from '../../redux/slices/entry.slice';
 import { addInwardsEntryAPI, editInwardsEntryAPI, getInwardsDailyEntry, getTodayDataEntry, removeInwardsEntryAPI } from '../../redux/api/entriesAPI';
+import moment from 'moment';
 
 const AddDailyPurchaseEntry = () => {
   const dispatch = useDispatch();
@@ -24,10 +25,27 @@ const AddDailyPurchaseEntry = () => {
     (state) => state.stockDetails,
   );
 
+  const getAndSetYesterdayOrSaturdayDate = () => {
+    const calculateDate = () => {
+      let date = moment().subtract(1, 'days'); // Start with yesterday
+
+      // If yesterday was Sunday, adjust to Saturday
+      if (date.day() === 0) {
+        date = date.subtract(1, 'days');
+      }
+
+      return date.format('YYYY-MM-DD HH:mm:ss');
+    };
+
+    const dateToSet = calculateDate();
+    dispatch(setInwardsEntry({ paymentDate: dateToSet }));
+  };
+
   React.useEffect(() => {
     dispatch(getAllDealers({}));
     dispatch(getAllProducts({}));
     dispatch(getInwardsDailyEntry({}))
+    getAndSetYesterdayOrSaturdayDate()
   }, [dispatch]);
 
   const generateUniqueId = () => {
@@ -161,6 +179,20 @@ const AddDailyPurchaseEntry = () => {
             {isEditing ? 'Edit Entry' : 'Create New Entry'}
           </div>
           <div className="grid w-full grid-cols-2 gap-5">
+            <div>
+              <div>Date</div>
+              <CustomInput
+                type="datetime-local"
+                value={inwardsEntry?.paymentDate}
+                onChange={(e) =>
+                  dispatch(
+                    setInwardsEntry({
+                      paymentDate: e.target.value,
+                    }),
+                  )
+                }
+              />
+            </div>
             <div>
               <div>Select Dealer</div>
               <CustomSelect

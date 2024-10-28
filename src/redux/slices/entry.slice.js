@@ -356,6 +356,6 @@ export const {
   updateInwardsEntryById,
   deleteInwardsEntryById,
   setInwardsEntry,
-  updatePaymentEntryById
+  updatePaymentEntryById,
 } = entrySlice.actions;
 export default entrySlice.reducer;

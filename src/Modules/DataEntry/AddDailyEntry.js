@@ -13,6 +13,7 @@ import {
   setEditing,
 } from '../../redux/slices/entry.slice';
 import { addEntryAPI, editEntryAPI, getDailyEntry, getTodayDataEntry, removeEntryAPI } from '../../redux/api/entriesAPI';
+import moment from 'moment';
 
 const AddDailyEntry = () => {
   const dispatch = useDispatch();
@@ -24,10 +25,27 @@ const AddDailyEntry = () => {
     (state) => state.stockDetails,
   );
 
+  const getAndSetYesterdayOrSaturdayDate = () => {
+    const calculateDate = () => {
+      let date = moment().subtract(1, 'days'); // Start with yesterday
+
+      // If yesterday was Sunday, adjust to Saturday
+      if (date.day() === 0) {
+        date = date.subtract(1, 'days');
+      }
+
+      return date.format('YYYY-MM-DD HH:mm:ss');
+    };
+
+    const dateToSet = calculateDate();
+    dispatch(setEntry({ ...entry, date: dateToSet }));
+  };
+
   React.useEffect(() => {
     dispatch(getAllDealers({}));
     dispatch(getAllProducts({}));
     dispatch(getDailyEntry({}))
+    getAndSetYesterdayOrSaturdayDate()
     // console.log(allDailyEntries)
   }, [dispatch]);
 
@@ -177,6 +195,20 @@ const AddDailyEntry = () => {
             {isEditing ? 'Edit Entry' : 'Create New Entry'}
           </div>
           <div className="grid w-full grid-cols-2 gap-5">
+            <div>
+              <div>Date</div>
+              <CustomInput
+                type="datetime-local"
+                value={entry?.date}
+                onChange={(e) =>
+                  dispatch(
+                    setEntry({
+                      date: e.target.value,
+                    }),
+                  )
+                }
+              />
+            </div>
             <div>
               <div>Select Dealer</div>
               <CustomSelect
