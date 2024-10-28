@@ -353,7 +353,7 @@ const AdminDealerDetails = () => {
             title: "Entry Type",
             dataIndex: "source",
             key: "source",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div>{text || '-'}</div>,
         },
         {
             title: "Balance After Entry",
