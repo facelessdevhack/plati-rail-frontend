@@ -359,11 +359,11 @@ const AdminDealerDetails = () => {
             title: "Balance After Entry",
             dataIndex: "currentBal",
             key: "currentBal",
-            render: (value) => (
+            render: (value, record) => (
                 <div>
                     {value !== null && value !== undefined
-                        ? <span className={getBalanceColor(value)}>
-                            {formatINR(value)}
+                        ? <span className={getBalanceColor(record?.entryCurrentBal || value)}>
+                            {formatINR(record?.entryCurrentBal || value)}
                         </span>
                         : '₹0'}
                 </div>
@@ -423,11 +423,11 @@ const AdminDealerDetails = () => {
             title: "Balance After Entry",
             dataIndex: "currentBal",
             key: "currentBal",
-            render: (value) => (
+            render: (value, record) => (
                 <div>
                     {value !== null && value !== undefined
-                        ? <span className={getBalanceColor(value)}>
-                            {formatINR(value)}
+                        ? <span className={getBalanceColor(record.entryCurrentBal || value)}>
+                            {formatINR(record.entryCurrentBal || value)}
                         </span>
                         : '₹0'}
                 </div>
