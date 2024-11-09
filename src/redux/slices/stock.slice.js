@@ -86,7 +86,7 @@ export const stockSlice = createSlice({
     });
     builder.addCase(getAllProducts.fulfilled, (state, { payload }) => {
       state.loading = false;
-      // console.log(payload, 'GETALL PRODUCTS')
+      console.log(payload, 'GETALL PRODUCTS')
       state.allProducts = payload;
     });
     builder.addCase(getAllProducts.rejected, (state, { payload }) => {

@@ -201,9 +201,9 @@ export const createAlloyEntry = createAsyncThunk(
 
 export const getAllProducts = createAsyncThunk(
   "dailyEntry/getAllProducts",
-  async ({ }, { rejectWithValue }) => {
+  async ({ type }, { rejectWithValue }) => {
     try {
-      const response = await client.get('/master/all-products');
+      const response = await client.get(`/master/all-products?type=${type}`);
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e));

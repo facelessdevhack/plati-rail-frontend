@@ -242,6 +242,10 @@ import AddDailyPurchaseEntry from "../../Modules/DataEntry/AddDailyPurchaseEntry
 import AddCapStock from "../../Modules/AddModules/AddCapModel";
 import AddFinish from "../../Modules/AddModules/AddFinish";
 import EntryLayout from "../../Modules/Layout/entryLayout";
+import AddDailyEntryTYRES from "../../Modules/DataEntry/AddDailyEntry-TYRES";
+import AddDailyEntryALLOYS from "../../Modules/DataEntry/AddDailyEntry-ALLOYS";
+import AddDailyEntryCAP from "../../Modules/DataEntry/AddDailyEntry-CAP";
+import AddDailyEntryPPF from "../../Modules/DataEntry/AddDailyEntry-PPF";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -343,6 +347,46 @@ const StackNavigation = () => {
             title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
             items={entrySiderRoutes}
             content={<AddDailyEntry />}
+          />
+        </PrivateRoute>
+
+      } />
+      <Route path="/add-daily-entry-alloys" element={
+        <PrivateRoute allowedRoles={[3]}>
+          <AdminLayout
+            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+            items={entrySiderRoutes}
+            content={<AddDailyEntryALLOYS />}
+          />
+        </PrivateRoute>
+
+      } />
+      <Route path="/add-daily-entry-tyres" element={
+        <PrivateRoute allowedRoles={[3]}>
+          <AdminLayout
+            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+            items={entrySiderRoutes}
+            content={<AddDailyEntryTYRES />}
+          />
+        </PrivateRoute>
+
+      } />
+      <Route path="/add-daily-entry-caps" element={
+        <PrivateRoute allowedRoles={[3]}>
+          <AdminLayout
+            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+            items={entrySiderRoutes}
+            content={<AddDailyEntryCAP />}
+          />
+        </PrivateRoute>
+
+      } />
+      <Route path="/add-daily-entry-ppf" element={
+        <PrivateRoute allowedRoles={[3]}>
+          <AdminLayout
+            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+            items={entrySiderRoutes}
+            content={<AddDailyEntryPPF />}
           />
         </PrivateRoute>
 
