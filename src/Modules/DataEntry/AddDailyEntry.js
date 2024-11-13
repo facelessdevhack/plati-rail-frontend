@@ -461,6 +461,11 @@ const AddDailyEntry = () => {
       label: "Add Ppf Entry",
       link: '/add-daily-entry-ppf'
     },
+    {
+      id: 5,
+      label: "Add Charges Entry",
+      link: '/add-charges-entry'
+    },
   ];
 
   useEffect(() => {

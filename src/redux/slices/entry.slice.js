@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { userAuthenticate } from '../api/userAPI';
-import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry, getAdminPaymentMethods, getAllPaymentMethods } from '../api/entriesAPI';
+import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry, getAdminPaymentMethods, getAllPaymentMethods, getChargesDailyEntry } from '../api/entriesAPI';
 
 const initialState = {
   loading: false,
@@ -42,8 +42,15 @@ const initialState = {
     description: null,
     amount: null,
   },
+  chargesEntry: {
+    dealerId: null,
+    dealerName: null,
+    description: null,
+    amount: null,
+  },
   allEntries: [],
   allInwardsEntries: [], // Define allEntries here
+  allChargesEntries: [],
   isEditing: false,
   editingEntryId: null,
   allDealerEntries: [],
@@ -58,7 +65,9 @@ const initialState = {
   adminPaymentMethods: [],
   allAdminPaymentMethods: [],
   allMiddleDealers: [],
-  allPaymentDailyEntries: []
+  allPaymentDailyEntries: [],
+  allChargesDailyEntries: []
+
 };
 
 export const entrySlice = createSlice({
@@ -71,17 +80,30 @@ export const entrySlice = createSlice({
     setInwardsEntry: (state, action) => {
       state.inwardsEntry = { ...state.inwardsEntry, ...action.payload };
     },
+    setChargesEntry: (state, action) => {
+      state.chargesEntry = { ...state.chargesEntry, ...action.payload };
+    },
     resetEntry: (state) => {
       state.entry = initialState.entry;
     },
     resetInwardsEntry: (state) => {
       state.inwardsEntry = initialState.inwardsEntry;
     },
+    resetChargesEntry: (state) => {
+      state.chargesEntry = {
+        ...state.chargesEntry,
+        description: null,
+        amount: null
+      };
+    },
     setInwardsEntries: (state, action) => {
       state.allInwardsEntries = action.payload; // Update allEntries
     },
     addInwardsEntry: (state, action) => {
       state.allInwardsEntries.push(action.payload); // Update allEntries
+    },
+    addChargesEntry: (state, action) => {
+      state.allChargesEntries.push(action.payload); // Update allEntries
     },
     updateInwardsEntryById: (state, action) => {
       const index = state.allInwardsEntries.findIndex(
@@ -93,6 +115,19 @@ export const entrySlice = createSlice({
     },
     deleteInwardsEntryById: (state, action) => {
       state.allInwardsEntries = state.allInwardsEntries.filter(
+        (entry) => entry?.entryId !== action.payload,
+      );
+    },
+    updateChargesEntryById: (state, action) => {
+      const index = state.allChargesEntries.findIndex(
+        (entry) => entry.id === action.payload.id,
+      );
+      if (index !== -1) {
+        state.allChargesEntries[index] = action.payload; // Update allEntries
+      }
+    },
+    deleteChargesEntryById: (state, action) => {
+      state.allChargesEntries = state.allChargesEntries.filter(
         (entry) => entry?.entryId !== action.payload,
       );
     },
@@ -244,6 +279,23 @@ export const entrySlice = createSlice({
         state.error = payload;
         state.allPaymentDailyEntries = []
       })
+      .addCase(getChargesDailyEntry.pending, (state) => {
+        state.loading = true;
+        state.status = 'pending';
+        state.allChargesDailyEntries = []
+      })
+      .addCase(getChargesDailyEntry.fulfilled, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'fulfilled';
+        state.allChargesDailyEntries = payload.data;
+        state.error = null;
+      })
+      .addCase(getChargesDailyEntry.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.status = 'rejected';
+        state.error = payload;
+        state.allChargesDailyEntries = []
+      })
       .addCase(getPaymentMethods.pending, (state) => {
         state.loading = true;
         state.status = 'pending';
@@ -357,5 +409,8 @@ export const {
   deleteInwardsEntryById,
   setInwardsEntry,
   updatePaymentEntryById,
+  setChargesEntry,
+  resetChargesEntry,
+  addChargesEntry
 } = entrySlice.actions;
 export default entrySlice.reducer;

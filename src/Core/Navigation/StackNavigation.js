@@ -246,6 +246,7 @@ import AddDailyEntryTYRES from "../../Modules/DataEntry/AddDailyEntry-TYRES";
 import AddDailyEntryALLOYS from "../../Modules/DataEntry/AddDailyEntry-ALLOYS";
 import AddDailyEntryCAP from "../../Modules/DataEntry/AddDailyEntry-CAP";
 import AddDailyEntryPPF from "../../Modules/DataEntry/AddDailyEntry-PPF";
+import AddChargesEntry from "../../Modules/DataEntry/AddChargesEntry";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -402,6 +403,19 @@ const StackNavigation = () => {
                 }`}
               items={entrySiderRoutes}
               content={<AddPMEntry />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="add-charges-entry"
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <EntryLayout
+              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
+                }`}
+              items={entrySiderRoutes}
+              content={<AddChargesEntry />}
             />
           </PrivateRoute>
         }

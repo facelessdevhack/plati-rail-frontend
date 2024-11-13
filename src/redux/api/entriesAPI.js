@@ -35,7 +35,8 @@ export const addEntryAPI = async (
     transportationType,
     transportationCharges,
     isRepair,
-    date
+    date,
+    uniqueProductId
   },
 ) => {
   try {
@@ -51,7 +52,25 @@ export const addEntryAPI = async (
       transportationType,
       transportationCharges,
       date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
-      isRepair
+      isRepair,
+      uniqueProductId
+    });
+    console.log(response, 'ADD ENTRY RESPONSE');
+    return response;
+  } catch (e) {
+    console.log('ADD ENTRY ERROR: ' + e);
+    return e;
+  }
+}
+
+export const addChargesAPI = async (
+  {
+    dealerId, dealerName, description, amount, isChecked
+  },
+) => {
+  try {
+    const response = await client.post('entries/create-charges-entry', {
+      dealerId, dealerName, description, amount, isChecked
     });
     console.log(response, 'ADD ENTRY RESPONSE');
     return response;
@@ -244,6 +263,23 @@ export const getTodayDataEntry = createAsyncThunk(
     }
   }
 );
+export const getTodayChargesEntry = createAsyncThunk(
+  "entries/getTodayChargesEntry",
+  async ({ dealerId, page = 1, limit = 10, startDate, endDate, sortField = 'created_at', sortOrder = 'desc' }, { rejectWithValue }) => {
+    try {
+      // Build query params string with optional date filtering and sorting
+      let url = `/entries/get-entries-user?today=${moment().format('YYYY-MM-DD HH:MM:SS')}`;
+
+      // Make the API call
+      const response = await client.get(url);
+
+      // Return the paginated response
+      return response.data;
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+);
 
 export const getPaymentEntries = createAsyncThunk(
   "entries/getPaymentEntries",
@@ -371,6 +407,17 @@ export const getPaymentDailyEntry = createAsyncThunk(
   async ({ _ }, { rejectWithValue }) => {
     try {
       const response = await client.get(`/entries//get-daily-payment-entries`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+export const getChargesDailyEntry = createAsyncThunk(
+  "entries/getChargesDailyEntry",
+  async ({ _ }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries/get-daily-charges-entries`);
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e));
