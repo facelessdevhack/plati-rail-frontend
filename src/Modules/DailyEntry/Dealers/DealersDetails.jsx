@@ -8,7 +8,7 @@ import CustomInput from "../../../Core/Components/CustomInput";
 import { checkEntry, editEntryAPI, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
-import { updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
+import { updateChargesEntryById, updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
 import { client } from "../../../Utils/axiosClient";
 import moment from "moment";
 import CustomSelect from "../../../Core/Components/CustomSelect";
@@ -133,6 +133,24 @@ const AdminDealerDetails = () => {
             if (checkEntryResponse) {
                 console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
                 dispatch(updatePaymentEntryById({ entryId, checked: 1 }));
+                setCheckedEntry(!checkedEntry)
+                setLoader(false)
+            }
+        } catch (e) {
+            setLoader(false)
+            console.log(e, "CHECK ENTRY ERROR");
+        }
+    }
+    // Check Entry Function for Charges
+    const handleCheckChargesEntry = async (entryId) => {
+        try {
+            setLoader(true)
+            const checkEntryResponse = await client.post(`/entries/check-charges-entry`, {
+                entryId
+            });
+            if (checkEntryResponse) {
+                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
+                dispatch(updateChargesEntryById({ entryId, checked: 1 }));
                 setCheckedEntry(!checkedEntry)
                 setLoader(false)
             }
@@ -317,19 +335,19 @@ const AdminDealerDetails = () => {
             title: "Date",
             dataIndex: "date",
             key: "date",
-            render: (text) => <div>{moment(text).format('DD/MM/YYYY')}</div>,
+            render: (text) => <div>{moment(text).format('DD/MM/YYYY') || '-'}</div>,
         },
         {
             title: "Product Name",
             dataIndex: "productName",
             key: "productName",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div>{text || '-'}</div>,
         },
         {
             title: <div className="flex justify-center items-center">Quantity</div>,
             dataIndex: "quantity",
             key: "quantity",
-            render: (text) => <div className="flex justify-center items-center">{text}</div>,
+            render: (text) => <div className="flex justify-center items-center">{text || '-'}</div>,
         },
         {
             title: <div className="flex justify-center items-center">Amount</div>,
@@ -347,7 +365,7 @@ const AdminDealerDetails = () => {
             title: "TP Charges",
             dataIndex: "transportationCharges",
             key: "transportationCharges",
-            render: (text) => <div>{text}</div>,
+            render: (text) => <div>{text || '-'}</div>,
         },
         {
             title: "Entry Type",
@@ -370,6 +388,22 @@ const AdminDealerDetails = () => {
             ),
         },
         // Conditionally include the "Checked" column
+        // ...(isAdmin
+        //     ? [
+        //         {
+        //             title: "Checked",
+        //             dataIndex: "isChecked",
+        //             key: "isChecked",
+        //             render: (text, record) => (
+        //                 <Button size='slim' padding='slim' onClick={() => {
+        //                     record.source === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
+        //                 }}>
+        //                     <div>{text === 1 ? "Checked" : "Unchecked"}</div>
+        //                 </Button>
+        //             ),
+        //         },
+        //     ]
+        //     : []),
         ...(isAdmin
             ? [
                 {
@@ -377,9 +411,19 @@ const AdminDealerDetails = () => {
                     dataIndex: "isChecked",
                     key: "isChecked",
                     render: (text, record) => (
-                        <Button size='slim' padding='slim' onClick={() => {
-                            record.source === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
-                        }}>
+                        <Button
+                            size="slim"
+                            padding="slim"
+                            onClick={() => {
+                                if (record.source === "Purchase") {
+                                    handleCheckPurchaseEntry(record.entryId);
+                                } else if (record.sourceType === 4) {
+                                    handleCheckChargesEntry(record.entryId);
+                                } else {
+                                    handleCheckEntry(record.entryId);
+                                }
+                            }}
+                        >
                             <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
                     ),

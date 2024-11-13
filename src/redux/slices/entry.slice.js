@@ -411,6 +411,7 @@ export const {
   updatePaymentEntryById,
   setChargesEntry,
   resetChargesEntry,
-  addChargesEntry
+  addChargesEntry,
+  updateChargesEntryById
 } = entrySlice.actions;
 export default entrySlice.reducer;

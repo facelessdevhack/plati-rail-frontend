@@ -316,6 +316,17 @@ export const checkEntry = createAsyncThunk(
   }
 )
 
+export const checkChargesEntry = createAsyncThunk(
+  async ({ entryId }, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/entries/check-charges-entry?entryId=${entryId}`);
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+
 export const getDailyEntry = createAsyncThunk(
   "entries/getDailyEntries",
   async ({ _ }, { rejectWithValue }) => {
