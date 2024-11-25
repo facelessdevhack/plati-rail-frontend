@@ -84,7 +84,18 @@ export const entrySlice = createSlice({
       state.chargesEntry = { ...state.chargesEntry, ...action.payload };
     },
     resetEntry: (state) => {
-      state.entry = initialState.entry;
+      state.entry = {
+        ...state.entry,
+        productId: null,
+        productType: 1,
+        productName: null,
+        quantity: null,
+        price: null,
+        isClaim: false,
+        isRepair: false,
+        transportationType: '',
+        transportationCharges: null,
+      }
     },
     resetInwardsEntry: (state) => {
       state.inwardsEntry = initialState.inwardsEntry;

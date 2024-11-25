@@ -116,7 +116,7 @@ const AddDailyEntryALLOYS = () => {
         console.log(error, 'error');
       }
     }
-
+    getAndSetYesterdayOrSaturdayDate()
     dispatch(resetEntry());
     setReloadAPI(!reloadAPI)
   };
