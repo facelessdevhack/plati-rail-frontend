@@ -553,6 +553,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
+                            isAdmin={isAdmin}
                             editFunction={showEditModalFunction}
                             data={sortedFilteredDealers}
                             titleOnTop={false}
@@ -615,6 +616,7 @@ const AdminDealerDetails = () => {
                             </div>
                         </div>
                         <CustomTable
+                            isAdmin={isAdmin}
                             editFunction={showEditModalFunction}
                             data={sortedFilteredPayments}
                             titleOnTop={false}
