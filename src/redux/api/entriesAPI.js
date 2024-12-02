@@ -435,3 +435,16 @@ export const getChargesDailyEntry = createAsyncThunk(
     }
   }
 )
+
+export const getAllDealersOrders = createAsyncThunk(
+  "entries/getAllDealersOrders",
+  async ({ id }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries/get-dealer-orders?dealerId=${id}`);
+      console.log(response, 'RESPONSE FROM ALL DEALERS ORDERS')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)

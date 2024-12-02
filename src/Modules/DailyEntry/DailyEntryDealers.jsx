@@ -95,7 +95,6 @@ const AdminDailyEntryDealersPage = () => {
             console.log(user, 'USERS')
             dispatch(getAllDealers({ id: user.userId }));
         }
-        console.log(allDealers, "DEALERS");
     }, [dispatch]);
 
     // Filter dealers based on the search query

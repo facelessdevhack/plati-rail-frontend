@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { userAuthenticate } from '../api/userAPI';
 import { checkEntry, getAllEntriesAdmin, getTodayDataEntry, getPaymentEntries, getDailyEntry, getPaymentMethods, getMiddleDealers, getInwardsDailyEntry, getPaymentDailyEntry, getAdminPaymentMethods, getAllPaymentMethods, getChargesDailyEntry } from '../api/entriesAPI';
-import { getAllDealersOrders } from '../api/stockAPI';
+import { getAllDealersOrders } from '../api/entriesAPI';
 
 const initialState = {
   loading: false,
@@ -265,7 +265,7 @@ export const entrySlice = createSlice({
       .addCase(getAllDealersOrders.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.status = 'fulfilled';
-        state.allDealersOrders = payload.data;
+        state.allDealersOrders = payload;
         state.error = null;
       })
       .addCase(getAllDealersOrders.rejected, (state, { payload }) => {

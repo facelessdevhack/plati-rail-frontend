@@ -12,7 +12,7 @@ import { client } from "../../Utils/axiosClient";
 import moment from "moment";
 import CustomSelect from "../../Core/Components/CustomSelect";
 import CustomTable from "../../Core/Components/CustomTable";
-import { getAllDealersOrders } from "../../redux/api/stockAPI";
+import { getAllDealersOrders } from "../../redux/api/entriesAPI";
 import { renderPaymentStatus } from "../../Utils/renderPaymentStatus";
 
 const AdminOrderDashboard = () => {
@@ -81,81 +81,6 @@ const AdminOrderDashboard = () => {
     // const filteredPayments = allPMEntries?.filter(entry =>
     //     entry?.description?.toLowerCase().includes(searchQuery.toLowerCase())
     // );
-
-    // Check Entry Function for Entries
-    const handleCheckEntry = async (entryId) => {
-        try {
-            setLoader(true)
-            const checkEntryResponse = await client.post(`/entries/check-entry`, {
-                entryId
-            });
-            if (checkEntryResponse) {
-                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
-                dispatch(updateDealerEntryById({ entryId, checked: 1 }));
-                setCheckedEntry(!checkedEntry)
-                setLoader(false)
-            }
-        } catch (e) {
-            setLoader(false)
-            console.log(e, "CHECK ENTRY ERROR");
-        }
-    }
-
-    // Check Purchase Entry Function for Entries
-    const handleCheckPurchaseEntry = async (entryId) => {
-        try {
-            setLoader(true)
-            const checkEntryResponse = await client.post(`/entries/check-purchase-entry`, {
-                entryId
-            });
-            if (checkEntryResponse) {
-                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
-                dispatch(updateDealerEntryById({ entryId, checked: 1 }));
-                setCheckedEntry(!checkedEntry)
-                setLoader(false)
-            }
-        } catch (e) {
-            setLoader(false)
-            console.log(e, "CHECK ENTRY ERROR");
-        }
-    }
-
-    // Check Entry Function for Payments
-    const handleCheckPaymentEntry = async (entryId) => {
-        try {
-            setLoader(true)
-            const checkEntryResponse = await client.post(`/entries/check-payment-entry`, {
-                entryId
-            });
-            if (checkEntryResponse) {
-                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
-                dispatch(updatePaymentEntryById({ entryId, checked: 1 }));
-                setCheckedEntry(!checkedEntry)
-                setLoader(false)
-            }
-        } catch (e) {
-            setLoader(false)
-            console.log(e, "CHECK ENTRY ERROR");
-        }
-    }
-    // Check Entry Function for Charges
-    const handleCheckChargesEntry = async (entryId) => {
-        try {
-            setLoader(true)
-            const checkEntryResponse = await client.post(`/entries/check-charges-entry`, {
-                entryId
-            });
-            if (checkEntryResponse) {
-                console.log(checkEntryResponse, "CHECK ENTRY RESPONSE");
-                dispatch(updateChargesEntryById({ entryId, checked: 1 }));
-                setCheckedEntry(!checkedEntry)
-                setLoader(false)
-            }
-        } catch (e) {
-            setLoader(false)
-            console.log(e, "CHECK ENTRY ERROR");
-        }
-    }
 
     const handleDownloadReport = async ({ dealerId, dealerName, startDate, endDate }) => {
         try {
