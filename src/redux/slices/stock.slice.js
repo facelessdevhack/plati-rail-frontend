@@ -75,7 +75,7 @@ export const stockSlice = createSlice({
     });
     builder.addCase(getAllDealers.fulfilled, (state, { payload }) => {
       state.loading = false;
-      state.allDealers = payload;
+      state.allDealers = payload.data;
     });
     builder.addCase(getAllDealers.rejected, (state, { payload }) => {
       state.loading = false;

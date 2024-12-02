@@ -86,7 +86,7 @@ const AdminDailyEntryDealersPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [searchQuery, setSearchQuery] = useState("");
-    const { loggedIn, user } = useSelector((state) => state.userDetails);
+    const { user } = useSelector((state) => state.userDetails);
 
     useEffect(() => {
         if (user.roleId === 5) {
@@ -100,7 +100,7 @@ const AdminDailyEntryDealersPage = () => {
 
     // Filter dealers based on the search query
     const filteredDealers = allDealers?.filter(dealer =>
-        dealer.label?.toLowerCase().includes(searchQuery?.toLowerCase())
+        dealer?.label?.toLowerCase().includes(searchQuery?.toLowerCase())
     );
 
     const columns = [
