@@ -3,18 +3,19 @@ import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin, message } from "ant
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
-import CustomTable from "../../../Core/Components/CustomTable";
-import CustomInput from "../../../Core/Components/CustomInput";
-import { checkEntry, editEntryAPI, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
-import AdminLayout from "../../Layout/adminLayout";
-import Button from "../../../Core/Components/CustomButton";
-import { updateChargesEntryById, updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
-import { client } from "../../../Utils/axiosClient";
+import CustomInput from "../../Core/Components/CustomInput";
+import { editEntryAPI } from "../../redux/api/entriesAPI";
+import AdminLayout from "../Layout/adminLayout";
+import Button from "../../Core/Components/CustomButton";
+import { updateChargesEntryById, updateDealerEntryById, updatePaymentEntryById } from "../../redux/slices/entry.slice";
+import { client } from "../../Utils/axiosClient";
 import moment from "moment";
-import CustomSelect from "../../../Core/Components/CustomSelect";
-import { getAllProducts } from "../../../redux/api/stockAPI";
+import CustomSelect from "../../Core/Components/CustomSelect";
+import CustomTable from "../../Core/Components/CustomTable";
+import { getAllDealersOrders } from "../../redux/api/stockAPI";
+import { renderPaymentStatus } from "../../Utils/renderPaymentStatus";
 
-const AdminDealerDetails = () => {
+const AdminOrderDashboard = () => {
     const [activeTab, setActiveTab] = useState(1);
     const [dealerInfo, setDealerInfo] = useState(null)
     const [currentPage, setCurrentPage] = useState(1);
@@ -22,8 +23,6 @@ const AdminDealerDetails = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
-    const [sortField, setSortField] = useState('created_at');
-    const [sortOrder, setSortOrder] = useState('desc');
     const [isModalVisible, setIsModalVisible] = useState(false); // State to manage modal visibility
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -36,15 +35,15 @@ const AdminDealerDetails = () => {
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
-    const { loggedIn, user } = useSelector((state) => state.userDetails);
+    const { user } = useSelector((state) => state.userDetails);
 
 
 
     const navigate = useNavigate();
     const { state } = useLocation();
-    const { id, name } = useParams();
+    const { id } = useParams();
     const dispatch = useDispatch();
-    const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers, adminPaymentMethods, allAdminPaymentMethods } = useSelector((state) => state.entryDetails);
+    const { allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers, adminPaymentMethods, allAdminPaymentMethods, allDealersOrders } = useSelector((state) => state.entryDetails);
     const { allProducts } = useSelector(
         (state) => state.stockDetails,
     );
@@ -52,6 +51,7 @@ const AdminDealerDetails = () => {
     const ROLE_ADMIN = 5
 
     const isAdmin = user.roleId === ROLE_ADMIN;
+
 
     const getDealerInfo = async () => {
         try {
@@ -65,25 +65,22 @@ const AdminDealerDetails = () => {
         }
     }
 
+
     useEffect(() => {
-        dispatch(getAllEntriesAdmin({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
-        dispatch(getPaymentEntries({ dealerId: id, page: currentPage, limit: pageSize, startDate, endDate, sortField, sortOrder }));
-        dispatch(getMiddleDealers({}))
-        dispatch(getAdminPaymentMethods({}))
-        dispatch(getAllPaymentMethods({}))
+        dispatch(getAllDealersOrders({ id }));
         getDealerInfo()
-        dispatch(getAllProducts({}));
-    }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
+        console.log(allDealersOrders, 'ALL DEALERS ORDERS')
+    }, [dispatch]);
 
     // Filter dealers based on the search query
-    const filteredDealers = allDealerEntries?.filter(entry =>
+    const filteredDealers = allDealersOrders?.filter(entry =>
         entry?.productName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Filter payments based on the search query
-    const filteredPayments = allPMEntries?.filter(entry =>
-        entry?.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // // Filter payments based on the search query
+    // const filteredPayments = allPMEntries?.filter(entry =>
+    //     entry?.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    // );
 
     // Check Entry Function for Entries
     const handleCheckEntry = async (entryId) => {
@@ -333,165 +330,34 @@ const AdminDealerDetails = () => {
     const columns = [
         {
             title: "Date",
-            dataIndex: "date",
-            key: "date",
+            dataIndex: "orderDate",
+            key: "orderDate",
             render: (text) => <div>{moment(text).format('DD/MM/YYYY') || '-'}</div>,
         },
         {
-            title: "Product Name",
-            dataIndex: "productName",
-            key: "productName",
-            render: (text) => <div>{text || '-'}</div>,
-        },
-        {
-            title: <div className="flex justify-center items-center">Quantity</div>,
-            dataIndex: "quantity",
-            key: "quantity",
-            render: (text) => <div className="flex justify-center items-center">{text || '-'}</div>,
-        },
-        {
-            title: <div className="flex justify-center items-center">Amount</div>,
-            dataIndex: "price",
-            key: "price",
-            render: (text, record) => (
-                <div className="flex justify-center items-center">
-                    <div>
-                        {record.isClaim === 1 ? "Claimed" : formatINR(text)}
-                    </div>
-                </div>
-            ),
-        },
-        {
-            title: "Status",
+            title: "Payment Status",
             dataIndex: "paymentStatus",
             key: "paymentStatus",
-            render: (text) => <div>{text === 1 ? "Pending" : text === 2 ? "Partial" : text === 3 ? "Paid" : "Failed"}</div>,
+            render: (text) => <div>{renderPaymentStatus(text)}</div>,
         },
         {
-            title: "Entry Type",
-            dataIndex: "source",
-            key: "source",
-            render: (text) => <div>{text || '-'}</div>,
+            title: "Total Amount",
+            dataIndex: "totalAmount",
+            key: "totalAmount",
+            render: (text) => <div>{formatINR(text)}</div>,
         },
         {
-            title: "Balance After Entry",
-            dataIndex: "currentBal",
-            key: "currentBal",
-            render: (value, record) => (
-                <div>
-                    {value !== null && value !== undefined
-                        ? <span className={getBalanceColor(record?.entryCurrentBal || value)}>
-                            {formatINR(record?.entryCurrentBal || value)}
-                        </span>
-                        : '₹0'}
-                </div>
-            ),
+            title: "Pending Payment",
+            dataIndex: "pendingAmount",
+            key: "pendingAmount",
+            render: (text,record ) => <div>{record.paymentStatus === 1 ? formatINR(record.totalAmount) : formatINR(text)}</div>,
         },
-        // Conditionally include the "Checked" column
-        // ...(isAdmin
-        //     ? [
-        //         {
-        //             title: "Checked",
-        //             dataIndex: "isChecked",
-        //             key: "isChecked",
-        //             render: (text, record) => (
-        //                 <Button size='slim' padding='slim' onClick={() => {
-        //                     record.source === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
-        //                 }}>
-        //                     <div>{text === 1 ? "Checked" : "Unchecked"}</div>
-        //                 </Button>
-        //             ),
-        //         },
-        //     ]
-        //     : []),
-        ...(isAdmin
-            ? [
-                {
-                    title: "Checked",
-                    dataIndex: "isChecked",
-                    key: "isChecked",
-                    render: (text, record) => (
-                        <Button
-                            size="slim"
-                            padding="slim"
-                            onClick={() => {
-                                if (record.source === "Purchase") {
-                                    handleCheckPurchaseEntry(record.entryId);
-                                } else if (record.sourceType === 4) {
-                                    handleCheckChargesEntry(record.entryId);
-                                } else {
-                                    handleCheckEntry(record.entryId);
-                                }
-                            }}
-                        >
-                            <div>{text === 1 ? "Checked" : "Unchecked"}</div>
-                        </Button>
-                    ),
-                },
-            ]
-            : []),
-    ];
-
-    // Columns for Payments
-    const paymentColumns = [
         {
-            title: "Date",
+            title: "Payment Date",
             dataIndex: "paymentDate",
             key: "paymentDate",
-            render: (text) => <div>{moment(text).format('DD/MM/YYYY')}</div>,
+            render: (text) => <div>{text ? moment(text).format('DD/MM/YYYY') : 'Payment Not Yet Received'}</div>,
         },
-        {
-            title: "Description",
-            dataIndex: "description",
-            key: "description",
-            render: (text) => <div>{text}</div>,
-        },
-        {
-            title: "Amount",
-            dataIndex: "amount",
-            key: "amount",
-            render: (text) => <div className="flex justify-between items-center">{formatINR(text)}</div>,
-        },
-        {
-            title: "Mode of Payment",
-            dataIndex: "paymentMethod",
-            key: "paymentMethod",
-            render: (text, record) => <div>{getPaymentMethodLabel(text)}</div>
-        },
-        {
-            title: "Transportation Charges",
-            dataIndex: "transportationCharges",
-            key: "transportationCharges",
-            render: (text) => <div>{text}</div>,
-        },
-        {
-            title: "Balance After Entry",
-            dataIndex: "currentBal",
-            key: "currentBal",
-            render: (value, record) => (
-                <div>
-                    {value !== null && value !== undefined
-                        ? <span className={getBalanceColor(record.entryCurrentBal || value)}>
-                            {formatINR(record.entryCurrentBal || value)}
-                        </span>
-                        : '₹0'}
-                </div>
-            ),
-        },
-        ...(isAdmin
-            ? [
-                {
-                    title: "Checked",
-                    dataIndex: "isPaid",
-                    key: "isPaid",
-                    render: (text, record) => (
-                        <Button size='slim' padding='slim' onClick={() => handleCheckPaymentEntry(record.id)}>
-                            {text === 1 ? "Checked" : "Unchecked"}
-                        </Button>
-                    ),
-                },
-            ]
-            : []),
     ];
 
     const handleDateChange = (dates) => {
@@ -509,10 +375,10 @@ const AdminDealerDetails = () => {
         setPageSize(currentPageSize);
     }
 
-    const handleOrderDashboard = () => {
-        console.log(id, 'RECORD');
-        navigate(`/admin-orders-dashboard/${id}`, {
-            state: { id: id },
+    const handleOrderDashboard = (record) => {
+        console.log(record, 'RECORD');
+        navigate(`/admin-dealers/${record.value}`, {
+            state: { id: record.value, name: record.label },
         });
     };
 
@@ -523,7 +389,7 @@ const AdminDealerDetails = () => {
     const handleTabContentRender = () => {
         switch (activeTab) {
             case 1:
-                const sortedFilteredDealers = [...filteredDealers].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                // const sortedFilteredDealers = [...filteredDealers].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
                 return (
                     <div>
@@ -571,7 +437,7 @@ const AdminDealerDetails = () => {
                         <CustomTable
                             isAdmin={isAdmin}
                             editFunction={showEditModalFunction}
-                            data={sortedFilteredDealers}
+                            data={allDealersOrders}
                             titleOnTop={false}
                             position="bottomRight"
                             columns={columns}
@@ -583,69 +449,7 @@ const AdminDealerDetails = () => {
                         />
                     </div >
                 );
-            case 2:
-                const sortedFilteredPayments = [...filteredPayments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                return (
-                    <div>
-                        {/* <div className="mt-5 -mb-5">
-                            <CustomInput
-                                placeholder={"Search Entries"}
-                                intent={"search"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <DatePicker.RangePicker onChange={handleDateChange} />
-                        </div> */}
 
-                        <div className="mt-5 flex justify-between items-center">
-                            <CustomInput
-                                placeholder={"Search Entries"}
-                                intent={"search"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <div className='flex justify-end items-center gap-4'>
-                                {isAdmin && (
-                                    <div onClick={showPaymentModalFunction} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
-                                        <div className='flex items-center gap-x-2'>
-                                            <div>Add Payment</div>
-                                        </div>
-                                    </div>
-                                )}
-                                <div onClick={showDownloadModal} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
-                                    <div className='flex items-center gap-x-2'>
-                                        <DownloadOutlined style={{
-                                            fontSize: 24,
-                                            color: '#f26933', // Change color to match the theme
-                                        }} />
-                                        <div>Export </div>
-                                    </div>
-                                </div>
-                                <DatePicker.RangePicker
-                                    onChange={handleDateChange}
-                                    className="rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all"
-                                    style={{
-                                        padding: '8px 12px', // Add some padding for a better look
-                                        width: '250px' // Adjust the width as needed
-                                    }}
-                                />
-                            </div>
-                        </div>
-                        <CustomTable
-                            isAdmin={isAdmin}
-                            editFunction={showEditModalFunction}
-                            data={sortedFilteredPayments}
-                            titleOnTop={false}
-                            position="bottomRight"
-                            columns={paymentColumns}
-                            expandable={false}
-                            totalCount={pmEntryCount}
-                            currentPage={currentPage}
-                            handlePageChange={setCurrentPage}
-                            pageSize={pageSize}
-                        />
-                    </div>
-                );
             default:
                 return null
         }
@@ -657,7 +461,7 @@ const AdminDealerDetails = () => {
     return (
         <AdminLayout title={isAdmin ?
             <div>
-                {state?.name}
+                {dealerInfo?.dealerName + ' - ' + dealerInfo?.district}
                 <div className="text-sm text-gray-700 font-semibold">
                     {dealerInfo?.currentBal !== null && dealerInfo?.currentBal !== undefined
                         && <div className="text-sm text-gray-700 font-semibold">
@@ -674,7 +478,7 @@ const AdminDealerDetails = () => {
                         </div>
                     }
                 </div>
-            </div> : state?.name} content={
+            </div> : dealerInfo?.dealerName} content={
                 <div className="w-full h-full p-5 bg-gray-200">
                     <div>
                         {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
@@ -924,4 +728,4 @@ const AdminDealerDetails = () => {
     );
 };
 
-export default AdminDealerDetails;
+export default AdminOrderDashboard;

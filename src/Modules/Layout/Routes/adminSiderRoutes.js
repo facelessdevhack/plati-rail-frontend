@@ -21,11 +21,11 @@ export const adminSiderRoutes = [
     "1",
     <PieChartOutlined />
   ),
-  // getItemLayout(
-  //   <Link to="/admin-orders">Orders</Link>,
-  //   "2",
-  //   <CodeSandboxOutlined />
-  // ),
+  getItemLayout(
+    <Link to="/admin-orders-dashboard">Orders</Link>,
+    "2",
+    <CodeSandboxOutlined />
+  ),
   // getItemLayout(
   //   <Link to="/admin-alerts-list">Alerts</Link>,
   //   "3",

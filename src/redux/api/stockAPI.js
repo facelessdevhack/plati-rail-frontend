@@ -40,6 +40,19 @@ export const getAllDealers = createAsyncThunk(
   }
 )
 
+export const getAllDealersOrders = createAsyncThunk(
+  "dealers/getAllDealers",
+  async ({ id }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/entries/get-dealer-orders?dealerId=${id}`);
+      console.log(response, 'RESPONSE FROM ALL DEALERS ORDERS')
+      return response
+    } catch (e) {
+      return rejectWithValue(getError(e));
+    }
+  }
+)
+
 export const getAllCaps = createAsyncThunk(
   "master/getAllDealers",
   async ({ _ }, { rejectWithValue }) => {

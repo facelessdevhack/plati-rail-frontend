@@ -255,7 +255,7 @@ module.exports = {
         primary: "20px",
       },
       fontFamily: {
-        poppins: ["Poppins", "sans-serif"],
+        poppins: ["Parkinsans"],
         dm: ["DM Sans", "sans-serif"],
       },
       boxShadow: {

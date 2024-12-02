@@ -247,6 +247,8 @@ import AddDailyEntryALLOYS from "../../Modules/DataEntry/AddDailyEntry-ALLOYS";
 import AddDailyEntryCAP from "../../Modules/DataEntry/AddDailyEntry-CAP";
 import AddDailyEntryPPF from "../../Modules/DataEntry/AddDailyEntry-PPF";
 import AddChargesEntry from "../../Modules/DataEntry/AddChargesEntry";
+import { adminSiderRoutes } from "../../Modules/Layout/Routes/adminSiderRoutes";
+import AdminOrderDashboard from "../../Modules/AdminOrderDashboard/OrderDashboard";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -481,6 +483,14 @@ const StackNavigation = () => {
               title="Daily Entry Dealers"
               content={<AdminDailyEntryDealersPage />}
             />
+          </PrivateRoute>
+        }
+      />
+       <Route
+        path="/admin-orders-dashboard/:id"
+        element={
+          <PrivateRoute allowedRoles={[5]}>
+            <AdminOrderDashboard />
           </PrivateRoute>
         }
       />
