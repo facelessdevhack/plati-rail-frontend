@@ -1,5 +1,5 @@
-import React from 'react'
-import { Table, message } from 'antd'
+import React from 'react';
+import { Table, message } from 'antd';
 
 const CustomTable = ({
   title,
@@ -16,14 +16,22 @@ const CustomTable = ({
   expandable = true,
   onRowClick,
   editFunction,
-  isAdmin
+  isAdmin,
+  showSort = false
 }) => {
   // Error handling wrapper for the row click
   const handleRowClick = record => {
     if (onRowClick) {
-      onRowClick(record) // Call the onRowClick function passed as a prop
+      onRowClick(record); // Call the onRowClick function passed as a prop
     }
-  }
+  };
+
+  // Add sorting logic to each column dynamically
+  const sortableColumns = columns.map(column => ({
+    ...column,
+    sorter: column.sorter || undefined, // Use column-defined sorter if available
+    sortDirections: column.sortDirections || ['ascend', 'descend'], // Default sort directions
+  }));
 
   return (
     <div className='relative'>
@@ -42,37 +50,38 @@ const CustomTable = ({
                 expandedRowRender: record => (
                   <Table dataSource={record.variants} columns={expandedData} />
                 ),
-                rowExpandable: record => record.name !== 'Not Expandable'
+                rowExpandable: record => record.name !== 'Not Expandable',
               }
             : false
         }
         expanded={expanded}
-        columns={columns}
+        columns={sortableColumns}
         dataSource={data}
         onRow={record => ({
           onContextMenu: e => {
             if (isAdmin) {
-              e.preventDefault()
-              console.log(record, 'EVENT')
-              message.info('Right-click on a row')
+              e.preventDefault();
+              console.log(record, 'EVENT');
+              message.info('Right-click on a row');
               if (editFunction) {
-                editFunction(record)
+                editFunction(record);
               }
             }
           },
-          onClick: () => handleRowClick(record) // Use error-handling wrapper
+          onClick: () => handleRowClick(record), // Use error-handling wrapper
         })}
+        showSorterTooltip={showSort}
         pagination={{
           total: totalCount,
           defaultCurrent: currentPage,
           defaultPageSize: 10,
           onChange: (page, pageSize) => handlePageChange(page, pageSize),
           pageSize: currentPageSize,
-          position: [position]
+          position: [position],
         }}
       />
     </div>
-  )
-}
+  );
+};
 
-export default CustomTable
+export default CustomTable;

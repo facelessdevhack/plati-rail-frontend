@@ -4,6 +4,7 @@ import {
   StockOutlined,
   PieChartOutlined,
   AlertOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 
 function getItemLayout(label, key, icon, children) {
@@ -16,25 +17,25 @@ function getItemLayout(label, key, icon, children) {
 }
 
 export const adminSiderRoutes = [
+  // getItemLayout(
+  //   <Link to="/admin-orders-dashboard">Dashboard</Link>,
+  //   "1",
+  //   <StockOutlined />
+  // ),
   getItemLayout(
     <Link to="/admin-daily-entry-dealers">Select Dealers</Link>,
-    "1",
+    "2",
     <PieChartOutlined />
   ),
   getItemLayout(
-    <Link to="/admin-orders-dashboard">Orders</Link>,
-    "2",
-    <CodeSandboxOutlined />
+    <Link to="/admin-dealer-metrics">Dealer Metrics</Link>,
+    "3",
+    <BarChartOutlined />
   ),
   // getItemLayout(
   //   <Link to="/admin-alerts-list">Alerts</Link>,
   //   "3",
   //   <AlertOutlined />
-  // ),
-  // getItemLayout(
-  //   <Link to="/admin-stock-list">Stock</Link>,
-  //   "4",
-  //   <StockOutlined />
   // ),
   //   getItemLayout("User", "sub1", <UserOutlined />, [
   //     getItemLayout("Tom", "3"),

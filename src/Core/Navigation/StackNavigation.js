@@ -249,6 +249,8 @@ import AddDailyEntryPPF from "../../Modules/DataEntry/AddDailyEntry-PPF";
 import AddChargesEntry from "../../Modules/DataEntry/AddChargesEntry";
 import { adminSiderRoutes } from "../../Modules/Layout/Routes/adminSiderRoutes";
 import AdminOrderDashboard from "../../Modules/AdminOrderDashboard/OrderDashboard";
+import DealerMetrics from "../../Modules/DealerMetrics";
+import DealerMetricsDetails from "../../Modules/DealerMetrics/DealerMetricsDetails";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -483,6 +485,26 @@ const StackNavigation = () => {
               title="Daily Entry Dealers"
               content={<AdminDailyEntryDealersPage />}
             />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin-dealer-metrics"
+        element={
+          <PrivateRoute allowedRoles={[5]}>
+            <AdminLayout
+              items={adminSiderRoutes}
+              title="Select Dealer For Metrics"
+              content={<DealerMetrics />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin-dealer-metrics-details/:id"
+        element={
+          <PrivateRoute allowedRoles={[5]}>
+            <DealerMetricsDetails />
           </PrivateRoute>
         }
       />

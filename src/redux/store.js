@@ -5,12 +5,14 @@ import userSlice from './slices/user.slice';
 import stockSlice from './slices/stock.slice';
 import orderSlice from './slices/order.slice';
 import entrySlice from './slices/entry.slice';
+import dashboardSlice from './slices/dashboard.slice';
 
 const rootReducer = combineReducers({
   userDetails: userSlice,
   stockDetails: stockSlice,
   orderDetails: orderSlice,
   entryDetails: entrySlice,
+  metrics: dashboardSlice
 });
 
 const persistConfig = {
