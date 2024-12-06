@@ -491,9 +491,21 @@ const StackNavigation = () => {
       <Route
         path="/admin-dealer-metrics"
         element={
-          <PrivateRoute allowedRoles={[5]}>
+          <PrivateRoute allowedRoles={[3,4,5]}>
             <AdminLayout
               items={adminSiderRoutes}
+              title="Select Dealer For Metrics"
+              content={<DealerMetrics />}
+            />
+          </PrivateRoute>
+        }
+      />
+       <Route
+        path="/dealer-metrics"
+        element={
+          <PrivateRoute allowedRoles={[3,4]}>
+            <AdminLayout
+              items={entrySiderRoutes}
               title="Select Dealer For Metrics"
               content={<DealerMetrics />}
             />
@@ -503,7 +515,7 @@ const StackNavigation = () => {
       <Route
         path="/admin-dealer-metrics-details/:id"
         element={
-          <PrivateRoute allowedRoles={[5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <DealerMetricsDetails />
           </PrivateRoute>
         }

@@ -535,13 +535,13 @@ const AdminDealerDetails = () => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                             <div className='flex justify-end items-center gap-4'>
-                             {isAdmin && (
+                             {/* {isAdmin && ( */}
                                     <div onClick={handleOrderDashboard} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
                                         <div className='flex items-center gap-x-2'>
                                             <div>Check Orders</div>
                                         </div>
                                     </div>
-                                )}
+                                {/* )} */}
                                 {isAdmin && (
                                     <div onClick={showPaymentModalFunction} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
                                         <div className='flex items-center gap-x-2'>

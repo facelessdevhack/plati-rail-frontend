@@ -19,7 +19,6 @@ const DealerMetrics = () => {
         if (user.roleId === 5) {
             dispatch(getAllDealers({}));
         } else {
-            console.log(user, 'USERS')
             dispatch(getAllDealers({ id: user.userId }));
         }
     }, [dispatch]);
