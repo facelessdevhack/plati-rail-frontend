@@ -417,13 +417,14 @@ const AdminDealerDetails = () => {
                             onClick={() => {
                                 if (record.source === "Purchase") {
                                     handleCheckPurchaseEntry(record.entryId);
-                                } else if (record.sourceType === 4) {
+                                } else if (record.source == 4) {
                                     handleCheckChargesEntry(record.entryId);
                                 } else {
                                     handleCheckEntry(record.entryId);
                                 }
                             }}
                         >
+                            {console.log(record, 'RECORD')}
                             <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
                     ),
@@ -655,7 +656,7 @@ const AdminDealerDetails = () => {
 
 
     return (
-        <AdminLayout title={isAdmin ?
+        <AdminLayout title={
             <div>
                 {state?.name}
                 <div className="text-sm text-gray-700 font-semibold">
@@ -674,7 +675,7 @@ const AdminDealerDetails = () => {
                         </div>
                     }
                 </div>
-            </div> : state?.name} content={
+                </div>} content={
                 <div className="w-full h-full p-5 bg-gray-200">
                     <div>
                         {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
