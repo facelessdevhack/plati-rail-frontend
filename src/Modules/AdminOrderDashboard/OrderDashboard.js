@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin, message } from "antd";
+import { Row, Col, Flex, Segmented, DatePicker, Modal, Spin, message, Alert } from "antd";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
@@ -300,11 +300,24 @@ const AdminOrderDashboard = () => {
         setPageSize(currentPageSize);
     }
 
-    const handleOrderDashboard = (record) => {
-        console.log(record, 'RECORD');
-        navigate(`/admin-dealers/${record.value}`, {
-            state: { id: record.value, name: record.label },
-        });
+    const handleRefreshOrders = async () => {
+        try {
+            setLoader(true)
+            const response = await client.post('/entries/create-single-order', {
+                dealerId: id,
+            })
+            if (response) {
+                setLoader(false)
+                console.log(response, 'RESPONSE')
+                Alert.success('Order Created Successfully')
+                dispatch(getAllDealersOrders({ id }));
+            }
+        } catch (e) {
+            setLoader(false)
+            console.log(e, 'ERROR')
+            dispatch(getAllDealersOrders({ id }));
+            Alert.error('Unable to create order')
+        }
     };
 
 
@@ -319,36 +332,13 @@ const AdminOrderDashboard = () => {
                 return (
                     <div>
                         <div className="mt-5 flex justify-between items-center">
-                            <CustomInput
-                                placeholder={"Search Entries"}
-                                intent={"search"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <div className='flex justify-end items-center gap-4'>
-                             {isAdmin && (
-                                    <div onClick={handleOrderDashboard} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
-                                        <div className='flex items-center gap-x-2'>
-                                            <div>Check Orders</div>
-                                        </div>
-                                    </div>
-                                )}
-                                {isAdmin && (
-                                    <div onClick={showPaymentModalFunction} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
-                                        <div className='flex items-center gap-x-2'>
-                                            <div>Add Payment</div>
-                                        </div>
-                                    </div>
-                                )}
-                                <div onClick={showDownloadModal} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
-                                    <div className='flex items-center gap-x-2'>
-                                        <DownloadOutlined style={{
-                                            fontSize: 24,
-                                            color: '#f26933', // Change color to match the theme
-                                        }} />
-                                        <div>Export </div>
-                                    </div>
+                            <div onClick={handleRefreshOrders} className="px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all">
+                                <div className='flex items-center gap-x-2'>
+                                    <div>Refresh Orders</div>
                                 </div>
+                            </div>
+                            <div className='flex justify-end items-center gap-4'>
+                             
                                 <DatePicker.RangePicker
                                     onChange={handleDateChange}
                                     className="rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all"
@@ -406,48 +396,9 @@ const AdminOrderDashboard = () => {
             </div> : dealerInfo?.dealerName} content={
                 <div className="w-full h-full p-5 bg-gray-200">
                     <div>
-                        {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
+                        {<Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
                         <Row gutter={16}>
                             <Col span={24}>
-                                <div className="flex items-baseline justify-between w-full ">
-                                    <Flex gap="small" align="flex-start" vertical className="shadow-lg">
-                                        <Segmented
-                                            onChange={setActiveTab}
-                                            options={[
-                                                {
-                                                    label: (
-                                                        <div
-                                                            style={{
-                                                                padding: 4,
-                                                            }}
-                                                            className={`flex items-center justify-between gap-x-1 ${activeTab === 1 ? "font-semibold" : "font-medium"
-                                                                }`}
-                                                        >
-                                                            <div>Entries</div>
-                                                            <div>({dealerEntryCount})</div>
-                                                        </div>
-                                                    ),
-                                                    value: 1,
-                                                },
-                                                {
-                                                    label: (
-                                                        <div
-                                                            style={{
-                                                                padding: 4,
-                                                            }}
-                                                            className={`flex items-center justify-between gap-x-1 ${activeTab === 2 ? "font-semibold" : "font-medium"
-                                                                }`}
-                                                        >
-                                                            <div>Payments</div>
-                                                            <div>({pmEntryCount})</div>
-                                                        </div>
-                                                    ),
-                                                    value: 2,
-                                                },
-                                            ]}
-                                        />
-                                    </Flex>
-                                </div>
                                 <div>
                                     {handleTabContentRender()}
                                 </div>
