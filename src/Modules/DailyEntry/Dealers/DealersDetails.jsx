@@ -365,7 +365,7 @@ const AdminDealerDetails = () => {
             title: "Status",
             dataIndex: "paymentStatus",
             key: "paymentStatus",
-            render: (text) => <div>{text === 1 ? "Pending" : text === 2 ? "Partial" : text === 3 ? "Paid" : "Failed"}</div>,
+            render: (text) => <div>{text === 1 ? "Pending" : text === 2 ? "Partial" : text === 3 ? "Paid" : "-"}</div>,
         },
         {
             title: "Entry Type",
