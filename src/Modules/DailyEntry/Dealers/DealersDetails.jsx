@@ -417,7 +417,7 @@ const AdminDealerDetails = () => {
                             onClick={() => {
                                 if (record.source === "Purchase") {
                                     handleCheckPurchaseEntry(record.entryId);
-                                } else if (record.source == 4) {
+                                } else if (record.sourceType == 4) {
                                     handleCheckChargesEntry(record.entryId);
                                 } else {
                                     handleCheckEntry(record.entryId);
