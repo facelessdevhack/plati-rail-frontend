@@ -581,6 +581,7 @@ const AdminDealerDetails = () => {
                             currentPage={currentPage}
                             handlePageChange={handlePages}
                             pageSize={pageSize}
+                            showSort={true}
                         />
                     </div >
                 );
