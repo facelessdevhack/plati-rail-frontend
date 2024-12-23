@@ -413,6 +413,7 @@ export const getInwardsDailyEntry = createAsyncThunk(
     }
   }
 )
+
 export const getPaymentDailyEntry = createAsyncThunk(
   "entries/getPaymentDailyEntry",
   async ({ _ }, { rejectWithValue }) => {
