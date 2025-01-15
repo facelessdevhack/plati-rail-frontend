@@ -400,7 +400,7 @@ export const getMiddleDealers = createAsyncThunk(
 //       return rejectWithValue(getError(e));
 //     }
 //   }
-// )
+// )q
 
 export const getInwardsDailyEntry = createAsyncThunk(
   "entries/getInwardsDailyEntry",

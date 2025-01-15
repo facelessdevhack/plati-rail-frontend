@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { DownloadOutlined } from "@ant-design/icons";
 import CustomTable from "../../../Core/Components/CustomTable";
 import CustomInput from "../../../Core/Components/CustomInput";
-import { checkEntry, editEntryAPI, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries, getPaymentMethods } from "../../../redux/api/entriesAPI";
+import { editEntryAPI, getAdminPaymentMethods, getAllEntriesAdmin, getAllPaymentMethods, getMiddleDealers, getPaymentEntries } from "../../../redux/api/entriesAPI";
 import AdminLayout from "../../Layout/adminLayout";
 import Button from "../../../Core/Components/CustomButton";
 import { updateChargesEntryById, updateDealerEntryById, updatePaymentEntryById } from "../../../redux/slices/entry.slice";
@@ -36,13 +36,13 @@ const AdminDealerDetails = () => {
     const [middleDealerId, setMiddleDealerId] = useState(null)
     const [loader, setLoader] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
-    const { loggedIn, user } = useSelector((state) => state.userDetails);
+    const { user } = useSelector((state) => state.userDetails);
 
 
 
     const navigate = useNavigate();
     const { state } = useLocation();
-    const { id, name } = useParams();
+    const { id } = useParams();
     const dispatch = useDispatch();
     const { allDealerEntries, allPMEntries, pmEntryCount, dealerEntryCount, spinLoader, allMiddleDealers, adminPaymentMethods, allAdminPaymentMethods } = useSelector((state) => state.entryDetails);
     const { allProducts } = useSelector(
@@ -73,7 +73,7 @@ const AdminDealerDetails = () => {
         dispatch(getAllPaymentMethods({}))
         getDealerInfo()
         dispatch(getAllProducts({}));
-    }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry]);
+    }, [dispatch, currentPage, pageSize, startDate, endDate, sortField, sortOrder, checkedEntry, id]);
 
     // Filter dealers based on the search query
     const filteredDealers = allDealerEntries?.filter(entry =>
@@ -141,6 +141,7 @@ const AdminDealerDetails = () => {
             console.log(e, "CHECK ENTRY ERROR");
         }
     }
+
     // Check Entry Function for Charges
     const handleCheckChargesEntry = async (entryId) => {
         try {
@@ -159,7 +160,7 @@ const AdminDealerDetails = () => {
             console.log(e, "CHECK ENTRY ERROR");
         }
     }
-
+    
     const handleDownloadReport = async ({ dealerId, dealerName, startDate, endDate }) => {
         try {
             setLoader(true)
@@ -387,23 +388,6 @@ const AdminDealerDetails = () => {
                 </div>
             ),
         },
-        // Conditionally include the "Checked" column
-        // ...(isAdmin
-        //     ? [
-        //         {
-        //             title: "Checked",
-        //             dataIndex: "isChecked",
-        //             key: "isChecked",
-        //             render: (text, record) => (
-        //                 <Button size='slim' padding='slim' onClick={() => {
-        //                     record.source === "Purchase" ? handleCheckPurchaseEntry(record.entryId) : handleCheckEntry(record.entryId)
-        //                 }}>
-        //                     <div>{text === 1 ? "Checked" : "Unchecked"}</div>
-        //                 </Button>
-        //             ),
-        //         },
-        //     ]
-        //     : []),
         ...(isAdmin
             ? [
                 {
@@ -424,7 +408,6 @@ const AdminDealerDetails = () => {
                                 }
                             }}
                         >
-                            {console.log(record, 'RECORD')}
                             <div>{text === 1 ? "Checked" : "Unchecked"}</div>
                         </Button>
                     ),
@@ -516,9 +499,6 @@ const AdminDealerDetails = () => {
             state: { id: id },
         });
     };
-
-
-
 
     // Handle Tab Content Render
     const handleTabContentRender = () => {
@@ -679,7 +659,7 @@ const AdminDealerDetails = () => {
                 </div>} content={
                 <div className="w-full h-full p-5 bg-gray-200">
                     <div>
-                        {loader || spinLoader && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
+                        {(loader || spinLoader) && <Spin size='large' spinning={loader || spinLoader} fullscreen={true} className="z-20" ></Spin>}
                         <Row gutter={16}>
                             <Col span={24}>
                                 <div className="flex items-baseline justify-between w-full ">

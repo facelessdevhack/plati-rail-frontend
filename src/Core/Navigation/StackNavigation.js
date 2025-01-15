@@ -251,6 +251,8 @@ import { adminSiderRoutes } from "../../Modules/Layout/Routes/adminSiderRoutes";
 import AdminOrderDashboard from "../../Modules/AdminOrderDashboard/OrderDashboard";
 import DealerMetrics from "../../Modules/DealerMetrics";
 import DealerMetricsDetails from "../../Modules/DealerMetrics/DealerMetricsDetails";
+import DealerMetricsDetailsBySize from "../../Modules/DealerMetrics/DealerMetricsDetailsBySize";
+import DealerMetricsForSize from "../../Modules/DealerMetrics/index-size";
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector((state) => state.userDetails);
@@ -500,6 +502,18 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/admin-dealer-metrics-for-size"
+        element={
+          <PrivateRoute allowedRoles={[3,4,5]}>
+            <AdminLayout
+              items={adminSiderRoutes}
+              title="Select Dealer For Metrics"
+              content={<DealerMetricsForSize />}
+            />
+          </PrivateRoute>
+        }
+      />
        <Route
         path="/dealer-metrics"
         element={
@@ -517,6 +531,14 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <DealerMetricsDetails />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin-dealer-metrics-by-size/:id"
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <DealerMetricsDetailsBySize />
           </PrivateRoute>
         }
       />

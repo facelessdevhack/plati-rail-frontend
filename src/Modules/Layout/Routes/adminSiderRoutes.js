@@ -32,6 +32,11 @@ export const adminSiderRoutes = [
     "3",
     <BarChartOutlined />
   ),
+  getItemLayout(
+    <Link to="/admin-dealer-metrics-for-size">Dealer Metric By Size</Link>,
+    "4",
+    <BarChartOutlined />
+  ),
   // getItemLayout(
   //   <Link to="/admin-alerts-list">Alerts</Link>,
   //   "3",
