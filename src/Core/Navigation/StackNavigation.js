@@ -1,312 +1,101 @@
-// import React, { useEffect } from "react";
-// import { BrowserRouter, Routes, Route } from "react-router-dom";
-// import { useSelector } from "react-redux";
-// import Login from "../../Modules/Authentication/Login";
-// import InventoryDashboard from "../../Modules/Inventory/InventoryDashboard";
-// import InventoryInForm from "../../Modules/Inventory/InventoryInForm";
-// import AdminDashboard from "../../Modules/Admin/dashboard";
-// import { MissingRoute } from "./MissingRoute";
-// import AdminLayout from "../../Modules/Layout/adminLayout";
-// import OrderList from "../../Modules/Orders/OrderList";
-// import OrderDetails from "../../Modules/Orders/OrdersDetails";
-// import AlertItemsList from "../../Modules/AlertItems/AlertItemsList";
-// import AlertItemDetails from "../../Modules/AlertItems/AlertItemsDetails";
-// import StockList from "../../Modules/Stock/StockList";
-// import CreateProductionOrder from "../../Modules/Admin/CreateProductionOrder";
-// import AddStock from "../../Modules/Stock/AddStock";
-// import EntryDashboard from "../../Modules/DataEntry/EntryDashboard";
-// import { entrySiderRoutes } from "../../Modules/Layout/Routes/entrySiderRoutes";
-// import AddModel from "../../Modules/AddModules/AddModel";
-// import AddPcd from "../../Modules/AddModules/AddPcd";
-// import AddDailyEntry from "../../Modules/DataEntry/AddDailyEntry";
-// import DailyEntryAdmin from "../../Modules/DailyEntry";
-// import AdminDailyEntryDealersPage from "../../Modules/DailyEntry/DailyEntryDealers";
-// import AdminDealerDetails from "../../Modules/DailyEntry/Dealers/DealersDetails";
-// import AddPMEntry from "../../Modules/DataEntry/AddPMEntry";
-
-// const StackNavigation = () => {
-//   const { loggedIn, user } = useSelector((state) => state.userDetails);
-//   useEffect(() => {
-//     console.log(loggedIn, user, "LOGGED IN AND USER");
-//   }, []);
-//   return (
-//     <BrowserRouter basename="/">
-//       <Routes>
-//         <Route path="*" element={<MissingRoute />} />
-
-//         {loggedIn ? (
-//           <>
-//             {/* Admin Routes */}
-//             {user.roleId === 5 && (
-//               <>
-//                 {/* <Route
-//                   path="admin-dashboard"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       content={<AdminDashboard />}
-//                     />
-//                   }
-//                 />
-//                 <Route
-//                   path="admin-orders"
-//                   element={
-//                     <AdminLayout
-//                       title="Production Order List"
-//                       content={<OrderList />}
-//                     />
-//                   }
-//                 /> */}
-//                 {/* <Route
-//                   path="admin-order-details/:orderId"
-//                   loader={({ params }) => {
-//                     console.log(params.orderId);
-//                   }}
-//                   element={<OrderDetails />}
-//                 />
-//                 <Route
-//                   path="admin-alerts-list"
-//                   element={
-//                     <AdminLayout
-//                       title="Alert Items List"
-//                       content={<AlertItemsList />}
-//                     />
-//                   }
-//                 />
-//                 <Route
-//                   path="admin-alerts-details"
-//                   element={<AlertItemDetails />}
-//                 />
-//                 <Route
-//                   path="admin-stock-list"
-//                   element={
-//                     <AdminLayout title="Stock List" content={<StockList />} />
-//                   }
-//                 />
-//                 <Route
-//                   path="admin-create-production-order"
-//                   element={
-//                     <AdminLayout
-//                       title="Create Production Order"
-//                       content={<CreateProductionOrder />}
-//                     />
-//                   }
-//                 />
-//                 <Route path="add-stock" element={<AddStock />} /> */}
-//                 <Route path='admin-daily-entry' element={<AdminLayout title="Daily Entry" content={<DailyEntryAdmin />} />} />
-//                 <Route path='admin-daily-entry-dealers' element={<AdminLayout title="Daily Entry Dealers" content={<AdminDailyEntryDealersPage />} />} />
-//                 <Route
-//                   path="admin-dealers/:id"
-//                   element={<AdminDealerDetails />}
-//                 />
-//               </>
-//             )}
-
-//             {user.roleId === 4 && (
-//               <>
-//                 <Route path='admin-daily-entry' element={<AdminLayout title="Daily Entry" content={<DailyEntryAdmin />} />} />
-//                 <Route path='admin-daily-entry-dealers' element={<AdminLayout title="Daily Entry Dealers" content={<AdminDailyEntryDealersPage />} />} />
-//                 <Route
-//                   path="admin-dealers/:id"
-//                   element={<AdminDealerDetails />}
-//                 />
-//               </>
-//             )}
-
-//             {/* Data Entry Routes */}
-//             {user.roleId === 3 && (
-//               <>
-//                 <Route path="login" element={<Login />} />
-//                 <Route
-//                   path="entry-dashboard"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<EntryDashboard />}
-//                     />
-//                   }
-//                 />
-//                 <Route
-//                   path="add-stock"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<AddStock />}
-//                     />
-//                   }
-//                 />
-//                 {/* Add Model */}
-//                 <Route
-//                   path="add-model"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<AddModel />}
-//                     />
-//                   }
-//                 />
-//                 {/* PCD ROUTE */}
-//                 <Route
-//                   path="add-pcd"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<AddPcd />}
-//                     />
-//                   }
-//                 />
-//                 {/* Add Daily Entry */}
-//                 <Route
-//                   path="add-daily-entry"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<AddDailyEntry />}
-//                     />
-//                   }
-//                 />
-//                 {/* Add Inwards Entry */}
-//                 <Route
-//                   path="add-inwards-entry"
-//                   element={
-//                     <AdminLayout
-//                       title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-//                         }`}
-//                       items={entrySiderRoutes}
-//                       content={<AddPMEntry />}
-//                     />
-//                   }
-//                 />
-//               </>
-//             )}
-
-//             {/* Inventory Operator Routes */}
-//             {user.roleId === 1 && (
-//               <>
-//                 <Route
-//                   path="inventory-dashboard"
-//                   element={<InventoryDashboard />}
-//                 />
-//                 <Route path="add-inventory" element={<InventoryInForm />} />
-//               </>
-//             )}
-//           </>
-//         ) : (
-//           <>
-//             {/* Auth Routes */}
-//             <Route path="login" element={<Login />} />
-//           </>
-//         )}
-//       </Routes>
-//     </BrowserRouter>
-//   );
-// };
-
-// export default StackNavigation;
-
-
-import React, { useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import Login from "../../Modules/Authentication/Login";
-import InventoryDashboard from "../../Modules/Inventory/InventoryDashboard";
-import InventoryInForm from "../../Modules/Inventory/InventoryInForm";
-import AdminDashboard from "../../Modules/Admin/dashboard";
-import { MissingRoute } from "./MissingRoute";
-import AdminLayout from "../../Modules/Layout/adminLayout";
-import EntryDashboard from "../../Modules/DataEntry/EntryDashboard";
-import { entrySiderRoutes } from "../../Modules/Layout/Routes/entrySiderRoutes";
-import AddStock from "../../Modules/Stock/AddStock";
-import AddModel from "../../Modules/AddModules/AddModel";
-import AddPcd from "../../Modules/AddModules/AddPcd";
-import AddDailyEntry from "../../Modules/DataEntry/AddDailyEntry";
-import DailyEntryAdmin from "../../Modules/DailyEntry";
-import AdminDailyEntryDealersPage from "../../Modules/DailyEntry/DailyEntryDealers";
-import AdminDealerDetails from "../../Modules/DailyEntry/Dealers/DealersDetails";
-import AddPMEntry from "../../Modules/DataEntry/AddPMEntry";
-import PrivateRoute from "./PrivateRoute";
-import UnauthorizedPage from "./UnauthorizedPage";
-import StockList from "../../Modules/Stock/StockList";
-import AddDailyPurchaseEntry from "../../Modules/DataEntry/AddDailyPurchaseEntry";
-import AddCapStock from "../../Modules/AddModules/AddCapModel";
-import AddFinish from "../../Modules/AddModules/AddFinish";
-import EntryLayout from "../../Modules/Layout/entryLayout";
-import AddDailyEntryTYRES from "../../Modules/DataEntry/AddDailyEntry-TYRES";
-import AddDailyEntryALLOYS from "../../Modules/DataEntry/AddDailyEntry-ALLOYS";
-import AddDailyEntryCAP from "../../Modules/DataEntry/AddDailyEntry-CAP";
-import AddDailyEntryPPF from "../../Modules/DataEntry/AddDailyEntry-PPF";
-import AddChargesEntry from "../../Modules/DataEntry/AddChargesEntry";
-import { adminSiderRoutes } from "../../Modules/Layout/Routes/adminSiderRoutes";
-import AdminOrderDashboard from "../../Modules/AdminOrderDashboard/OrderDashboard";
-import DealerMetrics from "../../Modules/DealerMetrics";
-import DealerMetricsDetails from "../../Modules/DealerMetrics/DealerMetricsDetails";
-import DealerMetricsDetailsBySize from "../../Modules/DealerMetrics/DealerMetricsDetailsBySize";
-import DealerMetricsForSize from "../../Modules/DealerMetrics/index-size";
+import React, { useEffect } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import Login from '../../Modules/Authentication/Login'
+import InventoryDashboard from '../../Modules/Inventory/InventoryDashboard'
+import InventoryInForm from '../../Modules/Inventory/InventoryInForm'
+import AdminDashboard from '../../Modules/Admin/dashboard'
+import { MissingRoute } from './MissingRoute'
+import AdminLayout from '../../Modules/Layout/adminLayout'
+import EntryDashboard from '../../Modules/DataEntry/EntryDashboard'
+import { entrySiderRoutes } from '../../Modules/Layout/Routes/entrySiderRoutes'
+import AddStock from '../../Modules/Stock/AddStock'
+import AddModel from '../../Modules/AddModules/AddModel'
+import AddPcd from '../../Modules/AddModules/AddPcd'
+import AddDailyEntry from '../../Modules/DataEntry/AddDailyEntry'
+import DailyEntryAdmin from '../../Modules/DailyEntry'
+import AdminDailyEntryDealersPage from '../../Modules/DailyEntry/DailyEntryDealers'
+import AdminDealerDetails from '../../Modules/DailyEntry/Dealers/DealersDetails'
+import AddPMEntry from '../../Modules/DataEntry/AddPMEntry'
+import PrivateRoute from './PrivateRoute'
+import UnauthorizedPage from './UnauthorizedPage'
+import StockList from '../../Modules/Stock/StockList'
+import AddDailyPurchaseEntry from '../../Modules/DataEntry/AddDailyPurchaseEntry'
+import AddCapStock from '../../Modules/AddModules/AddCapModel'
+import AddFinish from '../../Modules/AddModules/AddFinish'
+import EntryLayout from '../../Modules/Layout/entryLayout'
+import AddDailyEntryTYRES from '../../Modules/DataEntry/AddDailyEntry-TYRES'
+import AddDailyEntryALLOYS from '../../Modules/DataEntry/AddDailyEntry-ALLOYS'
+import AddDailyEntryCAP from '../../Modules/DataEntry/AddDailyEntry-CAP'
+import AddDailyEntryPPF from '../../Modules/DataEntry/AddDailyEntry-PPF'
+import AddChargesEntry from '../../Modules/DataEntry/AddChargesEntry'
+import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
+import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
+import DealerMetrics from '../../Modules/DealerMetrics'
+import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
+import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetricsDetailsBySize'
+import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
+import CreateProductionPlan from '../../Modules/Production/CreateProductionPlan'
+import ProductionPlansList from '../../Modules/Production/ProductionPlansList'
+import ProductionPlanDetails from '../../Modules/Production/ProductionPlanDetails'
+import CreateJobCard from '../../Modules/Production/CreateJobCard'
+import JobCardsList from '../../Modules/Production/JobCardsList'
+import JobCardDetails from '../../Modules/Production/JobCardDetails'
+import ProductionWorkflow from '../../Modules/Production/ProductionWorkflow'
 
 const StackNavigation = () => {
-  const { loggedIn, user } = useSelector((state) => state.userDetails);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { loggedIn, user } = useSelector(state => state.userDetails)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (loggedIn && user) {
-      const roleId = Number(user.roleId);
+      const roleId = Number(user.roleId)
 
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
         if ([4, 5].includes(roleId)) {
-          navigate("/admin-daily-entry-dealers");
+          navigate('/admin-daily-entry-dealers')
         } else if (roleId === 3) {
-          navigate("/entry-dashboard");
+          navigate('/entry-dashboard')
         } else if (roleId === 1) {
-          navigate("/inventory-dashboard");
+          navigate('/inventory-dashboard')
         } else {
-          navigate("/unauthorized");
+          navigate('/unauthorized')
         }
       }
     }
-  }, [loggedIn, user, navigate, location.pathname]);
+  }, [loggedIn, user, navigate, location.pathname])
 
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="login" element={<Login />} />
-      <Route path="unauthorized" element={<UnauthorizedPage />} />
-      <Route path="*" element={<MissingRoute />} />
+      <Route path='login' element={<Login />} />
+      <Route path='unauthorized' element={<UnauthorizedPage />} />
+      <Route path='*' element={<MissingRoute />} />
 
       {/* Private Routes */}
       <Route
-        path="/admin-daily-entry-dealers"
+        path='/admin-daily-entry-dealers'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
-              title="Daily Entry Dealers"
+              title='Daily Entry Dealers'
               content={<AdminDailyEntryDealersPage />}
             />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin-daily-entry"
+        path='/admin-daily-entry'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
-            <AdminLayout title="Daily Entry" content={<DailyEntryAdmin />} />
+            <AdminLayout title='Daily Entry' content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin-dealers/:id"
+        path='/admin-dealers/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminDealerDetails />
@@ -315,21 +104,21 @@ const StackNavigation = () => {
       />
 
       <Route
-        path="/admin-stock-list"
+        path='/admin-stock-list'
         element={
           <PrivateRoute allowedRoles={[4]}>
-            <AdminLayout title="Stock List" content={<StockList />} />
+            <AdminLayout title='Stock List' content={<StockList />} />
           </PrivateRoute>
         }
       />
 
       {/* Data Entry Routes */}
       <Route
-        path="/entry-dashboard"
+        path='/entry-dashboard'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <AdminLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<EntryDashboard />}
             />
@@ -337,76 +126,85 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="/add-stock"
+        path='/add-stock'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <AdminLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddStock />}
             />
           </PrivateRoute>
         }
       />
-      <Route path="/add-daily-entry" element={
-        <PrivateRoute allowedRoles={[3]}>
-          <AdminLayout
-            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
-            items={entrySiderRoutes}
-            content={<AddDailyEntry />}
-          />
-        </PrivateRoute>
-
-      } />
-      <Route path="/add-daily-entry-alloys" element={
-        <PrivateRoute allowedRoles={[3]}>
-          <AdminLayout
-            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
-            items={entrySiderRoutes}
-            content={<AddDailyEntryALLOYS />}
-          />
-        </PrivateRoute>
-
-      } />
-      <Route path="/add-daily-entry-tyres" element={
-        <PrivateRoute allowedRoles={[3]}>
-          <AdminLayout
-            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
-            items={entrySiderRoutes}
-            content={<AddDailyEntryTYRES />}
-          />
-        </PrivateRoute>
-
-      } />
-      <Route path="/add-daily-entry-caps" element={
-        <PrivateRoute allowedRoles={[3]}>
-          <AdminLayout
-            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
-            items={entrySiderRoutes}
-            content={<AddDailyEntryCAP />}
-          />
-        </PrivateRoute>
-
-      } />
-      <Route path="/add-daily-entry-ppf" element={
-        <PrivateRoute allowedRoles={[3]}>
-          <AdminLayout
-            title={`Welcome, ${user.firstName || ""} ${user.lastName || ""}`}
-            items={entrySiderRoutes}
-            content={<AddDailyEntryPPF />}
-          />
-        </PrivateRoute>
-
-      } />
+      <Route
+        path='/add-daily-entry'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<AddDailyEntry />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/add-daily-entry-alloys'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<AddDailyEntryALLOYS />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/add-daily-entry-tyres'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<AddDailyEntryTYRES />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/add-daily-entry-caps'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<AddDailyEntryCAP />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/add-daily-entry-ppf'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<AddDailyEntryPPF />}
+            />
+          </PrivateRoute>
+        }
+      />
 
       {/* Add Inwards Entry */}
       <Route
-        path="add-payment-entry"
+        path='add-payment-entry'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddPMEntry />}
             />
@@ -414,12 +212,11 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="add-charges-entry"
+        path='add-charges-entry'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddChargesEntry />}
             />
@@ -427,12 +224,11 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="add-inwards-entry"
+        path='add-inwards-entry'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddDailyPurchaseEntry />}
             />
@@ -440,12 +236,11 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="add-cap-stock"
+        path='add-cap-stock'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddCapStock />}
             />
@@ -453,12 +248,11 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="add-finish"
+        path='add-finish'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddFinish />}
             />
@@ -466,12 +260,11 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="add-model"
+        path='add-model'
         element={
           <PrivateRoute allowedRoles={[3]}>
             <EntryLayout
-              title={`Welcome, ${user.firstName || ""} ${user.lastName || ""
-                }`}
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
               items={entrySiderRoutes}
               content={<AddModel />}
             />
@@ -479,55 +272,55 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="/entry-daily-entry-dealers"
+        path='/entry-daily-entry-dealers'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               items={entrySiderRoutes}
-              title="Daily Entry Dealers"
+              title='Daily Entry Dealers'
               content={<AdminDailyEntryDealersPage />}
             />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin-dealer-metrics"
+        path='/admin-dealer-metrics'
         element={
-          <PrivateRoute allowedRoles={[3,4,5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               items={adminSiderRoutes}
-              title="Select Dealer For Metrics"
+              title='Select Dealer For Metrics'
               content={<DealerMetrics />}
             />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin-dealer-metrics-for-size"
+        path='/admin-dealer-metrics-for-size'
         element={
-          <PrivateRoute allowedRoles={[3,4,5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               items={adminSiderRoutes}
-              title="Select Dealer For Metrics"
+              title='Select Dealer For Metrics'
               content={<DealerMetricsForSize />}
             />
           </PrivateRoute>
         }
       />
-       <Route
-        path="/dealer-metrics"
+      <Route
+        path='/dealer-metrics'
         element={
-          <PrivateRoute allowedRoles={[3,4]}>
+          <PrivateRoute allowedRoles={[3, 4]}>
             <AdminLayout
               items={entrySiderRoutes}
-              title="Select Dealer For Metrics"
+              title='Select Dealer For Metrics'
               content={<DealerMetrics />}
             />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin-dealer-metrics-details/:id"
+        path='/admin-dealer-metrics-details/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <DealerMetricsDetails />
@@ -535,18 +328,112 @@ const StackNavigation = () => {
         }
       />
       <Route
-        path="/admin-dealer-metrics-by-size/:id"
+        path='/admin-dealer-metrics-by-size/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <DealerMetricsDetailsBySize />
           </PrivateRoute>
         }
       />
-       <Route
-        path="/admin-orders-dashboard/:id"
+      <Route
+        path='/admin-orders-dashboard/:id'
         element={
           <PrivateRoute allowedRoles={[4, 5]}>
             <AdminOrderDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/stock-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <StockList />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Production Module Routes */}
+      <Route
+        path='/production-plans'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Plans'
+              items={adminSiderRoutes}
+              content={<ProductionPlansList />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-plan/create'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Create Production Plan'
+              items={adminSiderRoutes}
+              content={<CreateProductionPlan />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-plan/:planId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Plan Details'
+              items={adminSiderRoutes}
+              content={<ProductionPlanDetails />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-job-cards'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Job Cards'
+              items={adminSiderRoutes}
+              content={<JobCardsList />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-job-card/create/:planId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Create Job Card'
+              items={adminSiderRoutes}
+              content={<CreateJobCard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-job-card/:jobCardId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Job Card Details'
+              items={adminSiderRoutes}
+              content={<JobCardDetails />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-workflow'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Workflow'
+              items={adminSiderRoutes}
+              content={<ProductionWorkflow />}
+            />
           </PrivateRoute>
         }
       />
@@ -560,7 +447,7 @@ const StackNavigation = () => {
       /> */}
       {/* ...other routes wrapped with PrivateRoute */}
     </Routes>
-  );
-};
+  )
+}
 
-export default StackNavigation;
+export default StackNavigation
