@@ -6,7 +6,10 @@ import {
   AlertOutlined,
   BarChartOutlined,
   UserOutlined,
-  ToolOutlined
+  ToolOutlined,
+  DashboardOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -20,9 +23,24 @@ function getItemLayout (label, key, icon, children) {
 
 export const adminSiderRoutes = [
   getItemLayout(
-    <Link to='/stock-dashboard'>Dashboard</Link>,
+    <Link to='/admin-dashboard'>Admin Dashboard</Link>,
     '1',
+    <DashboardOutlined />
+  ),
+  getItemLayout(
+    <Link to='/dealer-metrics'>Dealer Metrics</Link>,
+    '1b',
+    <TeamOutlined />
+  ),
+  getItemLayout(
+    <Link to='/stock-dashboard'>Stock Dashboard</Link>,
+    '1a',
     <StockOutlined />
+  ),
+  getItemLayout(
+    <Link to='/dealer-warranty'>Dealer Warranty</Link>,
+    '1c',
+    <SafetyCertificateOutlined />
   ),
   getItemLayout(
     <Link to='/admin-daily-entry-dealers'>Select Dealers</Link>,
@@ -39,12 +57,28 @@ export const adminSiderRoutes = [
     getItemLayout(<Link to='/admin-dealer-metrics-for-size'>By Size</Link>, '4')
   ]),
   getItemLayout('Production', 'sub2', <ToolOutlined />, [
-    getItemLayout(<Link to='/production-plans'>Production Plans</Link>, '5'),
-    getItemLayout(<Link to='/production-plan/create'>Create Plan</Link>, '6'),
-    getItemLayout(<Link to='/production-job-cards'>Job Cards</Link>, '7'),
+    getItemLayout(
+      <Link to='/production-dashboard'>Production Dashboard</Link>,
+      '5'
+    ),
+    getItemLayout(<Link to='/production-plans'>Production Plans</Link>, '6'),
+    getItemLayout(<Link to='/production-plan/create'>Create Plan</Link>, '7'),
+    getItemLayout(<Link to='/production-job-cards'>Job Cards</Link>, '8'),
     getItemLayout(
       <Link to='/production-workflow'>Production Workflow</Link>,
-      '8'
+      '9'
+    ),
+    getItemLayout(
+      <Link to='/production-qa-reporting'>QA Reporting</Link>,
+      '10'
+    ),
+    getItemLayout(
+      <Link to='/production-rejections'>Rejection Management</Link>,
+      '11'
+    ),
+    getItemLayout(
+      <Link to='/production-inventory-requests'>Inventory Requests</Link>,
+      '12'
     )
   ])
   //   getItemLayout("Team", "sub2", <TeamOutlined />, [

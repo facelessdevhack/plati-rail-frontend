@@ -31,7 +31,7 @@ import AddDailyEntryPPF from '../../Modules/DataEntry/AddDailyEntry-PPF'
 import AddChargesEntry from '../../Modules/DataEntry/AddChargesEntry'
 import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
-import DealerMetrics from '../../Modules/DealerMetrics'
+import DealerMetrics from '../../Modules/Admin/DealerMetrics'
 import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
 import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetricsDetailsBySize'
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
@@ -42,6 +42,11 @@ import CreateJobCard from '../../Modules/Production/CreateJobCard'
 import JobCardsList from '../../Modules/Production/JobCardsList'
 import JobCardDetails from '../../Modules/Production/JobCardDetails'
 import ProductionWorkflow from '../../Modules/Production/ProductionWorkflow'
+import QAReporting from '../../Modules/Production/QAReporting'
+import RejectionManagement from '../../Modules/Production/RejectionManagement'
+import ProductionDashboard from '../../Modules/Production/ProductionDashboard'
+import InventoryRequests from '../../Modules/Production/InventoryRequests'
+import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -55,7 +60,7 @@ const StackNavigation = () => {
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
         if ([4, 5].includes(roleId)) {
-          navigate('/admin-daily-entry-dealers')
+          navigate('/admin-dashboard')
         } else if (roleId === 3) {
           navigate('/entry-dashboard')
         } else if (roleId === 1) {
@@ -310,10 +315,10 @@ const StackNavigation = () => {
       <Route
         path='/dealer-metrics'
         element={
-          <PrivateRoute allowedRoles={[3, 4]}>
+          <PrivateRoute allowedRoles={[4, 5]}>
             <AdminLayout
-              items={entrySiderRoutes}
-              title='Select Dealer For Metrics'
+              title='Dealer Performance Metrics'
+              items={adminSiderRoutes}
               content={<DealerMetrics />}
             />
           </PrivateRoute>
@@ -348,6 +353,30 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[4, 5]}>
             <StockList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/admin-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Admin Dashboard'
+              items={adminSiderRoutes}
+              content={<AdminDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/dealer-warranty'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Dealer Warranty Registrations'
+              items={adminSiderRoutes}
+              content={<DealerWarrantyList />}
+            />
           </PrivateRoute>
         }
       />
@@ -433,6 +462,90 @@ const StackNavigation = () => {
               title='Production Workflow'
               items={adminSiderRoutes}
               content={<ProductionWorkflow />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-qa-report/:jobCardId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='QA Report'
+              items={adminSiderRoutes}
+              content={<QAReporting />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-qa-reporting'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='QA Reporting'
+              items={adminSiderRoutes}
+              content={<QAReporting />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-rejections'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Rejection Management'
+              items={adminSiderRoutes}
+              content={<RejectionManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-rejections/:jobCardId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Job Card Rejections'
+              items={adminSiderRoutes}
+              content={<RejectionManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-inventory-requests'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Inventory Requests'
+              items={adminSiderRoutes}
+              content={<InventoryRequests />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-inventory-requests/:planId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Plan Inventory'
+              items={adminSiderRoutes}
+              content={<InventoryRequests />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Dashboard'
+              items={adminSiderRoutes}
+              content={<ProductionDashboard />}
             />
           </PrivateRoute>
         }
