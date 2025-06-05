@@ -195,24 +195,24 @@ const DealerWarrantyList = () => {
       render: (imageUrl, record) => (
         <div className='flex flex-col items-center space-y-2'>
           {imageUrl ? (
-            <Image
-              width={80}
-              height={60}
-              src={imageUrl}
-              alt='Warranty Card'
-              style={{ objectFit: 'cover', borderRadius: '4px' }}
-              preview={{
-                mask: <EyeOutlined />,
-                onVisibleChange: visible => {
-                  if (visible) {
-                    handlePreview(
-                      imageUrl,
-                      `Warranty Card - ${record.warrantyCardNo}`
-                    )
-                  }
-                }
-              }}
-            />
+            <div
+              className='cursor-pointer'
+              onClick={() =>
+                handlePreview(
+                  imageUrl,
+                  `Warranty Card - ${record.warrantyCardNo}`
+                )
+              }
+            >
+              <Image
+                width={80}
+                height={60}
+                src={imageUrl}
+                alt='Warranty Card'
+                style={{ objectFit: 'cover', borderRadius: '4px' }}
+                preview={false}
+              />
+            </div>
           ) : (
             <div className='w-20 h-15 bg-gray-200 flex items-center justify-center rounded text-xs text-gray-500'>
               No Image
@@ -232,21 +232,21 @@ const DealerWarrantyList = () => {
       render: (imageUrl, record) => (
         <div className='flex flex-col items-center space-y-2'>
           {imageUrl ? (
-            <Image
-              width={80}
-              height={60}
-              src={imageUrl}
-              alt='Vehicle'
-              style={{ objectFit: 'cover', borderRadius: '4px' }}
-              preview={{
-                mask: <EyeOutlined />,
-                onVisibleChange: visible => {
-                  if (visible) {
-                    handlePreview(imageUrl, `Vehicle - ${record.vehicleNo}`)
-                  }
-                }
-              }}
-            />
+            <div
+              className='cursor-pointer'
+              onClick={() =>
+                handlePreview(imageUrl, `Vehicle - ${record.vehicleNo}`)
+              }
+            >
+              <Image
+                width={80}
+                height={60}
+                src={imageUrl}
+                alt='Vehicle'
+                style={{ objectFit: 'cover', borderRadius: '4px' }}
+                preview={false}
+              />
+            </div>
           ) : (
             <div className='w-20 h-15 bg-gray-200 flex items-center justify-center rounded text-xs text-gray-500'>
               No Image
@@ -276,34 +276,33 @@ const DealerWarrantyList = () => {
     {
       title: 'Product Info',
       key: 'product_info',
-      width: 150,
+      width: 200,
       render: (_, record) => (
         <div className='space-y-2'>
-          <Tag color={getProductTypeColor(record.productType)}>
-            {record.productType?.toUpperCase()}
-          </Tag>
           <div className='text-sm'>
-            <div>
-              <strong>Type:</strong> {record.registerType}
-            </div>
-            {record.alloyModel && (
-              <div>
-                <strong>Model:</strong> {record.alloyModel}
+            {record.warrantyCardNo && (
+              <div className='flex justify-between items-center'>
+                <strong>Warranty Card No:</strong> {record.warrantyCardNo}
               </div>
             )}
-            {record.noOfAlloys > 0 && (
-              <div>
-                <strong>Qty:</strong> {record.noOfAlloys}
+            {record.alloyModelName && (
+              <div className='flex justify-between items-center'>
+                <strong>Model:</strong> {record.alloyModelName}
               </div>
             )}
-            {record.noOfTyres > 0 && (
-              <div>
-                <strong>Tyres:</strong> {record.noOfTyres}
+            {record.pcdName > 0 && (
+              <div className='flex justify-between items-center'>
+                <strong>PCD:</strong> {record.pcdName}
               </div>
             )}
-            {record.meterReading && record.meterReading !== '0' && (
-              <div>
-                <strong>Meter:</strong> {record.meterReading}
+            {record.inchesName > 0 && (
+              <div className='flex justify-between items-center'>
+                <strong>Inch:</strong> {record.inchesName}
+              </div>
+            )}
+            {record.finishName && (
+              <div className='flex justify-between items-center'>
+                <strong>Finish:</strong> {record.finishName}
               </div>
             )}
           </div>
@@ -361,7 +360,7 @@ const DealerWarrantyList = () => {
     {
       title: 'Entry Details',
       key: 'entry_details',
-      width: 120,
+      width: 150,
       render: (_, record) => (
         <div className='text-sm space-y-1'>
           <div>
@@ -369,7 +368,7 @@ const DealerWarrantyList = () => {
           </div>
           <div>
             {record.enteredDateGmt
-              ? moment(record.enteredDateGmt).format('DD/MM/YYYY HH:mm')
+              ? moment(record.enteredDateGmt).format('DD/MM/YYYY hh:mm A')
               : 'N/A'}
           </div>
         </div>
