@@ -47,6 +47,9 @@ import RejectionManagement from '../../Modules/Production/RejectionManagement'
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard'
 import InventoryRequests from '../../Modules/Production/InventoryRequests'
 import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
+import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
+import StockAnalysisDashboard from '../../Modules/Stock/StockAnalysisDashboard'
+import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -357,6 +360,22 @@ const StackNavigation = () => {
         }
       />
       <Route
+        path='/stock-analysis/:productId'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <StockAnalysisDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/bulk-stock-analysis'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <BulkStockAnalysis />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path='/admin-dashboard'
         element={
           <PrivateRoute allowedRoles={[4, 5]}>
@@ -376,6 +395,18 @@ const StackNavigation = () => {
               title='Dealer Warranty Registrations'
               items={adminSiderRoutes}
               content={<DealerWarrantyList />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/dealer-warranty/edit/:id'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Edit Warranty Registration'
+              items={adminSiderRoutes}
+              content={<DealerWarrantyDetail />}
             />
           </PrivateRoute>
         }

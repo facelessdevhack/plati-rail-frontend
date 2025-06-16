@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Table,
   Card,
@@ -12,7 +13,12 @@ import {
   message,
   Modal
 } from 'antd'
-import { SearchOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
+import {
+  SearchOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+  EditOutlined
+} from '@ant-design/icons'
 import { warrantyService } from './services/warrantyService'
 import moment from 'moment'
 
@@ -20,6 +26,7 @@ const { Option } = Select
 const { RangePicker } = DatePicker
 
 const DealerWarrantyList = () => {
+  const navigate = useNavigate()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({
@@ -133,6 +140,10 @@ const DealerWarrantyList = () => {
     setPreviewVisible(false)
     setPreviewImage('')
     setPreviewTitle('')
+  }
+
+  const handleEditWarranty = record => {
+    navigate(`/dealer-warranty/edit/${record.id}`)
   }
 
   const getStatusColor = status => {
@@ -372,6 +383,25 @@ const DealerWarrantyList = () => {
               : 'N/A'}
           </div>
         </div>
+      )
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size='middle'>
+          <Button
+            type='primary'
+            icon={<EditOutlined />}
+            size='small'
+            onClick={() => handleEditWarranty(record)}
+            title='Edit Warranty'
+          >
+            Edit
+          </Button>
+        </Space>
       )
     }
   ]

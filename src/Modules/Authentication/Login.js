@@ -81,72 +81,117 @@ const Login = () => {
     },
   };
   return (
-    <div className="w-screen h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary relative overflow-hidden">
       <GlobalLoader visible={tryingAuth} />
-      <Row className="items-center justify-center w-full h-full md:flex">
+      
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
+      <div className="absolute top-10 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
+      
+      <Row className="min-h-screen items-center justify-center">
+        {/* Left Side - Image */}
         <Col
-          span={15}
-          className="items-center justify-center h-full overflow-hidden xs:hidden md:flex"
+          xs={0}
+          md={14}
+          lg={16}
+          className="hidden md:flex items-center justify-center h-screen relative"
         >
-          <img
-            src="/assets/images/Login/login.jpg"
-            alt="LoginImage"
-            className="object-contain w-[600px] h-full"
-          />
+          <div className="relative z-10 max-w-2xl">
+            <img
+              src="/assets/images/Login/login.jpg"
+              alt="Plati Rail System"
+              className="w-full h-auto rounded-2xl shadow-2xl object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent rounded-2xl" />
+          </div>
         </Col>
+
+        {/* Right Side - Login Form */}
         <Col
-          span={{
-            xs: 24,
-            md: 9,
-          }}
+          xs={24}
+          md={10}
+          lg={8}
+          className="flex items-center justify-center min-h-screen p-8"
         >
-          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-20 gap-y-6 font-poppins">
-            <div className="absolute z-0 w-full h-full bg-black border border-gray-300 rounded-lg opacity-80" />
-            <img className="z-10" src="/assets/logo.png" alt="Plati India" />
-            <div className="z-10">
-              <div className="text-2xl font-medium leading-9 text-center text-white">
-                Welcome
+          <div className="w-full max-w-md relative z-10">
+            {/* Glass Card */}
+            <div className="glass rounded-3xl p-8 shadow-2xl backdrop-blur-xl border border-white/20">
+              {/* Logo */}
+              <div className="flex justify-center mb-8">
+                <img 
+                  src="/assets/logo.png" 
+                  alt="Plati India" 
+                  className="h-12 w-auto"
+                />
               </div>
-              <div className="mt-2 text-xs font-light leading-4.5 text-center text-white">
-                Login to continue to dashboard
+
+              {/* Welcome Text */}
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2">
+                  Welcome Back
+                </h1>
+                <p className="text-white/80 text-sm">
+                  Sign in to access your dashboard
+                </p>
               </div>
+
+              {/* Login Form */}
+              <form
+                onSubmit={handleSubmit((e) => onSubmit(e))}
+                className="space-y-6"
+              >
+                <div className="space-y-4">
+                  <CustomInputWithController
+                    control={control}
+                    formState={formState}
+                    name="email"
+                    placeholder="Email Address"
+                    variant="loginWhite"
+                    size="lg"
+                    className="bg-white/10 border-white/30 text-white placeholder:text-white/70 focus:border-white focus:ring-white/20"
+                  />
+
+                  <CustomInputWithController
+                    inputType="password"
+                    control={control}
+                    formState={formState}
+                    name="password"
+                    placeholder="Password"
+                    variant="loginWhite"
+                    size="lg"
+                    className="bg-white/10 border-white/30 text-white placeholder:text-white/70 focus:border-white focus:ring-white/20"
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  variant="gradient"
+                  size="lg"
+                  width="full"
+                  loading={tryingAuth}
+                  className="w-full h-12 text-base font-semibold shadow-xl hover:shadow-2xl"
+                >
+                  {tryingAuth ? "Signing In..." : "Sign In"}
+                </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-white/80 hover:text-white text-sm font-medium hover:underline transition-colors"
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
+              </form>
             </div>
 
-            <form
-              onSubmit={handleSubmit((e) => onSubmit(e))}
-              className="z-10 flex flex-col items-center justify-center w-full gap-y-6"
-            >
-              <CustomInputWithController
-                control={control}
-                formState={formState}
-                name="email"
-                placeholder="Email Address"
-                // rules={validationForEmail}
-                intent="loginWhite"
-              />
-
-              <CustomInputWithController
-                inputType="password"
-                control={control}
-                formState={formState}
-                name="password"
-                placeholder="Password"
-                // rules={validationForPassword}
-                intent="loginWhite"
-                isPassword={true}
-              />
-              <Button type="submit" width="login">
-                Login
-              </Button>
-              <button
-                type="button"
-                // onClick={() => navigate('/reset-password')}
-                // onClick={() => <SetNewPassword />}
-                className="cursor-pointer font-poppins font-light text-xs leading-4.5 text-white hover:text-white hover:underline"
-              >
-                Reset Password
-              </button>
-            </form>
+            {/* Footer */}
+            <div className="text-center mt-8">
+              <p className="text-white/60 text-xs">
+                © {new Date().getFullYear()} Plati India Pvt. Ltd. All rights reserved.
+              </p>
+            </div>
           </div>
         </Col>
       </Row>

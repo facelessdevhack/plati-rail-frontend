@@ -1,15 +1,73 @@
 import React, { useState, useMemo } from 'react'
-import { Layout, Menu, theme } from 'antd'
+import { Layout, Menu, theme, Avatar, Dropdown, Badge, Tooltip } from 'antd'
 import { useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { 
+  BellOutlined, 
+  UserOutlined, 
+  SettingOutlined, 
+  LogoutOutlined,
+  SunOutlined,
+  MoonOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined
+} from '@ant-design/icons'
 import { adminSiderRoutes } from './Routes/adminSiderRoutes'
 const { Header, Footer, Sider } = Layout
 
 const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   const [collapsed, setCollapsed] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
   const location = useLocation()
+  const { user } = useSelector(state => state.userDetails)
   const {
     token: { colorBgContainer }
   } = theme.useToken()
+
+  // User dropdown menu
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Profile',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      danger: true,
+    },
+  ]
+
+  const handleUserMenuClick = ({ key }) => {
+    switch (key) {
+      case 'logout':
+        // Handle logout
+        break
+      case 'profile':
+        // Handle profile
+        break
+      case 'settings':
+        // Handle settings
+        break
+      default:
+        break
+    }
+  }
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode)
+    // Implement dark mode toggle logic
+    document.documentElement.classList.toggle('dark')
+  }
 
   // Function to get the active menu key based on current route
   const getActiveMenuKey = useMemo(() => {
@@ -134,58 +192,125 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   }, [getActiveMenuKey])
 
   return (
-    <Layout
-      style={{
-        minHeight: '100vh'
-      }}
-    >
+    <Layout className="min-h-screen bg-background">
       <Sider
         collapsible
         collapsed={collapsed}
         onCollapse={value => setCollapsed(value)}
+        className="shadow-lg border-r border-border"
+        style={{
+          background: 'linear-gradient(135deg, #313C6F 0%, #273059 100%)',
+        }}
       >
+        {/* Logo Section */}
         <div
-          className={`transition-all duration-200 ${
-            collapsed ? 'flex items-center justify-center my-10' : 'p-10'
+          className={`transition-all duration-300 ease-in-out border-b border-white/10 ${
+            collapsed ? 'flex items-center justify-center py-4' : 'p-6'
           }`}
         >
           <img
-            className={`transition-all duration-200 ${
-              collapsed ? 'z-10 h-8 p-1.5' : 'z-10'
+            className={`transition-all duration-300 ${
+              collapsed ? 'h-8 w-auto' : 'h-10 w-auto'
             }`}
             src='/assets/logo.png'
             alt='Plati India'
           />
         </div>
 
+        {/* Navigation Menu */}
         <Menu
           theme='dark'
           selectedKeys={getActiveMenuKey}
           defaultOpenKeys={getOpenKeys}
           mode='inline'
           items={items}
+          className="border-none bg-transparent"
+          style={{
+            background: 'transparent',
+          }}
         />
       </Sider>
-      <Layout>
-        <Header
-          style={{
-            background: colorBgContainer,
-            padding: '0 0px 0px 20px'
-          }}
-          className='flex items-center justify-start'
-        >
-          <div className='flex items-center justify-start text-2xl font-semibold text-left text-black font-poppins'>
-            {title}
+      
+      <Layout className="bg-background">
+        {/* Enhanced Header */}
+        <Header className="bg-white/80 backdrop-blur-sm border-b border-border shadow-sm px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Tooltip title={collapsed ? 'Expand Menu' : 'Collapse Menu'}>
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors"
+              >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              </button>
+            </Tooltip>
+            <div className="h-6 w-px bg-border" />
+            <h1 className="text-xl font-semibold text-foreground truncate">
+              {title}
+            </h1>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {/* Dark Mode Toggle */}
+            <Tooltip title={darkMode ? 'Light Mode' : 'Dark Mode'}>
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors"
+              >
+                {darkMode ? <SunOutlined /> : <MoonOutlined />}
+              </button>
+            </Tooltip>
+
+            {/* Notifications */}
+            <Tooltip title="Notifications">
+              <Badge count={3} size="small">
+                <button className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors">
+                  <BellOutlined className="text-lg" />
+                </button>
+              </Badge>
+            </Tooltip>
+
+            {/* User Profile Dropdown */}
+            <Dropdown
+              menu={{
+                items: userMenuItems,
+                onClick: handleUserMenuClick,
+              }}
+              placement="bottomRight"
+              arrow
+            >
+              <button className="flex items-center space-x-2 px-3 py-1.5 rounded-md hover:bg-muted transition-colors">
+                <Avatar
+                  size={32}
+                  icon={<UserOutlined />}
+                  className="bg-primary"
+                />
+                {!collapsed && (
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-foreground">
+                      {user?.firstName} {user?.lastName}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {user?.email}
+                    </div>
+                  </div>
+                )}
+              </button>
+            </Dropdown>
           </div>
         </Header>
-        {content}
-        <Footer
-          className='bg-white'
-          style={{
-            textAlign: 'center'
-          }}
-        >
-          Plati India Pvt. Ltd. ©{new Date().getFullYear()}
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto bg-muted/30">
+          <div className="animate-in">
+            {content}
+          </div>
+        </div>
+
+        {/* Enhanced Footer */}
+        <Footer className="bg-white/80 backdrop-blur-sm border-t border-border text-center py-4">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Plati India Pvt. Ltd.</span> © {new Date().getFullYear()} - All rights reserved
+          </div>
         </Footer>
       </Layout>
     </Layout>

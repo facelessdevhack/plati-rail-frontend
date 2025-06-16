@@ -5,78 +5,115 @@ import { Input } from "antd";
 import { Controller } from "react-hook-form";
 import AlertIcon from "../../Common/Svgs/AlertIcon";
 
-const input = cva(
-  [
-    "font-poppins text-xs font-medium text-new-black leading-4.5 rounded-md placeholder:font-poppins placeholder:text-dark-grey-text",
-  ],
-  {
-    variants: {
-      intent: {
-        primary: "px-3.5 py-2.25 w-full bg-white border border-light-grey",
-        login:
-          "px-3.5 py-2.25 w-full bg-transparent text-black placeholder:text-black h-12",
-        filter:
-          "px-3.5 py-2.25 w-[312px] h-10 bg-background-grey hover:bg-background-grey",
-        dropdown: "px-3 py-2 w-[192px] h-8.5 bg-background-grey",
-        search:
-          "px-3 py-2 w-[288px] h-10 bg-background-grey hover:bg-background-grey",
-        searchHome:
-          "px-3 py-2 w-full h-10 bg-background-grey hover:bg-background-grey",
-        loginWhite:
-          " px-3.5 py-2.25 w-full bg-transparent text-white placeholder:text-white h-12 focus:bg-transparent hover:bg-transparent",
-      },
-      border: {
-        primary: "primary-border",
-        success: "success-border",
-        error: "error-border",
-        none: "border-none",
-      },
-      placeholderText: {
-        primary: "placeholder:font-light",
-        filters: "placeholder:font-medium",
-        filterSelected: "placeholder:text-new-black",
-      },
+const input = cva([
+  "flex w-full rounded-md border bg-background text-sm transition-all duration-200",
+  "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+  "placeholder:text-muted-foreground",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "disabled:cursor-not-allowed disabled:opacity-50"
+], {
+  variants: {
+    variant: {
+      default: [
+        "border-input hover:border-ring/50",
+        "focus:border-ring focus:ring-ring/20"
+      ],
+      success: [
+        "border-success hover:border-success/80",
+        "focus:border-success focus:ring-success/20"
+      ],
+      warning: [
+        "border-warning hover:border-warning/80",
+        "focus:border-warning focus:ring-warning/20"
+      ],
+      destructive: [
+        "border-destructive hover:border-destructive/80",
+        "focus:border-destructive focus:ring-destructive/20"
+      ],
+      ghost: [
+        "border-transparent bg-transparent",
+        "focus:border-ring focus:bg-background"
+      ],
+      // Legacy variants for backward compatibility
+      primary: "border-light-grey hover:border-ring/50 focus:border-ring",
+      login: "bg-transparent text-black placeholder:text-black h-12 border-transparent",
+      loginWhite: "bg-transparent text-white placeholder:text-white h-12 border-transparent focus:bg-transparent hover:bg-transparent",
+      filter: "bg-background-grey hover:bg-background-grey border-transparent",
+      dropdown: "bg-background-grey border-transparent",
+      search: "bg-background-grey hover:bg-background-grey border-transparent",
+      searchHome: "bg-background-grey hover:bg-background-grey border-transparent",
     },
-    defaultVariants: {
-      intent: "primary",
-      placeholderText: "primary",
-      border: "primary",
+    size: {
+      sm: "h-8 px-2 text-xs",
+      md: "h-10 px-3 text-sm",
+      lg: "h-12 px-4 text-base",
     },
-  }
-);
+    width: {
+      auto: "w-auto",
+      full: "w-full",
+      fit: "w-fit",
+      // Legacy widths
+      filter: "w-[312px]",
+      dropdown: "w-[192px]",
+      search: "w-[288px]",
+    }
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "md",
+    width: "full",
+  },
+});
 
 const CustomInput = ({
+  variant,
+  size,
+  width,
+  className,
+  // Legacy props
   intent,
   border,
   placeholderText,
   placeholder,
   ...props
 }) => {
+  // Map legacy props to new variants
+  const mappedVariant = variant || intent || "default";
+  const mappedSize = size || "md";
+  const mappedWidth = width || "full";
+
   return (
     <Input
-      // bordered={false}
       {...props}
-      className={input({ intent, border, placeholderText })}
+      className={input({ variant: mappedVariant, size: mappedSize, width: mappedWidth, className })}
       placeholder={placeholder}
     />
   );
 };
 
-export const CustomInputWithController = ({ ...InputProps }) => {
-  const { name, placeholder, control, formState, rules, inputType, intent } =
-    InputProps;
-
-  const {
-    errors,
-    // dirtyFields
-  } = formState;
-
-  // const renderBorderColor = () => {
-  //   return errors[name] ? "error" : "success";
-  // };
+export const CustomInputWithController = ({ 
+  name, 
+  placeholder, 
+  control, 
+  formState, 
+  rules, 
+  inputType, 
+  variant,
+  size,
+  width,
+  className,
+  // Legacy props
+  intent,
+  ...InputProps 
+}) => {
+  const { errors } = formState;
+  const hasError = errors[name];
+  
+  // Determine variant based on error state
+  const inputVariant = hasError ? "destructive" : (variant || intent || "default");
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-2">
       <Controller
         name={name}
         control={control}
@@ -84,21 +121,22 @@ export const CustomInputWithController = ({ ...InputProps }) => {
         render={({ field }) => (
           <CustomInput
             {...field}
-            intent={intent}
-            border="primary"
-            // border={dirtyFields[name] ? renderBorderColor() : 'primary'}
+            {...InputProps}
+            variant={inputVariant}
+            size={size}
+            width={width}
+            className={className}
             placeholder={placeholder}
-            suffix={errors[name] ? <AlertIcon /> : null}
+            suffix={hasError ? <AlertIcon /> : null}
             type={inputType}
           />
         )}
       />
-      <p
-        className={`font-poppins text-xs font-light leading-4.5 mt-2 ${errors[name] ? "text-alert-red visible" : "invisible"
-          }`}
-      >
-        {errors[name]?.message}
-      </p>
+      {hasError && (
+        <p className="text-xs text-destructive font-medium animate-in">
+          {hasError?.message}
+        </p>
+      )}
     </div>
   );
 };

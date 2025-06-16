@@ -58,18 +58,23 @@ import {
   StarOutlined,
   HeartOutlined,
   CaretUpOutlined,
-  CaretDownOutlined
+  CaretDownOutlined,
+  CarOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  TrophyOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
+import { Pie, Column, Line, Bar } from '@ant-design/plots'
 
 const { Title, Text, Paragraph } = Typography
 const { RangePicker } = DatePicker
 const { TabPane } = Tabs
 
-const AdminDashboard = () => {
+const MetricsDashboard = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { user } = useSelector(state => state.userDetails)
@@ -96,113 +101,73 @@ const AdminDashboard = () => {
   const [notificationDrawer, setNotificationDrawer] = useState(false)
   const [settingsModal, setSettingsModal] = useState(false)
 
-  // Fetch dashboard data
+  // Metrics data state
+  const [warrantyMetrics, setWarrantyMetrics] = useState(null)
+  const [dealerMetrics, setDealerMetrics] = useState(null)
+  const [customerMetrics, setCustomerMetrics] = useState(null)
+  const [productionMetrics, setProductionMetrics] = useState(null)
+  const [combinedMetrics, setCombinedMetrics] = useState(null)
+
+  // Fetch all metrics data
   useEffect(() => {
-    fetchDashboardData()
+    fetchAllMetrics()
     // Set up auto-refresh every 5 minutes
-    const interval = setInterval(fetchDashboardData, 300000)
+    const interval = setInterval(fetchAllMetrics, 300000)
     return () => clearInterval(interval)
   }, [dateRange])
 
-  const fetchDashboardData = async (showRefresh = false) => {
+  const fetchAllMetrics = async (showRefresh = false) => {
     try {
       if (showRefresh) setRefreshing(true)
       else setLoading(true)
 
+      // Build query parameters for production metrics
       const startDate = dateRange[0].format('YYYY-MM-DD')
       const endDate = dateRange[1].format('YYYY-MM-DD')
+      const productionParams = `?startDate=${startDate}&endDate=${endDate}`
 
-      // Fetch multiple endpoints in parallel
-      const [
-        overviewRes,
-        productionRes,
-        salesRes,
-        inventoryRes,
-        dealersRes,
-        alertsRes,
-        activitiesRes,
-        trendsRes
-      ] = await Promise.allSettled([
-        client.get(
-          `/v2/dashboard/overview?startDate=${startDate}&endDate=${endDate}`
-        ),
-        client.get(
-          `/v2/dashboard/production?startDate=${startDate}&endDate=${endDate}`
-        ),
-        client.get(
-          `/v2/dashboard/sales?startDate=${startDate}&endDate=${endDate}`
-        ),
-        client.get(`/v2/dashboard/inventory`),
-        client.get(
-          `/v2/dashboard/dealers?startDate=${startDate}&endDate=${endDate}`
-        ),
-        client.get(`/v2/dashboard/alerts`),
-        client.get(`/v2/dashboard/activities?limit=10`),
-        client.get(
-          `/v2/dashboard/trends?startDate=${startDate}&endDate=${endDate}`
-        )
-      ])
+      // Fetch all metrics APIs in parallel
+      const [warrantyRes, dealerRes, customerRes, productionRes, combinedRes] =
+        await Promise.allSettled([
+          client.get('/metrics/warranty'),
+          client.get('/metrics/dealers'),
+          client.get('/metrics/customers'),
+          client.get(`/metrics/production${productionParams}`),
+          client.get('/metrics/customer-dealer')
+        ])
 
-      setDashboardData({
-        overview:
-          overviewRes.status === 'fulfilled'
-            ? overviewRes.value.data.result
-            : getMockOverview(),
-        production:
-          productionRes.status === 'fulfilled'
-            ? productionRes.value.data.result
-            : getMockProduction(),
-        sales:
-          salesRes.status === 'fulfilled'
-            ? salesRes.value.data.result
-            : getMockSales(),
-        inventory:
-          inventoryRes.status === 'fulfilled'
-            ? inventoryRes.value.data.result
-            : getMockInventory(),
-        dealers:
-          dealersRes.status === 'fulfilled'
-            ? dealersRes.value.data.result
-            : getMockDealers(),
-        alerts:
-          alertsRes.status === 'fulfilled'
-            ? alertsRes.value.data.result
-            : getMockAlerts(),
-        recentActivities:
-          activitiesRes.status === 'fulfilled'
-            ? activitiesRes.value.data.result
-            : getMockActivities(),
-        trends:
-          trendsRes.status === 'fulfilled'
-            ? trendsRes.value.data.result
-            : getMockTrends()
-      })
+      // Set data or fallback to null
+      setWarrantyMetrics(
+        warrantyRes.status === 'fulfilled' ? warrantyRes.value.data.data : null
+      )
+      setDealerMetrics(
+        dealerRes.status === 'fulfilled' ? dealerRes.value.data.data : null
+      )
+      setCustomerMetrics(
+        customerRes.status === 'fulfilled' ? customerRes.value.data.data : null
+      )
+      setProductionMetrics(
+        productionRes.status === 'fulfilled'
+          ? productionRes.value.data.data
+          : null
+      )
+      setCombinedMetrics(
+        combinedRes.status === 'fulfilled' ? combinedRes.value.data.data : null
+      )
 
       if (showRefresh) {
         notification.success({
-          message: 'Dashboard Refreshed',
-          description: 'All data has been updated successfully.',
+          message: 'Metrics Refreshed',
+          description: 'All metrics data has been updated successfully.',
           placement: 'topRight'
         })
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('Error fetching metrics:', error)
       notification.error({
-        message: 'Error Loading Dashboard',
-        description: 'Failed to load dashboard data. Using cached data.',
+        message: 'Error Loading Metrics',
+        description: 'Failed to load metrics data. Please try again.',
         placement: 'topRight'
-      })
-
-      // Use mock data as fallback
-      setDashboardData({
-        overview: getMockOverview(),
-        production: getMockProduction(),
-        sales: getMockSales(),
-        inventory: getMockInventory(),
-        dealers: getMockDealers(),
-        alerts: getMockAlerts(),
-        recentActivities: getMockActivities(),
-        trends: getMockTrends()
       })
     } finally {
       setLoading(false)
@@ -210,148 +175,100 @@ const AdminDashboard = () => {
     }
   }
 
-  // Mock data functions
-  const getMockOverview = () => ({
-    totalRevenue: 2450000,
-    revenueGrowth: 12.5,
-    totalOrders: 1247,
-    ordersGrowth: 8.3,
-    totalCustomers: 89,
-    customersGrowth: 15.2,
-    avgOrderValue: 1965,
-    avgOrderGrowth: 4.1,
-    conversionRate: 3.2,
-    conversionGrowth: -2.1
-  })
+  // Chart configurations
+  const getWarrantyStatusPieConfig = () => {
+    if (!warrantyMetrics?.statusDistribution) return null
 
-  const getMockProduction = () => ({
-    totalProduced: 15420,
-    productionGrowth: 18.7,
-    activeJobCards: 23,
-    completedJobCards: 156,
-    rejectionRate: 3.4,
-    rejectionTrend: -1.2,
-    avgProductionTime: 4.2,
-    timeTrend: -0.8,
-    urgentOrders: 5,
-    capacityUtilization: 78.5
-  })
-
-  const getMockSales = () => ({
-    todaySales: 45000,
-    weeklySales: 285000,
-    monthlySales: 1200000,
-    topSellingProduct: 'PY-009 Chrome 15x6',
-    salesTrend: [
-      { date: '2024-01-01', amount: 25000 },
-      { date: '2024-01-02', amount: 32000 },
-      { date: '2024-01-03', amount: 28000 },
-      { date: '2024-01-04', amount: 45000 },
-      { date: '2024-01-05', amount: 38000 },
-      { date: '2024-01-06', amount: 52000 },
-      { date: '2024-01-07', amount: 48000 }
-    ]
-  })
-
-  const getMockInventory = () => ({
-    totalItems: 1247,
-    lowStockItems: 23,
-    outOfStockItems: 5,
-    totalValue: 8500000,
-    turnoverRate: 4.2,
-    topMovingItems: [
-      { name: 'PY-009 Chrome', quantity: 450, value: 2250000 },
-      { name: 'PY-023 Black', quantity: 320, value: 1600000 },
-      { name: 'PY-015 Silver', quantity: 280, value: 1400000 }
-    ]
-  })
-
-  const getMockDealers = () => ({
-    totalDealers: 89,
-    activeDealers: 67,
-    newDealers: 5,
-    topDealers: [
-      { name: 'ABC Motors', revenue: 450000, orders: 45, growth: 12.5 },
-      { name: 'XYZ Auto Parts', revenue: 380000, orders: 38, growth: 8.3 },
-      { name: 'Premium Wheels', revenue: 320000, orders: 32, growth: 15.2 }
-    ]
-  })
-
-  const getMockAlerts = () => [
-    {
-      id: 1,
-      type: 'critical',
-      title: 'Low Stock Alert',
-      message: '5 items are out of stock',
-      timestamp: moment().subtract(2, 'hours'),
-      action: 'View Inventory'
-    },
-    {
-      id: 2,
-      type: 'warning',
-      title: 'Production Delay',
-      message: 'Job Card #156 is behind schedule',
-      timestamp: moment().subtract(4, 'hours'),
-      action: 'View Production'
-    },
-    {
-      id: 3,
-      type: 'info',
-      title: 'New Order',
-      message: 'Large order received from ABC Motors',
-      timestamp: moment().subtract(6, 'hours'),
-      action: 'View Order'
+    return {
+      data: warrantyMetrics.statusDistribution,
+      angleField: 'count',
+      colorField: 'registerStatus',
+      radius: 0.8,
+      label: {
+        type: 'outer',
+        content: '{name} ({percentage})'
+      },
+      interactions: [{ type: 'element-active' }]
     }
-  ]
+  }
 
-  const getMockActivities = () => [
-    {
-      id: 1,
-      type: 'order',
-      title: 'New order created',
-      description: 'Order #1247 for 50 units of PY-009',
-      user: 'John Doe',
-      timestamp: moment().subtract(1, 'hour'),
-      status: 'success'
-    },
-    {
-      id: 2,
-      type: 'production',
-      title: 'Production completed',
-      description: 'Job Card #156 completed successfully',
-      user: 'Production Team',
-      timestamp: moment().subtract(2, 'hours'),
-      status: 'success'
-    },
-    {
-      id: 3,
-      type: 'payment',
-      title: 'Payment received',
-      description: '₹45,000 payment from ABC Motors',
-      user: 'Finance Team',
-      timestamp: moment().subtract(3, 'hours'),
-      status: 'success'
+  const getProductTypeDistributionConfig = () => {
+    if (!warrantyMetrics?.productTypeAnalysis) return null
+
+    return {
+      data: warrantyMetrics.productTypeAnalysis,
+      xField: 'productType',
+      yField: 'count',
+      seriesField: 'productType',
+      color: ['#1890ff', '#52c41a', '#faad14', '#f5222d'],
+      columnWidthRatio: 0.8,
+      label: {
+        position: 'middle',
+        style: {
+          fill: '#FFFFFF',
+          opacity: 0.6
+        }
+      }
     }
-  ]
+  }
 
-  const getMockTrends = () => ({
-    revenueChart: [
-      { month: 'Jan', revenue: 1200000, orders: 120 },
-      { month: 'Feb', revenue: 1350000, orders: 135 },
-      { month: 'Mar', revenue: 1180000, orders: 118 },
-      { month: 'Apr', revenue: 1420000, orders: 142 },
-      { month: 'May', revenue: 1580000, orders: 158 },
-      { month: 'Jun', revenue: 1650000, orders: 165 }
-    ],
-    productionChart: [
-      { month: 'Jan', produced: 2500, target: 2800 },
-      { month: 'Feb', produced: 2750, target: 2800 },
-      { month: 'Mar', produced: 2400, target: 2800 },
-      { month: 'Apr', produced: 2900, target: 2800 },
-      { month: 'May', produced: 3100, target: 3200 },
-      { month: 'Jun', produced: 3250, target: 3200 }
-    ]
-  })
+  const getDealerRegistrationRankingConfig = () => {
+    if (!dealerMetrics?.dealerRegistrationRanking) return null
+
+    const topDealers = dealerMetrics.dealerRegistrationRanking.slice(0, 10)
+    return {
+      data: topDealers,
+      xField: 'registration_count',
+      yField: 'dealer_name',
+      seriesField: 'dealer_name',
+      color: '#1890ff',
+      barWidthRatio: 0.6,
+      label: {
+        position: 'middle',
+        style: {
+          fill: '#FFFFFF'
+        }
+      }
+    }
+  }
+
+  const getCustomerRegistrationTrendsConfig = () => {
+    if (!customerMetrics?.registrationTrends) return null
+
+    return {
+      data: customerMetrics.registrationTrends,
+      xField: 'month',
+      yField: 'registrations',
+      point: {
+        size: 5,
+        shape: 'diamond'
+      },
+      label: {
+        style: {
+          fill: '#aaa'
+        }
+      }
+    }
+  }
+
+  const getProductionStepDistributionConfig = () => {
+    if (!productionMetrics?.stepDistribution) return null
+
+    return {
+      data: productionMetrics.stepDistribution,
+      xField: 'step_name',
+      yField: 'job_count',
+      color: '#52c41a',
+      columnWidthRatio: 0.8,
+      label: {
+        position: 'middle',
+        style: {
+          fill: '#FFFFFF',
+          opacity: 0.6
+        }
+      }
+    }
+  }
 
   // Enhanced KPI Cards with animations and trends
   const renderKPICard = (
@@ -591,493 +508,965 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className='flex items-center justify-center h-96'>
-        <Spin size='large' tip='Loading dashboard...' />
+        <Spin size='large' tip='Loading metrics dashboard...' />
       </div>
     )
   }
 
   return (
-    <div className='w-full min-h-screen p-6 bg-gray-50'>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6'>
       {/* Header Section */}
-      <div className='mb-6'>
-        <div className='flex items-center justify-between mb-4'>
-          <div>
-            <Title level={2} className='mb-2'>
-              Welcome back, {user?.firstName} {user?.lastName}! 👋
-            </Title>
-            <Text type='secondary' className='text-lg'>
-              Here's what's happening with your business today.
-            </Text>
+      <div className='bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl p-8 mb-8'>
+        <div className='flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0'>
+          <div className='space-y-2'>
+            <div className='flex items-center space-x-3'>
+              <div className='w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center'>
+                <BarChartOutlined className='text-white text-xl' />
+              </div>
+              <div>
+                <h1 className='text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent'>
+                  📊 System Metrics Dashboard
+                </h1>
+                <p className='text-gray-600 text-lg'>
+                  Comprehensive analytics and performance insights
+                </p>
+              </div>
+            </div>
           </div>
-          <div className='flex items-center space-x-3'>
+
+          <div className='flex flex-wrap items-center gap-3'>
             <RangePicker
               value={dateRange}
               onChange={setDateRange}
-              className='w-64'
+              className='shadow-lg border-0 bg-white/80 backdrop-blur-sm'
+              style={{ borderRadius: '12px' }}
             />
             <Tooltip title='Refresh Dashboard'>
               <AntButton
-                icon={<ReloadOutlined />}
+                type='primary'
+                icon={
+                  <ReloadOutlined
+                    className={refreshing ? 'animate-spin' : ''}
+                  />
+                }
+                onClick={() => fetchAllMetrics(true)}
                 loading={refreshing}
-                onClick={() => fetchDashboardData(true)}
-              />
+                style={{ borderRadius: '12px' }}
+              >
+                Refresh
+              </AntButton>
             </Tooltip>
             <Tooltip title='Export Report'>
-              <AntButton icon={<ExportOutlined />} />
-            </Tooltip>
-            <Tooltip title='Settings'>
               <AntButton
-                icon={<SettingOutlined />}
-                onClick={() => setSettingsModal(true)}
-              />
+                icon={<ExportOutlined />}
+                style={{ borderRadius: '12px' }}
+              >
+                Export
+              </AntButton>
             </Tooltip>
-          </div>
-        </div>
-
-        {/* Quick Stats Bar */}
-        <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-6'>
-          <div className='bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <Text className='text-blue-100'>Today's Revenue</Text>
-                <Title level={3} className='text-white mb-0'>
-                  ₹{dashboardData.sales.todaySales?.toLocaleString()}
-                </Title>
-              </div>
-              <DollarOutlined className='text-2xl text-blue-200' />
-            </div>
-          </div>
-          <div className='bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg text-white'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <Text className='text-green-100'>Active Jobs</Text>
-                <Title level={3} className='text-white mb-0'>
-                  {dashboardData.production.activeJobCards}
-                </Title>
-              </div>
-              <ToolOutlined className='text-2xl text-green-200' />
-            </div>
-          </div>
-          <div className='bg-gradient-to-r from-orange-500 to-orange-600 p-4 rounded-lg text-white'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <Text className='text-orange-100'>Low Stock Items</Text>
-                <Title level={3} className='text-white mb-0'>
-                  {dashboardData.inventory.lowStockItems}
-                </Title>
-              </div>
-              <WarningOutlined className='text-2xl text-orange-200' />
-            </div>
-          </div>
-          <div className='bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg text-white'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <Text className='text-purple-100'>Active Dealers</Text>
-                <Title level={3} className='text-white mb-0'>
-                  {dashboardData.dealers.activeDealers}
-                </Title>
-              </div>
-              <TeamOutlined className='text-2xl text-purple-200' />
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Main KPI Cards */}
-      <Row gutter={[16, 16]} className='mb-6'>
+      {/* KPI Cards */}
+      <Row gutter={[24, 24]} className='mb-6'>
+        {/* Warranty Verification Rate */}
         <Col xs={24} sm={12} lg={6}>
-          {renderKPICard(
-            'Total Revenue',
-            dashboardData.overview.totalRevenue,
-            dashboardData.overview.revenueGrowth,
-            <DollarOutlined />,
-            'green',
-            '₹'
-          )}
+          <Card className='h-full bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'>
+            <Statistic
+              title='Warranty Verification Rate'
+              value={
+                warrantyMetrics?.otpVerificationRate?.[0]?.verificationRate || 0
+              }
+              precision={1}
+              suffix='%'
+              valueStyle={{ color: '#1890ff' }}
+              prefix={<CheckCircleTwoTone twoToneColor='#1890ff' />}
+            />
+            <div className='mt-2'>
+              <Text type='secondary'>
+                {warrantyMetrics?.otpVerificationRate?.[0]
+                  ?.verifiedRegistrations || 0}{' '}
+                of{' '}
+                {warrantyMetrics?.otpVerificationRate?.[0]
+                  ?.totalRegistrations || 0}{' '}
+                verified
+              </Text>
+            </div>
+          </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          {renderKPICard(
-            'Total Orders',
-            dashboardData.overview.totalOrders,
-            dashboardData.overview.ordersGrowth,
-            <ShoppingCartOutlined />,
-            'blue'
-          )}
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          {renderKPICard(
-            'Production Rate',
-            dashboardData.production.capacityUtilization,
-            dashboardData.production.productionGrowth,
-            <ToolOutlined />,
-            'orange',
-            '',
-            '%'
-          )}
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          {renderKPICard(
-            'Active Dealers',
-            dashboardData.dealers.activeDealers,
-            dashboardData.dealers.newDealers,
-            <TeamOutlined />,
-            'purple'
-          )}
-        </Col>
-      </Row>
 
-      {/* Quick Actions Section */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={24}>
-          <Title level={4} style={{ marginBottom: 16 }}>
-            <ThunderboltOutlined style={{ marginRight: 8 }} />
-            Quick Actions
-          </Title>
-        </Col>
-        <Col span={8}>
-          <Card
-            hoverable
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-            onClick={() => (window.location.href = '/dealer-metrics')}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <TeamOutlined style={{ fontSize: '48px', marginBottom: 16 }} />
-              <Title level={4} style={{ color: 'white', marginBottom: 8 }}>
-                Dealer Performance Metrics
-              </Title>
-              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>
-                Comprehensive dealer analytics, scorecards, and performance
-                tracking
+        {/* Total Active Dealers */}
+        <Col xs={24} sm={12} lg={6}>
+          <Card className='h-full bg-gradient-to-br from-green-50 to-green-100 border-green-200'>
+            <Statistic
+              title='Active Dealers'
+              value={dealerMetrics?.totalActiveDealers?.count || 0}
+              valueStyle={{ color: '#52c41a' }}
+              prefix={<TeamOutlined style={{ color: '#52c41a' }} />}
+            />
+            <div className='mt-2'>
+              <Text type='secondary'>
+                Avg Credit: ₹
+                {dealerMetrics?.financialMetrics?.avg_credit_limit?.toLocaleString() ||
+                  0}
               </Text>
             </div>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card
-            hoverable
-            style={{
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-            onClick={() =>
-              (window.location.href = '/dealer-metrics?tab=financial')
-            }
-          >
-            <div style={{ textAlign: 'center' }}>
-              <DollarOutlined style={{ fontSize: '48px', marginBottom: 16 }} />
-              <Title level={4} style={{ color: 'white', marginBottom: 8 }}>
-                Financial Health Monitor
-              </Title>
-              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>
-                Track outstanding amounts, payment behaviors, and credit
-                utilization
+
+        {/* Total Customers */}
+        <Col xs={24} sm={12} lg={6}>
+          <Card className='h-full bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'>
+            <Statistic
+              title='Total Customers'
+              value={customerMetrics?.totalCustomers || 0}
+              valueStyle={{ color: '#722ed1' }}
+              prefix={<UserOutlined style={{ color: '#722ed1' }} />}
+            />
+            <div className='mt-2'>
+              <Text type='secondary'>
+                Avg{' '}
+                {customerMetrics?.customerRetention
+                  ?.avg_registrations_per_customer || 0}{' '}
+                registrations/customer
               </Text>
             </div>
           </Card>
         </Col>
-        <Col span={8}>
-          <Card
-            hoverable
-            style={{
-              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-            onClick={() =>
-              (window.location.href = '/dealer-metrics?tab=operational')
-            }
-          >
-            <div style={{ textAlign: 'center' }}>
-              <ThunderboltOutlined
-                style={{ fontSize: '48px', marginBottom: 16 }}
-              />
-              <Title level={4} style={{ color: 'white', marginBottom: 8 }}>
-                Operational Efficiency
-              </Title>
-              <Text style={{ color: 'rgba(255,255,255,0.8)' }}>
-                Monitor delivery times, fulfillment rates, and service quality
+
+        {/* Production Completion Rate */}
+        <Col xs={24} sm={12} lg={6}>
+          <Card className='h-full bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'>
+            <Statistic
+              title='Production Completion Rate'
+              value={productionMetrics?.planMetrics?.completion_rate || 0}
+              precision={1}
+              suffix='%'
+              valueStyle={{ color: '#fa8c16' }}
+              prefix={<ToolOutlined style={{ color: '#fa8c16' }} />}
+            />
+            <div className='mt-2'>
+              <Text type='secondary'>
+                {productionMetrics?.planMetrics?.completed_plans || 0} of{' '}
+                {productionMetrics?.planMetrics?.total_plans || 0} completed
               </Text>
             </div>
           </Card>
         </Col>
       </Row>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultActiveKey='overview' className='mb-6'>
-        <TabPane tab='Overview' key='overview'>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={16}>
-              <Card
-                title='Revenue & Orders Trend'
-                className='h-96 shadow-sm'
-                extra={
-                  <Select defaultValue='6months' size='small'>
-                    <Select.Option value='7days'>Last 7 Days</Select.Option>
-                    <Select.Option value='30days'>Last 30 Days</Select.Option>
-                    <Select.Option value='6months'>Last 6 Months</Select.Option>
-                  </Select>
-                }
-              >
-                <div className='h-64 flex items-center justify-center'>
-                  <Empty description='Chart will be implemented with a charting library' />
-                </div>
-              </Card>
-            </Col>
-            <Col xs={24} lg={8}>
-              {renderAlerts()}
-            </Col>
-          </Row>
-        </TabPane>
+      {/* Main Metrics Content */}
+      <div className='bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl p-8'>
+        <Tabs
+          defaultActiveKey='warranty'
+          className='metrics-tabs'
+          tabBarStyle={{
+            borderBottom: 'none',
+            marginBottom: '2rem'
+          }}
+        >
+          {/* Warranty Metrics Tab */}
+          <TabPane
+            tab={
+              <span className='flex items-center space-x-2 px-4 py-2'>
+                <CheckCircleTwoTone />
+                <span>Warranty Analytics</span>
+              </span>
+            }
+            key='warranty'
+          >
+            <Row gutter={[24, 24]}>
+              {/* Warranty Status Breakdown */}
+              <Col xs={24} lg={12}>
+                <Card
+                  title='Registration Status Distribution'
+                  className='h-full'
+                >
+                  {warrantyMetrics?.statusDistribution ? (
+                    <Pie {...getWarrantyStatusPieConfig()} height={300} />
+                  ) : (
+                    <Empty description='No warranty status data available' />
+                  )}
+                </Card>
+              </Col>
 
-        <TabPane tab='Production' key='production'>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={12}>
-              <Card title='Production Metrics' className='shadow-sm'>
-                <div className='space-y-4'>
-                  <div className='flex items-center justify-between'>
-                    <Text>Capacity Utilization</Text>
-                    <Progress
-                      percent={dashboardData.production.capacityUtilization}
-                      strokeColor='#52c41a'
+              {/* Product Type Distribution */}
+              <Col xs={24} lg={12}>
+                <Card title='Product Type Distribution' className='h-full'>
+                  {warrantyMetrics?.productTypeAnalysis ? (
+                    <Column
+                      {...getProductTypeDistributionConfig()}
+                      height={300}
                     />
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <Text>Quality Rate</Text>
-                    <Progress
-                      percent={100 - dashboardData.production.rejectionRate}
-                      strokeColor='#1890ff'
-                    />
-                  </div>
-                  <Divider />
-                  <div className='grid grid-cols-2 gap-4'>
-                    <Statistic
-                      title='Avg Production Time'
-                      value={dashboardData.production.avgProductionTime}
-                      suffix='hrs'
-                      prefix={<ClockCircleTwoTone />}
-                    />
-                    <Statistic
-                      title='Urgent Orders'
-                      value={dashboardData.production.urgentOrders}
-                      prefix={<FireOutlined className='text-red-500' />}
-                    />
-                  </div>
-                </div>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              {renderRecentActivities()}
-            </Col>
-          </Row>
-        </TabPane>
+                  ) : (
+                    <Empty description='No product type data available' />
+                  )}
+                </Card>
+              </Col>
 
-        <TabPane tab='Sales & Dealers' key='sales'>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={16}>
-              <Card title='Top Performing Dealers' className='shadow-sm'>
-                <Table
-                  columns={dealerColumns}
-                  dataSource={dashboardData.dealers.topDealers}
-                  pagination={false}
-                  size='small'
-                />
-              </Card>
-            </Col>
-            <Col xs={24} lg={8}>
-              <Card title='Sales Summary' className='shadow-sm'>
-                <div className='space-y-4'>
+              {/* Geographic Distribution */}
+              <Col xs={24}>
+                <Card title='Geographic Distribution (Top States)'>
+                  {warrantyMetrics?.geographicDistribution ? (
+                    <Table
+                      dataSource={warrantyMetrics.geographicDistribution}
+                      columns={[
+                        {
+                          title: 'State',
+                          dataIndex: 'state',
+                          key: 'state'
+                        },
+                        {
+                          title: 'Registrations',
+                          dataIndex: 'count',
+                          key: 'count',
+                          render: count => (
+                            <Badge count={count} showZero color='blue' />
+                          )
+                        },
+                        {
+                          title: 'Progress',
+                          key: 'progress',
+                          render: (_, record) => {
+                            const total = warrantyMetrics.totalRegistrations
+                            const percentage = (
+                              (record.count / total) *
+                              100
+                            ).toFixed(1)
+                            return (
+                              <Progress
+                                percent={parseFloat(percentage)}
+                                size='small'
+                              />
+                            )
+                          }
+                        }
+                      ]}
+                      pagination={false}
+                      size='small'
+                    />
+                  ) : (
+                    <Empty description='No geographic data available' />
+                  )}
+                </Card>
+              </Col>
+
+              {/* Warranty Card Upload Rate */}
+              <Col xs={24} lg={8}>
+                <Card title='Warranty Card Upload'>
                   <Statistic
-                    title="Today's Sales"
-                    value={dashboardData.sales.todaySales}
-                    prefix='₹'
-                    valueStyle={{ color: '#3f8600' }}
+                    title='Upload Rate'
+                    value={
+                      warrantyMetrics?.warrantyCardUploadRate?.[0]
+                        ?.uploadRate || 0
+                    }
+                    precision={1}
+                    suffix='%'
+                    valueStyle={{ color: '#52c41a' }}
                   />
+                  <Progress
+                    percent={
+                      warrantyMetrics?.warrantyCardUploadRate?.[0]
+                        ?.uploadRate || 0
+                    }
+                    strokeColor='#52c41a'
+                  />
+                  <div className='mt-2'>
+                    <Text type='secondary'>
+                      {warrantyMetrics?.warrantyCardUploadRate?.[0]
+                        ?.withWarrantyCard || 0}{' '}
+                      cards uploaded
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Verification Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='OTP Verification'>
                   <Statistic
-                    title='Weekly Sales'
-                    value={dashboardData.sales.weeklySales}
-                    prefix='₹'
+                    title='Verification Rate'
+                    value={
+                      warrantyMetrics?.otpVerificationRate?.[0]
+                        ?.verificationRate || 0
+                    }
+                    precision={1}
+                    suffix='%'
                     valueStyle={{ color: '#1890ff' }}
                   />
+                  <Progress
+                    percent={
+                      warrantyMetrics?.otpVerificationRate?.[0]
+                        ?.verificationRate || 0
+                    }
+                    strokeColor='#1890ff'
+                  />
+                  <div className='mt-2'>
+                    <Text type='secondary'>
+                      {warrantyMetrics?.otpVerificationRate?.[0]
+                        ?.verifiedRegistrations || 0}{' '}
+                      verified
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Total Registration Summary */}
+              <Col xs={24} lg={8}>
+                <Card title='Total Registrations'>
                   <Statistic
-                    title='Monthly Sales'
-                    value={dashboardData.sales.monthlySales}
-                    prefix='₹'
+                    title='Total Count'
+                    value={warrantyMetrics?.totalRegistrations || 0}
                     valueStyle={{ color: '#722ed1' }}
                   />
-                  <Divider />
-                  <div>
-                    <Text type='secondary'>Top Selling Product</Text>
-                    <div className='flex items-center space-x-2 mt-1'>
-                      <CrownOutlined className='text-yellow-500' />
+                  <div className='mt-4 space-y-2'>
+                    <div className='flex justify-between'>
+                      <Text>Verified:</Text>
                       <Text strong>
-                        {dashboardData.sales.topSellingProduct}
+                        {warrantyMetrics?.otpVerificationRate?.[0]
+                          ?.verifiedRegistrations || 0}
+                      </Text>
+                    </div>
+                    <div className='flex justify-between'>
+                      <Text>Verification Rate:</Text>
+                      <Text strong>
+                        {warrantyMetrics?.otpVerificationRate?.[0]
+                          ?.verificationRate || 0}
+                        %
                       </Text>
                     </div>
                   </div>
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
 
-        <TabPane tab='Inventory' key='inventory'>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={12}>
-              <Card title='Inventory Overview' className='shadow-sm'>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Statistic
-                      title='Total Items'
-                      value={dashboardData.inventory.totalItems}
-                      prefix={<StockOutlined />}
+          {/* Dealer Performance Tab */}
+          <TabPane
+            tab={
+              <span className='flex items-center space-x-2 px-4 py-2'>
+                <TeamOutlined />
+                <span>Dealer Performance</span>
+              </span>
+            }
+            key='dealer'
+          >
+            <Row gutter={[24, 24]}>
+              {/* Dealer Registration Ranking */}
+              <Col xs={24} lg={16}>
+                <Card
+                  title='Top Performing Dealers (by Registrations)'
+                  className='h-full'
+                >
+                  {dealerMetrics?.dealerRegistrationRanking ? (
+                    <Bar
+                      {...getDealerRegistrationRankingConfig()}
+                      height={400}
                     />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title='Total Value'
-                      value={dashboardData.inventory.totalValue}
-                      prefix='₹'
-                    />
-                  </Col>
-                </Row>
-                <Divider />
-                <div className='space-y-3'>
-                  <Alert
-                    message={`${dashboardData.inventory.lowStockItems} items are running low`}
-                    type='warning'
-                    showIcon
-                    action={
-                      <AntButton
-                        size='small'
-                        onClick={() => navigate('/stock-dashboard')}
-                      >
-                        View
-                      </AntButton>
-                    }
-                  />
-                  {dashboardData.inventory.outOfStockItems > 0 && (
-                    <Alert
-                      message={`${dashboardData.inventory.outOfStockItems} items are out of stock`}
-                      type='error'
-                      showIcon
-                      action={
-                        <AntButton size='small' danger>
-                          Urgent
-                        </AntButton>
-                      }
-                    />
+                  ) : (
+                    <Empty description='No dealer ranking data available' />
                   )}
-                </div>
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title='Top Moving Items' className='shadow-sm'>
-                <List
-                  dataSource={dashboardData.inventory.topMovingItems}
-                  renderItem={(item, index) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
-                          <Badge count={index + 1} color='blue'>
-                            <Avatar icon={<StockOutlined />} />
-                          </Badge>
-                        }
-                        title={item.name}
-                        description={`Quantity: ${
-                          item.quantity
-                        } | Value: ₹${item.value.toLocaleString()}`}
-                      />
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
-      </Tabs>
+                </Card>
+              </Col>
 
-      {/* Notification Drawer */}
-      <Drawer
-        title='System Notifications'
-        placement='right'
-        onClose={() => setNotificationDrawer(false)}
-        open={notificationDrawer}
-        width={400}
-      >
-        <List
-          dataSource={dashboardData.alerts}
-          renderItem={alert => (
-            <List.Item>
-              <List.Item.Meta
-                avatar={
-                  <Avatar
-                    icon={
-                      alert.type === 'critical' ? (
-                        <WarningOutlined />
-                      ) : alert.type === 'warning' ? (
-                        <AlertTwoTone />
-                      ) : (
-                        <BellOutlined />
-                      )
-                    }
-                    className={
-                      alert.type === 'critical'
-                        ? 'bg-red-500'
-                        : alert.type === 'warning'
-                        ? 'bg-yellow-500'
-                        : 'bg-blue-500'
-                    }
-                  />
-                }
-                title={alert.title}
-                description={
-                  <div>
-                    <div>{alert.message}</div>
-                    <Text type='secondary' className='text-xs'>
-                      {alert.timestamp.fromNow()}
-                    </Text>
+              {/* Financial Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='Financial Overview' className='h-full'>
+                  <div className='space-y-4'>
+                    <div>
+                      <Text type='secondary'>Total Dealers</Text>
+                      <div className='text-2xl font-bold text-blue-600'>
+                        {dealerMetrics?.financialMetrics?.total_dealers || 0}
+                      </div>
+                    </div>
+                    <Divider />
+                    <div>
+                      <Text type='secondary'>Avg Credit Limit</Text>
+                      <div className='text-xl font-semibold text-green-600'>
+                        ₹
+                        {dealerMetrics?.financialMetrics?.avg_credit_limit?.toLocaleString() ||
+                          0}
+                      </div>
+                    </div>
+                    <Divider />
+                    <div>
+                      <Text type='secondary'>Avg Opening Balance</Text>
+                      <div className='text-xl font-semibold text-orange-600'>
+                        ₹
+                        {dealerMetrics?.financialMetrics?.avg_opening_balance?.toLocaleString() ||
+                          0}
+                      </div>
+                    </div>
                   </div>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      </Drawer>
+                </Card>
+              </Col>
 
-      {/* Settings Modal */}
-      <Modal
-        title='Dashboard Settings'
-        open={settingsModal}
-        onCancel={() => setSettingsModal(false)}
-        footer={null}
-      >
-        <div className='space-y-4'>
-          <div>
-            <Text strong>Auto Refresh Interval</Text>
-            <Select defaultValue='5' className='w-full mt-2'>
-              <Select.Option value='1'>1 minute</Select.Option>
-              <Select.Option value='5'>5 minutes</Select.Option>
-              <Select.Option value='10'>10 minutes</Select.Option>
-              <Select.Option value='30'>30 minutes</Select.Option>
-            </Select>
-          </div>
-          <div>
-            <Text strong>Default Date Range</Text>
-            <Select defaultValue='30' className='w-full mt-2'>
-              <Select.Option value='7'>Last 7 days</Select.Option>
-              <Select.Option value='30'>Last 30 days</Select.Option>
-              <Select.Option value='90'>Last 3 months</Select.Option>
-            </Select>
-          </div>
-        </div>
-      </Modal>
+              {/* Dealers by State */}
+              <Col xs={24}>
+                <Card title='Dealer Distribution by State'>
+                  {dealerMetrics?.dealersByState ? (
+                    <Table
+                      dataSource={dealerMetrics.dealersByState}
+                      columns={[
+                        {
+                          title: 'State',
+                          dataIndex: 'state',
+                          key: 'state'
+                        },
+                        {
+                          title: 'Dealer Count',
+                          dataIndex: 'dealer_count',
+                          key: 'dealer_count',
+                          render: count => (
+                            <Badge count={count} showZero color='green' />
+                          )
+                        },
+                        {
+                          title: 'Market Share',
+                          key: 'share',
+                          render: (_, record) => {
+                            const total = dealerMetrics.totalActiveDealers.count
+                            const percentage = (
+                              (record.dealer_count / total) *
+                              100
+                            ).toFixed(1)
+                            return (
+                              <div className='flex items-center space-x-2'>
+                                <Progress
+                                  percent={parseFloat(percentage)}
+                                  size='small'
+                                  className='flex-1'
+                                />
+                                <Text>{percentage}%</Text>
+                              </div>
+                            )
+                          }
+                        }
+                      ]}
+                      pagination={false}
+                      size='small'
+                    />
+                  ) : (
+                    <Empty description='No dealer distribution data available' />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          {/* Customer Analytics Tab */}
+          <TabPane
+            tab={
+              <span className='flex items-center space-x-2 px-4 py-2'>
+                <UserOutlined />
+                <span>Customer Analytics</span>
+              </span>
+            }
+            key='customer'
+          >
+            <Row gutter={[24, 24]}>
+              {/* Customer Retention Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='Customer Retention' className='h-full'>
+                  <div className='space-y-4'>
+                    <Statistic
+                      title='Total Customers'
+                      value={customerMetrics?.totalCustomers || 0}
+                      valueStyle={{ color: '#722ed1' }}
+                    />
+                    <Statistic
+                      title='Avg Registrations/Customer'
+                      value={
+                        customerMetrics?.customerRetention
+                          ?.avg_registrations_per_customer || 0
+                      }
+                      precision={2}
+                      valueStyle={{ color: '#1890ff' }}
+                    />
+                    <div className='text-sm text-gray-500'>
+                      Based on{' '}
+                      {customerMetrics?.customerRetention
+                        ?.total_registrations || 0}{' '}
+                      total registrations
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Communication Channels */}
+              <Col xs={24} lg={8}>
+                <Card title='Contact Information' className='h-full'>
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center space-x-2'>
+                        <MailOutlined className='text-blue-500' />
+                        <Text>Email Rate</Text>
+                      </div>
+                      <Text strong>
+                        {customerMetrics?.communicationChannels?.email_rate ||
+                          0}
+                        %
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={
+                        customerMetrics?.communicationChannels?.email_rate || 0
+                      }
+                      strokeColor='#1890ff'
+                      size='small'
+                    />
+
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center space-x-2'>
+                        <PhoneOutlined className='text-green-500' />
+                        <Text>Mobile Rate</Text>
+                      </div>
+                      <Text strong>
+                        {customerMetrics?.communicationChannels?.mobile_rate ||
+                          0}
+                        %
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={
+                        customerMetrics?.communicationChannels?.mobile_rate || 0
+                      }
+                      strokeColor='#52c41a'
+                      size='small'
+                    />
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Entry Source Analysis */}
+              <Col xs={24} lg={8}>
+                <Card title='Registration Sources' className='h-full'>
+                  {customerMetrics?.entrySourceAnalysis ? (
+                    <div className='space-y-3'>
+                      {customerMetrics.entrySourceAnalysis.map(
+                        (source, index) => (
+                          <div
+                            key={index}
+                            className='flex items-center justify-between'
+                          >
+                            <Text>{source.entry_source}</Text>
+                            <Badge count={source.count} showZero color='blue' />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <Empty description='No entry source data available' />
+                  )}
+                </Card>
+              </Col>
+
+              {/* Registration Trends */}
+              <Col xs={24} lg={16}>
+                <Card title='Monthly Registration Trends' className='h-full'>
+                  {customerMetrics?.registrationTrends ? (
+                    <Line
+                      {...getCustomerRegistrationTrendsConfig()}
+                      height={300}
+                    />
+                  ) : (
+                    <Empty description='No registration trends data available' />
+                  )}
+                </Card>
+              </Col>
+
+              {/* Product Preference */}
+              <Col xs={24} lg={8}>
+                <Card title='Product Preferences' className='h-full'>
+                  {customerMetrics?.productPreference ? (
+                    <div className='space-y-3'>
+                      {customerMetrics.productPreference.map(
+                        (product, index) => (
+                          <div key={index}>
+                            <div className='flex items-center justify-between mb-1'>
+                              <Text>{product.product_type}</Text>
+                              <Text strong>{product.count}</Text>
+                            </div>
+                            <Progress
+                              percent={(
+                                (product.count /
+                                  customerMetrics.totalCustomers) *
+                                100
+                              ).toFixed(1)}
+                              size='small'
+                              strokeColor={index === 0 ? '#1890ff' : '#52c41a'}
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <Empty description='No product preference data available' />
+                  )}
+                </Card>
+              </Col>
+
+              {/* Vehicle Analysis */}
+              <Col xs={24}>
+                <Card title='Popular Vehicle Makes'>
+                  {customerMetrics?.vehicleAnalysis ? (
+                    <Table
+                      dataSource={customerMetrics.vehicleAnalysis}
+                      columns={[
+                        {
+                          title: 'Vehicle Make',
+                          dataIndex: 'vehicle_make',
+                          key: 'vehicle_make',
+                          render: make => (
+                            <div className='flex items-center space-x-2'>
+                              <CarOutlined className='text-blue-500' />
+                              <span>{make}</span>
+                            </div>
+                          )
+                        },
+                        {
+                          title: 'Count',
+                          dataIndex: 'count',
+                          key: 'count',
+                          render: count => (
+                            <Badge count={count} showZero color='blue' />
+                          )
+                        },
+                        {
+                          title: 'Market Share',
+                          key: 'share',
+                          render: (_, record) => {
+                            const total = customerMetrics.totalCustomers
+                            const percentage = (
+                              (record.count / total) *
+                              100
+                            ).toFixed(1)
+                            return (
+                              <div className='flex items-center space-x-2'>
+                                <Progress
+                                  percent={parseFloat(percentage)}
+                                  size='small'
+                                  className='flex-1'
+                                />
+                                <Text>{percentage}%</Text>
+                              </div>
+                            )
+                          }
+                        }
+                      ]}
+                      pagination={false}
+                      size='small'
+                    />
+                  ) : (
+                    <Empty description='No vehicle analysis data available' />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          {/* Production Metrics Tab */}
+          <TabPane
+            tab={
+              <span className='flex items-center space-x-2 px-4 py-2'>
+                <ToolOutlined />
+                <span>Production Analytics</span>
+              </span>
+            }
+            key='production'
+          >
+            <Row gutter={[24, 24]}>
+              {/* Production Plan Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='Production Plans' className='h-full'>
+                  <div className='space-y-4'>
+                    <Statistic
+                      title='Total Plans'
+                      value={productionMetrics?.planMetrics?.total_plans || 0}
+                      valueStyle={{ color: '#722ed1' }}
+                    />
+                    <Statistic
+                      title='Completion Rate'
+                      value={
+                        productionMetrics?.planMetrics?.completion_rate || 0
+                      }
+                      precision={1}
+                      suffix='%'
+                      valueStyle={{ color: '#52c41a' }}
+                    />
+                    <div className='text-sm space-y-1'>
+                      <div className='flex justify-between'>
+                        <Text>Active:</Text>
+                        <Badge
+                          count={
+                            productionMetrics?.planMetrics?.active_plans || 0
+                          }
+                          color='blue'
+                        />
+                      </div>
+                      <div className='flex justify-between'>
+                        <Text>Completed:</Text>
+                        <Badge
+                          count={
+                            productionMetrics?.planMetrics?.completed_plans || 0
+                          }
+                          color='green'
+                        />
+                      </div>
+                      <div className='flex justify-between'>
+                        <Text>Urgent:</Text>
+                        <Badge
+                          count={
+                            productionMetrics?.planMetrics?.urgent_plans || 0
+                          }
+                          color='red'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Job Card Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='Job Cards & Quality' className='h-full'>
+                  <div className='space-y-4'>
+                    <Statistic
+                      title='Total Job Cards'
+                      value={
+                        productionMetrics?.jobCardMetrics?.total_job_cards || 0
+                      }
+                      valueStyle={{ color: '#1890ff' }}
+                    />
+                    <Statistic
+                      title='Acceptance Rate'
+                      value={
+                        productionMetrics?.jobCardMetrics?.acceptance_rate || 0
+                      }
+                      precision={1}
+                      suffix='%'
+                      valueStyle={{ color: '#52c41a' }}
+                    />
+                    <div className='text-sm space-y-1'>
+                      <div className='flex justify-between'>
+                        <Text>Accepted:</Text>
+                        <Text strong className='text-green-600'>
+                          {productionMetrics?.jobCardMetrics?.total_accepted ||
+                            0}
+                        </Text>
+                      </div>
+                      <div className='flex justify-between'>
+                        <Text>Rejected:</Text>
+                        <Text strong className='text-red-600'>
+                          {productionMetrics?.jobCardMetrics?.total_rejected ||
+                            0}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Quality & Rejection Metrics */}
+              <Col xs={24} lg={8}>
+                <Card title='Quality Control' className='h-full'>
+                  <div className='space-y-4'>
+                    <Statistic
+                      title='Total Inspected'
+                      value={
+                        productionMetrics?.qualityMetrics?.total_inspected || 0
+                      }
+                      valueStyle={{ color: '#fa8c16' }}
+                    />
+                    <Statistic
+                      title='Active QA Personnel'
+                      value={
+                        productionMetrics?.qualityMetrics
+                          ?.active_qa_personnel || 0
+                      }
+                      valueStyle={{ color: '#722ed1' }}
+                    />
+                    <div className='text-sm space-y-1'>
+                      <div className='flex justify-between'>
+                        <Text>Total Rejections:</Text>
+                        <Text strong>
+                          {productionMetrics?.rejectionMetrics
+                            ?.total_rejections || 0}
+                        </Text>
+                      </div>
+                      <div className='flex justify-between'>
+                        <Text>Resolved:</Text>
+                        <Text strong className='text-green-600'>
+                          {productionMetrics?.rejectionMetrics
+                            ?.resolved_rejections || 0}
+                        </Text>
+                      </div>
+                      <div className='flex justify-between'>
+                        <Text>Pending:</Text>
+                        <Text strong className='text-red-600'>
+                          {productionMetrics?.rejectionMetrics
+                            ?.pending_rejections || 0}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Production Step Distribution */}
+              <Col xs={24}>
+                <Card title='Production Step Distribution'>
+                  {productionMetrics?.stepDistribution ? (
+                    <Column
+                      {...getProductionStepDistributionConfig()}
+                      height={400}
+                    />
+                  ) : (
+                    <Empty description='No production step data available' />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          {/* Combined Overview Tab */}
+          <TabPane
+            tab={
+              <span className='flex items-center space-x-2 px-4 py-2'>
+                <PieChartOutlined />
+                <span>Overview</span>
+              </span>
+            }
+            key='overview'
+          >
+            <Row gutter={[24, 24]}>
+              {/* System Health Alert */}
+              <Col xs={24}>
+                <Alert
+                  message='System Metrics Overview'
+                  description='All metrics are updated in real-time. Use the refresh button to get the latest data.'
+                  type='info'
+                  showIcon
+                  className='mb-4'
+                />
+              </Col>
+
+              {/* Combined Summary Cards */}
+              <Col xs={24} sm={12} lg={6}>
+                <Card className='text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'>
+                  <div className='mb-2'>
+                    <CheckCircleTwoTone
+                      className='text-3xl'
+                      twoToneColor='#1890ff'
+                    />
+                  </div>
+                  <Statistic
+                    title='Total Warranty Registrations'
+                    value={warrantyMetrics?.totalRegistrations || 0}
+                    valueStyle={{ color: '#1890ff' }}
+                  />
+                </Card>
+              </Col>
+
+              <Col xs={24} sm={12} lg={6}>
+                <Card className='text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200'>
+                  <div className='mb-2'>
+                    <TeamOutlined className='text-3xl text-green-500' />
+                  </div>
+                  <Statistic
+                    title='Active Dealer Network'
+                    value={dealerMetrics?.totalActiveDealers?.count || 0}
+                    valueStyle={{ color: '#52c41a' }}
+                  />
+                </Card>
+              </Col>
+
+              <Col xs={24} sm={12} lg={6}>
+                <Card className='text-center bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'>
+                  <div className='mb-2'>
+                    <UserOutlined className='text-3xl text-purple-500' />
+                  </div>
+                  <Statistic
+                    title='Customer Base'
+                    value={customerMetrics?.totalCustomers || 0}
+                    valueStyle={{ color: '#722ed1' }}
+                  />
+                </Card>
+              </Col>
+
+              <Col xs={24} sm={12} lg={6}>
+                <Card className='text-center bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'>
+                  <div className='mb-2'>
+                    <ToolOutlined className='text-3xl text-orange-500' />
+                  </div>
+                  <Statistic
+                    title='Active Production Plans'
+                    value={productionMetrics?.planMetrics?.active_plans || 0}
+                    valueStyle={{ color: '#fa8c16' }}
+                  />
+                </Card>
+              </Col>
+
+              {/* Key Performance Indicators */}
+              <Col xs={24}>
+                <Card title='Key Performance Indicators'>
+                  <Row gutter={[24, 24]}>
+                    <Col xs={24} sm={12} lg={6}>
+                      <div className='text-center p-4 bg-blue-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-blue-600'>
+                          {warrantyMetrics?.otpVerificationRate?.[0]
+                            ?.verificationRate || 0}
+                          %
+                        </div>
+                        <div className='text-sm text-gray-600'>
+                          Warranty Verification Rate
+                        </div>
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <div className='text-center p-4 bg-green-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-green-600'>
+                          {productionMetrics?.jobCardMetrics?.acceptance_rate ||
+                            0}
+                          %
+                        </div>
+                        <div className='text-sm text-gray-600'>
+                          Quality Acceptance Rate
+                        </div>
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <div className='text-center p-4 bg-purple-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-purple-600'>
+                          {customerMetrics?.customerRetention
+                            ?.avg_registrations_per_customer || 0}
+                        </div>
+                        <div className='text-sm text-gray-600'>
+                          Avg Products per Customer
+                        </div>
+                      </div>
+                    </Col>
+                    <Col xs={24} sm={12} lg={6}>
+                      <div className='text-center p-4 bg-orange-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-orange-600'>
+                          {productionMetrics?.planMetrics?.completion_rate || 0}
+                          %
+                        </div>
+                        <div className='text-sm text-gray-600'>
+                          Production Completion Rate
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+        </Tabs>
+      </div>
     </div>
   )
 }
 
-export default AdminDashboard
+export default MetricsDashboard
