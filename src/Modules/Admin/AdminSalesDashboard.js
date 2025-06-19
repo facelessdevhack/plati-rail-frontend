@@ -48,6 +48,15 @@ const { Option } = Select
 const { TabPane } = Tabs
 
 const AdminSalesDashboard = () => {
+  // Calculate yesterday's date range for initial filters
+  const getYesterdayDateRange = () => {
+    const yesterday = moment().subtract(1, 'day')
+    return {
+      startDate: yesterday.format('YYYY-MM-DD'),
+      endDate: yesterday.format('YYYY-MM-DD')
+    }
+  }
+
   const {
     data,
     loading,
@@ -59,9 +68,9 @@ const AdminSalesDashboard = () => {
     setProductFilter,
     refresh,
     clearFilters
-  } = useAdminDashboard()
+  } = useAdminDashboard(getYesterdayDateRange())
 
-  const [selectedPeriod, setSelectedPeriod] = useState('today')
+  const [selectedPeriod, setSelectedPeriod] = useState('yesterday')
 
   // Calculate date ranges for different periods
   const getDateRange = period => {
@@ -107,9 +116,9 @@ const AdminSalesDashboard = () => {
     setDateRange(dateRange.startDate, dateRange.endDate)
   }
 
-  // Initialize with today's date range
+  // Initialize with yesterday's date range
   React.useEffect(() => {
-    const dateRange = getDateRange('today')
+    const dateRange = getDateRange('yesterday')
     setDateRange(dateRange.startDate, dateRange.endDate)
   }, [])
 
@@ -131,7 +140,7 @@ const AdminSalesDashboard = () => {
               valueStyle={{ color: '#3f8600' }}
             />
             <div style={{ marginTop: '8px' }}>
-              <Text type='secondary'>Growth: </Text>
+              <Text type='secondary'>Growth vs Previous Period: </Text>
               <Text
                 style={{
                   color: totalSales.quantityGrowth >= 0 ? '#3f8600' : '#cf1322'
@@ -159,7 +168,7 @@ const AdminSalesDashboard = () => {
               valueStyle={{ color: '#1890ff' }}
             />
             <div style={{ marginTop: '8px' }}>
-              <Text type='secondary'>Growth: </Text>
+              <Text type='secondary'>Growth vs Previous Period: </Text>
               <Text
                 style={{
                   color: totalSales.amountGrowth >= 0 ? '#3f8600' : '#cf1322'
@@ -186,7 +195,7 @@ const AdminSalesDashboard = () => {
               valueStyle={{ color: '#722ed1' }}
             />
             <div style={{ marginTop: '8px' }}>
-              <Text type='secondary'>Growth: </Text>
+              <Text type='secondary'>Growth vs Previous Period: </Text>
               <Text
                 style={{
                   color: totalSales.ordersGrowth >= 0 ? '#3f8600' : '#cf1322'
@@ -602,11 +611,12 @@ const AdminSalesDashboard = () => {
         {/* Period Tabs */}
         <Tabs
           activeKey={selectedPeriod}
+          defaultActiveKey='yesterday'
           onChange={handlePeriodChange}
           type='card'
           size='large'
         >
-          <TabPane tab='Today' key='today' />
+          {/* <TabPane tab='Today' key='today' /> */}
           <TabPane tab='Yesterday' key='yesterday' />
           <TabPane tab='This Week' key='thisWeek' />
           <TabPane tab='This Month' key='thisMonth' />
@@ -623,7 +633,7 @@ const AdminSalesDashboard = () => {
         <AdditionalStats />
 
         {/* Charts Section */}
-        <Row gutter={[16, 16]}>
+        {/* <Row gutter={[16, 16]}>
           <Col span={24}>
             <SalesTrendChart />
           </Col>
@@ -636,7 +646,7 @@ const AdminSalesDashboard = () => {
           <Col xs={24} lg={12}>
             <DealerTypeChart />
           </Col>
-        </Row>
+        </Row> */}
 
         {/* Top Lists Section */}
         <Row gutter={[16, 16]}>

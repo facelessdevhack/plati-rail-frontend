@@ -7,10 +7,12 @@ export const useAdminDashboard = (initialFilters = {}) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate:
+      initialFilters.startDate ||
+      new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to yesterday
+    endDate:
+      initialFilters.endDate ||
+      new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to yesterday
     chartPeriod: 'daily',
     ...initialFilters
   })
@@ -79,10 +81,12 @@ export const useAdminDashboard = (initialFilters = {}) => {
 
   const clearFilters = useCallback(() => {
     setFilters({
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      startDate: new Date(Date.now() - 24 * 60 * 60 * 1000)
         .toISOString()
-        .split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+        .split('T')[0], // Default to yesterday
+      endDate: new Date(Date.now() - 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0], // Default to yesterday
       chartPeriod: 'daily'
     })
   }, [])
