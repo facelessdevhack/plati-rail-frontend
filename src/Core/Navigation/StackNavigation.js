@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux'
 import Login from '../../Modules/Authentication/Login'
 import InventoryDashboard from '../../Modules/Inventory/InventoryDashboard'
 import InventoryInForm from '../../Modules/Inventory/InventoryInForm'
-import AdminDashboard from '../../Modules/Admin/dashboard'
+import AdminSalesDashboard from '../../Modules/Admin/AdminSalesDashboard'
 import { MissingRoute } from './MissingRoute'
 import AdminLayout from '../../Modules/Layout/adminLayout'
 import EntryDashboard from '../../Modules/DataEntry/EntryDashboard'
@@ -50,6 +50,7 @@ import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
 import StockAnalysisDashboard from '../../Modules/Stock/StockAnalysisDashboard'
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
+import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -378,11 +379,11 @@ const StackNavigation = () => {
       <Route
         path='/admin-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[5]}>
             <AdminLayout
-              title='Admin Dashboard'
+              title='Admin Sales Dashboard'
               items={adminSiderRoutes}
-              content={<AdminDashboard />}
+              content={<AdminSalesDashboard />}
             />
           </PrivateRoute>
         }
@@ -581,6 +582,45 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+
+      {/* Inventory Management Routes */}
+      <Route
+        path='/inventory-management'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Inventory Management'
+              items={adminSiderRoutes}
+              content={<InventoryManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory-analysis'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Stock Analysis Dashboard'
+              items={adminSiderRoutes}
+              content={<StockAnalysisDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory-reports'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Inventory Reports'
+              items={adminSiderRoutes}
+              content={<BulkStockAnalysis />}
+            />
+          </PrivateRoute>
+        }
+      />
+
       {/* <Route
         path="/entry-daily-entry"
         element={

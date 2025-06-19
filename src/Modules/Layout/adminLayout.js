@@ -2,10 +2,10 @@ import React, { useState, useMemo } from 'react'
 import { Layout, Menu, theme, Avatar, Dropdown, Badge, Tooltip } from 'antd'
 import { useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { 
-  BellOutlined, 
-  UserOutlined, 
-  SettingOutlined, 
+import {
+  BellOutlined,
+  UserOutlined,
+  SettingOutlined,
   LogoutOutlined,
   SunOutlined,
   MoonOutlined,
@@ -29,22 +29,22 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: 'Profile',
+      label: 'Profile'
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
-      label: 'Settings',
+      label: 'Settings'
     },
     {
-      type: 'divider',
+      type: 'divider'
     },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: 'Logout',
-      danger: true,
-    },
+      danger: true
+    }
   ]
 
   const handleUserMenuClick = ({ key }) => {
@@ -79,6 +79,9 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
       '/dealer-metrics': '1b',
       '/stock-dashboard': '1a',
       '/dealer-warranty': '1c',
+      '/inventory-management': '13',
+      '/inventory-analysis': '14',
+      '/inventory-reports': '15',
       '/admin-daily-entry-dealers': '2',
       '/admin-daily-entry-dealers-details': '3',
       '/admin-daily-entry-dealers-details-by-size': '4',
@@ -187,19 +190,22 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     if (['5', '6', '7', '8', '9', '10', '11', '12'].includes(activeKey)) {
       return ['sub2'] // Production submenu
     }
+    if (['13', '14', '15'].includes(activeKey)) {
+      return ['sub3'] // Inventory Management submenu
+    }
 
     return []
   }, [getActiveMenuKey])
 
   return (
-    <Layout className="min-h-screen bg-background">
+    <Layout className='min-h-screen bg-background'>
       <Sider
         collapsible
         collapsed={collapsed}
         onCollapse={value => setCollapsed(value)}
-        className="shadow-lg border-r border-border"
+        className='shadow-lg border-r border-border'
         style={{
-          background: 'linear-gradient(135deg, #313C6F 0%, #273059 100%)',
+          background: 'linear-gradient(135deg, #313C6F 0%, #273059 100%)'
         }}
       >
         {/* Logo Section */}
@@ -224,47 +230,47 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
           defaultOpenKeys={getOpenKeys}
           mode='inline'
           items={items}
-          className="border-none bg-transparent"
+          className='border-none bg-transparent'
           style={{
-            background: 'transparent',
+            background: 'transparent'
           }}
         />
       </Sider>
-      
-      <Layout className="bg-background">
+
+      <Layout className='bg-background'>
         {/* Enhanced Header */}
-        <Header className="bg-white/80 backdrop-blur-sm border-b border-border shadow-sm px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <Header className='bg-white/80 backdrop-blur-sm border-b border-border shadow-sm px-6 h-16 flex items-center justify-between'>
+          <div className='flex items-center space-x-4'>
             <Tooltip title={collapsed ? 'Expand Menu' : 'Collapse Menu'}>
               <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors"
+                className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'
               >
                 {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               </button>
             </Tooltip>
-            <div className="h-6 w-px bg-border" />
-            <h1 className="text-xl font-semibold text-foreground truncate">
+            <div className='h-6 w-px bg-border' />
+            <h1 className='text-xl font-semibold text-foreground truncate'>
               {title}
             </h1>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className='flex items-center space-x-3'>
             {/* Dark Mode Toggle */}
             <Tooltip title={darkMode ? 'Light Mode' : 'Dark Mode'}>
               <button
                 onClick={toggleDarkMode}
-                className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors"
+                className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'
               >
                 {darkMode ? <SunOutlined /> : <MoonOutlined />}
               </button>
             </Tooltip>
 
             {/* Notifications */}
-            <Tooltip title="Notifications">
-              <Badge count={3} size="small">
-                <button className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors">
-                  <BellOutlined className="text-lg" />
+            <Tooltip title='Notifications'>
+              <Badge count={3} size='small'>
+                <button className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'>
+                  <BellOutlined className='text-lg' />
                 </button>
               </Badge>
             </Tooltip>
@@ -273,23 +279,23 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
             <Dropdown
               menu={{
                 items: userMenuItems,
-                onClick: handleUserMenuClick,
+                onClick: handleUserMenuClick
               }}
-              placement="bottomRight"
+              placement='bottomRight'
               arrow
             >
-              <button className="flex items-center space-x-2 px-3 py-1.5 rounded-md hover:bg-muted transition-colors">
+              <button className='flex items-center space-x-2 px-3 py-1.5 rounded-md hover:bg-muted transition-colors'>
                 <Avatar
                   size={32}
                   icon={<UserOutlined />}
-                  className="bg-primary"
+                  className='bg-primary'
                 />
                 {!collapsed && (
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-foreground">
+                  <div className='text-left'>
+                    <div className='text-sm font-medium text-foreground'>
                       {user?.firstName} {user?.lastName}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className='text-xs text-muted-foreground'>
                       {user?.email}
                     </div>
                   </div>
@@ -300,16 +306,17 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
         </Header>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-auto bg-muted/30">
-          <div className="animate-in">
-            {content}
-          </div>
+        <div className='flex-1 overflow-auto bg-muted/30'>
+          <div className='animate-in'>{content}</div>
         </div>
 
         {/* Enhanced Footer */}
-        <Footer className="bg-white/80 backdrop-blur-sm border-t border-border text-center py-4">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Plati India Pvt. Ltd.</span> © {new Date().getFullYear()} - All rights reserved
+        <Footer className='bg-white/80 backdrop-blur-sm border-t border-border text-center py-4'>
+          <div className='text-sm text-muted-foreground'>
+            <span className='font-medium text-foreground'>
+              Plati India Pvt. Ltd.
+            </span>{' '}
+            © {new Date().getFullYear()} - All rights reserved
           </div>
         </Footer>
       </Layout>

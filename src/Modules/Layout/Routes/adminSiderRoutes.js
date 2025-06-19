@@ -9,7 +9,9 @@ import {
   ToolOutlined,
   DashboardOutlined,
   TeamOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  ShoppingCartOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -42,6 +44,14 @@ export const adminSiderRoutes = [
     '1c',
     <SafetyCertificateOutlined />
   ),
+  getItemLayout('Inventory Management', 'sub3', <DatabaseOutlined />, [
+    getItemLayout(
+      <Link to='/inventory-management'>Manage Inventory</Link>,
+      '13'
+    ),
+    getItemLayout(<Link to='/inventory-analysis'>Stock Analysis</Link>, '14'),
+    getItemLayout(<Link to='/inventory-reports'>Inventory Reports</Link>, '15')
+  ]),
   getItemLayout(
     <Link to='/admin-daily-entry-dealers'>Select Dealers</Link>,
     '2',
