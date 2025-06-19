@@ -57,6 +57,23 @@ const AdminSalesDashboard = () => {
     }
   }
 
+  // Utility function to format currency amounts
+  const formatAmount = value => {
+    const num = parseFloat(value)
+    if (num >= 10000000) {
+      // 1 Crore
+      return `₹${(num / 10000000).toFixed(2)}Cr`
+    } else if (num >= 100000) {
+      // 1 Lakh
+      return `₹${(num / 100000).toFixed(2)}L`
+    } else if (num >= 1000) {
+      // 1 Thousand
+      return `₹${(num / 1000).toFixed(2)}K`
+    } else {
+      return `₹${num.toLocaleString()}`
+    }
+  }
+
   const {
     data,
     loading,
@@ -163,8 +180,7 @@ const AdminSalesDashboard = () => {
               title='Total Sales Amount'
               value={totalSales.amount}
               prefix={<DollarOutlined />}
-              precision={0}
-              formatter={value => `₹${value.toLocaleString()}`}
+              formatter={formatAmount}
               valueStyle={{ color: '#1890ff' }}
             />
             <div style={{ marginTop: '8px' }}>
@@ -219,7 +235,21 @@ const AdminSalesDashboard = () => {
               value={totalSales.avgOrderValue}
               prefix={<DollarOutlined />}
               precision={2}
-              formatter={value => `₹${value.toLocaleString()}`}
+              formatter={value => {
+                const num = parseFloat(value)
+                if (num >= 10000000) {
+                  // 1 Crore
+                  return `₹${(num / 10000000).toFixed(2)}Cr`
+                } else if (num >= 100000) {
+                  // 1 Lakh
+                  return `₹${(num / 100000).toFixed(2)}L`
+                } else if (num >= 1000) {
+                  // 1 Thousand
+                  return `₹${(num / 1000).toFixed(2)}K`
+                } else {
+                  return `₹${num.toLocaleString()}`
+                }
+              }}
               valueStyle={{ color: '#fa8c16' }}
             />
             <div style={{ marginTop: '8px' }}>
