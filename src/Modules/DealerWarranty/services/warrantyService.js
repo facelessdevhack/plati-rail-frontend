@@ -1,4 +1,4 @@
-import { client } from '../../../Utils/axiosClient'
+import { client, warrantyClient } from '../../../Utils/axiosClient'
 
 export const warrantyService = {
   // Get all product registrations
@@ -114,18 +114,48 @@ export const warrantyService = {
   },
 
   // Verify OTP for warranty - using SMS endpoint
-  verifyOtp: async (registrationId, mobileNumber, otpCode) => {
+  verifyOtp: async ({ id, otp }) => {
     try {
       // Use SMS OTP verification endpoint
-      const response = await client.post('/sms/verify-otp', {
+      const response = await warrantyClient.post('/otp/verify', {
+        otp,
+        id // Include for context
+      })
+      console.log('Verify OTP response:', response)
+      if (response.status === 200) {
+        return response
+      }
+    } catch (error) {
+      console.error('Error verifying OTP via SMS:', error)
+      throw error
+    }
+  }
+}
+
+export const warrantyOTPClient = {
+  sendOtpVerification: async ({ otp, mobileNumber }) => {
+    try {
+      console.log('Sending OTP with params:', { otp, mobileNumber })
+      const response = await warrantyClient.post('/sms/send-otp', {
         mobile_no: mobileNumber,
-        otp_code: otpCode,
-        type: 'warranty_verification',
-        registration_id: registrationId // Include for context
+        otp: otp
+      })
+      console.log('Send OTP response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error sending OTP via SMS:', error)
+      throw error
+    }
+  },
+  updateOtp: async (id, otp) => {
+    try {
+      const response = await warrantyClient.post('/otp/update', {
+        otp,
+        id
       })
       return response.data
     } catch (error) {
-      console.error('Error verifying OTP via SMS:', error)
+      console.error('Error updating OTP:', error)
       throw error
     }
   }

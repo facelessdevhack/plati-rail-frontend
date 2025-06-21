@@ -39,7 +39,7 @@ import {
   EyeOutlined,
   UserOutlined
 } from '@ant-design/icons'
-import { warrantyService } from './services/warrantyService'
+import { warrantyOTPClient, warrantyService } from './services/warrantyService'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   getAllPcd,
@@ -101,11 +101,13 @@ const DealerWarrantyDetail = () => {
       const response = await warrantyService.getProductRegistrationById(id)
 
       if (response.success) {
+        console.log('response', response)
         const warrantyData = response.data
         setData(warrantyData)
 
         // Populate form with existing data - map API fields (camelCase) to form fields
         const formData = {
+          id: warrantyData.id || '',
           // Customer Information (API uses camelCase)
           customerName: warrantyData.customerName || '',
           mobileNo: warrantyData.mobileNo || '',
@@ -217,6 +219,7 @@ const DealerWarrantyDetail = () => {
     if (data) {
       const formData = {
         // Customer Information (camelCase from API)
+        id: data.id || '',
         customerName: data.customerName || '',
         mobileNo: data.mobileNo || '',
         emailAddress: data.emailAddress || '',
@@ -261,48 +264,131 @@ const DealerWarrantyDetail = () => {
 
   // Handle form submission
   const handleSave = async values => {
+    console.log('🔥 handleSave called with values:', values)
+
+    console.log('Step 1: Setting saving state')
     setSaving(true)
+
     try {
-      // Debug: Log form values
+      console.log('Step 2: Entering try block')
       console.log('Form values received:', values)
+      console.log('Form ID for update:', id)
 
-      // Prepare data for API - convert date and ensure proper field names
-      const updateData = {
-        ...values,
-        dop: values.dop ? values.dop.format('YYYY-MM-DD') : null
+      // Check if id exists
+      if (!id) {
+        console.error('❌ ID is missing!')
+        alert('Error: ID is missing!')
+        message.error('Error: Record ID is missing')
+        return
       }
 
-      // Handle mobile number conversion (could be number or string)
-      if (values.mobileNo) {
-        const mobileNumber = String(values.mobileNo).trim()
-        updateData.mobileNo = mobileNumber // camelCase for consistency
-        updateData.mobile_no = mobileNumber // snake_case in case backend expects this
+      console.log('Step 3: Preparing data for API - Converting to snake_case')
+
+      // Prepare data for API - convert to snake_case format
+      let updateData
+      try {
+        // Convert all camelCase fields to snake_case for API
+        updateData = {
+          // Customer Information
+          mobile_no: values.mobileNo ? String(values.mobileNo).trim() : null,
+          email_address: values.emailAddress || null,
+
+          // Warranty Card Information
+          warranty_card_no: values.warrantyCardNo || null,
+          register_status: values.registerStatus || null,
+
+          // Product Information
+          product_type: values.productType || null,
+
+          // Alloy-specific fields
+          inches_id: values.inchesId || null,
+          pcd_id: values.pcdId || null,
+          holes_id: values.holesId || null,
+          finish_id: values.finishId || null,
+          alloy_model: values.alloyModel || null,
+          no_of_alloys: values.noOfAlloys || null,
+          cb_id: values.cbId || null,
+          offset_id: values.offsetId || null,
+          width_id: values.widthId || null,
+
+          // Tyre-specific fields
+          pattern_id: values.patternId || null,
+          profile_id: values.profileId || null,
+          size_id: values.sizeId || null,
+          no_of_tyres: values.noOfTyres || null,
+
+          // Purchase Information
+          dop: values.dop ? values.dop.format('YYYY-MM-DD') : null,
+          amount: values.amount || null,
+          meter_reading: values.meterReading || null,
+
+          // Vehicle Details
+          vehicle_no: values.vehicleNo || null,
+          vehicle_model: values.vehicleModel || null,
+
+          // Additional fields
+          notes: values.notes || null
+        }
+
+        // Remove null values to avoid sending unnecessary data
+        Object.keys(updateData).forEach(key => {
+          if (
+            updateData[key] === null ||
+            updateData[key] === undefined ||
+            updateData[key] === ''
+          ) {
+            delete updateData[key]
+          }
+        })
+
+        console.log('Step 3a: Data converted to snake_case:', updateData)
+      } catch (dateError) {
+        console.error('❌ Error preparing data:', dateError)
+        alert('Error preparing data: ' + dateError.message)
+        message.error('Error preparing data')
+        return
       }
 
-      // Remove read-only fields that shouldn't be updated
-      delete updateData.customerName // Customer name is read-only
-      delete updateData.dealer_name
-      delete updateData.dealer_id
+      console.log('Step 4: Data preparation completed')
+      console.log('Step 5: Ready to send to API')
 
-      // Debug: Log data being sent to API
-      console.log('Data being sent to API:', updateData)
-      console.log('Mobile number in update data:', updateData.mobileNo)
+      console.log('Step 6: Final data prepared for API:', updateData)
+      console.log('API endpoint will be:', `/warranty/registrations/${id}`)
+
+      console.log('Step 7: About to make API call')
 
       const response = await warrantyService.updateProductRegistration(
         id,
         updateData
       )
 
-      if (response.success) {
+      console.log('Step 8: API call completed')
+      console.log('API Response:', response)
+
+      if (response && response.success) {
         message.success('Warranty details updated successfully')
         fetchWarrantyDetails() // Refresh data
+      } else if (response && response.message) {
+        message.error(response.message || 'Failed to update warranty details')
+        console.error('API Error:', response)
+      } else {
+        message.error('Failed to update warranty details - Invalid response')
+        console.error('Invalid API Response:', response)
+      }
+    } catch (error) {
+      console.error('❌ Error in handleSave:', error)
+      console.error('Error details:', error.response?.data || error.message)
+
+      // Show more specific error messages
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message)
+      } else if (error.message) {
+        message.error(`Network Error: ${error.message}`)
       } else {
         message.error('Failed to update warranty details')
       }
-    } catch (error) {
-      console.error('Error updating warranty:', error)
-      message.error('Failed to update warranty details')
     } finally {
+      console.log('Step 9: Setting saving state to false')
       setSaving(false)
     }
   }
@@ -313,18 +399,29 @@ const DealerWarrantyDetail = () => {
       message.error('Mobile number not found')
       return
     }
-
+    console.log('data', data)
     setSendingOtp(true)
     try {
-      const response = await warrantyService.sendOtpVerification(
-        id,
-        data.mobileNo
-      )
-      if (response.success) {
-        message.success('OTP sent successfully to registered mobile number')
-        setOtpModalVisible(true)
+      // Generate a random 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+
+      const updateOTP = await warrantyOTPClient.updateOtp(id, otp)
+      console.log('updateOTP', updateOTP)
+      if (updateOTP === 1) {
+        message.success('OTP updated successfully')
+        setOtpModalVisible(false)
+        const response = await warrantyOTPClient.sendOtpVerification({
+          otp,
+          mobileNumber: data.mobileNo
+        })
+        if (response.success) {
+          message.success('OTP sent successfully to registered mobile number')
+          setOtpModalVisible(true)
+        } else {
+          message.error(response.message || 'Failed to send OTP')
+        }
       } else {
-        message.error(response.message || 'Failed to send OTP')
+        message.error(updateOTP.message || 'Failed to update OTP')
       }
     } catch (error) {
       console.error('Error sending OTP:', error)
@@ -348,21 +445,37 @@ const DealerWarrantyDetail = () => {
 
     setVerifyingOtp(true)
     try {
-      const response = await warrantyService.verifyOtp(
-        id,
-        data.mobileNo,
-        otpCode
-      )
-      if (response.success) {
+      console.log('🔐 Verifying OTP with params:', {
+        id: +id,
+        otp: otpCode
+      })
+
+      const response = await warrantyService.verifyOtp({
+        id: +id,
+        otp: otpCode
+      })
+
+      console.log('🔐 OTP Verification Response:', response)
+      console.log('🔐 Response success:', response?.success)
+      console.log('🔐 Response structure:', Object.keys(response || {}))
+
+      // Check different possible response structures
+      if (
+        response &&
+        (response.status === 200 || response.success === 1 || response === 1)
+      ) {
+        console.log('✅ OTP verification successful')
         message.success('OTP verified successfully')
         setOtpModalVisible(false)
         setOtpCode('')
         fetchWarrantyDetails() // Refresh data
       } else {
-        message.error(response.message || 'Invalid OTP. Please try again.')
+        console.log('❌ OTP verification failed:', response)
+        message.error(response?.message || 'Invalid OTP. Please try again.')
       }
     } catch (error) {
-      console.error('Error verifying OTP:', error)
+      console.error('❌ Error verifying OTP:', error)
+      console.error('❌ Error response:', error.response?.data)
       message.error('Failed to verify OTP. Please try again.')
     } finally {
       setVerifyingOtp(false)
@@ -595,12 +708,7 @@ const DealerWarrantyDetail = () => {
             }
             bordered={false}
           >
-            <Form
-              form={form}
-              layout='vertical'
-              onFinish={handleSave}
-              className='space-y-6'
-            >
+            <Form form={form} layout='vertical' className='space-y-6'>
               {/* Form Data Debug Info (Development only) */}
               {process.env.NODE_ENV === 'development' && data && (
                 <div className='bg-yellow-100 p-4 rounded-lg mb-4 text-xs'>
@@ -968,7 +1076,7 @@ const DealerWarrantyDetail = () => {
                       label='Amount'
                       name='amount'
                       rules={[
-                        { required: true, message: 'Please enter amount' }
+                        { required: false, message: 'Please enter amount' }
                       ]}
                     >
                       <InputNumber
@@ -1053,11 +1161,26 @@ const DealerWarrantyDetail = () => {
                 </Button>
                 <Button
                   type='primary'
-                  htmlType='submit'
                   size='large'
                   loading={saving}
                   icon={<SaveOutlined />}
                   className='bg-blue-600 hover:bg-blue-700'
+                  onClick={async () => {
+                    console.log('💡 Save Changes button clicked!')
+                    try {
+                      // Validate form fields first
+                      const values = await form.validateFields()
+                      console.log('✅ Form validation passed:', values)
+
+                      // Call handleSave with validated values
+                      await handleSave(values)
+                    } catch (error) {
+                      console.error('❌ Form validation failed:', error)
+                      message.error(
+                        'Please fill in all required fields correctly'
+                      )
+                    }
+                  }}
                 >
                   Save Changes
                 </Button>
