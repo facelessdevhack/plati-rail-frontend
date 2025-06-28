@@ -1,46 +1,52 @@
-import { Link } from "react-router-dom";
+import { Link } from 'react-router-dom'
 import {
   CodeSandboxOutlined,
   StockOutlined,
   PieChartOutlined,
   AlertOutlined,
-} from "@ant-design/icons";
+  SafetyCertificateOutlined
+} from '@ant-design/icons'
 
-function getItemLayout(label, key, icon, children) {
+function getItemLayout (label, key, icon, children) {
   return {
     key,
     icon,
     children,
-    label,
-  };
+    label
+  }
 }
 
 export const entrySiderRoutes = [
   getItemLayout(
-    <Link to="/entry-dashboard">Dashboard</Link>,
-    "1",
+    <Link to='/entry-dashboard'>Dashboard</Link>,
+    '1',
     <PieChartOutlined />
   ),
   getItemLayout(
-    <Link to="/add-daily-entry">Add Outwards Entry</Link>,
-    "2",
+    <Link to='/add-daily-entry'>Add Outwards Entry</Link>,
+    '2',
     <StockOutlined />
   ),
   getItemLayout(
-    <Link to="/add-inwards-entry">Add Inwards Entry</Link>,
-    "3",
+    <Link to='/add-inwards-entry'>Add Inwards Entry</Link>,
+    '3',
     <StockOutlined />
   ),
   getItemLayout(
-    <Link to="/add-payment-entry">Add Payment Entry</Link>,
-    "4",
+    <Link to='/add-payment-entry'>Add Payment Entry</Link>,
+    '4',
     <StockOutlined />
   ),
   getItemLayout(
-    <Link to="/entry-daily-entry-dealers">Select Dealers</Link>,
-    "5",
+    <Link to='/entry-daily-entry-dealers'>Select Dealers</Link>,
+    '5',
     <PieChartOutlined />
   ),
+  getItemLayout(
+    <Link to='/dealer-warranty'>Dealer Warranty</Link>,
+    '6',
+    <SafetyCertificateOutlined />
+  )
   //   getItemLayout(
   //     <Link to="/admin-orders">Orders</Link>,
   //     "2",
@@ -66,4 +72,4 @@ export const entrySiderRoutes = [
   //     getItemLayout("Team 2", "8"),
   //   ]),
   //   getItemLayout("Files", "9", <FileOutlined />),
-];
+]

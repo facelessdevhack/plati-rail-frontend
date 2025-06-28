@@ -59,7 +59,7 @@ const StackNavigation = () => {
         } else if (roleId === 1) {
           navigate('/inventory-dashboard')
         } else {
-          navigate('/unauthorized')
+          navigate('/dealer-warranty')
         }
       }
     }
@@ -380,7 +380,7 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               title='Dealer Warranty Registrations'
               items={adminSiderRoutes}
@@ -392,7 +392,7 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty/edit/:id'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               title='Edit Warranty Registration'
               items={adminSiderRoutes}
