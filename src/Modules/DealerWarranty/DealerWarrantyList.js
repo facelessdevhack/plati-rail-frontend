@@ -17,10 +17,12 @@ import {
   SearchOutlined,
   EyeOutlined,
   ReloadOutlined,
-  EditOutlined
+  EditOutlined,
+  ExportOutlined
 } from '@ant-design/icons'
 import { warrantyService } from './services/warrantyService'
 import moment from 'moment'
+import * as XLSX from 'xlsx'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -144,6 +146,107 @@ const DealerWarrantyList = () => {
 
   const handleEditWarranty = record => {
     navigate(`/dealer-warranty/edit/${record.id}`)
+  }
+
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for Excel export
+      const excelData = data.map((record, index) => ({
+        'S.No': index + 1,
+        'Warranty Card No': record.warrantyCardNo || 'N/A',
+        'Vehicle No': record.vehicleNo || 'N/A',
+        'Vehicle Model': record.vehicleModel || 'N/A',
+        'Customer Name': record.customerName || 'N/A',
+        'Mobile No': record.mobileNo || 'N/A',
+        'Email Address': record.emailAddress || 'N/A',
+        'Alloy Model': record.alloyModelName || 'N/A',
+        PCD: record.pcdName || 'N/A',
+        Inches: record.inchesName || 'N/A',
+        Finish: record.finishName || 'N/A',
+        'Dealer Name': record.dealerName || 'N/A',
+        'Purchase Date': record.dop
+          ? moment(record.dop).format('DD/MM/YYYY')
+          : 'N/A',
+        'Registration Status': record.registerStatus || 'Unknown',
+        'OTP Status':
+          record.otpVerified === 'NotVerified' ? 'OTP Pending' : 'OTP Verified',
+        Amount: record.amount
+          ? `₹${parseFloat(record.amount).toLocaleString('en-IN')}`
+          : 'N/A',
+        'Entered By': record.enteredAt || 'N/A',
+        'Entry Date': record.enteredDateGmt
+          ? moment(record.enteredDateGmt).format('DD/MM/YYYY hh:mm A')
+          : 'N/A'
+      }))
+
+      // Create workbook and worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Warranty Registrations')
+
+      // Set column widths for better readability
+      const colWidths = [
+        { wch: 8 }, // S.No
+        { wch: 20 }, // Warranty Card No
+        { wch: 15 }, // Vehicle No
+        { wch: 15 }, // Vehicle Model
+        { wch: 20 }, // Customer Name
+        { wch: 15 }, // Mobile No
+        { wch: 25 }, // Email Address
+        { wch: 15 }, // Alloy Model
+        { wch: 10 }, // PCD
+        { wch: 10 }, // Inches
+        { wch: 15 }, // Finish
+        { wch: 20 }, // Dealer Name
+        { wch: 15 }, // Purchase Date
+        { wch: 15 }, // Registration Status
+        { wch: 15 }, // OTP Status
+        { wch: 15 }, // Amount
+        { wch: 15 }, // Entered By
+        { wch: 20 } // Entry Date
+      ]
+      ws['!cols'] = colWidths
+
+      // Generate filename with current date and applied filters
+      let filename = 'Dealer_Warranty_Registrations'
+
+      if (filters.dealerId) {
+        const selectedDealer = dealers.find(d => d.id === filters.dealerId)
+        if (selectedDealer) {
+          filename += `_${
+            selectedDealer.buyer_name ||
+            selectedDealer.dealerName ||
+            selectedDealer.name
+          }`
+        }
+      }
+
+      if (filters.productType) {
+        filename += `_${filters.productType}`
+      }
+
+      if (filters.registerStatus) {
+        filename += `_${filters.registerStatus}`
+      }
+
+      if (filters.dateRange && filters.dateRange.length === 2) {
+        const startDate = filters.dateRange[0].format('DD-MM-YYYY')
+        const endDate = filters.dateRange[1].format('DD-MM-YYYY')
+        filename += `_${startDate}_to_${endDate}`
+      }
+
+      filename += `_${moment().format('DD-MM-YYYY')}.xlsx`
+
+      // Download the file
+      XLSX.writeFile(wb, filename)
+
+      message.success(
+        `Excel file exported successfully! Total records: ${excelData.length}`
+      )
+    } catch (error) {
+      console.error('Error exporting to Excel:', error)
+      message.error('Failed to export data to Excel')
+    }
   }
 
   const getStatusColor = status => {
@@ -486,13 +589,23 @@ const DealerWarrantyList = () => {
             <div className='text-sm text-gray-600'>
               Total Records: {data.length}
             </div>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => fetchWarrantyData()}
-              loading={loading}
-            >
-              Refresh
-            </Button>
+            <Space>
+              <Button
+                type='default'
+                icon={<ExportOutlined />}
+                onClick={handleExportToExcel}
+                disabled={data.length === 0}
+              >
+                Export to Excel
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => fetchWarrantyData()}
+                loading={loading}
+              >
+                Refresh
+              </Button>
+            </Space>
           </div>
         </div>
 

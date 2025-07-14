@@ -36,21 +36,19 @@ const setupAxiosInterceptors = () => {
   client.interceptors.request.use(
     async config => {
       const token = localStorage.getItem('token')
-
-      if (token) {
-        commonHeader.Authorization = `Bearer ${token}`
+      // Merge Authorization header with existing headers
+      config.headers = {
+        ...commonHeader,
+        ...(config.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
-
-      config.headers = commonHeader
-
       return config
     },
     error => {
       if (error.response) {
         error = getError(error)
       }
-
-      Promise.reject(error)
+      return Promise.reject(error)
     }
   )
 
