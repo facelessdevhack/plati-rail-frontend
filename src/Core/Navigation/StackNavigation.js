@@ -336,7 +336,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-orders-dashboard/:id'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminOrderDashboard />
           </PrivateRoute>
         }
