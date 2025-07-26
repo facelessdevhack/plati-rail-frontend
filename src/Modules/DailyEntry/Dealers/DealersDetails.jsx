@@ -132,12 +132,16 @@ const AdminDealerDetails = () => {
 
   // Filter dealers based on the search query
   const filteredDealers = allDealerEntries?.filter(entry =>
-    entry?.productName?.toLowerCase().includes(searchQuery.toLowerCase())
+    String(entry?.productName || '')
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   )
 
   // Filter payments based on the search query
   const filteredPayments = allPMEntries?.filter(entry =>
-    entry?.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    String(entry?.description || '')
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   )
 
   // Check Entry Function for Entries
