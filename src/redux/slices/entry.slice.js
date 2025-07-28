@@ -81,7 +81,8 @@ const initialState = {
   allMiddleDealers: [],
   allPaymentDailyEntries: [],
   allChargesDailyEntries: [],
-  allDealersOrders: []
+  allDealersOrders: [],
+  dealersOrdersCount: 0
 }
 
 export const entrySlice = createSlice({
@@ -274,11 +275,13 @@ export const entrySlice = createSlice({
         state.loading = true
         state.status = 'pending'
         state.allDealersOrders = []
+        state.dealersOrdersCount = 0
       })
       .addCase(getAllDealersOrders.fulfilled, (state, { payload }) => {
         state.loading = false
         state.status = 'fulfilled'
-        state.allDealersOrders = payload
+        state.allDealersOrders = payload.data || payload
+        state.dealersOrdersCount = payload.totalCount || 0
         state.error = null
       })
       .addCase(getAllDealersOrders.rejected, (state, { payload }) => {
@@ -286,6 +289,7 @@ export const entrySlice = createSlice({
         state.status = 'rejected'
         state.error = payload
         state.allDealersOrders = []
+        state.dealersOrdersCount = 0
       })
       .addCase(getInwardsDailyEntry.pending, state => {
         state.loading = true

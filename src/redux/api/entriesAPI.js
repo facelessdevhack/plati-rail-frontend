@@ -493,10 +493,10 @@ export const getChargesDailyEntry = createAsyncThunk(
 
 export const getAllDealersOrders = createAsyncThunk(
   'entries/getAllDealersOrders',
-  async ({ id }, { rejectWithValue }) => {
+  async ({ id, page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       const response = await client.get(
-        `/entries/get-dealer-orders?dealerId=${id}`
+        `/entries/get-dealer-orders?dealerId=${id}&page=${page}&limit=${limit}`
       )
       console.log(response, 'RESPONSE FROM ALL DEALERS ORDERS')
       return response.data
