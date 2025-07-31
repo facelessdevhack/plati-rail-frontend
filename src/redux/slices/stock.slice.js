@@ -34,6 +34,14 @@ const initialState = {
   allWidths: [],
   allModels: [],
   allDealers: [],
+  dealersPagination: {
+    currentPage: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  },
   allProducts: [],
   allCaps: []
 };
@@ -75,7 +83,12 @@ export const stockSlice = createSlice({
     });
     builder.addCase(getAllDealers.fulfilled, (state, { payload }) => {
       state.loading = false;
-      state.allDealers = payload;
+      if (payload.data && payload.pagination) {
+        state.allDealers = payload.data;
+        state.dealersPagination = payload.pagination;
+      } else {
+        state.allDealers = payload;
+      }
     });
     builder.addCase(getAllDealers.rejected, (state, { payload }) => {
       state.loading = false;

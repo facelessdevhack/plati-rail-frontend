@@ -9,21 +9,33 @@ import { getAllDealers } from "../../redux/api/stockAPI";
 const DealerMetricsForSize = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { allDealers } = useSelector((state) => state.stockDetails);
+    const { allDealers, dealersPagination } = useSelector((state) => state.stockDetails);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [searchQuery, setSearchQuery] = useState("");
     const { user } = useSelector((state) => state.userDetails);
 
     useEffect(() => {
-        if (user.roleId === 5) {
-            dispatch(getAllDealers({}));
-        } else {
-            dispatch(getAllDealers({ id: user.userId }));
-        }
-    }, [dispatch]);
+        fetchDealers();
+    }, [dispatch, currentPage, pageSize]);
 
-    // Filter dealers based on the search query
+    const fetchDealers = () => {
+        const params = { page: currentPage, limit: pageSize };
+        if (user.roleId !== 5) {
+            params.id = user.userId;
+        }
+        dispatch(getAllDealers(params));
+    };
+
+    // Handle page change
+    const handlePageChange = (page, size) => {
+        setCurrentPage(page);
+        if (size !== pageSize) {
+            setPageSize(size);
+        }
+    };
+
+    // Filter dealers based on the search query (client-side filtering for search)
     const filteredDealers = allDealers?.filter(dealer =>
         dealer?.label?.toLowerCase().includes(searchQuery?.toLowerCase())
     );
@@ -66,15 +78,15 @@ const DealerMetricsForSize = () => {
                     </div>
                     <div>
                         <CustomTable
-                            data={filteredDealers}
+                            data={searchQuery ? filteredDealers : allDealers}
                             titleOnTop={false}
                             position="bottomRight"
                             columns={columns}
                             expandable={false}
-                            totalCount={filteredDealers?.length}
+                            totalCount={searchQuery ? filteredDealers?.length : dealersPagination?.total || 0}
                             currentPage={currentPage}
-                            handlePageChange={setCurrentPage}
-                            pageSize={pageSize}
+                            handlePageChange={handlePageChange}
+                            currentPageSize={pageSize}
                             onRowClick={handleRowClick}
                         />
                     </div>

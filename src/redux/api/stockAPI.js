@@ -30,9 +30,13 @@ export const getAllFinishes = createAsyncThunk(
 
 export const getAllDealers = createAsyncThunk(
   'dealers/getAllDealers',
-  async ({ id }, { rejectWithValue }) => {
+  async ({ id, page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
-      const response = await client.get(`/master/all-dealers?salesId=${id}`)
+      let url = `/master/all-dealers?page=${page}&limit=${limit}`
+      if (id) {
+        url += `&salesId=${id}`
+      }
+      const response = await client.get(url)
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e))
