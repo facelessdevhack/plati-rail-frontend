@@ -69,8 +69,24 @@ const initialState = {
   editingEntryId: null,
   allDealerEntries: [],
   dealerEntryCount: 0,
+  dealerEntriesPagination: {
+    currentPage: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  },
   allPMEntries: [],
   pmEntryCount: 0,
+  paymentEntriesPagination: {
+    currentPage: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  },
   allEntriesUser: [],
   spinLoader: false,
   allDailyEntries: [],
@@ -225,8 +241,14 @@ export const entrySlice = createSlice({
         state.loading = false
         state.spinLoader = false
         state.status = 'fulfilled'
-        state.allDealerEntries = payload.data
-        state.dealerEntryCount = payload.totalCount
+        if (payload.data && payload.pagination) {
+          state.allDealerEntries = payload.data
+          state.dealerEntriesPagination = payload.pagination
+          state.dealerEntryCount = payload.pagination.total
+        } else {
+          state.allDealerEntries = payload.data || payload
+          state.dealerEntryCount = payload.totalCount || 0
+        }
         state.error = null
       })
       .addCase(getAllEntriesAdmin.rejected, (state, { payload }) => {
@@ -421,8 +443,14 @@ export const entrySlice = createSlice({
         state.spinLoader = false
         state.status = 'fulfilled'
         state.loggedIn = true
-        state.allPMEntries = payload.data
-        state.pmEntryCount = payload.totalCount
+        if (payload.data && payload.pagination) {
+          state.allPMEntries = payload.data
+          state.paymentEntriesPagination = payload.pagination
+          state.pmEntryCount = payload.pagination.total
+        } else {
+          state.allPMEntries = payload.data || payload
+          state.pmEntryCount = payload.totalCount || 0
+        }
         state.error = null
       })
       .addCase(getPaymentEntries.rejected, (state, { payload }) => {

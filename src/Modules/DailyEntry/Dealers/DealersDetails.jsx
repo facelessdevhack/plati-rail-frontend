@@ -67,6 +67,8 @@ const AdminDealerDetails = () => {
     allPMEntries,
     pmEntryCount,
     dealerEntryCount,
+    dealerEntriesPagination,
+    paymentEntriesPagination,
     spinLoader,
     allMiddleDealers,
     adminPaymentMethods,
@@ -130,19 +132,23 @@ const AdminDealerDetails = () => {
     id
   ])
 
-  // Filter dealers based on the search query
-  const filteredDealers = allDealerEntries?.filter(entry =>
-    String(entry?.productName || '')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  )
+  // Filter dealers based on the search query (client-side filtering for search)
+  const filteredDealers = searchQuery 
+    ? allDealerEntries?.filter(entry =>
+        String(entry?.productName || '')
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+      )
+    : allDealerEntries
 
-  // Filter payments based on the search query
-  const filteredPayments = allPMEntries?.filter(entry =>
-    String(entry?.description || '')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  )
+  // Filter payments based on the search query (client-side filtering for search)
+  const filteredPayments = searchQuery
+    ? allPMEntries?.filter(entry =>
+        String(entry?.description || '')
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+      )
+    : allPMEntries
 
   // Check Entry Function for Entries
   const handleCheckEntry = async entryId => {
@@ -597,7 +603,9 @@ const AdminDealerDetails = () => {
 
   const handlePages = (page, currentPageSize) => {
     setCurrentPage(page)
-    setPageSize(currentPageSize)
+    if (currentPageSize !== pageSize) {
+      setPageSize(currentPageSize)
+    }
   }
 
   const handleOrderDashboard = () => {
@@ -711,10 +719,10 @@ const AdminDealerDetails = () => {
               position='bottomRight'
               columns={columns}
               expandable={false}
-              totalCount={dealerEntryCount}
+              totalCount={searchQuery ? filteredDealers?.length : dealerEntriesPagination?.total || dealerEntryCount}
               currentPage={currentPage}
               handlePageChange={handlePages}
-              pageSize={pageSize}
+              currentPageSize={pageSize}
               showSort={true}
             />
           </div>
@@ -795,10 +803,10 @@ const AdminDealerDetails = () => {
               position='bottomRight'
               columns={paymentColumns}
               expandable={false}
-              totalCount={pmEntryCount}
+              totalCount={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount}
               currentPage={currentPage}
-              handlePageChange={setCurrentPage}
-              pageSize={pageSize}
+              handlePageChange={handlePages}
+              currentPageSize={pageSize}
             />
           </div>
         )
