@@ -109,7 +109,7 @@ const AdminDailyEntryDealersPage = () => {
     };
 
     // Filter dealers based on the search query (client-side filtering for search)
-    const filteredDealers = allDealers?.filter(dealer =>
+    const filteredDealers = (Array.isArray(allDealers) ? allDealers : []).filter(dealer =>
         dealer?.label?.toLowerCase().includes(searchQuery?.toLowerCase())
     );
 
