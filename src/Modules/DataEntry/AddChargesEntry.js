@@ -2,7 +2,7 @@ import React from 'react';
 import CustomSelect from '../../Core/Components/CustomSelect';
 import CustomInput from '../../Core/Components/CustomInput';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllDealers } from '../../redux/api/stockAPI';
+import { getDealersDropdown } from '../../redux/api/stockAPI';
 import Button from '../../Core/Components/CustomButton';
 import {
   setChargesEntry,
@@ -14,10 +14,10 @@ import { getChargesDailyEntry } from '../../redux/api/entriesAPI';
 const AddChargesEntry = () => {
   const dispatch = useDispatch();
   const { chargesEntry, isEditing, allPaymentMethods, allChargesDailyEntries } = useSelector((state) => state.entryDetails);
-  const { allDealers } = useSelector((state) => state.stockDetails);
+  const { dealersDropdown } = useSelector((state) => state.stockDetails);
 
   React.useEffect(() => {
-    dispatch(getAllDealers({}));
+    dispatch(getDealersDropdown({}));
     dispatch(getChargesDailyEntry({}))
   }, []);
 
@@ -75,7 +75,7 @@ const AddChargesEntry = () => {
               <CustomSelect
                 showSearch={true}
                 className="w-full"
-                options={allDealers}
+                options={dealersDropdown}
                 value={chargesEntry?.dealerId}
                 placeholder="Select a dealer"
                 onChange={(e, l) => {

@@ -8,6 +8,7 @@ import {
   getAllCaps,
   getAllCbs,
   getAllDealers,
+  getDealersDropdown,
   getAllFinishes,
   getAllHoles,
   getAllModels,
@@ -34,6 +35,7 @@ const initialState = {
   allWidths: [],
   allModels: [],
   allDealers: [],
+  dealersDropdown: [],
   dealersPagination: {
     currentPage: 1,
     pageSize: 10,
@@ -91,6 +93,17 @@ export const stockSlice = createSlice({
       }
     });
     builder.addCase(getAllDealers.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+    });
+    builder.addCase(getDealersDropdown.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(getDealersDropdown.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.dealersDropdown = payload.data || payload;
+    });
+    builder.addCase(getDealersDropdown.rejected, (state, { payload }) => {
       state.loading = false;
       state.error = payload;
     });

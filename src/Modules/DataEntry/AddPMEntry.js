@@ -2,7 +2,7 @@ import React from 'react';
 import CustomSelect from '../../Core/Components/CustomSelect';
 import CustomInput from '../../Core/Components/CustomInput';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllDealers } from '../../redux/api/stockAPI';
+import { getDealersDropdown } from '../../redux/api/stockAPI';
 import Button from '../../Core/Components/CustomButton';
 import {
     setPMEntry,
@@ -14,10 +14,10 @@ import { getPaymentDailyEntry, getPaymentMethods } from '../../redux/api/entries
 const AddPMEntry = () => {
     const dispatch = useDispatch();
     const { pmEntry, isEditing, allPaymentMethods, allPaymentDailyEntries } = useSelector((state) => state.entryDetails);
-    const { allDealers } = useSelector((state) => state.stockDetails);
+    const { dealersDropdown } = useSelector((state) => state.stockDetails);
 
     React.useEffect(() => {
-        dispatch(getAllDealers({}));
+        dispatch(getDealersDropdown({}));
         dispatch(getPaymentMethods({}))
         dispatch(getPaymentDailyEntry({}))
     }, []);
@@ -60,7 +60,7 @@ const AddPMEntry = () => {
     console.log(allPaymentDailyEntries, 'allPaymentDailyEntries')
 
     const getPaymentMethodLabel = (methodId) => {
-        const method = allPaymentMethods.find((method) => method.id === methodId);
+        const method = allPaymentMethods?.find((method) => method.id === methodId);
         return method ? method.methodName : 'Unknown Method';
     };
 
@@ -77,7 +77,7 @@ const AddPMEntry = () => {
                             <CustomSelect
                                 showSearch={true}
                                 className="w-full"
-                                options={allDealers}
+                                options={dealersDropdown || []}
                                 value={pmEntry?.dealerId}
                                 placeholder="Select a dealer"
                                 onChange={(e, l) => {
@@ -216,7 +216,7 @@ const AddPMEntry = () => {
                             <div>Payment Method</div>
                             <div className='flex justify-start'>
                                 {allPaymentMethods?.map((method) => (
-                                    <label key={method} className="mr-4 flex justify-start gap-x-2">
+                                    <label key={method.id} className="mr-4 flex justify-start gap-x-2">
                                         <input
                                             type="radio"
                                             name="paymentMethod"
@@ -244,14 +244,14 @@ const AddPMEntry = () => {
                 <div className="h-full col-span-3 border-2">
                     <div className="col-span-3 h-[calc(100vh-135px)] bg-white overflow-y-scroll p-5">
                         {Object.entries(
-                            allPaymentDailyEntries?.reduce((acc, entry) => {
+                            (allPaymentDailyEntries || [])?.reduce((acc, entry) => {
                                 const { dealerName } = entry;
                                 if (!acc[dealerName]) {
                                     acc[dealerName] = [];
                                 }
                                 acc[dealerName].push(entry);
                                 return acc; // Return the accumulator after processing each entry
-                            }, {}),
+                            }, {}) || {},
                         ).map(([dealerName, entries]) => (
                             <div key={dealerName} className="mb-8">
                                 <div className="pb-2 mb-4 text-2xl font-bold border-b border-gray-300">

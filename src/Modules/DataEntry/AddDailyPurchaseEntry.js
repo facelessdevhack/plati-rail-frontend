@@ -2,7 +2,7 @@ import React from 'react';
 import CustomSelect from '../../Core/Components/CustomSelect';
 import CustomInput from '../../Core/Components/CustomInput';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllDealers, getAllProducts } from '../../redux/api/stockAPI';
+import { getDealersDropdown, getAllProducts } from '../../redux/api/stockAPI';
 import Button from '../../Core/Components/CustomButton';
 import {
   setEditing,
@@ -21,7 +21,7 @@ const AddDailyPurchaseEntry = () => {
   const { allInwardsEntries, inwardsEntry, isEditing, editingEntryId, allInwardsDailyEntries } = useSelector(
     (state) => state.entryDetails,
   );
-  const { allDealers, allProducts } = useSelector(
+  const { dealersDropdown, allProducts } = useSelector(
     (state) => state.stockDetails,
   );
 
@@ -42,7 +42,7 @@ const AddDailyPurchaseEntry = () => {
   };
 
   React.useEffect(() => {
-    dispatch(getAllDealers({}));
+    dispatch(getDealersDropdown({}));
     dispatch(getAllProducts({}));
     dispatch(getInwardsDailyEntry({}))
     getAndSetYesterdayOrSaturdayDate()
@@ -198,7 +198,7 @@ const AddDailyPurchaseEntry = () => {
               <CustomSelect
                 showSearch={true}
                 className="w-full"
-                options={allDealers}
+                options={dealersDropdown}
                 value={inwardsEntry.dealerId}
                 placeholder="Select a dealer"
                 onChange={(e, l) => {

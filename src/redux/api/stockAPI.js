@@ -44,6 +44,29 @@ export const getAllDealers = createAsyncThunk(
   }
 )
 
+export const getDealersDropdown = createAsyncThunk(
+  'dealers/getDealersDropdown',
+  async ({ salesId, search }, { rejectWithValue }) => {
+    try {
+      let url = `/master/dealers-dropdown`
+      const params = new URLSearchParams()
+      if (salesId) {
+        params.append('salesId', salesId)
+      }
+      if (search) {
+        params.append('search', search)
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+      const response = await client.get(url)
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
 export const getAllCaps = createAsyncThunk(
   'master/getAllDealers',
   async ({ _ }, { rejectWithValue }) => {

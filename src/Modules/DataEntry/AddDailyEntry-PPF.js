@@ -2,7 +2,7 @@ import React from 'react';
 import CustomSelect from '../../Core/Components/CustomSelect';
 import CustomInput from '../../Core/Components/CustomInput';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllDealers, getAllProducts } from '../../redux/api/stockAPI';
+import { getDealersDropdown, getAllProducts } from '../../redux/api/stockAPI';
 import Button from '../../Core/Components/CustomButton';
 import {
   setEntry,
@@ -21,7 +21,7 @@ const AddDailyEntryPPF = () => {
     (state) => state.entryDetails,
   );
   const [reloadAPI, setReloadAPI] = React.useState(false);
-  const { allDealers, allProducts } = useSelector(
+  const { dealersDropdown, allProducts } = useSelector(
     (state) => state.stockDetails,
   );
 
@@ -42,7 +42,7 @@ const AddDailyEntryPPF = () => {
   };
 
   React.useEffect(() => {
-    dispatch(getAllDealers({}));
+    dispatch(getDealersDropdown({}));
     dispatch(getAllProducts({ type: 4 }));
     dispatch(getDailyEntry({}))
     getAndSetYesterdayOrSaturdayDate()
@@ -213,7 +213,7 @@ const AddDailyEntryPPF = () => {
               <CustomSelect
                 showSearch={true}
                 className="w-full"
-                options={allDealers}
+                options={dealersDropdown}
                 value={entry.dealerId}
                 placeholder="Select a dealer"
                 onChange={(e, l) => {
