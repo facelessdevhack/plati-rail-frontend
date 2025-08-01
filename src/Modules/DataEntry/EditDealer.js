@@ -62,6 +62,7 @@ const EditDealer = ({ visible, onClose, onSuccess, dealerData }) => {
         mobile: form.mobile,
         district: form.district,
         password: form.password || undefined,
+        roleId: 2,
       });
       setMessage({ type: 'success', text: 'Dealer updated successfully!' });
       setForm({ ...form, password: '' });

@@ -24,6 +24,7 @@ const AddDealer = ({ visible, onClose, onSuccess }) => {
         mobile: form.mobile,
         district: form.district,
         password: form.password,
+        roleId: 2,
       });
       setMessage({ type: 'success', text: 'Dealer added successfully!' });
       setForm({ name: '', email: '', mobile: '', district: '', password: '' });
