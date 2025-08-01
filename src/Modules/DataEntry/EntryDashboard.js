@@ -31,6 +31,17 @@ const EntryDashboard = () => {
       id: 5,
       label: 'Add Cap',
       link: '/add-cap-stock'
+    },
+    // Add Dealer and Edit Dealer buttons
+    {
+      id: 6,
+      label: 'Add Dealer',
+      link: '/add-dealer'
+    },
+    {
+      id: 7,
+      label: 'Edit Dealer',
+      link: '/edit-dealer'
     }
   ];
 

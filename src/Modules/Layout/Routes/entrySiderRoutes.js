@@ -4,7 +4,8 @@ import {
   StockOutlined,
   PieChartOutlined,
   AlertOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  SettingOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -46,6 +47,18 @@ export const entrySiderRoutes = [
     <Link to='/dealer-warranty'>Dealer Warranty</Link>,
     '6',
     <SafetyCertificateOutlined />
+  ),
+  getItemLayout(
+    'Masters',
+    'masters',
+    <SettingOutlined />,
+    [
+      getItemLayout(
+        <Link to='/dealers-list'>Dealers</Link>,
+        '7',
+        <StockOutlined />
+      )
+    ]
   )
   //   getItemLayout(
   //     <Link to="/admin-orders">Orders</Link>,

@@ -40,6 +40,7 @@ import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDet
 import StockAnalysisDashboard from '../../Modules/Stock/StockAnalysisDashboard'
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
+import DealersList from '../../Modules/DataEntry/DealersList';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -438,7 +439,18 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
-
+      <Route
+        path='/dealers-list'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
+              items={entrySiderRoutes}
+              content={<DealersList />}
+            />
+          </PrivateRoute>
+        }
+      />
       {/* <Route
         path="/entry-daily-entry"
         element={
