@@ -1,204 +1,116 @@
-import React, { useState, useEffect } from 'react'
-import {
-  Table,
-  Card,
-  Space,
-  Button,
-  Input,
-  message,
-  Modal
-} from 'antd'
-import {
-  SearchOutlined,
-  EditOutlined,
-  PlusOutlined,
-  ReloadOutlined
-} from '@ant-design/icons'
-import { client } from '../../Utils/axiosClient'
-import AddDealer from './AddDealer'
-import EditDealer from './EditDealer'
+import React, { useEffect, useState } from "react";
+import { Row, Col } from "antd";
+import CustomTable from "../../Core/Components/CustomTable";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import CustomInput from "../../Core/Components/CustomInput";
+import { getAllDealers } from "../../redux/api/stockAPI";
 
 const DealersList = () => {
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  })
-  const [searchText, setSearchText] = useState('')
-  const [addModalVisible, setAddModalVisible] = useState(false)
-  const [editModalVisible, setEditModalVisible] = useState(false)
-  const [selectedDealer, setSelectedDealer] = useState(null)
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { allDealers, dealersPagination } = useSelector((state) => state.stockDetails);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [searchQuery, setSearchQuery] = useState("");
+    const { user } = useSelector((state) => state.userDetails);
 
-  const columns = [
-    {
-      title: 'Dealer Code',
-      dataIndex: 'id',
-      key: 'id',
-      sorter: true
-    },
-    {
-      title: 'Dealer Name',
-      dataIndex: 'dealerName',
-      key: 'dealerName',
-      sorter: true
-    },
-    {
-      title: 'Mobile',
-      dataIndex: 'mobile',
-      key: 'mobile',
-      sorter: true
-    },
-    {
-      title: 'District',
-      dataIndex: 'district',
-      key: 'district',
-      sorter: true
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>Edit</Button>
-      )
-    }
-  ]
+    useEffect(() => {
+        fetchDealers();
+    }, [dispatch, currentPage, pageSize, searchQuery]);
 
-  const fetchDealers = async (page = 1, limit = 10, search = '') => {
-    setLoading(true)
-    try {
-      const response = await client.get('/master/dealer-list', {
-        params: {
-          page,
-          limit,
-          search
+    const fetchDealers = () => {
+        const params = { page: currentPage, limit: pageSize };
+        if (user.roleId !== 5) {
+            params.id = user.userId;
         }
-      })
-      
-      const filteredData = response.data.data.filter(dealer => dealer.id !== 1)
-      setData(filteredData)
-      setPagination({
-        current: page,
-        pageSize: limit,
-        total: response.data.pagination.total
-      })
-    } catch (error) {
-      message.error('Failed to fetch dealers')
-      console.error('Error fetching dealers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchDealers()
-  }, [])
-
-  const handleTableChange = (paginationConfig, filters, sorter) => {
-    fetchDealers(
-      paginationConfig.current,
-      paginationConfig.pageSize,
-      searchText
-    )
-  }
-
-  const handleSearch = () => {
-    fetchDealers(1, pagination.pageSize, searchText)
-  }
-
-  const handleRefresh = () => {
-    setSearchText('')
-    fetchDealers(1, pagination.pageSize, '')
-  }
-
-  const handleEdit = (record) => {
-    setSelectedDealer(record)
-    setEditModalVisible(true)
-  }
-
-  const handleAddNew = () => {
-    setAddModalVisible(true)
-  }
-
-  const handleModalSuccess = () => {
-    fetchDealers(pagination.current, pagination.pageSize, searchText)
-  }
-
-  return (
-    <div className="p-6">
-      <Card
-        title="Dealers List"
-        extra={
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAddNew}
-            >
-              Add New Dealer
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefresh}
-            >
-              Refresh
-            </Button>
-          </Space>
+        if (searchQuery) {
+            params.search = searchQuery;
         }
-      >
-        <div className="mb-4">
-          <Space>
-            <Input
-              placeholder="Search dealers..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onPressEnter={handleSearch}
-              style={{ width: 300 }}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleSearch}
-            >
-              Search
-            </Button>
-          </Space>
+        dispatch(getAllDealers(params));
+    };
+
+    // Handle page change
+    const handlePageChange = (page, size) => {
+        setCurrentPage(page);
+        if (size !== pageSize) {
+            setPageSize(size);
+        }
+    };
+
+    const columns = [
+        {
+            title: "Dealer Name",
+            dataIndex: "label",
+            key: "label",
+            render: (text) => <div className="cursor-pointer">{text}</div>,
+        },
+        {
+            title: "Email",
+            dataIndex: "email",
+            key: "email",
+            render: (text) => <div>{text || '-'}</div>,
+        },
+        {
+            title: "District",
+            dataIndex: "district",
+            key: "district",
+            render: (text) => <div>{text || '-'}</div>,
+        },
+        {
+            title: "State",
+            dataIndex: "state",
+            key: "state",
+            render: (text) => <div>{text || '-'}</div>,
+        },
+        {
+            title: "Unchecked Entries",
+            dataIndex: "uncheckedCount",
+            key: 'uncheckedCount',
+            render: (text) => text ? <div className="bg-orange-500 text-white px-3 py-1 rounded-full max-w-fit font-bold">{text}</div> : <div>-</div>
+        }
+    ];
+
+    // Function to handle row click
+    const handleRowClick = (record) => {
+        console.log(record, 'RECORD');
+        navigate(`/admin-dealers/${record.value}`, {
+            state: { id: record.value, name: record.label },
+        });
+    };
+
+    return (
+        <div className="w-full h-full p-5 bg-gray-200">
+            <Row gutter={16}>
+                <Col span={24}>
+                    <div className="mb-4">
+                        <h2 className="text-2xl font-bold mb-4">Dealers List</h2>
+                        {/* Search input */}
+                        <CustomInput
+                            placeholder={"Search Dealers"}
+                            intent={"search"}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <CustomTable
+                            data={allDealers}
+                            titleOnTop={false}
+                            position="bottomRight"
+                            columns={columns}
+                            expandable={false}
+                            totalCount={dealersPagination?.total || 0}
+                            currentPage={currentPage}
+                            handlePageChange={handlePageChange}
+                            currentPageSize={pageSize}
+                            onRowClick={handleRowClick}
+                        />
+                    </div>
+                </Col>
+            </Row>
         </div>
+    );
+};
 
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} dealers`
-          }}
-          onChange={handleTableChange}
-        />
-      </Card>
-
-      <AddDealer
-        visible={addModalVisible}
-        onClose={() => setAddModalVisible(false)}
-        onSuccess={handleModalSuccess}
-      />
-
-      <EditDealer
-        visible={editModalVisible}
-        onClose={() => {
-          setEditModalVisible(false)
-          setSelectedDealer(null)
-        }}
-        onSuccess={handleModalSuccess}
-        dealerData={selectedDealer}
-      />
-    </div>
-  )
-}
-
-export default DealersList
+export default DealersList;

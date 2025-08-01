@@ -90,12 +90,15 @@ const AdminDailyEntryDealersPage = () => {
 
     useEffect(() => {
         fetchDealers();
-    }, [dispatch, currentPage, pageSize]);
+    }, [dispatch, currentPage, pageSize, searchQuery]);
 
     const fetchDealers = () => {
         const params = { page: currentPage, limit: pageSize };
         if (user.roleId !== 5) {
             params.id = user.userId;
+        }
+        if (searchQuery) {
+            params.search = searchQuery;
         }
         dispatch(getAllDealers(params));
     };
@@ -108,10 +111,7 @@ const AdminDailyEntryDealersPage = () => {
         }
     };
 
-    // Filter dealers based on the search query (client-side filtering for search)
-    const filteredDealers = (Array.isArray(allDealers) ? allDealers : []).filter(dealer =>
-        dealer?.label?.toLowerCase().includes(searchQuery?.toLowerCase())
-    );
+
 
     const columns = [
         {
@@ -151,12 +151,12 @@ const AdminDailyEntryDealersPage = () => {
                     </div>
                     <div>
                         <CustomTable
-                            data={searchQuery ? filteredDealers : allDealers}
+                            data={allDealers}
                             titleOnTop={false}
                             position="bottomRight"
                             columns={columns}
                             expandable={false}
-                            totalCount={searchQuery ? filteredDealers?.length : dealersPagination?.total || 0}
+                            totalCount={dealersPagination?.total || 0}
                             currentPage={currentPage}
                             handlePageChange={handlePageChange}
                             currentPageSize={pageSize}

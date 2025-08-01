@@ -41,6 +41,8 @@ import StockAnalysisDashboard from '../../Modules/Stock/StockAnalysisDashboard'
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 import DealersList from '../../Modules/DataEntry/DealersList';
+import AddDealer from '../../Modules/DataEntry/AddDealer';
+import EditDealer from '../../Modules/DataEntry/EditDealer';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -443,11 +445,26 @@ const StackNavigation = () => {
         path='/dealers-list'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+            <EntryLayout
+              title='Dealers List'
               content={<DealersList />}
             />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/add-dealer'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <EntryLayout title='Add Dealer' content={<AddDealer />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/edit-dealer'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <EntryLayout title='Edit Dealer' content={<EditDealer />} />
           </PrivateRoute>
         }
       />
