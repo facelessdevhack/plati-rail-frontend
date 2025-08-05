@@ -49,13 +49,18 @@ export const entrySiderRoutes = [
     <SafetyCertificateOutlined />
   ),
   getItemLayout(
+    <Link to='/stock-management'>Stock Management</Link>,
+    '7',
+    <StockOutlined />
+  ),
+  getItemLayout(
     'Masters',
     'masters',
     <SettingOutlined />,
     [
       getItemLayout(
         <Link to='/dealers-list'>Dealers</Link>,
-        '7',
+        '8',
         <StockOutlined />
       )
     ]

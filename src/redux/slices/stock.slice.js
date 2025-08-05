@@ -17,6 +17,10 @@ import {
   getAllProducts,
   getAllSizes,
   getAllWidths,
+  getStockManagement,
+  updateStock,
+  createStockProduct,
+  deleteStockProduct,
 } from "../api/stockAPI";
 
 const initialState = {
@@ -45,7 +49,21 @@ const initialState = {
     hasPreviousPage: false
   },
   allProducts: [],
-  allCaps: []
+  allCaps: [],
+  // Stock Management
+  stockManagementData: [],
+  stockPagination: {
+    current: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 0
+  },
+  stockSummary: {
+    total_in_house: 0,
+    total_showroom: 0,
+    low_stock_count: 0,
+    out_of_stock_count: 0
+  }
 };
 
 export const stockSlice = createSlice({
@@ -257,6 +275,64 @@ export const stockSlice = createSlice({
       state.loading = false;
       state.error = payload;
       state.success = false
+    });
+
+    // Stock Management reducers
+    builder.addCase(getStockManagement.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(getStockManagement.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      console.log('getStockManagement.fulfilled payload.data:', payload.data);
+      state.stockManagementData = payload.data;
+      state.stockPagination = payload.pagination;
+      state.stockSummary = payload.summary;
+    });
+    builder.addCase(getStockManagement.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+    });
+
+    builder.addCase(updateStock.pending, (state) => {
+      state.loading = true;
+      state.success = false;
+    });
+    builder.addCase(updateStock.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.success = true;
+    });
+    builder.addCase(updateStock.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+      state.success = false;
+    });
+
+    builder.addCase(createStockProduct.pending, (state) => {
+      state.loading = true;
+      state.success = false;
+    });
+    builder.addCase(createStockProduct.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.success = true;
+    });
+    builder.addCase(createStockProduct.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+      state.success = false;
+    });
+
+    builder.addCase(deleteStockProduct.pending, (state) => {
+      state.loading = true;
+      state.success = false;
+    });
+    builder.addCase(deleteStockProduct.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.success = true;
+    });
+    builder.addCase(deleteStockProduct.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
+      state.success = false;
     });
   },
 });

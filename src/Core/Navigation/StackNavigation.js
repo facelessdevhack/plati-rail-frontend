@@ -19,7 +19,8 @@ import AdminDealerDetails from '../../Modules/DailyEntry/Dealers/DealersDetails'
 import AddPMEntry from '../../Modules/DataEntry/AddPMEntry'
 import PrivateRoute from './PrivateRoute'
 import UnauthorizedPage from './UnauthorizedPage'
-import StockList from '../../Modules/Stock/StockList'
+
+import StockManagementDashboard from '../../Modules/Stock/StockManagementDashboard'
 import AddDailyPurchaseEntry from '../../Modules/DataEntry/AddDailyPurchaseEntry'
 import AddCapStock from '../../Modules/AddModules/AddCapModel'
 import AddFinish from '../../Modules/AddModules/AddFinish'
@@ -37,7 +38,7 @@ import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetric
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
 import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
-import StockAnalysisDashboard from '../../Modules/Stock/StockAnalysisDashboard'
+
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 import DealersList from '../../Modules/DataEntry/DealersList';
@@ -104,14 +105,14 @@ const StackNavigation = () => {
         }
       />
 
-      <Route
+      {/* <Route
         path='/admin-stock-list'
         element={
           <PrivateRoute allowedRoles={[4]}>
             <AdminLayout title='Stock List' content={<StockList />} />
           </PrivateRoute>
         }
-      />
+      /> */}
 
       {/* Data Entry Routes */}
       <Route
@@ -344,22 +345,20 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+      
       <Route
-        path='/stock-dashboard'
+        path='/stock-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
-            <StockList />
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Stock Management Dashboard'
+              items={adminSiderRoutes}
+              content={<StockManagementDashboard />}
+            />
           </PrivateRoute>
         }
       />
-      <Route
-        path='/stock-analysis/:productId'
-        element={
-          <PrivateRoute allowedRoles={[4, 5]}>
-            <StockAnalysisDashboard />
-          </PrivateRoute>
-        }
-      />
+      
       <Route
         path='/bulk-stock-analysis'
         element={
@@ -417,18 +416,7 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
-      <Route
-        path='/inventory-analysis'
-        element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
-            <AdminLayout
-              title='Stock Analysis Dashboard'
-              items={adminSiderRoutes}
-              content={<StockAnalysisDashboard />}
-            />
-          </PrivateRoute>
-        }
-      />
+      
       <Route
         path='/inventory-reports'
         element={

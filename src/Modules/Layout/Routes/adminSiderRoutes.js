@@ -34,11 +34,16 @@ export const adminSiderRoutes = [
     '1b',
     <TeamOutlined />
   ),
-  getItemLayout(
-    <Link to='/stock-dashboard'>Stock Dashboard</Link>,
-    '1a',
-    <StockOutlined />
-  ),
+  getItemLayout('Stock Management', 'stock-menu', <StockOutlined />, [
+    getItemLayout(
+      <Link to='/stock-dashboard'>Stock Dashboard</Link>,
+      '1a'
+    ),
+    getItemLayout(
+      <Link to='/stock-management'>Stock Management</Link>,
+      '1a-new'
+    )
+  ]),
   getItemLayout(
     <Link to='/dealer-warranty'>Dealer Warranty</Link>,
     '1c',

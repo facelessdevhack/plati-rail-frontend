@@ -78,6 +78,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
       '/admin-dashboard': '1',
       '/dealer-metrics': '1b',
       '/stock-dashboard': '1a',
+      '/stock-management': '1a-new',
       '/dealer-warranty': '1c',
       '/inventory-management': '13',
       '/inventory-analysis': '14',
@@ -184,6 +185,9 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     const activeKey = getActiveMenuKey[0]
 
     // If the active key belongs to a submenu, return the submenu key
+    if (['1a', '1a-new'].includes(activeKey)) {
+      return ['stock-menu'] // Stock Management submenu
+    }
     if (['3', '4'].includes(activeKey)) {
       return ['sub1'] // Dealer Metrics submenu
     }
