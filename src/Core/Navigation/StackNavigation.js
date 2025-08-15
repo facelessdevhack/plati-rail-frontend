@@ -45,6 +45,15 @@ import DealersList from '../../Modules/DataEntry/DealersList';
 import AddDealer from '../../Modules/DataEntry/AddDealer';
 import EditDealer from '../../Modules/DataEntry/EditDealer';
 
+// Salary Management Components
+import { 
+  SalaryDashboard, 
+  EmployeeList, 
+  AttendanceTracking, 
+  SalaryProcessing, 
+  LeaveManagement 
+} from '../../Modules/SalaryManagement';
+
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
   const navigate = useNavigate()
@@ -456,6 +465,69 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+
+      {/* Salary Management Routes */}
+      <Route
+        path='/salary-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Salary Management Dashboard'
+              items={adminSiderRoutes}
+              content={<SalaryDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/employees'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Employee Management'
+              items={adminSiderRoutes}
+              content={<EmployeeList />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/attendance'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Attendance Tracking'
+              items={adminSiderRoutes}
+              content={<AttendanceTracking />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/salary-processing'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Salary Processing'
+              items={adminSiderRoutes}
+              content={<SalaryProcessing />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/leave-management'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Leave Management'
+              items={adminSiderRoutes}
+              content={<LeaveManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+
       {/* <Route
         path="/entry-daily-entry"
         element={

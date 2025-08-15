@@ -11,7 +11,11 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   ShoppingCartOutlined,
-  DatabaseOutlined
+  DatabaseOutlined,
+  DollarOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  ContactsOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -94,6 +98,33 @@ export const adminSiderRoutes = [
     getItemLayout(
       <Link to='/production-inventory-requests'>Inventory Requests</Link>,
       '12'
+    )
+  ]),
+  getItemLayout('Salary Management', 'salary-menu', <DollarOutlined />, [
+    getItemLayout(
+      <Link to='/salary-dashboard'>Salary Dashboard</Link>,
+      'salary-1',
+      <DashboardOutlined />
+    ),
+    getItemLayout(
+      <Link to='/employees'>Employee Management</Link>,
+      'salary-2',
+      <ContactsOutlined />
+    ),
+    getItemLayout(
+      <Link to='/attendance'>Attendance Tracking</Link>,
+      'salary-3',
+      <CalendarOutlined />
+    ),
+    getItemLayout(
+      <Link to='/salary-processing'>Salary Processing</Link>,
+      'salary-4',
+      <DollarOutlined />
+    ),
+    getItemLayout(
+      <Link to='/leave-management'>Leave Management</Link>,
+      'salary-5',
+      <ClockCircleOutlined />
     )
   ])
   //   getItemLayout("Team", "sub2", <TeamOutlined />, [

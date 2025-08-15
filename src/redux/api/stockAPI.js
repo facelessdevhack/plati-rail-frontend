@@ -51,7 +51,7 @@ export const getDealersDropdown = createAsyncThunk(
   'dealers/getDealersDropdown',
   async ({ salesId, search }, { rejectWithValue }) => {
     try {
-      let url = `/master/dealers-dropdown`
+      let url = `/v2/master/dealers-dropdown`
       const params = new URLSearchParams()
       if (salesId) {
         params.append('salesId', salesId)
@@ -87,7 +87,7 @@ export const getAllSizes = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       console.log('Calling getAllSizes API...')
-      const response = await client.get('/alloys/sizes')
+      const response = await client.get('/v2/alloys/sizes')
       console.log('getAllSizes response:', response.data)
       return response.data
     } catch (e) {
