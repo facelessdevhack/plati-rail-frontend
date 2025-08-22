@@ -52,68 +52,113 @@ const DealerWarrantyList = () => {
   const fetchDealers = async () => {
     try {
       const response = await warrantyService.getDealers()
-      if (response.success) {
-        setDealers(response.data)
+      // Handle both success response and direct data response
+      if (response) {
+        if (response.success && response.data) {
+          setDealers(Array.isArray(response.data) ? response.data : [])
+        } else if (Array.isArray(response)) {
+          setDealers(response)
+        } else if (response.data && Array.isArray(response.data)) {
+          setDealers(response.data)
+        } else {
+          setDealers([])
+        }
       }
     } catch (error) {
       console.error('Error fetching dealers:', error)
-      message.error('Failed to fetch dealers')
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch dealers'
+      message.error(errorMessage)
+      setDealers([])
     }
   }
 
   // Fetch warranty registrations
-  const fetchWarrantyData = async (params = {}) => {
+  const fetchWarrantyData = async () => {
     setLoading(true)
     try {
       const response = await warrantyService.getAllProductRegistrations(
         filters.dealerId
       )
 
-      if (response.success) {
-        let filteredData = response.data
-
-        // Apply client-side filters
-        if (filters.searchText) {
-          const searchLower = filters.searchText.toLowerCase()
-          filteredData = filteredData.filter(
-            item =>
-              item.customerName?.toLowerCase().includes(searchLower) ||
-              item.warrantyCardNo?.toLowerCase().includes(searchLower) ||
-              item.vehicleNo?.toLowerCase().includes(searchLower) ||
-              item.mobileNo?.toString().includes(filters.searchText) ||
-              item.dealerName?.toLowerCase().includes(searchLower)
-          )
+      // Handle both success response and direct data response
+      let responseData = []
+      if (response) {
+        if (response.success && response.data) {
+          responseData = Array.isArray(response.data) ? response.data : []
+        } else if (Array.isArray(response)) {
+          responseData = response
+        } else if (response.data && Array.isArray(response.data)) {
+          responseData = response.data
         }
-
-        if (filters.productType) {
-          filteredData = filteredData.filter(
-            item => item.productType === filters.productType
-          )
-        }
-
-        if (filters.registerStatus) {
-          filteredData = filteredData.filter(
-            item => item.registerStatus === filters.registerStatus
-          )
-        }
-
-        if (filters.dateRange && filters.dateRange.length === 2) {
-          const [startDate, endDate] = filters.dateRange
-          filteredData = filteredData.filter(item => {
-            const itemDate = moment(item.dop)
-            return itemDate.isBetween(startDate, endDate, 'day', '[]')
-          })
-        }
-
-        setData(filteredData)
-        setPagination(prev => ({
-          ...prev,
-          total: filteredData.length
-        }))
       }
+
+      let filteredData = responseData
+
+      // Apply client-side filters
+      if (filters.searchText) {
+        const searchLower = filters.searchText.toLowerCase().trim()
+        filteredData = filteredData.filter(
+          item => {
+            // Safely convert all fields to strings before lowercase
+            const customerName = String(item.customerName || '').toLowerCase()
+            const warrantyCardNo = String(item.warrantyCardNo || '').toLowerCase()
+            const vehicleNo = String(item.vehicleNo || '').toLowerCase()
+            const mobileNo = String(item.mobileNo || '').toLowerCase()
+            const dealerName = String(item.dealerName || '').toLowerCase()
+            const vehicleModel = String(item.vehicleModel || '').toLowerCase()
+            const emailAddress = String(item.emailAddress || '').toLowerCase()
+            const alloyModelName = String(item.alloyModelName || '').toLowerCase()
+            const finishName = String(item.finishName || '').toLowerCase()
+            
+            return (
+              customerName.includes(searchLower) ||
+              warrantyCardNo.includes(searchLower) ||
+              vehicleNo.includes(searchLower) ||
+              mobileNo.includes(searchLower) ||
+              dealerName.includes(searchLower) ||
+              vehicleModel.includes(searchLower) ||
+              emailAddress.includes(searchLower) ||
+              alloyModelName.includes(searchLower) ||
+              finishName.includes(searchLower)
+            )
+          }
+        )
+      }
+
+      if (filters.productType) {
+        filteredData = filteredData.filter(
+          item => item.productType === filters.productType
+        )
+      }
+
+      if (filters.registerStatus) {
+        filteredData = filteredData.filter(
+          item => item.registerStatus === filters.registerStatus
+        )
+      }
+
+      if (filters.dateRange && filters.dateRange.length === 2) {
+        const [startDate, endDate] = filters.dateRange
+        filteredData = filteredData.filter(item => {
+          const itemDate = moment(item.dop)
+          return itemDate.isBetween(startDate, endDate, 'day', '[]')
+        })
+      }
+
+      setData(filteredData)
+      setPagination(prev => ({
+        ...prev,
+        total: filteredData.length
+      }))
     } catch (error) {
       console.error('Error fetching warranty data:', error)
-      message.error('Failed to fetch warranty data')
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch warranty data'
+      message.error(errorMessage)
+      setData([])
+      setPagination(prev => ({
+        ...prev,
+        total: 0
+      }))
     } finally {
       setLoading(false)
     }
@@ -266,21 +311,6 @@ const DealerWarrantyList = () => {
     }
   }
 
-  const getProductTypeColor = type => {
-    switch (type?.toLowerCase()) {
-      case 'alloy':
-      case 'alloys':
-        return 'blue'
-      case 'tyres':
-        return 'purple'
-      case 'caps':
-        return 'cyan'
-      case 'ppf':
-        return 'magenta'
-      default:
-        return 'default'
-    }
-  }
 
   const getOtpStatusColor = status => {
     switch (status?.toLowerCase()) {

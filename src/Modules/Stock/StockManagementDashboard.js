@@ -515,7 +515,7 @@ const StockManagementDashboard = () => {
       <Card>
         <Table
           columns={columns}
-          dataSource={stockManagementData}
+          dataSource={Array.isArray(stockManagementData) ? stockManagementData : []}
           rowKey="id"
           loading={loading}
           pagination={{

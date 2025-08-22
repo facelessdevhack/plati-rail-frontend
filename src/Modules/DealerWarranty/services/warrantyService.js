@@ -22,7 +22,7 @@ export const warrantyService = {
   // Get dealers list
   getDealers: async () => {
     try {
-      const response = await client.get('/dealers')
+      const response = await client.get('/master/dealers')
       return response.data
     } catch (error) {
       console.error('Error fetching dealers:', error)

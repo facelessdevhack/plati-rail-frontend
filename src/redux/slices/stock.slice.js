@@ -284,7 +284,7 @@ export const stockSlice = createSlice({
     builder.addCase(getStockManagement.fulfilled, (state, { payload }) => {
       state.loading = false;
       console.log('getStockManagement.fulfilled payload.data:', payload.data);
-      state.stockManagementData = payload.data;
+      state.stockManagementData = Array.isArray(payload.data) ? payload.data : [];
       state.stockPagination = payload.pagination;
       state.stockSummary = payload.summary;
     });
