@@ -27,7 +27,6 @@ import {
   List,
   Empty
 } from 'antd'
-const { confirm } = Modal
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -62,6 +61,7 @@ const { Step } = Steps
 const { Option } = Select
 const { TextArea } = Input
 const { TabPane } = Tabs
+const { confirm } = Modal
 
 // Default Production Steps Configuration
 const DEFAULT_PRODUCTION_STEPS = [

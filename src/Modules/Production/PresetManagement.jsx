@@ -29,7 +29,8 @@ import {
   Menu,
   Switch,
   Progress,
-  Spin
+  Spin,
+  Descriptions
 } from 'antd'
 import {
   PlusOutlined,
@@ -37,28 +38,15 @@ import {
   DeleteOutlined,
   EyeOutlined,
   SaveOutlined,
-  CloseOutlined,
   ReloadOutlined,
   SettingOutlined,
   DragOutlined,
   CopyOutlined,
   ExportOutlined,
-  ImportOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ToolOutlined,
-  ThunderboltOutlined,
   AppstoreOutlined,
   BarsOutlined,
-  FireOutlined,
-  StarOutlined,
-  RocketOutlined,
   BranchesOutlined,
-  InfoCircleOutlined,
-  WarningOutlined,
   MoreOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined
 } from '@ant-design/icons'
