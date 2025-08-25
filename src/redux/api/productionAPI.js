@@ -395,9 +395,12 @@ export const getPresetDetails = createAsyncThunk(
 export const createStepPreset = createAsyncThunk(
   'production/createStepPreset',
   async (presetData, { rejectWithValue }) => {
-    return rejectWithValue({
-      message: 'Creating presets is not available. Please use the predefined presets.'
-    })
+    try {
+      const response = await client.post('/production/step-presets', presetData)
+      return response.data || response
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
   }
 )
 
@@ -405,9 +408,12 @@ export const createStepPreset = createAsyncThunk(
 export const updateStepPreset = createAsyncThunk(
   'production/updateStepPreset',
   async ({ presetName, presetData }, { rejectWithValue }) => {
-    return rejectWithValue({
-      message: 'Editing presets is not available. Please use the predefined presets.'
-    })
+    try {
+      const response = await client.put(`/production/step-presets/${presetName}`, presetData)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
   }
 )
 
@@ -415,9 +421,12 @@ export const updateStepPreset = createAsyncThunk(
 export const deleteStepPreset = createAsyncThunk(
   'production/deleteStepPreset',
   async ({ presetName }, { rejectWithValue }) => {
-    return rejectWithValue({
-      message: 'Deleting presets is not available. These are system-defined presets.'
-    })
+    try {
+      const response = await client.delete(`/production/step-presets/${presetName}`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
   }
 )
 

@@ -17,7 +17,8 @@ import {
   Tooltip,
   Badge,
   Card,
-  Divider
+  Divider,
+  Table
 } from 'antd'
 import {
   EyeOutlined,
@@ -34,6 +35,7 @@ import {
 import moment from 'moment'
 
 import CustomTable from '../../Core/Components/CustomTable'
+import JobCardDetailsModal from './JobCardDetailsModal'
 import CustomButton from '../../Core/Components/CustomButton'
 import Layout from '../Layout/layout'
 import ProductionPlanDetailsModal from './ProductionPlanDetailsModal'
@@ -45,7 +47,8 @@ import {
   getProductionPlans,
   deleteProductionPlan,
   getProductionSteps,
-  moveToNextStep
+  moveToNextStep,
+  getJobCardsWithDetails
 } from '../../redux/api/productionAPI'
 import { mockJobCards } from '../../Utils/mockProductionData'
 import {
@@ -76,6 +79,9 @@ const ProductionListing = () => {
   const [selectedPlanForPreset, setSelectedPlanForPreset] = useState(null)
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
   const [selectedPlanForJobCard, setSelectedPlanForJobCard] = useState(null)
+  const [expandedRowKeys, setExpandedRowKeys] = useState([])
+  const [jobCardsData, setJobCardsData] = useState({})
+  const [loadingJobCards, setLoadingJobCards] = useState({})
 
   const {
     productionPlans,
@@ -97,8 +103,7 @@ const ProductionListing = () => {
         page: currentPage,
         limit: pageSize,
         search: searchTerm,
-        urgent: filters.urgent,
-        status: filters.status
+        urgent: filters.urgent
       })
     )
   }, [dispatch, currentPage, pageSize, searchTerm, filters])
@@ -333,8 +338,7 @@ const ProductionListing = () => {
         page: currentPage,
         limit: pageSize,
         search: searchTerm,
-        urgent: filters.urgent,
-        status: filters.status
+        urgent: filters.urgent
       })
     )
   }
@@ -385,26 +389,10 @@ const ProductionListing = () => {
     }, 500)
   }
 
-  // Get status color for tags
-  const getStatusColor = status => {
-    const statusColors = {
-      Pending: 'orange',
-      'In Progress': 'blue',
-      'Quality Check': 'purple',
-      Completed: 'green',
-      Cancelled: 'red',
-      'On Hold': 'gray'
-    }
-    return statusColors[status] || 'default'
-  }
 
   // Check if a plan can move to next step
   const canMoveToNextStep = record => {
-    const completedStatuses = ['Completed', 'Cancelled']
     const stepStatus = record.currentStepStatus
-
-    // Can't move if plan is completed/cancelled
-    if (completedStatuses.includes(record.status)) return false
 
     // Check if has workflow steps defined (use workflowInfo for accurate check)
     const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
@@ -418,39 +406,25 @@ const ProductionListing = () => {
 
   // Check if a plan can create job cards
   const canCreateJobCard = record => {
-    const completedStatuses = ['Completed', 'Cancelled']
-
-    // Can't create job cards if plan is completed/cancelled
-    if (completedStatuses.includes(record.status)) return false
-
-    // Can create job cards if plan has remaining quantity available
+    // Require a preset/workflow on the plan AND remaining quantity
     const remaining = record.quantityTracking?.remainingQuantity ?? 0
-    return remaining > 0
+    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasPreset = record.workflowInfo?.presetName || record.presetName || record.preset_name
+    return remaining > 0 && (hasWorkflow || hasPreset)
   }
 
   // Get tooltip message for create job card button
   const getCreateJobCardTooltip = record => {
-    const completedStatuses = ['Completed', 'Cancelled']
     const remaining = record.quantityTracking?.remainingQuantity ?? 0
-
-    if (completedStatuses.includes(record.status)) {
-      return 'Cannot create job cards - plan is completed or cancelled'
-    }
-
-    if (remaining <= 0) {
-      return 'Cannot create job cards - no remaining quantity available'
-    }
-
+    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasPreset = record.workflowInfo?.presetName || record.presetName || record.preset_name
+    if (!hasWorkflow && !hasPreset) return 'Assign a preset/workflow to the plan before creating job cards'
+    if (remaining <= 0) return 'Cannot create job cards - no remaining quantity available'
     return `Create job card from this production plan (${remaining.toLocaleString()} units available)`
   }
 
   // Get tooltip message for move to next step button
   const getMoveTooltip = record => {
-    const completedStatuses = ['Completed', 'Cancelled']
-
-    if (completedStatuses.includes(record.status)) {
-      return 'Cannot move - plan is completed or cancelled'
-    }
 
     const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
     if (!hasWorkflow && record.currentStepName === 'Not Started') {
@@ -462,6 +436,200 @@ const ProductionListing = () => {
     }
 
     return 'Move to next production step'
+  }
+
+  // Handle expanding a row to show job cards
+  const handleExpand = async (expanded, record) => {
+    const keys = expanded ? [...expandedRowKeys, record.id] : expandedRowKeys.filter(key => key !== record.id)
+    setExpandedRowKeys(keys)
+
+    // Fetch job cards if expanding and not already loaded
+    if (expanded && !jobCardsData[record.id]) {
+      setLoadingJobCards(prev => ({ ...prev, [record.id]: true }))
+      try {
+        const response = await dispatch(getJobCardsWithDetails({ prodPlanId: record.id })).unwrap()
+        setJobCardsData(prev => ({ ...prev, [record.id]: response.jobCards || [] }))
+      } catch (error) {
+        console.error('Error loading job cards:', error)
+        message.error('Failed to load job cards')
+        setJobCardsData(prev => ({ ...prev, [record.id]: [] }))
+      } finally {
+        setLoadingJobCards(prev => ({ ...prev, [record.id]: false }))
+      }
+    }
+  }
+
+  // Render expanded row content (job cards)
+  const expandedRowRender = (record) => {
+    const jobCards = jobCardsData[record.id] || []
+    const loading = loadingJobCards[record.id]
+
+    if (loading) {
+      return (
+        <div className='p-8 text-center'>
+          <div className='text-gray-500'>Loading job cards...</div>
+        </div>
+      )
+    }
+
+    if (jobCards.length === 0) {
+      const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+      return (
+        <div className='p-8 text-center'>
+          <div className='text-gray-500'>No job cards created yet</div>
+          {hasWorkflow ? (
+            <Button
+              type='primary'
+              icon={<PlusOutlined />}
+              onClick={() => handleCreateJobCard(record)}
+              className='mt-4'
+            >
+              Create First Job Card
+            </Button>
+          ) : (
+            <Button
+              type='primary'
+              icon={<SettingOutlined />}
+              onClick={() => handleAssignPreset(record)}
+              className='mt-4'
+            >
+              Assign Preset to Plan
+            </Button>
+          )}
+        </div>
+      )
+    }
+
+    // Job cards table columns
+    const jobCardColumns = [
+      {
+        title: 'Job Card ID',
+        dataIndex: 'id',
+        key: 'id',
+        width: 100,
+        render: (id) => <span className='font-semibold text-blue-600'>#{id}</span>
+      },
+      {
+        title: 'Quantity',
+        dataIndex: 'quantity',
+        key: 'quantity',
+        width: 120,
+        render: (qty) => (
+          <div className='text-center'>
+            <div className='text-lg font-semibold'>{qty?.toLocaleString()}</div>
+            <div className='text-xs text-gray-500'>units</div>
+          </div>
+        )
+      },
+      {
+        title: 'Current Step',
+        key: 'currentStep',
+        width: 200,
+        render: (_, jobCard) => {
+          const totalSteps = jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
+          const currentStepNum = jobCard.prodStep || jobCard.prod_step || 1
+          const progress = Math.round((currentStepNum / totalSteps) * 100)
+          const presetName = jobCard.presetName || jobCard.preset_name || 'Standard'
+
+          return (
+            <div className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-medium'>Step {currentStepNum} of {totalSteps}</span>
+                <Tag color={progress === 100 ? 'green' : 'blue'} className='text-xs'>
+                  {progress}%
+                </Tag>
+              </div>
+              <div className='w-full bg-gray-200 rounded-full h-2'>
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    progress === 100 ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${Math.max(progress, 2)}%` }}
+                />
+              </div>
+              <div className='text-xs text-gray-500'>Preset: {presetName}</div>
+            </div>
+          )
+        }
+      },
+      {
+        title: 'Status',
+        key: 'status',
+        width: 120,
+        render: (_, jobCard) => {
+          const totalSteps = jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
+          const currentStep = jobCard.prodStep || jobCard.prod_step || 1
+          const isCompleted = currentStep >= totalSteps
+
+          return (
+            <Tag color={isCompleted ? 'green' : 'blue'}>
+              {isCompleted ? 'Completed' : 'In Progress'}
+            </Tag>
+          )
+        }
+      },
+      {
+        title: 'Accepted/Rejected',
+        key: 'quantities',
+        width: 150,
+        render: (_, jobCard) => (
+          <div className='flex gap-2'>
+            <div className='text-center'>
+              <div className='text-green-600 font-semibold'>
+                {jobCard.acceptedQuantity || jobCard.accepted_quantity || 0}
+              </div>
+              <div className='text-xs text-gray-500'>Accepted</div>
+            </div>
+            <div className='text-center'>
+              <div className='text-red-600 font-semibold'>
+                {jobCard.rejectedQuantity || jobCard.rejected_quantity || 0}
+              </div>
+              <div className='text-xs text-gray-500'>Rejected</div>
+            </div>
+          </div>
+        )
+      },
+      {
+        title: 'Actions',
+        key: 'actions',
+        width: 100,
+        render: (_, jobCard) => (
+          <Button
+            type='link'
+            onClick={() => navigate(`/job-cards?id=${jobCard.id}`)}
+            icon={<EyeOutlined />}
+          >
+            View Details
+          </Button>
+        )
+      }
+    ]
+
+    return (
+      <div className='p-4 bg-gray-50'>
+        <div className='mb-3 flex justify-between items-center'>
+          <h3 className='text-sm font-semibold text-gray-700'>
+            Job Cards ({jobCards.length})
+          </h3>
+          <Button
+            size='small'
+            icon={<PlusOutlined />}
+            onClick={() => handleCreateJobCard(record)}
+            disabled={!canCreateJobCard(record)}
+          >
+            Add Job Card
+          </Button>
+        </div>
+        <Table
+          columns={jobCardColumns}
+          dataSource={jobCards}
+          rowKey='id'
+          pagination={false}
+          size='small'
+          className='bg-white'
+        />
+      </div>
+    )
   }
 
   // Create dropdown menu for mobile actions
@@ -515,378 +683,225 @@ const ProductionListing = () => {
     />
   )
 
-  // Table columns configuration
+  // Clean, modern table columns with better UX
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 40,
+      title: 'Production Plan',
+      key: 'planDetails',
+      width: 320,
       fixed: 'left',
-      sorter: (a, b) => a.id - b.id,
-      render: id => (
-        <div className='font-medium text-blue-600 text-xs'>#{id}</div>
-      )
-    },
-    {
-      title: 'Source Product',
-      key: 'sourceProduct',
-      width: 240,
-      ellipsis: true,
       render: (_, record) => {
-        // Use the complete product description from backend if available
-        const fullProduct = record.sourceProduct
-        // Fallback to individual fields if needed
-        const productName =
-          record.alloyName ||
-          record.sourceproductname ||
-          `Alloy ${record.alloyId}`
-        console.log(record, 'RECORD')
-        console.log('Workflow Check:', {
-          hasWorkflowSteps: record.hasWorkflowSteps,
-          workflowInfo: record.workflowInfo,
-          currentStepStatus: record.currentStepStatus,
-          canMove: canMoveToNextStep(record)
-        })
+        const sourceProduct = record.sourceProduct || record.alloyName || record.sourceproductname || `Alloy ${record.alloyId}`
+        const targetProduct = record.targetProduct || record.convertName || record.targetproductname || `Convert ${record.convertToAlloyId}`
+        
         return (
-          <div className='w-full'>
-            {fullProduct ? (
-              <div className='font-medium text-xs' title={fullProduct}>
-                {fullProduct}
-              </div>
-            ) : (
-              <>
-                <div
-                  className='font-medium text-xs truncate'
-                  title={productName}
-                >
-                  {productName}
-                </div>
-                {(record.sourceModelName || record.sourceFinish) && (
-                  <div className='text-xs text-gray-500 truncate'>
-                    {record.sourceModelName}{' '}
-                    {record.sourceFinish && `- ${record.sourceFinish}`}
-                  </div>
+          <div className='py-2'>
+            {/* Header with ID and Priority */}
+            <div className='flex items-center justify-between mb-2'>
+              <div className='flex items-center gap-2'>
+                <span className='font-semibold text-blue-600 text-sm'>#{record.id}</span>
+                {record.urgent && (
+                  <Tag color="red" size="small" className='text-xs font-medium'>
+                    🔥 URGENT
+                  </Tag>
                 )}
-              </>
-            )}
-          </div>
-        )
-      }
-    },
-    {
-      title: 'Target Product',
-      key: 'targetProduct',
-      width: 240,
-      ellipsis: true,
-      render: (_, record) => {
-        // Use the complete product description from backend if available
-        const fullProduct = record.targetProduct
-        // Fallback to individual fields if needed
-        const productName =
-          record.convertName ||
-          record.targetproductname ||
-          `Convert ${record.convertToAlloyId}`
+              </div>
+              <div className='text-xs text-gray-500'>
+                {moment(record.createdAt).format('MMM DD')}
+              </div>
+            </div>
 
-        return (
-          <div className='w-full'>
-            {fullProduct ? (
-              <div className='font-medium text-xs' title={fullProduct}>
-                {fullProduct}
-              </div>
-            ) : (
-              <>
-                <div
-                  className='font-medium text-xs truncate'
-                  title={productName}
-                >
-                  {productName}
+            {/* Product Flow */}
+            <div className='bg-gray-50 rounded-lg p-3 space-y-2'>
+              <div>
+                <div className='text-xs text-gray-600 mb-1'>From:</div>
+                <div className='font-medium text-sm text-gray-900 truncate' title={sourceProduct}>
+                  {sourceProduct}
                 </div>
-                {(record.targetModelName || record.targetFinish) && (
-                  <div className='text-xs text-gray-500 truncate'>
-                    {record.targetModelName}{' '}
-                    {record.targetFinish && `- ${record.targetFinish}`}
-                  </div>
-                )}
-              </>
-            )}
+              </div>
+              
+              <div className='flex items-center justify-center'>
+                <div className='flex-1 h-px bg-gray-300'></div>
+                <span className='px-2 text-gray-400'>→</span>
+                <div className='flex-1 h-px bg-gray-300'></div>
+              </div>
+              
+              <div>
+                <div className='text-xs text-gray-600 mb-1'>To:</div>
+                <div className='font-medium text-sm text-blue-700 truncate' title={targetProduct}>
+                  {targetProduct}
+                </div>
+              </div>
+            </div>
           </div>
         )
       }
     },
     {
-      title: 'Total Qty',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 80,
-      sorter: (a, b) => a.quantity - b.quantity,
-      render: quantity => (
-        <div className='font-medium text-xs'>{quantity?.toLocaleString()}</div>
-      )
-    },
-    {
-      title: 'Allocated',
-      key: 'allocatedQuantity',
-      width: 100,
+      title: 'Quantity & Progress',
+      key: 'quantityProgress',
+      width: 220,
       render: (_, record) => {
-        const allocated = record.quantityTracking?.allocatedQuantity || 0
         const total = record.quantity || 0
-        const percentage = total > 0 ? Math.round((allocated / total) * 100) : 0
-
-        return (
-          <div className='text-xs'>
-            <div className='font-medium'>{allocated.toLocaleString()}</div>
-            <div className='text-gray-500'>{percentage}%</div>
-          </div>
-        )
-      }
-    },
-    {
-      title: 'Remaining',
-      key: 'remainingQuantity',
-      width: 100,
-      render: (_, record) => {
+        const allocated = record.quantityTracking?.allocatedQuantity || 0
         const remaining = record.quantityTracking?.remainingQuantity || 0
-        const canCreate = remaining > 0
-
-        return (
-          <div className='text-xs'>
-            <div
-              className={`font-medium ${
-                remaining > 0 ? 'text-green-600' : 'text-gray-500'
-              }`}
-            >
-              {remaining.toLocaleString()}
-            </div>
-            {canCreate && (
-              <Tag color='green' style={{ fontSize: '10px', padding: '0 4px' }}>
-                Available
-              </Tag>
-            )}
-          </div>
-        )
-      }
-    },
-    {
-      title: 'Job Cards',
-      key: 'jobCards',
-      width: 80,
-      render: (_, record) => {
-        const jobCards =
-          record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
-        return (
-          <Badge
-            count={jobCards}
-            showZero
-            style={{ backgroundColor: jobCards > 0 ? '#52c41a' : '#d9d9d9' }}
-          >
-            <span className='text-xs'>Cards</span>
-          </Badge>
-        )
-      }
-    },
-    {
-      title: 'Allocation Status',
-      key: 'allocationStatus',
-      width: 120,
-      render: (_, record) => {
-        const allocated = record.quantityTracking?.allocatedQuantity || 0
-        const total = record.quantity || 0
+        const jobCards = record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
+        const acceptedQty = record.quantityTracking?.acceptedQuantity || 0
+        const rejectedQty = record.quantityTracking?.rejectedQuantity || 0
+        const completedCards = record.quantityTracking?.completedJobCards || 0
+        const avgProgress = record.quantityTracking?.avgProgressPercentage || 0
         const percentage = total > 0 ? Math.round((allocated / total) * 100) : 0
 
-        let status = 'Open'
-        if (percentage === 100) status = 'Fully Allocated'
-        else if (percentage > 0) status = 'Partially Allocated'
-
-        let color = 'default'
-        let text = 'Open'
-
-        if (status === 'Fully Allocated') {
-          color = 'red'
-          text = 'Fully Allocated'
-        } else if (status === 'Partially Allocated') {
-          color = 'orange'
-          text = `${percentage}% Allocated`
-        } else {
-          color = 'green'
-          text = 'Open'
-        }
-
         return (
-          <Tag color={color} style={{ fontSize: '11px' }}>
-            {text}
-          </Tag>
+          <div className='py-2 space-y-3'>
+            {/* Total Quantity */}
+            <div className='text-center'>
+              <div className='text-2xl font-bold text-gray-900'>{total.toLocaleString()}</div>
+              <div className='text-xs text-gray-500'>Total Units</div>
+            </div>
+
+            {/* Allocation Progress Bar */}
+            <div className='space-y-1'>
+              <div className='flex justify-between text-xs'>
+                <span className='text-gray-600'>Allocation</span>
+                <span className='font-medium'>{percentage}%</span>
+              </div>
+              <div className='w-full bg-gray-200 rounded-full h-2'>
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    percentage === 100 ? 'bg-red-500' : 
+                    percentage > 50 ? 'bg-orange-500' : 
+                    percentage > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
+                  style={{ width: `${Math.max(percentage, 2)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Job Cards Progress */}
+            {jobCards > 0 && (
+              <div className='space-y-1'>
+                <div className='flex justify-between text-xs'>
+                  <span className='text-gray-600'>Job Cards Progress</span>
+                  <span className='font-medium'>{Math.round(avgProgress)}%</span>
+                </div>
+                <div className='w-full bg-gray-200 rounded-full h-1.5'>
+                  <div 
+                    className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
+                    style={{ width: `${Math.max(avgProgress, 2)}%` }}
+                  />
+                </div>
+                <div className='flex justify-between text-xs text-gray-500'>
+                  <span>{completedCards}/{jobCards} completed</span>
+                </div>
+              </div>
+            )}
+
+            {/* Stats Row */}
+            <div className='grid grid-cols-2 gap-2 text-xs'>
+              <div className='text-center bg-blue-50 rounded p-2'>
+                <div className='font-semibold text-blue-700'>{allocated.toLocaleString()}</div>
+                <div className='text-blue-600'>Allocated</div>
+              </div>
+              <div className='text-center bg-green-50 rounded p-2'>
+                <div className={`font-semibold ${remaining > 0 ? 'text-green-700' : 'text-gray-500'}`}>
+                  {remaining.toLocaleString()}
+                </div>
+                <div className='text-green-600'>Remaining</div>
+              </div>
+            </div>
+
+            {/* Accepted/Rejected Stats */}
+            {(acceptedQty > 0 || rejectedQty > 0) && (
+              <div className='grid grid-cols-2 gap-2 text-xs'>
+                <div className='text-center'>
+                  <div className='font-semibold text-green-600'>{acceptedQty.toLocaleString()}</div>
+                  <div className='text-gray-500'>Accepted</div>
+                </div>
+                <div className='text-center'>
+                  <div className='font-semibold text-red-600'>{rejectedQty.toLocaleString()}</div>
+                  <div className='text-gray-500'>Rejected</div>
+                </div>
+              </div>
+            )}
+
+            {/* Job Cards Badge */}
+            {jobCards > 0 && (
+              <div className='flex justify-center'>
+                <Badge 
+                  count={jobCards} 
+                  style={{ backgroundColor: '#52c41a' }}
+                  className='text-xs'
+                >
+                  <Button
+                    type='text'
+                    size='small'
+                    className='text-xs text-gray-600 p-0'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleExpand(!expandedRowKeys.includes(record.id), record)
+                    }}
+                  >
+                    View Job Cards
+                  </Button>
+                </Badge>
+              </div>
+            )}
+          </div>
         )
       }
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 90,
-      render: status => (
-        <Tag color={getStatusColor(status)} className='text-xs px-1 py-0'>
-          {(status || 'Pending').substring(0, 8)}
-        </Tag>
-      )
-    },
-    {
-      title: 'Priority',
-      dataIndex: 'urgent',
-      key: 'urgent',
-      width: 70,
-      render: urgent => (
-        <Tag color={urgent ? 'red' : 'default'} className='text-xs px-1 py-0'>
-          {urgent ? 'Urgent' : 'Normal'}
-        </Tag>
-      )
-    },
-    {
-      title: 'Current Step',
-      dataIndex: 'currentStepName',
-      key: 'currentStepName',
-      width: 140,
-      ellipsis: true,
-      render: (stepName, record) => {
-        const getStatusColor = status => {
-          switch (status) {
-            case 'completed':
-              return 'text-green-600'
-            case 'in_progress':
-              return 'text-blue-600'
-            case 'pending':
-              return 'text-orange-600'
-            case 'paused':
-              return 'text-yellow-600'
-            case 'on_hold':
-              return 'text-red-600'
-            case 'waiting':
-              return 'text-gray-500'
-            default:
-              return 'text-gray-500'
-          }
-        }
-
-        const getStatusIcon = status => {
-          switch (status) {
-            case 'completed':
-              return '✓'
-            case 'in_progress':
-              return '⚡'
-            case 'pending':
-              return '⏳'
-            case 'paused':
-              return '⏸'
-            case 'on_hold':
-              return '⚠'
-            case 'waiting':
-              return '○'
-            default:
-              return '○'
-          }
-        }
-
-        const getPriorityColor = priority => {
-          switch (priority) {
-            case 'urgent':
-            case 'critical':
-              return 'text-red-500'
-            case 'high':
-              return 'text-orange-500'
-            case 'normal':
-              return 'text-gray-500'
-            case 'low':
-              return 'text-gray-400'
-            default:
-              return 'text-gray-500'
-          }
-        }
-
-        const progress = record.currentStepProgress || 0
+      title: 'Workflow Status',
+      key: 'workflowStatus', 
+      width: 180,
+      render: (_, record) => {
+        const stepName = record.currentStepName || 'Not Started'
         const status = record.currentStepStatus || 'waiting'
-        const priority =
-          record.currentStepPriority || record.priority || 'normal'
-        const assignedUser = record.currentStepAssignedUser
         const workflowInfo = record.workflowInfo || {}
+        
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'completed': return 'bg-green-100 text-green-800'
+            case 'in_progress': return 'bg-blue-100 text-blue-800' 
+            case 'pending': return 'bg-orange-100 text-orange-800'
+            case 'paused': return 'bg-yellow-100 text-yellow-800'
+            case 'waiting': return 'bg-gray-100 text-gray-600'
+            default: return 'bg-gray-100 text-gray-600'
+          }
+        }
+
+        const getStatusIcon = (status) => {
+          switch (status) {
+            case 'completed': return '✓'
+            case 'in_progress': return '⚡'
+            case 'pending': return '⏳'
+            case 'paused': return '⏸'
+            default: return '○'
+          }
+        }
 
         return (
-          <div className='w-full'>
-            {/* Step name and status */}
-            <div className='flex items-center gap-1'>
-              <span className={`text-xs ${getStatusColor(status)}`}>
-                {getStatusIcon(status)}
+          <div className='py-2 space-y-2'>
+            {/* Current Step */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+              <span>{getStatusIcon(status)}</span>
+              <span className='truncate max-w-[120px]' title={stepName}>
+                {stepName}
               </span>
-              <div className='font-medium text-xs truncate flex-1'>
-                {stepName || 'Not Started'}
-              </div>
-              {priority !== 'normal' && (
-                <span
-                  className={`text-xs ${getPriorityColor(priority)} font-bold`}
-                >
-                  {priority === 'urgent'
-                    ? '🔥'
-                    : priority === 'critical'
-                    ? '🚨'
-                    : priority === 'high'
-                    ? '⚡'
-                    : ''}
-                </span>
-              )}
             </div>
 
-            {/* Progress bar */}
-            {status !== 'waiting' && (
-              <div className='flex items-center gap-1 mt-1'>
-                <div className='flex-1 bg-gray-200 rounded-full h-1'>
-                  <div
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      status === 'completed'
-                        ? 'bg-green-500'
-                        : status === 'in_progress'
-                        ? 'bg-blue-500'
-                        : status === 'paused'
-                        ? 'bg-yellow-500'
-                        : status === 'on_hold'
-                        ? 'bg-red-500'
-                        : 'bg-orange-500'
-                    }`}
-                    style={{ width: `${Math.max(progress, 0)}%` }}
-                  />
-                </div>
-                <span className='text-xs text-gray-500 ml-1'>
-                  {progress >= 0 ? `${progress}%` : ''}
-                </span>
-              </div>
-            )}
-
-            {/* Step info and assigned user */}
-            <div className='flex items-center justify-between mt-0.5'>
-              {workflowInfo.hasCustomWorkflow && (
-                <div className='text-xs text-gray-400'>
-                  {record.currentStepOrder}/{workflowInfo.totalSteps}
-                </div>
-              )}
-              {assignedUser && (
-                <div
-                  className='text-xs text-blue-600 truncate max-w-20'
-                  title={assignedUser}
-                >
-                  👤 {assignedUser.split(' ')[0]}
-                </div>
-              )}
-            </div>
-
-            {/* Overall workflow progress */}
+            {/* Workflow Progress */}
             {workflowInfo.hasCustomWorkflow && workflowInfo.totalSteps > 0 && (
-              <div className='mt-1'>
-                <div className='text-xs text-gray-500 mb-0.5'>
-                  Overall: {workflowInfo.completedSteps}/
-                  {workflowInfo.totalSteps}
+              <div className='space-y-1'>
+                <div className='flex justify-between text-xs text-gray-600'>
+                  <span>Overall Progress</span>
+                  <span>{workflowInfo.completedSteps}/{workflowInfo.totalSteps}</span>
                 </div>
-                <div className='w-full bg-gray-100 rounded-full h-0.5'>
+                <div className='w-full bg-gray-200 rounded-full h-1.5'>
                   <div
-                    className='bg-purple-500 h-0.5 rounded-full transition-all duration-300'
-                    style={{ width: `${record.overallProgress || 0}%` }}
+                    className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
+                    style={{ width: `${(workflowInfo.completedSteps / workflowInfo.totalSteps) * 100}%` }}
                   />
                 </div>
               </div>
@@ -894,21 +909,6 @@ const ProductionListing = () => {
           </div>
         )
       }
-    },
-    {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 90,
-      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
-      render: date => (
-        <div className='max-w-[90px]'>
-          <div className='text-xs'>{moment(date).format('MMM DD')}</div>
-          <div className='text-xs text-gray-500'>
-            {moment(date).format('HH:mm')}
-          </div>
-        </div>
-      )
     },
     {
       title: 'Actions',
@@ -916,114 +916,59 @@ const ProductionListing = () => {
       width: 160,
       fixed: 'right',
       render: (_, record) => (
-        <div className='flex items-center justify-end gap-1'>
-          {/* Desktop View - Show all buttons */}
-          <div className='hidden lg:flex items-center gap-1'>
-            <Tooltip title='View Details'>
-              <Button
-                type='text'
-                icon={<EyeOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleView(record)
-                }}
-                className='text-blue-600 hover:text-blue-800 p-1'
-                size='small'
-              />
-            </Tooltip>
-            <Tooltip title='Edit Plan'>
-              <Button
-                type='text'
-                icon={<EditOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleEdit(record)
-                }}
-                className='text-green-600 hover:text-green-800 p-1'
-                size='small'
-              />
-            </Tooltip>
+        <div className='flex items-center justify-center'>
+          <div className='flex gap-2'>
+            {/* Primary Action - Create Job Card */}
             <Tooltip title={getCreateJobCardTooltip(record)}>
               <Button
-                type='text'
+                type={canCreateJobCard(record) ? 'primary' : 'default'}
                 icon={<PlayCircleOutlined />}
                 onClick={e => {
                   e.stopPropagation()
                   handleCreateJobCard(record)
                 }}
-                className='text-blue-500 hover:text-blue-700 p-1'
                 size='small'
                 disabled={!canCreateJobCard(record)}
-              />
+                className='min-w-[90px]'
+              >
+                Job Card
+              </Button>
             </Tooltip>
-            {!record.workflowInfo?.hasCustomWorkflow && !record.hasWorkflowSteps && (
-              <Tooltip title='Assign Preset'>
+
+            {/* Assign Preset - visible when no workflow/preset on plan */}
+            {!(record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps || record.workflowInfo?.presetName || record.presetName || record.preset_name) && (
+              <Tooltip title='Assign a preset/workflow to this plan'>
                 <Button
-                  type='text'
+                  type='default'
                   icon={<SettingOutlined />}
                   onClick={e => {
                     e.stopPropagation()
                     handleAssignPreset(record)
                   }}
-                  className='text-purple-600 hover:text-purple-800 p-1'
                   size='small'
-                />
+                >
+                  Preset
+                </Button>
               </Tooltip>
             )}
+            
+            {/* Secondary Action - Move to Next Step */}
             <Tooltip title={getMoveTooltip(record)}>
               <Button
-                type='text'
+                type='default'
                 icon={<ArrowRightOutlined />}
                 onClick={e => {
                   e.stopPropagation()
                   handleMoveToNextStep(record)
                 }}
-                className='text-orange-600 hover:text-orange-800 p-1'
                 size='small'
                 disabled={!canMoveToNextStep(record)}
-              />
+              >
+                Next
+              </Button>
             </Tooltip>
-            <Tooltip title='Delete Plan'>
-              <Button
-                type='text'
-                icon={<DeleteOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleDelete(record)
-                }}
-                className='text-red-600 hover:text-red-800 p-1'
-                loading={isDeleting}
-                size='small'
-              />
-            </Tooltip>
-          </div>
-
-          {/* Tablet/Mobile View - Show essential buttons + dropdown */}
-          <div className='lg:hidden flex items-center gap-1'>
-            <Tooltip title='View Details'>
-              <Button
-                type='text'
-                icon={<EyeOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleView(record)
-                }}
-                className='text-blue-600 hover:text-blue-800 p-1'
-                size='small'
-              />
-            </Tooltip>
-            <Tooltip title='Edit Plan'>
-              <Button
-                type='text'
-                icon={<EditOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleEdit(record)
-                }}
-                className='text-green-600 hover:text-green-800 p-1'
-                size='small'
-              />
-            </Tooltip>
+            
+            {/* More Actions Dropdown */}
             <Dropdown
               menu={getActionMenu(record)}
               trigger={['click']}
@@ -1032,9 +977,8 @@ const ProductionListing = () => {
               <Button
                 type='text'
                 icon={<MoreOutlined />}
-                onClick={e => e.stopPropagation()}
-                className='text-gray-600 hover:text-gray-800 p-1'
                 size='small'
+                onClick={e => e.stopPropagation()}
               />
             </Dropdown>
           </div>
@@ -1050,15 +994,6 @@ const ProductionListing = () => {
     { value: 'false', label: 'Normal' }
   ]
 
-  const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'Pending', label: 'Pending' },
-    { value: 'In Progress', label: 'In Progress' },
-    { value: 'Quality Check', label: 'Quality Check' },
-    { value: 'Completed', label: 'Completed' },
-    { value: 'Cancelled', label: 'Cancelled' },
-    { value: 'On Hold', label: 'On Hold' }
-  ]
 
   return (
     <Layout>
@@ -1132,7 +1067,6 @@ const ProductionListing = () => {
                 </Button>
                 {(searchTerm ||
                   filters.urgent ||
-                  filters.status ||
                   filters.dateRange) && (
                   <Button
                     onClick={handleClearFilters}
@@ -1159,19 +1093,6 @@ const ProductionListing = () => {
                       options={urgentOptions}
                       className='w-full'
                       placeholder='Priority'
-                      size='small'
-                    />
-                  </Col>
-                  <Col xs={24} sm={12} md={6}>
-                    <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
-                      Status
-                    </div>
-                    <Select
-                      value={filters.status}
-                      onChange={value => handleFilterChange('status', value)}
-                      options={statusOptions}
-                      className='w-full'
-                      placeholder='Status'
                       size='small'
                     />
                   </Col>
@@ -1227,22 +1148,6 @@ const ProductionListing = () => {
                 Urgent Plans
               </div>
             </div>
-            <div className='bg-green-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-              <div className='text-lg sm:text-xl md:text-2xl font-bold text-green-600'>
-                {productionPlans.filter(p => p.status === 'Completed').length}
-              </div>
-              <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-                Completed
-              </div>
-            </div>
-            <div className='bg-purple-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-              <div className='text-lg sm:text-xl md:text-2xl font-bold text-purple-600'>
-                {productionPlans.filter(p => p.status === 'In Progress').length}
-              </div>
-              <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-                In Progress
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1268,14 +1173,35 @@ const ProductionListing = () => {
               currentPageSize={pageSize}
               handlePageChange={handlePageChange}
               loading={loading}
-              scroll={{ x: 800 }}
+              scroll={{ x: 900, y: 600 }}
               onRowClick={handleView}
               showSort={true}
-              size='small'
+              size='middle'
+              rowClassName={() => 'hover:bg-gray-50'}
+              className='production-plans-table'
+              expandable={{
+                expandedRowKeys,
+                onExpand: handleExpand,
+                expandedRowRender,
+                expandRowByClick: false,
+                expandIcon: ({ expanded, onExpand, record }) => (
+                  <Button
+                    type='text'
+                    size='small'
+                    icon={expanded ? <ArrowRightOutlined style={{ transform: 'rotate(90deg)' }} /> : <ArrowRightOutlined />}
+                    onClick={e => {
+                      e.stopPropagation()
+                      onExpand(record, e)
+                    }}
+                  />
+                )
+              }}
               pagination={{
-                showSizeChanger: false,
-                showQuickJumper: false,
-                size: 'small'
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} plans`,
+                size: 'default',
+                pageSizeOptions: ['5', '10', '20', '50']
               }}
             />
           </div>
