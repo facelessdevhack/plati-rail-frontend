@@ -8,16 +8,14 @@ const CustomTable = ({
   columns,
   position = 'topRight',
   titleOnTop = true,
-  expandedData,
   currentPage,
   handlePageChange,
   currentPageSize,
-  expanded = true,
-  expandable = true,
   onRowClick,
   editFunction,
   isAdmin,
-  showSort = false
+  showSort = false,
+  ...otherProps
 }) => {
   // Error handling wrapper for the row click
   const handleRowClick = record => {
@@ -44,19 +42,9 @@ const CustomTable = ({
       </div>
       <Table
         rowKey='id'
-        expandable={
-          expandable
-            ? {
-                expandedRowRender: record => (
-                  <Table dataSource={record.variants} columns={expandedData} />
-                ),
-                rowExpandable: record => record.name !== 'Not Expandable',
-              }
-            : false
-        }
-        expanded={expanded}
         columns={sortableColumns}
         dataSource={data}
+        {...otherProps}
         onRow={record => ({
           onContextMenu: e => {
             if (isAdmin) {

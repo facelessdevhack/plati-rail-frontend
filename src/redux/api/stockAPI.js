@@ -5,13 +5,14 @@ export const getAllAlloys = createAsyncThunk(
   'stock/getAllAlloys',
   async ({ page=1, limit=10 }, { rejectWithValue }) => {
     try {
-      const response = await client.get(`/alloys/?page=${page}&limit=${limit}`)
-      //   response.data.userId = userId;
-      console.log(response.data.length, 'DATA OF ALLOYS LENGTH')
-      return response.data
+      // Use stock management API instead of complex alloys API
+      const response = await client.get(`/alloys/stock/management?page=${page}&limit=${limit}`)
+      console.log(response.data, 'DATA OF ALLOYS FROM STOCK API')
+      // Transform the response to match expected format
+      return response.data.data || []
     } catch (error) {
+      console.error('Alloys API error:', error)
       return rejectWithValue(getError(error))
-      //return error;
     }
   }
 )
@@ -192,6 +193,20 @@ export const getAllAlloysWithSameParams = createAsyncThunk(
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e))
+    }
+  }
+)
+
+export const getConversionOptions = createAsyncThunk(
+  'stock/getConversionOptions',
+  async ({ alloyId }, { rejectWithValue }) => {
+    try {
+      const response = await client.post('/alloys/get-conversion-options', {
+        alloyId
+      })
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
     }
   }
 )

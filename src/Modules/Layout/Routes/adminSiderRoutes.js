@@ -72,29 +72,11 @@ export const adminSiderRoutes = [
     getItemLayout(<Link to='/admin-dealer-metrics-for-size'>By Size</Link>, '4')
   ]),
   getItemLayout('Production', 'sub2', <ToolOutlined />, [
-    getItemLayout(
-      <Link to='/production-dashboard'>Production Dashboard</Link>,
-      '5'
-    ),
+    getItemLayout(<Link to='/production-dashboard'>Production Dashboard</Link>, '5a'),
     getItemLayout(<Link to='/production-plans'>Production Plans</Link>, '6'),
-    getItemLayout(<Link to='/production-plan/create'>Create Plan</Link>, '7'),
-    getItemLayout(<Link to='/production-job-cards'>Job Cards</Link>, '8'),
-    getItemLayout(
-      <Link to='/production-workflow'>Production Workflow</Link>,
-      '9'
-    ),
-    getItemLayout(
-      <Link to='/production-qa-reporting'>QA Reporting</Link>,
-      '10'
-    ),
-    getItemLayout(
-      <Link to='/production-rejections'>Rejection Management</Link>,
-      '11'
-    ),
-    getItemLayout(
-      <Link to='/production-inventory-requests'>Inventory Requests</Link>,
-      '12'
-    )
+    getItemLayout(<Link to='/smart-production'>🚀 Smart Production Planner</Link>, '6a'),
+    getItemLayout(<Link to='/job-cards'>📋 Job Card Management</Link>, '6c'),
+    getItemLayout(<Link to='/production-presets'>Preset Management</Link>, '7a')
   ])
   //   getItemLayout("Team", "sub2", <TeamOutlined />, [
   //     getItemLayout("Team 1", "6"),

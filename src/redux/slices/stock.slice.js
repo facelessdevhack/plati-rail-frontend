@@ -17,6 +17,7 @@ import {
   getAllProducts,
   getAllSizes,
   getAllWidths,
+  getConversionOptions,
   getStockManagement,
   updateStock,
   createStockProduct,
@@ -63,7 +64,8 @@ const initialState = {
     total_showroom: 0,
     low_stock_count: 0,
     out_of_stock_count: 0
-  }
+  },
+  conversionOptions: []
 };
 
 export const stockSlice = createSlice({
@@ -333,6 +335,19 @@ export const stockSlice = createSlice({
       state.loading = false;
       state.error = payload;
       state.success = false;
+    });
+
+    // Conversion Options reducers
+    builder.addCase(getConversionOptions.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(getConversionOptions.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.conversionOptions = payload.data || [];
+    });
+    builder.addCase(getConversionOptions.rejected, (state, { payload }) => {
+      state.loading = false;
+      state.error = payload;
     });
   },
 });

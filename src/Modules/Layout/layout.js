@@ -1,17 +1,11 @@
-import React from "react";
+import React from 'react'
 
-const Layout = ({ header, children, footer }) => {
+const Layout = ({ children }) => {
   return (
-    <div className="grid w-screen h-screen grid-rows-12 ">
-      <div className="w-full h-full row-span-1 text-white bg-black">
-        {header}
-      </div>
-      <div className="row-span-10">{children}</div>
-      <div className="w-full h-full row-span-1 text-white border shadow-moreFilters">
-        {footer}
-      </div>
+    <div className='grid w-full h-screen grid-rows-12 '>
+      <div className=''>{children}</div>
     </div>
-  );
-};
+  )
+}
 
-export default Layout;
+export default Layout

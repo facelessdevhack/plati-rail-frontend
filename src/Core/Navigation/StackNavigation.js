@@ -44,6 +44,12 @@ import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 import DealersList from '../../Modules/DataEntry/DealersList';
 import AddDealer from '../../Modules/DataEntry/AddDealer';
 import EditDealer from '../../Modules/DataEntry/EditDealer';
+import ProductionListing from '../../Modules/Production/ProductionListing';
+import AlloySelection from '../../Modules/Production/AlloySelection';
+import PresetManagement from '../../Modules/Production/PresetManagement';
+import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
+import JobCardListing from '../../Modules/Production/JobCardListing';
+import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -456,6 +462,69 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+
+      {/* Production Routes */}
+      <Route
+        path='/production-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Production Dashboard'
+              items={adminSiderRoutes}
+              content={<ProductionDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-plans'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Production Plans'
+              items={adminSiderRoutes}
+              content={<ProductionListing />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-alloys'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AlloySelection />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-presets'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Preset Management'
+              items={adminSiderRoutes}
+              content={<PresetManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/smart-production'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <SmartProductionDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/job-cards'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <JobCardListing />
+          </PrivateRoute>
+        }
+      />
+
       {/* <Route
         path="/entry-daily-entry"
         element={

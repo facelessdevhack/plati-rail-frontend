@@ -97,7 +97,10 @@ export const mockProductionPlans = [
     urgent: true,
     createdBy: 1,
     createdAt: '2023-08-15T09:00:00Z',
-    status: 'In Progress'
+    status: 'In Progress',
+    jobCardCount: 1,
+    totalJobCardQuantity: 500,
+    remainingQuantity: 0
   },
   {
     id: 102,
@@ -109,7 +112,10 @@ export const mockProductionPlans = [
     urgent: false,
     createdBy: 2,
     createdAt: '2023-08-14T10:00:00Z',
-    status: 'In Progress'
+    status: 'In Progress',
+    jobCardCount: 1,
+    totalJobCardQuantity: 750,
+    remainingQuantity: 0
   },
   {
     id: 103,
@@ -121,7 +127,10 @@ export const mockProductionPlans = [
     urgent: true,
     createdBy: 1,
     createdAt: '2023-08-13T14:00:00Z',
-    status: 'In Progress'
+    status: 'In Progress',
+    jobCardCount: 1,
+    totalJobCardQuantity: 300,
+    remainingQuantity: 0
   },
   {
     id: 104,
@@ -133,7 +142,10 @@ export const mockProductionPlans = [
     urgent: false,
     createdBy: 3,
     createdAt: '2023-08-12T08:30:00Z',
-    status: 'Quality Check'
+    status: 'Quality Check',
+    jobCardCount: 1,
+    totalJobCardQuantity: 1000,
+    remainingQuantity: 0
   },
   {
     id: 105,
@@ -145,7 +157,40 @@ export const mockProductionPlans = [
     urgent: false,
     createdBy: 2,
     createdAt: '2023-08-11T11:00:00Z',
-    status: 'Completed'
+    status: 'Completed',
+    jobCardCount: 1,
+    totalJobCardQuantity: 250,
+    remainingQuantity: 0
+  },
+  {
+    id: 106,
+    alloyId: 5,
+    alloyName: 'Stainless Steel 304',
+    convertId: 10,
+    convertName: 'Pipe',
+    quantity: 800,
+    urgent: true,
+    createdBy: 1,
+    createdAt: '2023-08-16T08:00:00Z',
+    status: 'Planning',
+    jobCardCount: 0,
+    totalJobCardQuantity: 0,
+    remainingQuantity: 800
+  },
+  {
+    id: 107,
+    alloyId: 6,
+    alloyName: 'Bronze C95400',
+    convertId: 11,
+    convertName: 'Bar',
+    quantity: 1200,
+    urgent: false,
+    createdBy: 2,
+    createdAt: '2023-08-16T10:00:00Z',
+    status: 'Planning',
+    jobCardCount: 0,
+    totalJobCardQuantity: 0,
+    remainingQuantity: 1200
   }
 ]
 
@@ -360,6 +405,48 @@ export const generateNewId = collection => {
   return Math.max(...collection.map(item => item.id)) + 1
 }
 
+// Mock step presets
+export const mockStepPresets = [
+  {
+    id: 1,
+    name: 'Standard Aluminum Process',
+    description: 'Complete aluminum production workflow',
+    steps: [
+      { stepId: 1, order: 1, estimatedDuration: 120, isRequired: true },
+      { stepId: 2, order: 2, estimatedDuration: 180, isRequired: true },
+      { stepId: 3, order: 3, estimatedDuration: 60, isRequired: true },
+      { stepId: 4, order: 4, estimatedDuration: 45, isRequired: true }
+    ],
+    createdBy: 1,
+    createdAt: '2023-08-01T09:00:00Z'
+  },
+  {
+    id: 2,
+    name: 'Quick Cast Process',
+    description: 'Fast-track casting workflow',
+    steps: [
+      { stepId: 2, order: 1, estimatedDuration: 90, isRequired: true },
+      { stepId: 3, order: 2, estimatedDuration: 30, isRequired: true }
+    ],
+    createdBy: 2,
+    createdAt: '2023-08-05T10:00:00Z'
+  },
+  {
+    id: 3,
+    name: 'Quality Focus Process',
+    description: 'Enhanced quality control workflow',
+    steps: [
+      { stepId: 1, order: 1, estimatedDuration: 150, isRequired: true },
+      { stepId: 2, order: 2, estimatedDuration: 200, isRequired: true },
+      { stepId: 3, order: 3, estimatedDuration: 90, isRequired: true },
+      { stepId: 4, order: 4, estimatedDuration: 90, isRequired: true },
+      { stepId: 5, order: 5, estimatedDuration: 120, isRequired: true }
+    ],
+    createdBy: 3,
+    createdAt: '2023-08-10T14:00:00Z'
+  }
+]
+
 // Mock API response functions
 export const mockApiResponses = {
   // Get production steps
@@ -369,10 +456,29 @@ export const mockApiResponses = {
     }
   },
 
-  // Get job cards
-  getJobCards: () => {
+  // Get step presets
+  getStepPresets: () => {
     return {
-      result: mockJobCards
+      data: mockStepPresets
+    }
+  },
+
+  // Get preset details by name
+  getPresetDetails: (presetName) => {
+    const preset = mockStepPresets.find(p => 
+      p.name.toLowerCase().replace(/\s+/g, '-') === presetName.toLowerCase()
+    )
+    return {
+      data: preset
+    }
+  },
+
+  // Get job cards for production plan
+  getJobCards: ({ prodPlanId }) => {
+    const planJobCards = mockJobCards.filter(jc => jc.prodPlanId === parseInt(prodPlanId))
+    return {
+      jobCards: planJobCards,
+      totalCount: planJobCards.length
     }
   },
 
@@ -385,9 +491,40 @@ export const mockApiResponses = {
   },
 
   // Get production plans
-  getProductionPlans: () => {
+  getProductionPlans: ({ page = 1, limit = 10, search = '', urgent = '', finish = '' }) => {
+    let filteredPlans = [...mockProductionPlans]
+    
+    if (search) {
+      filteredPlans = filteredPlans.filter(plan => 
+        plan.alloyName.toLowerCase().includes(search.toLowerCase()) ||
+        plan.convertName.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+    
+    if (urgent !== '') {
+      filteredPlans = filteredPlans.filter(plan => plan.urgent === (urgent === 'true'))
+    }
+    
+    // Add real-time job card counts
+    const plansWithJobCardInfo = filteredPlans.map(plan => {
+      const planJobCards = mockJobCards.filter(jc => jc.prodPlanId === plan.id)
+      const totalJobCardQuantity = planJobCards.reduce((sum, jc) => sum + jc.quantity, 0)
+      const remainingQuantity = plan.quantity - totalJobCardQuantity
+      
+      return {
+        ...plan,
+        jobCardCount: planJobCards.length,
+        totalJobCardQuantity,
+        remainingQuantity: Math.max(0, remainingQuantity)
+      }
+    })
+    
+    const startIndex = (page - 1) * limit
+    const paginatedPlans = plansWithJobCardInfo.slice(startIndex, startIndex + limit)
+    
     return {
-      result: mockProductionPlans
+      getProdListing: paginatedPlans,
+      totalCount: plansWithJobCardInfo.length
     }
   },
 
@@ -409,36 +546,147 @@ export const mockApiResponses = {
 
   // Create production plan
   createProductionPlan: planData => {
+    const newId = generateNewId(mockProductionPlans)
+    const newPlan = {
+      id: newId,
+      ...planData,
+      createdAt: new Date().toISOString(),
+      status: 'Planning'
+    }
+    mockProductionPlans.push(newPlan)
+    
     return {
-      message: 'Plan Added Successfully'
+      message: 'Plan Added Successfully',
+      data: newPlan
     }
   },
 
-  // Create job card
+  // Create job card with preset/custom steps support
   createJobCard: jobCardData => {
+    console.log('Creating job card with data:', jobCardData)
+    
+    const newId = generateNewId(mockJobCards)
+    const newJobCard = {
+      id: newId,
+      prodPlanId: jobCardData.prodPlanId,
+      quantity: jobCardData.quantity,
+      prodStep: 1, // Always start at first step
+      stepName: 'Melting', // Default first step
+      acceptedQuantity: null,
+      rejectedQuantity: null,
+      createdBy: jobCardData.createdBy || 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'Active',
+      // Store the step assignment configuration
+      stepAssignmentMode: jobCardData.stepAssignmentMode,
+      selectedPreset: jobCardData.selectedPreset,
+      customSteps: jobCardData.customSteps,
+      notes: jobCardData.notes
+    }
+    
+    mockJobCards.push(newJobCard)
+    
+    // Update the production plan's job card counts
+    const plan = mockProductionPlans.find(p => p.id === jobCardData.prodPlanId)
+    if (plan) {
+      const planJobCards = mockJobCards.filter(jc => jc.prodPlanId === plan.id)
+      const totalJobCardQuantity = planJobCards.reduce((sum, jc) => sum + jc.quantity, 0)
+      
+      plan.jobCardCount = planJobCards.length
+      plan.totalJobCardQuantity = totalJobCardQuantity
+      plan.remainingQuantity = Math.max(0, plan.quantity - totalJobCardQuantity)
+    }
+    
+    // If custom steps were provided, simulate adding them to the plan
+    if (jobCardData.customSteps && jobCardData.customSteps.length > 0) {
+      console.log('Job card created with custom steps:', jobCardData.customSteps)
+    }
+    
+    // If a preset was selected, simulate applying it
+    if (jobCardData.selectedPreset) {
+      console.log('Job card created with preset:', jobCardData.selectedPreset)
+    }
+    
     return {
-      message: 'Production Job Card Added'
+      message: 'Production Job Card Added Successfully',
+      data: newJobCard,
+      jobCardId: newId
     }
   },
 
   // Update job card
   updateJobCard: updateData => {
+    const jobCard = mockJobCards.find(jc => jc.id === updateData.jobCardId)
+    if (jobCard) {
+      Object.assign(jobCard, updateData, { updatedAt: new Date().toISOString() })
+    }
+    
     return {
-      message: 'Updated Successfully'
+      message: 'Job Card Updated Successfully',
+      data: jobCard
     }
   },
 
   // Submit QA report
   submitQAReport: qaData => {
+    const newReport = {
+      id: generateNewId(Object.values(mockQAReports)),
+      ...qaData,
+      timestamp: new Date().toISOString()
+    }
+    
+    mockQAReports[qaData.jobCardId] = newReport
+    
     return {
-      message: 'QA Report Submitted'
+      message: 'QA Report Submitted Successfully',
+      data: newReport
     }
   },
 
   // Update QA report
   updateQAReport: updateData => {
+    if (mockQAReports[updateData.jobCardId]) {
+      Object.assign(mockQAReports[updateData.jobCardId], updateData, {
+        timestamp: new Date().toISOString()
+      })
+    }
+    
     return {
-      message: 'QA Report Updated'
+      message: 'QA Report Updated Successfully',
+      data: mockQAReports[updateData.jobCardId]
+    }
+  },
+
+  // Add custom steps to production plan
+  addCustomStepsToProductionPlan: ({ prodPlanId, steps, userId }) => {
+    console.log(`Adding ${steps.length} custom steps to plan ${prodPlanId}`)
+    
+    return {
+      message: 'Custom steps added to production plan successfully',
+      data: {
+        prodPlanId,
+        stepsAdded: steps.length,
+        addedBy: userId
+      }
+    }
+  },
+
+  // Assign preset to plan
+  assignPresetToPlan: ({ planId, presetName }) => {
+    const plan = mockProductionPlans.find(p => p.id === parseInt(planId))
+    const preset = mockStepPresets.find(p => 
+      p.name.toLowerCase().replace(/\s+/g, '-') === presetName.toLowerCase()
+    )
+    
+    if (plan && preset) {
+      plan.assignedPreset = presetName
+      plan.presetSteps = preset.steps
+    }
+    
+    return {
+      message: 'Preset assigned to production plan successfully',
+      data: { planId, presetName, stepsCount: preset?.steps?.length || 0 }
     }
   }
 }

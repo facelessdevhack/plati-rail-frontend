@@ -13,6 +13,7 @@ import {
   MenuUnfoldOutlined
 } from '@ant-design/icons'
 import { adminSiderRoutes } from './Routes/adminSiderRoutes'
+import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
 const { Header, Footer, Sider } = Layout
 
 const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
@@ -84,6 +85,15 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
       '/inventory-analysis': '14',
       '/inventory-reports': '15',
       '/admin-daily-entry-dealers': '2',
+      // Production system routes
+      '/production-system-summary': '5a',
+      '/production-plans': '6',
+      '/smart-production': '6a',
+      '/production-workflow': '6b',
+      '/job-cards': '6c',
+      '/quality-assurance': '6d',
+      '/production-analytics': '6e',
+      '/production-presets': '7a',
       '/admin-daily-entry-dealers-details': '3',
       '/admin-daily-entry-dealers-details-by-size': '4',
       '/admin-daily-entry-dealers-details-by-size-details': '5',
@@ -191,7 +201,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     if (['3', '4'].includes(activeKey)) {
       return ['sub1'] // Dealer Metrics submenu
     }
-    if (['5', '6', '7', '8', '9', '10', '11', '12'].includes(activeKey)) {
+    if (['5a', '6', '6a', '6b', '6c', '6d', '6e', '7a', '8', '9', '10', '11', '12'].includes(activeKey)) {
       return ['sub2'] // Production submenu
     }
     if (['13', '14', '15'].includes(activeKey)) {
@@ -270,14 +280,8 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
               </button>
             </Tooltip>
 
-            {/* Notifications */}
-            <Tooltip title='Notifications'>
-              <Badge count={3} size='small'>
-                <button className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'>
-                  <BellOutlined className='text-lg' />
-                </button>
-              </Badge>
-            </Tooltip>
+            {/* Production Notifications */}
+            <ProductionNotificationSystem />
 
             {/* User Profile Dropdown */}
             <Dropdown

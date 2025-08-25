@@ -377,6 +377,7 @@ const AdminDealerDetails = () => {
             id: editingEntry?.inwardsEntryId || editingEntry.entryId
           }
         : editingEntry
+    
     try {
       setLoader(true)
       const editEntryResponse = await editEntryAPI(finalEditingEntry)
@@ -1147,6 +1148,21 @@ const AdminDealerDetails = () => {
                           }
                         }}
                       />
+                    </div>
+                    <div>
+                      <label className='flex items-center gap-x-2'>
+                        <input
+                          type='checkbox'
+                          checked={editingEntry?.isClaim === 1}
+                          onChange={e => {
+                            setEditingEntry({
+                              ...editingEntry,
+                              isClaim: e.target.checked ? 1 : 0
+                            })
+                          }}
+                        />
+                        <span>Is this a claim?</span>
+                      </label>
                     </div>
                   </div>
                 )}
