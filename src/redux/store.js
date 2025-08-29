@@ -7,6 +7,7 @@ import orderSlice from './slices/order.slice';
 import entrySlice from './slices/entry.slice';
 import dashboardSlice from './slices/dashboard.slice';
 import productionSlice from './slices/production.slice';
+import internalInventorySlice from './slices/internal-inventory.slice';
 
 const rootReducer = combineReducers({
   userDetails: userSlice,
@@ -14,7 +15,8 @@ const rootReducer = combineReducers({
   orderDetails: orderSlice,
   entryDetails: entrySlice,
   metrics: dashboardSlice,
-  productionDetails: productionSlice
+  productionDetails: productionSlice,
+  internalInventory: internalInventorySlice
 });
 
 const persistConfig = {

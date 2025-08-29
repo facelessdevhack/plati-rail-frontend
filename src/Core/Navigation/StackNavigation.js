@@ -41,6 +41,7 @@ import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDet
 
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
+import QuickAddInventoryAdvanced from '../../Modules/Inventory/QuickAddInventoryAdvanced'
 import DealersList from '../../Modules/DataEntry/DealersList';
 import AddDealer from '../../Modules/DataEntry/AddDealer';
 import EditDealer from '../../Modules/DataEntry/EditDealer';
@@ -50,6 +51,12 @@ import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
+
+// Internal Inventory System Components
+import InternalInventoryDashboard from '../../Modules/Inventory/InternalInventoryDashboard';
+import LocationsManagement from '../../Modules/Inventory/LocationsManagement';
+import ProductionRequests from '../../Modules/Inventory/ProductionRequests';
+import DispatchOrdersManagement from '../../Modules/Inventory/DispatchOrdersManagement';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -422,6 +429,19 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+
+      <Route
+        path='/quick-add-inventory'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Quick Add Inventory'
+              items={adminSiderRoutes}
+              content={<QuickAddInventoryAdvanced />}
+            />
+          </PrivateRoute>
+        }
+      />
       
       <Route
         path='/inventory-reports'
@@ -459,6 +479,56 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
             <EntryLayout title='Edit Dealer' content={<EditDealer />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Internal Inventory System Routes */}
+      <Route
+        path='/internal-inventory'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Internal Inventory System'
+              items={adminSiderRoutes}
+              content={<InternalInventoryDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory/locations'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Locations Management'
+              items={adminSiderRoutes}
+              content={<LocationsManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory/production/requests'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Production Material Requests'
+              items={adminSiderRoutes}
+              content={<ProductionRequests />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory/dispatch/orders'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='Dispatch Orders Management'
+              items={adminSiderRoutes}
+              content={<DispatchOrdersManagement />}
+            />
           </PrivateRoute>
         }
       />

@@ -11,7 +11,11 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   ShoppingCartOutlined,
-  DatabaseOutlined
+  DatabaseOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  TruckOutlined,
+  PlusOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -51,11 +55,29 @@ export const adminSiderRoutes = [
   ),
   getItemLayout('Inventory Management', 'sub3', <DatabaseOutlined />, [
     getItemLayout(
+      <Link to='/quick-add-inventory'>⚡ Quick Add Inventory</Link>,
+      '12'
+    ),
+    getItemLayout(
       <Link to='/inventory-management'>Manage Inventory</Link>,
       '13'
     ),
     getItemLayout(<Link to='/inventory-analysis'>Stock Analysis</Link>, '14'),
     getItemLayout(<Link to='/inventory-reports'>Inventory Reports</Link>, '15')
+  ]),
+  getItemLayout('Internal Inventory System', 'internal-inventory', <EnvironmentOutlined />, [
+    getItemLayout(
+      <Link to='/internal-inventory'>Inventory Dashboard</Link>,
+      'internal-dashboard'
+    ),
+    getItemLayout(
+      <Link to='/inventory/locations'>Locations Management</Link>,
+      'internal-locations'
+    ),
+    getItemLayout(
+      <Link to='/inventory/production/requests'>Production Requests</Link>,
+      'internal-production'
+    )
   ]),
   getItemLayout(
     <Link to='/admin-daily-entry-dealers'>Select Dealers</Link>,
