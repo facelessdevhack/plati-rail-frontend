@@ -53,32 +53,11 @@ export const adminSiderRoutes = [
     '1c',
     <SafetyCertificateOutlined />
   ),
-  getItemLayout('Inventory Management', 'sub3', <DatabaseOutlined />, [
-    getItemLayout(
-      <Link to='/quick-add-inventory'>⚡ Quick Add Inventory</Link>,
-      '12'
-    ),
-    getItemLayout(
-      <Link to='/inventory-management'>Manage Inventory</Link>,
-      '13'
-    ),
-    getItemLayout(<Link to='/inventory-analysis'>Stock Analysis</Link>, '14'),
-    getItemLayout(<Link to='/inventory-reports'>Inventory Reports</Link>, '15')
-  ]),
-  getItemLayout('Internal Inventory System', 'internal-inventory', <EnvironmentOutlined />, [
-    getItemLayout(
-      <Link to='/internal-inventory'>Inventory Dashboard</Link>,
-      'internal-dashboard'
-    ),
-    getItemLayout(
-      <Link to='/inventory/locations'>Locations Management</Link>,
-      'internal-locations'
-    ),
-    getItemLayout(
-      <Link to='/inventory/production/requests'>Production Requests</Link>,
-      'internal-production'
-    )
-  ]),
+  getItemLayout(
+    <Link to='/inventory-management-v2'>Inventory Management</Link>,
+    'inventory-v2',
+    <DatabaseOutlined />
+  ),
   getItemLayout(
     <Link to='/admin-daily-entry-dealers'>Select Dealers</Link>,
     '2',

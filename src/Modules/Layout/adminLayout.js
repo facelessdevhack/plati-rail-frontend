@@ -204,9 +204,6 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     if (['5a', '6', '6a', '6b', '6c', '6d', '6e', '7a', '8', '9', '10', '11', '12'].includes(activeKey)) {
       return ['sub2'] // Production submenu
     }
-    if (['13', '14', '15'].includes(activeKey)) {
-      return ['sub3'] // Inventory Management submenu
-    }
 
     return []
   }, [getActiveMenuKey])

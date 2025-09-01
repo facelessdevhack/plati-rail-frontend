@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 import {
   Card,
   Table,
@@ -19,7 +20,8 @@ import {
   Divider,
   Tabs,
   Alert,
-  message
+  message,
+  Switch
 } from 'antd'
 import {
   PlusOutlined,
@@ -30,7 +32,9 @@ import {
   ImportOutlined,
   WarningOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  BuildOutlined,
+  RocketOutlined
 } from '@ant-design/icons'
 import {
   useInventory,
@@ -41,6 +45,7 @@ import {
 const { Title, Text } = Typography
 const { Option } = Select
 const { TabPane } = Tabs
+const { Search } = Input
 
 const InventoryManagement = () => {
   const { inventory, loading, error, refetch } = useInventory()
@@ -61,44 +66,135 @@ const InventoryManagement = () => {
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [analysisModalVisible, setAnalysisModalVisible] = useState(false)
   const [batchUpdateModalVisible, setBatchUpdateModalVisible] = useState(false)
+  const [productionRequestModalVisible, setProductionRequestModalVisible] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [analysisData, setAnalysisData] = useState(null)
+  const [productionRequestLoading, setProductionRequestLoading] = useState(false)
+  
+  // Filter and search state
+  const [searchText, setSearchText] = useState('')
+  const [selectedInches, setSelectedInches] = useState(null)
+  const [selectedPcd, setSelectedPcd] = useState(null)
+  const [selectedProductType, setSelectedProductType] = useState(null)
+  
+  // Master data state
+  const [inchesOptions, setInchesOptions] = useState([])
+  const [pcdOptions, setPcdOptions] = useState([])
+  const [masterDataLoading, setMasterDataLoading] = useState(false)
 
   const [updateForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [analysisForm] = Form.useForm()
   const [batchForm] = Form.useForm()
+  const [productionRequestForm] = Form.useForm()
 
-  // Calculate statistics
+  // Filter inventory data
+  const filteredInventory = React.useMemo(() => {
+    if (!inventory.length) return []
+    
+    return inventory.filter(item => {
+      // Search text filter
+      const matchesSearch = !searchText || 
+        item.productName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.model?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.brand?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.color?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.uniqueId?.toLowerCase().includes(searchText.toLowerCase())
+      
+      // Product type filter
+      const matchesProductType = !selectedProductType || item.productType === selectedProductType
+      
+      // Size filter
+      const matchesInches = !selectedInches || 
+        item.size === selectedInches || 
+        item.inches === selectedInches ||  
+        item.size?.toString() === selectedInches?.toString()
+      
+      // PCD filter
+      const matchesPcd = !selectedPcd || 
+        item.pcd === selectedPcd || 
+        item.pcd?.toString() === selectedPcd?.toString()
+      
+      return matchesSearch && matchesProductType && matchesInches && matchesPcd
+    })
+  }, [inventory, searchText, selectedProductType, selectedInches, selectedPcd])
+  
+  // Generate filter options from inventory data
+  useEffect(() => {
+    if (inventory.length > 0) {
+      setMasterDataLoading(true)
+      
+      // Generate unique sizes for filter
+      const uniqueSizes = [...new Set(inventory.map(item => item.size || item.inches).filter(Boolean))]
+      const sizeOptions = uniqueSizes.sort((a, b) => {
+        // Try to sort numerically if possible, otherwise alphabetically
+        const numA = parseFloat(a)
+        const numB = parseFloat(b)
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB
+        }
+        return a.toString().localeCompare(b.toString())
+      }).map(size => ({ label: size, value: size }))
+      
+      setInchesOptions(sizeOptions)
+      
+      // Generate unique PCD values for filter
+      const uniquePcds = [...new Set(inventory.map(item => item.pcd).filter(Boolean))]
+      const pcdOptions = uniquePcds.sort((a, b) => {
+        // Try to sort numerically if possible, otherwise alphabetically
+        const numA = parseFloat(a)
+        const numB = parseFloat(b)
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB
+        }
+        return a.toString().localeCompare(b.toString())
+      }).map(pcd => ({ label: pcd, value: pcd }))
+      
+      setPcdOptions(pcdOptions)
+      
+      setMasterDataLoading(false)
+    }
+  }, [inventory])
+
+  // Calculate statistics (based on filtered data)
   const stats = React.useMemo(() => {
-    if (!inventory.length)
+    if (!filteredInventory.length)
       return { total: 0, lowStock: 0, totalValue: 0, outOfStock: 0 }
 
-    const total = inventory.length
-    const lowStock = inventory.filter(
-      item => parseInt(item.in_house_stock) + parseInt(item.showroom_stock) < 10
+    const total = filteredInventory.length
+    const lowStock = filteredInventory.filter(
+      item => {
+        const stock = parseInt(item.inHouseStock || 0)
+        return stock > 0 && stock < 10
+      }
     ).length
-    const outOfStock = inventory.filter(
-      item =>
-        parseInt(item.in_house_stock) + parseInt(item.showroom_stock) === 0
+    const outOfStock = filteredInventory.filter(
+      item => parseInt(item.inHouseStock || 0) === 0
     ).length
-    const totalValue = inventory.reduce(
-      (sum, item) =>
-        sum +
-        parseFloat(item.price || 0) *
-          (parseInt(item.in_house_stock) + parseInt(item.showroom_stock)),
+    const totalValue = filteredInventory.reduce(
+      (sum, item) => {
+        const price = parseFloat(item.price || 0)
+        const stock = parseInt(item.inHouseStock || 0)
+        return sum + (price * stock)
+      },
       0
     )
 
     return { total, lowStock, totalValue, outOfStock }
-  }, [inventory])
+  }, [filteredInventory])
+  
+  const clearFilters = () => {
+    setSearchText('')
+    setSelectedProductType(null)
+    setSelectedInches(null)
+    setSelectedPcd(null)
+  }
 
   const handleUpdateStock = record => {
     setSelectedItem(record)
     updateForm.setFieldsValue({
       alloyId: record.id,
-      inHouseStock: record.in_house_stock,
-      showroomStock: record.showroom_stock,
+      inHouseStock: record.inHouseStock,
       operation: 'set'
     })
     setUpdateModalVisible(true)
@@ -116,6 +212,19 @@ const InventoryManagement = () => {
       aiEnhanced: false
     })
     setAnalysisModalVisible(true)
+  }
+
+  const handleProductionRequest = record => {
+    setSelectedItem(record)
+    productionRequestForm.setFieldsValue({
+      alloyId: record.id,
+      convertId: record.id, // Default to same alloy
+      quantity: 10, // Default quantity
+      urgent: false,
+      customSteps: [],
+      presetName: null
+    })
+    setProductionRequestModalVisible(true)
   }
 
   const handleBulkAnalysis = async () => {
@@ -142,8 +251,7 @@ const InventoryManagement = () => {
       await updateStock(
         values.alloyId,
         {
-          inHouseStock: values.inHouseStock,
-          showroomStock: values.showroomStock
+          inHouseStock: values.inHouseStock
         },
         values.operation
       )
@@ -180,8 +288,7 @@ const InventoryManagement = () => {
     try {
       const updates = selectedRowKeys.map(id => ({
         alloyId: id,
-        inHouseStock: values.inHouseStock,
-        showroomStock: values.showroomStock
+        inHouseStock: values.inHouseStock
       }))
 
       await batchUpdateStock(updates, values.operation)
@@ -194,8 +301,44 @@ const InventoryManagement = () => {
     }
   }
 
-  const getStockStatus = (inHouse, showroom) => {
-    const total = parseInt(inHouse) + parseInt(showroom)
+  const onProductionRequestFinish = async values => {
+    try {
+      setProductionRequestLoading(true)
+      
+      const token = localStorage.getItem('token')
+      const response = await axios.post(
+        'http://localhost:4000/v2/production/add-production-plan',
+        values,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.data.success) {
+        message.success(`Production plan created successfully! Plan ID: ${response.data.data.planId}`)
+        setProductionRequestModalVisible(false)
+        productionRequestForm.resetFields()
+        // Optionally refresh inventory data
+        refetch()
+      } else {
+        message.error('Failed to create production plan: ' + response.data.message)
+      }
+    } catch (error) {
+      console.error('Production request failed:', error)
+      message.error('Failed to create production plan: ' + (error.response?.data?.message || error.message))
+    } finally {
+      setProductionRequestLoading(false)
+    }
+  }
+
+  const getStockStatus = (inHouse, showroom = 0) => {
+    const inHouseStock = parseInt(inHouse || 0)
+    const showroomStock = parseInt(showroom || 0)
+    const total = inHouseStock + showroomStock
+    
     if (total === 0) return { status: 'error', text: 'Out of Stock' }
     if (total < 10) return { status: 'warning', text: 'Low Stock' }
     return { status: 'success', text: 'In Stock' }
@@ -204,60 +347,76 @@ const InventoryManagement = () => {
   const columns = [
     {
       title: 'Product Name',
-      dataIndex: 'product_name',
-      key: 'product_name',
+      dataIndex: 'productName',
+      key: 'productName',
       width: 250,
       render: (text, record) => (
         <div>
-          <Text strong>{text}</Text>
+          <Text strong>{text || 'N/A'}</Text>
           <br />
           <Text type='secondary' style={{ fontSize: '12px' }}>
-            {record.brand} | {record.size}
+            {record.brand || record.model || 'N/A'} | {record.pcd || 'N/A'} PCD
           </Text>
         </div>
       )
     },
     {
-      title: 'In-House Stock',
-      dataIndex: 'in_house_stock',
-      key: 'in_house_stock',
-      width: 120,
-      render: text => (
-        <Badge count={text} style={{ backgroundColor: '#52c41a' }} />
-      )
-    },
-    {
-      title: 'Showroom Stock',
-      dataIndex: 'showroom_stock',
-      key: 'showroom_stock',
-      width: 120,
-      render: text => (
-        <Badge count={text} style={{ backgroundColor: '#1890ff' }} />
-      )
-    },
-    {
-      title: 'Total Stock',
-      key: 'total_stock',
-      width: 100,
-      render: (_, record) => {
-        const total =
-          parseInt(record.in_house_stock) + parseInt(record.showroom_stock)
-        const stockStatus = getStockStatus(
-          record.in_house_stock,
-          record.showroom_stock
-        )
+      title: 'Type',
+      dataIndex: 'productType',
+      key: 'productType',
+      width: 80,
+      sorter: (a, b) => (a.productType || '').localeCompare(b.productType || ''),
+      render: text => {
+        const colorMap = {
+          alloy: 'blue',
+          tyre: 'green', 
+          ppf: 'purple',
+          caps: 'orange'
+        }
         return (
-          <Tag
-            color={
-              stockStatus.status === 'error'
-                ? 'red'
-                : stockStatus.status === 'warning'
-                ? 'orange'
-                : 'green'
-            }
-          >
-            {total}
+          <Tag color={colorMap[text] || 'default'}>
+            {text ? text.toUpperCase() : 'N/A'}
           </Tag>
+        )
+      }
+    },
+    {
+      title: 'Size',
+      dataIndex: 'size',
+      key: 'size',
+      width: 80,
+      sorter: (a, b) => {
+        // Extract numeric value from size (e.g., "18"" -> 18)
+        const aSize = parseInt(a.size) || 0
+        const bSize = parseInt(b.size) || 0
+        return aSize - bSize
+      },
+      render: text => (
+        <Tag color="blue">{text || 'N/A'}</Tag>
+      )
+    },
+    {
+      title: 'In-House Stock',
+      dataIndex: 'inHouseStock',
+      key: 'inHouseStock',
+      width: 120,
+      sorter: (a, b) => {
+        const aStock = parseInt(a.inHouseStock) || 0
+        const bStock = parseInt(b.inHouseStock) || 0
+        return aStock - bStock
+      },
+      sortDirections: ['descend', 'ascend'],
+      render: text => {
+        const stock = parseInt(text) || 0
+        return (
+          <Badge 
+            count={stock} 
+            showZero={true}
+            overflowCount={999999}
+            style={{ 
+              backgroundColor: stock > 0 ? '#52c41a' : '#ff4d4f' 
+            }} 
+          />
         )
       }
     },
@@ -266,7 +425,10 @@ const InventoryManagement = () => {
       dataIndex: 'price',
       key: 'price',
       width: 100,
-      render: text => `₹${parseFloat(text || 0).toLocaleString()}`
+      render: text => {
+        const price = parseFloat(text) || 0
+        return price > 0 ? `₹${price.toLocaleString()}` : 'N/A'
+      }
     },
     {
       title: 'Status',
@@ -274,8 +436,8 @@ const InventoryManagement = () => {
       width: 100,
       render: (_, record) => {
         const stockStatus = getStockStatus(
-          record.in_house_stock,
-          record.showroom_stock
+          record.inHouseStock,
+          record.showroomStock
         )
         return (
           <Tag
@@ -304,7 +466,7 @@ const InventoryManagement = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 200,
+      width: 280,
       render: (_, record) => (
         <Space>
           <Tooltip title='Update Stock'>
@@ -321,6 +483,18 @@ const InventoryManagement = () => {
               size='small'
               icon={<LineChartOutlined />}
               onClick={() => handleStockAnalysis(record)}
+            />
+          </Tooltip>
+          <Tooltip title='Request Production'>
+            <Button
+              type='default'
+              size='small'
+              icon={<BuildOutlined />}
+              onClick={() => handleProductionRequest(record)}
+              style={{ 
+                color: '#1890ff', 
+                borderColor: '#1890ff' 
+              }}
             />
           </Tooltip>
         </Space>
@@ -388,6 +562,68 @@ const InventoryManagement = () => {
         </Col>
       </Row>
 
+      {/* Search and Filters */}
+      <Card style={{ marginBottom: '16px' }}>
+        <Row gutter={[16, 16]} align='middle'>
+          <Col xs={24} sm={12} md={6}>
+            <Search
+              placeholder='Search by product name, model, or color...'
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              allowClear
+              enterButton
+            />
+          </Col>
+          <Col xs={12} sm={6} md={3}>
+            <Select
+              placeholder='Product Type'
+              value={selectedProductType}
+              onChange={setSelectedProductType}
+              allowClear
+              style={{ width: '100%' }}
+              options={[
+                { label: 'Alloys', value: 'alloy' },
+                { label: 'Tyres', value: 'tyre' },
+                { label: 'PPF', value: 'ppf' },
+                { label: 'Caps', value: 'caps' }
+              ]}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={3}>
+            <Select
+              placeholder='Filter by Sizes'
+              value={selectedInches}
+              onChange={setSelectedInches}
+              allowClear
+              loading={masterDataLoading}
+              style={{ width: '100%' }}
+              options={inchesOptions}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={3}>
+            <Select
+              placeholder='Filter by PCD'
+              value={selectedPcd}
+              onChange={setSelectedPcd}
+              allowClear
+              loading={masterDataLoading}
+              style={{ width: '100%' }}
+              options={pcdOptions}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Space>
+              <Button onClick={clearFilters}>
+                Clear Filters
+              </Button>
+              <Text type='secondary'>
+                {filteredInventory.length} of {inventory.length} products
+              </Text>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
       {/* Main Content */}
       <Card>
         <div
@@ -434,6 +670,23 @@ const InventoryManagement = () => {
                 >
                   Bulk Analysis ({selectedRowKeys.length})
                 </Button>
+                <Button
+                  type='default'
+                  icon={<BuildOutlined />}
+                  onClick={() => {
+                    if (selectedRowKeys.length === 0) {
+                      message.warning('Please select items for bulk production request')
+                      return
+                    }
+                    message.info(`Bulk production request for ${selectedRowKeys.length} items - Feature coming soon!`)
+                  }}
+                  style={{ 
+                    color: '#52c41a', 
+                    borderColor: '#52c41a' 
+                  }}
+                >
+                  Bulk Production ({selectedRowKeys.length})
+                </Button>
               </>
             )}
             <Button icon={<ExportOutlined />}>Export</Button>
@@ -454,7 +707,7 @@ const InventoryManagement = () => {
         <Table
           rowSelection={rowSelection}
           columns={columns}
-          dataSource={inventory}
+          dataSource={filteredInventory}
           rowKey='id'
           loading={loading}
           pagination={{
@@ -464,7 +717,7 @@ const InventoryManagement = () => {
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} items`
           }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1400 }}
         />
       </Card>
 
@@ -510,24 +763,13 @@ const InventoryManagement = () => {
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                label='Showroom Stock'
-                name='showroomStock'
-                rules={[
-                  { required: true, message: 'Please enter showroom stock' }
-                ]}
-              >
-                <InputNumber min={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
           </Row>
         </Form>
       </Modal>
 
       {/* Add Inventory Modal */}
       <Modal
-        title='Add New Inventory'
+        title='Add New Inventory Item'
         open={addModalVisible}
         onCancel={() => {
           setAddModalVisible(false)
@@ -535,23 +777,115 @@ const InventoryManagement = () => {
         }}
         onOk={() => addForm.submit()}
         confirmLoading={managementLoading}
-        width={600}
+        width={800}
       >
         <Form form={addForm} layout='vertical' onFinish={onAddFinish}>
-          <Form.Item
-            label='Alloy ID'
-            name='alloyId'
-            rules={[{ required: true, message: 'Please enter alloy ID' }]}
-          >
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label='Product Type'
+                name='productType'
+                rules={[{ required: true, message: 'Please select product type' }]}
+              >
+                <Select
+                  placeholder='Select product type'
+                  style={{ width: '100%' }}
+                  onChange={(value) => {
+                    // Reset form when product type changes
+                    addForm.setFieldsValue({
+                      productName: '',
+                      model: '',
+                      size: '',
+                      price: ''
+                    })
+                  }}
+                >
+                  <Option value='alloy'>Alloy Wheels</Option>
+                  <Option value='tyre'>Tyres</Option>
+                  <Option value='ppf'>PPF (Paint Protection Film)</Option>
+                  <Option value='caps'>Caps & Accessories</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label='Product Name'
+                name='productName'
+                rules={[{ required: true, message: 'Please enter product name' }]}
+              >
+                <Input placeholder='e.g., PY-8533 18" FLAT SILVER' />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                label='Model/Brand'
+                name='model'
+                rules={[{ required: true, message: 'Please enter model/brand' }]}
+              >
+                <Input placeholder='e.g., PY-8533, Michelin' />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label='Size'
+                name='size'
+                rules={[{ required: true, message: 'Please enter size' }]}
+              >
+                <Input placeholder='e.g., 18", 225/45R18' />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label='Price (₹)'
+                name='price'
+                rules={[{ required: true, message: 'Please enter price' }]}
+              >
+                <InputNumber 
+                  min={0} 
+                  style={{ width: '100%' }}
+                  placeholder='0'
+                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={value => value.replace(/₹\s?|(,*)/g, '')}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label='Initial Stock Quantity'
+                name='quantity'
+                rules={[{ required: true, message: 'Please enter quantity' }]}
+              >
+                <InputNumber 
+                  min={0} 
+                  style={{ width: '100%' }}
+                  placeholder='0'
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label='Color/Finish'
+                name='color'
+              >
+                <Input placeholder='e.g., Silver, Black, Chrome' />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
-            label='Quantity'
-            name='quantity'
-            rules={[{ required: true, message: 'Please enter quantity' }]}
+            label='Additional Notes'
+            name='notes'
           >
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <Input.TextArea 
+              rows={2} 
+              placeholder='Any additional specifications or notes...'
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -758,16 +1092,130 @@ const InventoryManagement = () => {
                 />
               </Form.Item>
             </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* Production Request Modal */}
+      <Modal
+        title={`Request Production - ${selectedItem?.productName || 'Item'}`}
+        open={productionRequestModalVisible}
+        onCancel={() => {
+          setProductionRequestModalVisible(false)
+          productionRequestForm.resetFields()
+        }}
+        onOk={() => productionRequestForm.submit()}
+        confirmLoading={productionRequestLoading}
+        width={700}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Alert
+            message="Production Request"
+            description="Create a new production plan to manufacture more units of this product. This will integrate with your existing production workflow."
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+        </div>
+
+        <Form form={productionRequestForm} layout='vertical' onFinish={onProductionRequestFinish}>
+          <Form.Item name='alloyId' hidden>
+            <Input />
+          </Form.Item>
+
+          <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label='Showroom Stock' name='showroomStock'>
-                <InputNumber
-                  min={0}
+              <Form.Item
+                label='Source Product'
+                tooltip="The product that will be used as raw material"
+              >
+                <Input 
+                  value={selectedItem?.productName || 'N/A'} 
+                  disabled 
+                  style={{ backgroundColor: '#f5f5f5' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label='Target Product ID'
+                name='convertId'
+                rules={[{ required: true, message: 'Please enter target product ID' }]}
+                tooltip="The ID of the product you want to produce (usually same as source for replenishment)"
+              >
+                <InputNumber 
                   style={{ width: '100%' }}
-                  placeholder='Leave empty to skip'
+                  placeholder="Enter target product ID"
                 />
               </Form.Item>
             </Col>
           </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label='Production Quantity'
+                name='quantity'
+                rules={[
+                  { required: true, message: 'Please enter quantity' },
+                  { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+                ]}
+              >
+                <InputNumber 
+                  min={1}
+                  style={{ width: '100%' }}
+                  placeholder="Enter quantity to produce"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label='Priority'
+                name='urgent'
+                valuePropName='checked'
+              >
+                <Space>
+                  <Switch />
+                  <span>Mark as Urgent</span>
+                  <Tooltip title="Urgent production plans will be prioritized in the production queue">
+                    <WarningOutlined style={{ color: '#faad14' }} />
+                  </Tooltip>
+                </Space>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label='Production Preset (Optional)'
+            name='presetName'
+            tooltip="Select a pre-configured production workflow or leave empty for default steps"
+          >
+            <Select
+              placeholder="Select production preset (optional)"
+              allowClear
+            >
+              <Option value="standard_wheel">Standard Wheel Production</Option>
+              <Option value="premium_finish">Premium Finish Process</Option>
+              <Option value="custom_design">Custom Design Process</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label='Additional Notes'
+            name='notes'
+          >
+            <Input.TextArea 
+              rows={3} 
+              placeholder="Any special instructions or requirements for this production run..."
+            />
+          </Form.Item>
+
+          <div style={{ backgroundColor: '#fafafa', padding: '12px', borderRadius: '6px', marginTop: '16px' }}>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              <RocketOutlined /> This will create a new production plan that will be visible in the Production Management system. 
+              The plan will go through your standard 11-step manufacturing workflow.
+            </Text>
+          </div>
         </Form>
       </Modal>
     </div>

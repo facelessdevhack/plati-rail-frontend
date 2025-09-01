@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Card,
   Row,
@@ -9,23 +9,33 @@ import {
   Tag,
   notification,
   Typography,
-  Table,
   InputNumber,
-  Spin
+  Spin,
+  Space,
+  Tooltip,
+  Badge,
+  Checkbox,
+  Modal,
+  Divider
 } from 'antd'
 import {
-  BulbOutlined,
   RocketOutlined,
   CheckCircleOutlined,
   ReloadOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  FilterOutlined,
+  ThunderboltOutlined,
+  ClearOutlined,
+  PlusCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+import { FixedSizeList as List } from 'react-window'
+import AutoSizer from 'react-virtualized-auto-sizer'
 import Layout from '../Layout/layout'
 import AISuggestionsPanel from './AISuggestionsPanel'
-import TrendAnalysisChart from './TrendAnalysisChart'
-import SalesMetricsTable from './SalesMetricsTable'
+import SelectedItemsPanel from './SelectedItemsPanel'
 import {
   getStockManagement,
   getAllSizes,
@@ -44,47 +54,116 @@ const { Option } = Select
 const SmartProductionDashboard = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const listRef = useRef(null)
 
   // Redux state
   const {
     stockManagementData,
-    stockPagination,
     loading,
     allSizes,
     allPcd,
     allFinishes
   } = useSelector(state => state.stockDetails)
-  // const { stepPresets } = useSelector(state => state.productionDetails) // Not used in simplified version
   const { user } = useSelector(state => state.userDetails)
 
   // Local state
-  const [selectedRowKeys, setSelectedRowKeys] = useState([])
-  const [selectedAlloys, setSelectedAlloys] = useState([])
+  const [selectedRows, setSelectedRows] = useState(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSize, setFilterSize] = useState(null)
   const [filterPcd, setFilterPcd] = useState(null)
   const [filterFinish, setFilterFinish] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [showOnlyWithStock, setShowOnlyWithStock] = useState(false)
   const [conversionPlans, setConversionPlans] = useState({})
   const [isCreatingPlans, setIsCreatingPlans] = useState(false)
+  const [showSelectedPanel, setShowSelectedPanel] = useState(true)
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
 
-  // Load initial data
+  // Save state to localStorage whenever it changes
   useEffect(() => {
-    dispatch(getStockManagement({ page: 1, limit: 5000, filter: 'all' }))
+    if (selectedRows.size > 0 || Object.keys(conversionPlans).length > 0) {
+      const stateToSave = {
+        selectedRows: Array.from(selectedRows),
+        conversionPlans: conversionPlans,
+        searchTerm: searchTerm,
+        filterSize: filterSize,
+        filterPcd: filterPcd,
+        filterFinish: filterFinish,
+        showOnlyWithStock: showOnlyWithStock,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('smartProductionState', JSON.stringify(stateToSave))
+    }
+  }, [selectedRows, conversionPlans, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock])
+
+  // Load initial data and restore state
+  useEffect(() => {
+    dispatch(getStockManagement({ page: 1, limit: 10000, filter: 'all' }))
     dispatch(getAllSizes())
     dispatch(getAllPcd())
     dispatch(getAllFinishes())
     dispatch(getStepPresets())
+    
+    // Load panel state from localStorage
+    const savedPanelState = localStorage.getItem('selectedPanelCollapsed')
+    if (savedPanelState !== null) {
+      setIsPanelCollapsed(savedPanelState === 'true')
+    }
+
+    // Load saved production state
+    const savedState = localStorage.getItem('smartProductionState')
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState)
+        // Check if state is not too old (24 hours)
+        const hoursSinceLastSave = (Date.now() - parsed.timestamp) / (1000 * 60 * 60)
+        if (hoursSinceLastSave < 24) {
+          // Restore state
+          if (parsed.selectedRows && parsed.selectedRows.length > 0) {
+            setSelectedRows(new Set(parsed.selectedRows))
+          }
+          if (parsed.conversionPlans) {
+            setConversionPlans(parsed.conversionPlans)
+          }
+          if (parsed.searchTerm) setSearchTerm(parsed.searchTerm)
+          if (parsed.filterSize) setFilterSize(parsed.filterSize)
+          if (parsed.filterPcd) setFilterPcd(parsed.filterPcd)
+          if (parsed.filterFinish) setFilterFinish(parsed.filterFinish)
+          if (typeof parsed.showOnlyWithStock === 'boolean') setShowOnlyWithStock(parsed.showOnlyWithStock)
+
+          notification.info({
+            message: 'Session Restored',
+            description: `Restored ${parsed.selectedRows?.length || 0} selected items from your previous session`,
+            duration: 3
+          })
+        } else {
+          // Clear old state
+          localStorage.removeItem('smartProductionState')
+        }
+      } catch (error) {
+        console.error('Failed to restore state:', error)
+        localStorage.removeItem('smartProductionState')
+      }
+    }
   }, [dispatch])
 
-  // Filter and process stock data for table
+  // Filter stock data
   const filteredStockData = useMemo(() => {
     if (!stockManagementData) return []
 
     return stockManagementData.filter(alloy => {
+      // Filter by stock if toggle is on
+      if (showOnlyWithStock) {
+        const stock = alloy.inHouseStock || 0
+        if (stock === 0) return false
+      }
+
       const matchesSearch =
         !searchTerm ||
         alloy.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alloy.modelName?.toLowerCase().includes(searchTerm.toLowerCase())
+        alloy.modelName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        alloy.inches?.toString().includes(searchTerm) ||
+        alloy.pcd?.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesSize = !filterSize || alloy.inches === filterSize
       const matchesPcd = !filterPcd || alloy.pcd === filterPcd
@@ -92,353 +171,93 @@ const SmartProductionDashboard = () => {
 
       return matchesSearch && matchesSize && matchesPcd && matchesFinish
     })
-  }, [stockManagementData, searchTerm, filterSize, filterPcd, filterFinish])
+  }, [stockManagementData, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock])
 
-  // Calculate analytics for dashboard
-  const analytics = useMemo(() => {
-    if (!filteredStockData.length) {
-      return {
-        totalAlloys: stockPagination?.total || 0,
-        stockUtilization: 0,
-        lowStockAlloys: 0,
-        outOfStockAlloys: 0,
-        recommendations: []
-      }
-    }
-
-    const totalAlloys = stockPagination?.total || filteredStockData.length
-    let totalStock = 0
-    let lowStockCount = 0
-    let outOfStockCount = 0
-
-    filteredStockData.forEach(alloy => {
-      const stock = (alloy.inHouseStock || 0) + (alloy.showroomStock || 0)
-      totalStock += stock
-      if (stock === 0) outOfStockCount++
-      else if (stock < 10) lowStockCount++
+  // Toggle panel collapse
+  const handleTogglePanel = useCallback(() => {
+    setIsPanelCollapsed(prev => {
+      const newState = !prev
+      localStorage.setItem('selectedPanelCollapsed', newState.toString())
+      return newState
     })
-
-    const stockUtilization =
-      totalAlloys > 0 ? (totalStock / (totalAlloys * 50)) * 100 : 0
-
-    return {
-      totalAlloys,
-      stockUtilization: Math.min(stockUtilization, 100),
-      lowStockAlloys: lowStockCount,
-      outOfStockAlloys: outOfStockCount,
-      recommendations: [
-        {
-          type: 'info',
-          icon: '🎯',
-          title: 'Smart Selection',
-          description: `${totalAlloys} alloys available for conversion planning`,
-          action: 'Use checkboxes to select alloys for bulk conversion'
-        },
-        {
-          type: outOfStockCount > 0 ? 'error' : 'success',
-          icon: outOfStockCount > 0 ? '🚨' : '✅',
-          title: 'Stock Status',
-          description:
-            outOfStockCount > 0
-              ? `${outOfStockCount} alloys are out of stock`
-              : 'All alloys have stock available',
-          action:
-            outOfStockCount > 0
-              ? 'Focus on in-stock items for conversions'
-              : 'Ready for production planning'
-        },
-        {
-          type: lowStockCount > 5 ? 'warning' : 'info',
-          icon: '📊',
-          title: 'Low Stock Alert',
-          description: `${lowStockCount} alloys have low stock (< 10 units)`,
-          action: 'Consider prioritizing these for conversion'
-        }
-      ]
-    }
-  }, [filteredStockData, stockPagination])
+  }, [])
 
   // Handle row selection
-  const handleRowSelection = (selectedKeys, selectedRows) => {
-    setSelectedRowKeys(selectedKeys)
-    setSelectedAlloys(selectedRows)
-
-    // Initialize conversion plans for new selections
-    const newConversionPlans = { ...conversionPlans }
-    selectedRows.forEach(alloy => {
-      if (!newConversionPlans[alloy.id]) {
-        newConversionPlans[alloy.id] = {
-          sourceAlloy: alloy,
-          targetFinish: null,
-          targetAlloyId: null,
-          quantity: 1,
-          urgent: false
+  const handleRowSelect = useCallback((alloyId, checked) => {
+    setSelectedRows(prev => {
+      const newSet = new Set(prev)
+      if (checked) {
+        newSet.add(alloyId)
+        // Initialize conversion plan if not exists
+        if (!conversionPlans[alloyId]) {
+          const alloy = filteredStockData.find(a => a.id === alloyId)
+          if (alloy) {
+            setConversionPlans(plans => ({
+              ...plans,
+              [alloyId]: {
+                sourceAlloy: alloy,
+                targetFinish: null,
+                quantity: 1
+              }
+            }))
+          }
         }
-      }
-    })
-
-    // Remove conversion plans for unselected alloys
-    Object.keys(newConversionPlans).forEach(alloyId => {
-      if (!selectedKeys.includes(parseInt(alloyId))) {
-        delete newConversionPlans[alloyId]
-      }
-    })
-
-    setConversionPlans(newConversionPlans)
-  }
-
-  // Handle target finish change
-  const handleTargetFinishChange = (alloyId, targetFinish) => {
-    setConversionPlans(prev => ({
-      ...prev,
-      [alloyId]: {
-        ...prev[alloyId],
-        targetFinish,
-        targetAlloyId: alloyId // For now, same ID with different finish
-      }
-    }))
-  }
-
-  // Handle quantity change
-  const handleQuantityChange = (alloyId, quantity) => {
-    setConversionPlans(prev => ({
-      ...prev,
-      [alloyId]: {
-        ...prev[alloyId],
-        quantity: quantity || 1
-      }
-    }))
-  }
-
-  // Handle urgent change (not used in simplified version)
-  // const handleUrgentChange = (alloyId, urgent) => {
-  //   setConversionPlans(prev => ({
-  //     ...prev,
-  //     [alloyId]: {
-  //       ...prev[alloyId],
-  //       urgent
-  //     }
-  //   }))
-  // }
-
-  // Handle AI suggestion application
-  const handleApplyAISuggestion = suggestion => {
-    // First try to find the alloy in filtered data
-    let alloy = filteredStockData.find(
-      item => item.id === suggestion.sourceAlloyId
-    )
-
-    // If not found in filtered data, try to find in all stock data
-    if (!alloy && stockManagementData) {
-      alloy = stockManagementData.find(
-        item => item.id === suggestion.sourceAlloyId
-      )
-
-      if (alloy) {
-        // Clear filters to show the suggested alloy
-        setSearchTerm('')
-        setFilterSize(null)
-        setFilterPcd(null)
-        setFilterFinish(null)
-
-        notification.info({
-          message: 'Filters Cleared',
-          description:
-            'Search filters have been cleared to show the suggested alloy.'
+      } else {
+        newSet.delete(alloyId)
+        // Remove conversion plan
+        setConversionPlans(plans => {
+          const newPlans = { ...plans }
+          delete newPlans[alloyId]
+          return newPlans
         })
       }
-    }
+      return newSet
+    })
+  }, [conversionPlans, filteredStockData])
 
-    if (!alloy) {
-      notification.warning({
-        message: 'Alloy Not Found',
-        description:
-          'The suggested alloy is not available in your inventory data.'
+  // Handle select all
+  const handleSelectAll = useCallback((checked) => {
+    if (checked) {
+      const allIds = new Set(filteredStockData.map(a => a.id))
+      setSelectedRows(allIds)
+      // Initialize all conversion plans
+      const newPlans = {}
+      filteredStockData.forEach(alloy => {
+        newPlans[alloy.id] = {
+          sourceAlloy: alloy,
+          targetFinish: 'Chrome',
+          quantity: 1
+        }
       })
-      return
+      setConversionPlans(newPlans)
+    } else {
+      setSelectedRows(new Set())
+      setConversionPlans({})
     }
+  }, [filteredStockData])
 
-    // Add to selections if not already selected
-    if (!selectedRowKeys.includes(alloy.id)) {
-      const newSelectedKeys = [...selectedRowKeys, alloy.id]
-      const newSelectedAlloys = [...selectedAlloys, alloy]
-      setSelectedRowKeys(newSelectedKeys)
-      setSelectedAlloys(newSelectedAlloys)
-    }
-
-    // Apply suggestion to conversion plans
+  // Update conversion plan
+  const updateConversionPlan = useCallback((alloyId, field, value) => {
     setConversionPlans(prev => ({
       ...prev,
-      [alloy.id]: {
-        sourceAlloy: alloy,
-        targetFinish: suggestion.targetFinish,
-        targetAlloyId: suggestion.sourceAlloyId, // For now, same ID with different finish
-        quantity: suggestion.suggestedQuantity,
-        urgent: suggestion.priority === 'high'
+      [alloyId]: {
+        ...prev[alloyId],
+        [field]: value
       }
     }))
+  }, [])
 
-    notification.success({
-      message: 'AI Suggestion Applied',
-      description: `${suggestion.productName} added with ${suggestion.targetFinish} finish, quantity: ${suggestion.suggestedQuantity}`
-    })
-  }
-
-  // Handle creating plan directly from AI suggestion
-  const handleCreateFromAISuggestion = async suggestion => {
-    try {
-      const planData = {
-        alloyId: suggestion.sourceAlloyId,
-        convertId: suggestion.sourceAlloyId, // Target alloy ID (same for finish conversion)
-        quantity: suggestion.suggestedQuantity,
-        urgent: suggestion.priority === 'high',
-        userId: user?.id || 1,
-        presetName: null
-      }
-
-      await dispatch(createProductionPlan(planData)).unwrap()
-
-      notification.success({
-        message: 'Production Plan Created',
-        description: `Created plan for ${suggestion.productName} based on AI suggestion`,
-        duration: 4
-      })
-
-      // Navigate to production plans
-      navigate('/production-plans')
-    } catch (error) {
-      notification.error({
-        message: 'Failed to Create Plan',
-        description:
-          error?.message ||
-          'Could not create production plan from AI suggestion'
-      })
-    }
-  }
-
-  // Table columns definition
-  const columns = [
-    {
-      title: 'Size & PCD',
-      key: 'size_pcd',
-      width: 120,
-      render: (_, record) => (
-        <div>
-          <div className='font-semibold text-blue-600'>{record.inches}"</div>
-          <div className='text-sm text-gray-500'>{record.pcd}</div>
-        </div>
-      ),
-      sorter: (a, b) => {
-        const aSize = parseInt(a.inches) || 0
-        const bSize = parseInt(b.inches) || 0
-        if (aSize !== bSize) return aSize - bSize
-        return (a.pcd || '').localeCompare(b.pcd || '')
-      }
-    },
-    {
-      title: 'Product Details',
-      key: 'product',
-      render: (_, record) => (
-        <div>
-          <div className='font-medium text-sm'>{record.productName}</div>
-          <div className='text-xs text-gray-500'>
-            {record.modelName} • {record.holes} holes • {record.width} width •{' '}
-            {record.finish}
-          </div>
-        </div>
-      )
-    },
-    {
-      title: 'Current Stock',
-      key: 'stock',
-      width: 120,
-      render: (_, record) => {
-        const totalStock =
-          (record.inHouseStock || 0) + (record.showroomStock || 0)
-        return (
-          <div className='text-center'>
-            <div className='text-sm font-medium'>{totalStock} units</div>
-            <div className='text-xs text-gray-500'>
-              IH: {record.inHouseStock || 0} | SR: {record.showroomStock || 0}
-            </div>
-            {totalStock === 0 && (
-              <Tag color='red' size='small'>
-                OUT
-              </Tag>
-            )}
-            {totalStock > 0 && totalStock < 10 && (
-              <Tag color='orange' size='small'>
-                LOW
-              </Tag>
-            )}
-          </div>
-        )
-      },
-      sorter: (a, b) => {
-        const aStock = (a.inHouseStock || 0) + (a.showroomStock || 0)
-        const bStock = (b.inHouseStock || 0) + (b.showroomStock || 0)
-        return aStock - bStock
-      }
-    },
-    {
-      title: 'Target Finish',
-      key: 'target_finish',
-      width: 150,
-      render: (_, record) => {
-        const plan = conversionPlans[record.id]
-        return (
-          <Select
-            placeholder='Select finish'
-            value={plan?.targetFinish}
-            onChange={value => handleTargetFinishChange(record.id, value)}
-            size='small'
-            className='w-full'
-            disabled={!selectedRowKeys.includes(record.id)}
-          >
-            <Option value='Chrome'>Chrome</Option>
-            <Option value='Diamond Cut'>Diamond Cut</Option>
-            <Option value='Black'>Black</Option>
-            <Option value='Silver'>Silver</Option>
-            <Option value='Anthracite'>Anthracite</Option>
-            <Option value='Gun Metal'>Gun Metal</Option>
-          </Select>
-        )
-      }
-    },
-    {
-      title: 'Quantity',
-      key: 'quantity',
-      width: 100,
-      render: (_, record) => {
-        const plan = conversionPlans[record.id]
-        const maxStock =
-          (record.inHouseStock || 0) + (record.showroomStock || 0)
-        return (
-          <InputNumber
-            value={plan?.quantity || 1}
-            onChange={value => handleQuantityChange(record.id, value)}
-            min={1}
-            max={maxStock}
-            size='small'
-            className='w-full'
-            disabled={!selectedRowKeys.includes(record.id)}
-          />
-        )
-      }
-    }
-  ]
 
   // Handle bulk plan creation
-  const handleCreateBulkPlans = async () => {
-    const validPlans = Object.values(conversionPlans).filter(
-      plan => plan.targetAlloyId && plan.quantity > 0
-    )
+  const handleCreateBulkPlans = useCallback(async () => {
+    const validPlans = Array.from(selectedRows)
+      .map(id => conversionPlans[id])
+      .filter(plan => plan && plan.targetFinish && plan.quantity > 0)
 
     if (validPlans.length === 0) {
       notification.warning({
-        message: 'No Valid Conversions',
-        description:
-          'Please select target finishes and quantities for at least one alloy.'
+        message: 'No Valid Plans',
+        description: 'Please select target finishes and quantities'
       })
       return
     }
@@ -448,9 +267,9 @@ const SmartProductionDashboard = () => {
       const planPromises = validPlans.map(async plan => {
         const planData = {
           alloyId: plan.sourceAlloy.id,
-          convertId: plan.targetAlloyId,
+          convertId: plan.sourceAlloy.id,
           quantity: plan.quantity,
-          urgent: plan.urgent,
+          urgent: false,
           userId: user?.id || 1,
           presetName: null
         }
@@ -460,17 +279,16 @@ const SmartProductionDashboard = () => {
       await Promise.all(planPromises)
 
       notification.success({
-        message: 'Bulk Production Plans Created!',
-        description: `Successfully created ${validPlans.length} conversion plans`,
-        duration: 4
+        message: 'Plans Created!',
+        description: `Successfully created ${validPlans.length} production plans`,
+        duration: 3
       })
 
-      // Reset selections
-      setSelectedRowKeys([])
-      setSelectedAlloys([])
+      // Reset
+      setSelectedRows(new Set())
       setConversionPlans({})
-
-      // Navigate to production plans
+      // Clear saved state after successful creation
+      localStorage.removeItem('smartProductionState')
       navigate('/production-plans')
     } catch (error) {
       notification.error({
@@ -480,54 +298,224 @@ const SmartProductionDashboard = () => {
     } finally {
       setIsCreatingPlans(false)
     }
-  }
+  }, [selectedRows, conversionPlans, user, dispatch, navigate])
 
-  return (
-    <Layout>
-      <div className='p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen'>
-        {/* Header */}
-        <div className='mb-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <div>
-              <Title level={2} className='mb-2 text-gray-800'>
-                🚀 Smart Bulk Production Planner
-              </Title>
-              <Text className='text-gray-600 text-lg'>
-                Select multiple alloys and plan conversions to different
-                finishes in bulk
-              </Text>
-            </div>
-            <Button
-              type='primary'
-              icon={<ArrowRightOutlined />}
-              onClick={() => navigate('/production-workflow')}
-              className='bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 border-0'
-            >
-              View Production Workflow
-            </Button>
+  // Table row renderer for virtual list
+  const Row = ({ index, style }) => {
+    const alloy = filteredStockData[index]
+    if (!alloy) return null
+
+    const totalStock = alloy.inHouseStock || 0
+    const isSelected = selectedRows.has(alloy.id)
+    const plan = conversionPlans[alloy.id]
+    const stockStatus = totalStock === 0 ? 'error' : totalStock < 10 ? 'warning' : 'success'
+
+    return (
+      <div 
+        style={style} 
+        className={`flex items-center px-4 border-b hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+      >
+        {/* Checkbox - 40px */}
+        <div className="w-10 flex-shrink-0">
+          <Checkbox
+            checked={isSelected}
+            onChange={(e) => handleRowSelect(alloy.id, e.target.checked)}
+          />
+        </div>
+
+        {/* Size & PCD - 100px */}
+        <div className="w-[100px] flex-shrink-0 px-2">
+          <div className="font-semibold text-lg text-blue-600">{alloy.inches}"</div>
+          <div className="text-xs text-gray-500">{alloy.pcd}</div>
+        </div>
+
+        {/* Product Info - Flexible */}
+        <div className="flex-1 px-2 min-w-0">
+          <div className="font-medium truncate">{alloy.productName}</div>
+          <div className="text-xs text-gray-500 truncate">
+            {alloy.modelName} • {alloy.holes}H • {alloy.width}W • {alloy.finish}
           </div>
         </div>
 
-        {/* Controls and Filters */}
-        <Card className='mb-6'>
-          <Row gutter={[16, 16]} align='middle'>
-            <Col xs={24} md={6}>
-              <Search
-                placeholder='Search alloys...'
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                allowClear
-                size='large'
-              />
-            </Col>
-            <Col xs={24} md={4}>
+        {/* Stock - 120px */}
+        <div className="w-[120px] flex-shrink-0 px-2 text-center">
+          <div className={`font-bold text-lg ${
+            stockStatus === 'error' ? 'text-red-600' : 
+            stockStatus === 'warning' ? 'text-orange-600' : 
+            'text-green-600'
+          }`}>
+            {totalStock} units
+          </div>
+        </div>
+
+        {/* Plan Controls - 280px */}
+        {isSelected ? (
+          <div className="w-[280px] flex-shrink-0 px-2 flex gap-2">
+            <Select
+              size="small"
+              placeholder="Target Finish"
+              value={plan?.targetFinish}
+              onChange={(value) => updateConversionPlan(alloy.id, 'targetFinish', value)}
+              className="flex-1"
+            >
+              <Option value="Chrome">Chrome</Option>
+              <Option value="Diamond Cut">Diamond Cut</Option>
+              <Option value="Black">Black</Option>
+              <Option value="Silver">Silver</Option>
+              <Option value="Anthracite">Anthracite</Option>
+              <Option value="Gun Metal">Gun Metal</Option>
+            </Select>
+            <InputNumber
+              size="small"
+              min={1}
+              max={totalStock}
+              value={plan?.quantity || 1}
+              onChange={(value) => updateConversionPlan(alloy.id, 'quantity', value)}
+              className="w-20"
+            />
+          </div>
+        ) : (
+          <div className="w-[280px] flex-shrink-0 px-2">
+            <Text type="secondary" className="text-xs">
+              Select to configure
+            </Text>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Ctrl+F - Focus search
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault()
+        document.getElementById('search-input')?.focus()
+      }
+      // Ctrl+A - Select all
+      if (e.ctrlKey && e.key === 'a' && !e.target.matches('input, textarea')) {
+        e.preventDefault()
+        handleSelectAll(true)
+      }
+      // Ctrl+Enter - Create plans
+      if (e.ctrlKey && e.key === 'Enter' && selectedRows.size > 0) {
+        handleCreateBulkPlans()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [handleSelectAll, selectedRows, handleCreateBulkPlans])
+
+  return (
+    <Layout>
+      <div className="h-screen flex bg-gray-50">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+        {/* Compact Header */}
+        <div className="bg-white border-b px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Title level={3} className="mb-0">
+                Smart Production Planner
+              </Title>
+              <Badge count={selectedRows.size} showZero>
+                <Tag className="cursor-pointer" onClick={() => setShowSelectedPanel(!showSelectedPanel)}>
+                  {showSelectedPanel ? 'Hide' : 'Show'} Selected
+                </Tag>
+              </Badge>
+            </div>
+            
+            <Space>
+              <Text type="secondary" className="text-xs">
+                Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
+              </Text>
+              <Button
+                icon={<ArrowRightOutlined />}
+                onClick={() => navigate('/production-workflow')}
+              >
+                Workflow
+              </Button>
+            </Space>
+          </div>
+        </div>
+
+        {/* Search and Actions Bar */}
+        <div className="bg-white border-b px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Search
+              id="search-input"
+              placeholder="Search by product, model, size, PCD..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onPressEnter={() => listRef.current?.scrollToItem(0)}
+              allowClear
+              prefix={<SearchOutlined />}
+              className="flex-1 max-w-md"
+            />
+
+            <Button
+              icon={<FilterOutlined />}
+              onClick={() => setShowFilters(!showFilters)}
+              type={showFilters ? 'primary' : 'default'}
+            >
+              Filters {(filterSize || filterPcd || filterFinish) && `(${[filterSize, filterPcd, filterFinish].filter(Boolean).length})`}
+            </Button>
+
+            <Divider type="vertical" className="h-8" />
+
+            <Checkbox
+              checked={showOnlyWithStock}
+              onChange={(e) => setShowOnlyWithStock(e.target.checked)}
+            >
+              Only with stock
+            </Checkbox>
+
+            <Divider type="vertical" className="h-8" />
+
+            <Checkbox
+              checked={selectedRows.size === filteredStockData.length && filteredStockData.length > 0}
+              indeterminate={selectedRows.size > 0 && selectedRows.size < filteredStockData.length}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+            >
+              Select All ({filteredStockData.length})
+            </Checkbox>
+
+            <Button
+              icon={<ClearOutlined />}
+              onClick={() => {
+                setSelectedRows(new Set())
+                setConversionPlans({})
+                // Clear saved state
+                localStorage.removeItem('smartProductionState')
+              }}
+              disabled={selectedRows.size === 0}
+            >
+              Clear
+            </Button>
+
+            <Button
+              type="primary"
+              icon={<RocketOutlined />}
+              onClick={handleCreateBulkPlans}
+              disabled={selectedRows.size === 0}
+              loading={isCreatingPlans}
+              className="bg-green-600 border-green-600 hover:bg-green-700"
+            >
+              Create {selectedRows.size} Plans
+            </Button>
+          </div>
+
+          {/* Collapsible Filters */}
+          {showFilters && (
+            <div className="mt-3 pt-3 border-t flex gap-3">
               <Select
-                placeholder='Size'
+                placeholder="Filter by Size"
                 value={filterSize}
                 onChange={setFilterSize}
                 allowClear
-                size='large'
-                className='w-full'
+                className="w-32"
               >
                 {(allSizes || []).map(size => (
                   <Option key={size.value} value={size.label}>
@@ -535,15 +523,13 @@ const SmartProductionDashboard = () => {
                   </Option>
                 ))}
               </Select>
-            </Col>
-            <Col xs={24} md={4}>
+
               <Select
-                placeholder='PCD'
+                placeholder="Filter by PCD"
                 value={filterPcd}
                 onChange={setFilterPcd}
                 allowClear
-                size='large'
-                className='w-full'
+                className="w-40"
               >
                 {(allPcd || []).map(pcd => (
                   <Option key={pcd.value} value={pcd.label}>
@@ -551,15 +537,13 @@ const SmartProductionDashboard = () => {
                   </Option>
                 ))}
               </Select>
-            </Col>
-            <Col xs={24} md={4}>
+
               <Select
-                placeholder='Finish'
+                placeholder="Filter by Finish"
                 value={filterFinish}
                 onChange={setFilterFinish}
                 allowClear
-                size='large'
-                className='w-full'
+                className="w-40"
               >
                 {(allFinishes?.data || []).map(finish => (
                   <Option key={finish.id} value={finish.finish}>
@@ -567,260 +551,115 @@ const SmartProductionDashboard = () => {
                   </Option>
                 ))}
               </Select>
-            </Col>
-            <Col xs={24} md={6}>
-              <div className='flex gap-2'>
-                <Button
-                  icon={<RocketOutlined />}
-                  onClick={handleCreateBulkPlans}
-                  disabled={selectedRowKeys.length === 0}
-                  type='primary'
-                  size='large'
-                  loading={isCreatingPlans}
-                  className='flex-1'
-                >
-                  Create {selectedRowKeys.length} Plans
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => {
-                    setSelectedRowKeys([])
-                    setSelectedAlloys([])
-                    setConversionPlans({})
-                  }}
-                  size='large'
-                >
-                  Clear
-                </Button>
-              </div>
-            </Col>
-          </Row>
-        </Card>
 
-        {/* Main Content */}
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            {/* Alloy Selection Table */}
-            <Card
-              title={
-                <div className='flex justify-between items-center'>
-                  <span>🔩 Select Alloys for Conversion</span>
-                  <div className='text-sm text-gray-500'>
-                    {selectedRowKeys.length} of {filteredStockData.length}{' '}
-                    selected
-                  </div>
-                </div>
-              }
-            >
-              <Table
-                rowSelection={{
-                  selectedRowKeys,
-                  onChange: handleRowSelection,
-                  checkStrictly: true
+              <Button
+                size="small"
+                onClick={() => {
+                  setFilterSize(null)
+                  setFilterPcd(null)
+                  setFilterFinish(null)
                 }}
-                columns={columns}
-                dataSource={filteredStockData}
-                rowKey='id'
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} items`
-                }}
-                scroll={{ x: 900 }}
-                size='small'
-                loading={loading}
-              />
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={6}>
-            {/* Real-time Conversion Preview */}
-            <Card title='🎯 Conversion Preview' className='sticky top-4'>
-              {selectedRowKeys.length === 0 ? (
-                <div className='text-center py-8 text-gray-500'>
-                  <div className='text-4xl mb-4'>📋</div>
-                  <div>
-                    Select alloys from the table to start planning conversions
-                  </div>
-                </div>
-              ) : (
-                <div className='space-y-4'>
-                  <div className='text-sm text-gray-600 mb-4'>
-                    Planning {selectedRowKeys.length} conversion(s):
-                  </div>
-
-                  <div className='max-h-96 overflow-y-auto space-y-3'>
-                    {selectedAlloys.map(alloy => {
-                      const plan = conversionPlans[alloy.id]
-                      const totalStock =
-                        (alloy.inHouseStock || 0) + (alloy.showroomStock || 0)
-
-                      return (
-                        <div
-                          key={alloy.id}
-                          className='p-3 bg-gray-50 rounded-lg border'
-                        >
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='font-medium text-sm'>
-                              {alloy.productName}
-                            </div>
-                            <div className='text-xs text-gray-500'>
-                              {alloy.inches}" × {alloy.pcd}
-                            </div>
-                          </div>
-
-                          <div className='text-xs text-gray-600 mb-2'>
-                            {alloy.finish} →{' '}
-                            {plan?.targetFinish || 'Select target'}
-                          </div>
-
-                          <div className='flex items-center justify-between'>
-                            <div className='text-xs'>
-                              Stock: {totalStock} units
-                            </div>
-                            <div className='text-xs'>
-                              Planning: {plan?.quantity || 1} units
-                            </div>
-                          </div>
-
-                          {plan?.targetFinish && (
-                            <div className='mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800'>
-                              ✅ Ready for production
-                            </div>
-                          )}
-
-                          {!plan?.targetFinish && (
-                            <div className='mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800'>
-                              ⚠️ Select target finish
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {selectedRowKeys.length > 0 && (
-                    <div className='mt-4 pt-4 border-t border-gray-200'>
-                      <div className='text-sm font-medium mb-2'>Summary:</div>
-                      <div className='text-xs text-gray-600 space-y-1'>
-                        <div>Total plans: {selectedRowKeys.length}</div>
-                        <div>
-                          Ready to create:{' '}
-                          {
-                            Object.values(conversionPlans).filter(
-                              p => p?.targetFinish
-                            ).length
-                          }
-                        </div>
-                        <div>
-                          Need setup:{' '}
-                          {selectedRowKeys.length -
-                            Object.values(conversionPlans).filter(
-                              p => p?.targetFinish
-                            ).length}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={6}>
-            {/* AI Suggestions Panel */}
-            <AISuggestionsPanel
-              onApplySuggestion={handleApplyAISuggestion}
-              onCreateFromSuggestion={handleCreateFromAISuggestion}
-            />
-          </Col>
-        </Row>
-
-        {/* Advanced Analytics */}
-        <Row gutter={[16, 16]} className='mt-6'>
-          <Col xs={24} lg={8}>
-            <TrendAnalysisChart
-              aiInsights={analytics.insights || {}}
-              businessData={filteredStockData}
-            />
-          </Col>
-          <Col xs={24} lg={16}>
-            <SalesMetricsTable />
-          </Col>
-        </Row>
-
-        {/* Quick Actions */}
-        {selectedRowKeys.length > 0 && (
-          <Card className='mt-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <Title level={5} className='mb-1'>
-                  🚀 Ready to Create Plans?
-                </Title>
-                <Text className='text-sm text-gray-600'>
-                  {
-                    Object.values(conversionPlans).filter(p => p?.targetFinish)
-                      .length
-                  }{' '}
-                  of {selectedRowKeys.length} conversions are configured
-                </Text>
-              </div>
-              <div className='flex gap-3'>
-                <Button
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => {
-                    // Auto-fill missing target finishes with Chrome as default
-                    const newPlans = { ...conversionPlans }
-                    selectedAlloys.forEach(alloy => {
-                      if (!newPlans[alloy.id]?.targetFinish) {
-                        newPlans[alloy.id] = {
-                          ...newPlans[alloy.id],
-                          targetFinish: 'Chrome',
-                          targetAlloyId: alloy.id
-                        }
-                      }
-                    })
-                    setConversionPlans(newPlans)
-                  }}
-                  disabled={
-                    Object.values(conversionPlans).filter(p => p?.targetFinish)
-                      .length === selectedRowKeys.length
-                  }
-                >
-                  Auto-Complete (Chrome)
-                </Button>
-                <Button
-                  type='primary'
-                  size='large'
-                  icon={<RocketOutlined />}
-                  onClick={handleCreateBulkPlans}
-                  disabled={
-                    Object.values(conversionPlans).filter(p => p?.targetFinish)
-                      .length === 0
-                  }
-                  loading={isCreatingPlans}
-                >
-                  Create{' '}
-                  {
-                    Object.values(conversionPlans).filter(p => p?.targetFinish)
-                      .length
-                  }{' '}
-                  Plans
-                </Button>
-              </div>
+              >
+                Clear Filters
+              </Button>
             </div>
-          </Card>
+          )}
+        </div>
+
+        {/* Table Header */}
+        <div className="bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm" style={{ paddingRight: showSelectedPanel ? (isPanelCollapsed ? '60px' : '416px') : '24px' }}>
+          <div className="w-10 flex-shrink-0"></div>
+          <div className="w-[100px] flex-shrink-0 px-2">Size/PCD</div>
+          <div className="flex-1 px-2">Product Details</div>
+          <div className="w-[120px] flex-shrink-0 px-2 text-center">Stock</div>
+          <div className="w-[280px] flex-shrink-0 px-2">
+            Plan Configuration
+          </div>
+        </div>
+
+        {/* Virtual Table */}
+        <div className="flex-1 bg-white" style={{ marginRight: showSelectedPanel && selectedRows.size > 0 ? (isPanelCollapsed ? '48px' : '400px') : '0' }}>
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Spin size="large" />
+            </div>
+          ) : filteredStockData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <div className="text-6xl mb-4">📦</div>
+              <div className="text-xl">No alloys found</div>
+              <div className="text-sm mt-2">Try adjusting your search or filters</div>
+            </div>
+          ) : (
+            <AutoSizer>
+              {({ height, width }) => (
+                <List
+                  ref={listRef}
+                  height={height}
+                  itemCount={filteredStockData.length}
+                  itemSize={60}
+                  width={width}
+                >
+                  {Row}
+                </List>
+              )}
+            </AutoSizer>
+          )}
+        </div>
+
+        {/* Status Bar */}
+        {selectedRows.size > 0 && (
+          <div className="bg-blue-50 border-t px-6 py-2 flex items-center justify-between">
+            <div className="text-sm">
+              <Text strong>{selectedRows.size}</Text> items selected •{' '}
+              <Text strong>
+                {Array.from(selectedRows)
+                  .map(id => conversionPlans[id])
+                  .filter(p => p?.targetFinish).length}
+              </Text>{' '}
+              configured •{' '}
+              <Text type="warning">
+                {selectedRows.size - Array.from(selectedRows)
+                  .map(id => conversionPlans[id])
+                  .filter(p => p?.targetFinish).length}
+              </Text>{' '}
+              need target finish
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => {
+                // Auto-fill with Chrome
+                selectedRows.forEach(id => {
+                  if (!conversionPlans[id]?.targetFinish) {
+                    updateConversionPlan(id, 'targetFinish', 'Chrome')
+                  }
+                })
+              }}
+            >
+              Auto-fill Chrome
+            </Button>
+          </div>
         )}
 
-        {loading && (
-          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-            <div className='bg-white p-6 rounded-lg'>
-              <Spin size='large' />
-              <div className='mt-4 text-center'>Loading stock data...</div>
-            </div>
-          </div>
+        </div>
+
+        {/* Selected Items Panel */}
+        {showSelectedPanel && selectedRows.size > 0 && (
+          <SelectedItemsPanel
+            selectedRows={selectedRows}
+            conversionPlans={conversionPlans}
+            filteredStockData={filteredStockData}
+            isCollapsed={isPanelCollapsed}
+            onToggleCollapse={handleTogglePanel}
+            onUpdatePlan={updateConversionPlan}
+            onRemoveItem={(id) => handleRowSelect(id, false)}
+            onRemoveAll={() => {
+              setSelectedRows(new Set())
+              setConversionPlans({})
+              // Clear saved state
+              localStorage.removeItem('smartProductionState')
+            }}
+          />
         )}
       </div>
     </Layout>
