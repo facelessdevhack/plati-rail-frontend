@@ -33,7 +33,8 @@ const SelectedItemsPanel = ({
   onToggleCollapse,
   onUpdatePlan,
   onRemoveItem,
-  onRemoveAll
+  onRemoveAll,
+  getAvailableTargetFinishes
 }) => {
   // Get selected items data
   const selectedItems = useMemo(() => {
@@ -111,13 +112,18 @@ const SelectedItemsPanel = ({
               onChange={(value) => onUpdatePlan(alloy.id, 'targetFinish', value)}
               className="w-full"
               status={!plan?.targetFinish ? 'warning' : ''}
+              notFoundContent="No other finishes available for this product"
             >
-              <Option value="Chrome">Chrome</Option>
-              <Option value="Diamond Cut">Diamond Cut</Option>
-              <Option value="Black">Black</Option>
-              <Option value="Silver">Silver</Option>
-              <Option value="Anthracite">Anthracite</Option>
-              <Option value="Gun Metal">Gun Metal</Option>
+              {getAvailableTargetFinishes && getAvailableTargetFinishes(alloy).map(finish => (
+                <Option key={finish.value} value={finish.value}>
+                  <div className="flex justify-between items-center">
+                    <span>{finish.label}</span>
+                    <span className="text-xs text-gray-500 ml-1">
+                      ({finish.stock} stock)
+                    </span>
+                  </div>
+                </Option>
+              ))}
             </Select>
             
             <div className="flex gap-2">

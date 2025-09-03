@@ -160,10 +160,11 @@ const SmartProductionDashboard = () => {
 
       const matchesSearch =
         !searchTerm ||
-        alloy.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alloy.modelName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        alloy.inches?.toString().includes(searchTerm) ||
-        alloy.pcd?.toLowerCase().includes(searchTerm.toLowerCase())
+        (alloy.productName ? alloy.productName.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (alloy.modelName ? alloy.modelName.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (alloy.inches ? alloy.inches.toString().includes(searchTerm) : false) ||
+        (alloy.pcd ? alloy.pcd.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (alloy.finish ? alloy.finish.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false)
 
       const matchesSize = !filterSize || alloy.inches === filterSize
       const matchesPcd = !filterPcd || alloy.pcd === filterPcd
@@ -181,6 +182,45 @@ const SmartProductionDashboard = () => {
       return newState
     })
   }, [])
+
+  // Get available target finishes for a specific alloy
+  const getAvailableTargetFinishes = useCallback((sourceAlloy) => {
+    if (!stockManagementData || !sourceAlloy) return []
+
+    // Extract base product specification from productName (everything except the finish)
+    const getBaseProduct = (productName, finish) => {
+      if (!productName || !finish) return productName
+      // Remove the finish from the end of productName to get base specification
+      return productName.replace(new RegExp(`\\s*${finish.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`), '').trim()
+    }
+
+    const sourceBaseProduct = getBaseProduct(sourceAlloy.productName, sourceAlloy.finish)
+
+    // Find all alloys with the same base product specification but different finishes
+    const availableFinishes = stockManagementData
+      .filter(alloy => {
+        const alloyBaseProduct = getBaseProduct(alloy.productName, alloy.finish)
+        
+        return (
+          alloyBaseProduct === sourceBaseProduct && // Same base product specification
+          alloy.finish !== sourceAlloy.finish && // Different finish
+          (alloy.inHouseStock || 0) >= 0 // Include all finishes (even with 0 stock for conversion targets)
+        )
+      })
+      .map(alloy => ({
+        value: alloy.finish,
+        label: alloy.finish,
+        stock: alloy.inHouseStock || 0,
+        alloyId: alloy.id
+      }))
+      .filter((finish, index, arr) => 
+        // Remove duplicates by finish name
+        arr.findIndex(f => f.value === finish.value) === index
+      )
+      .sort((a, b) => a.label.localeCompare(b.label))
+
+    return availableFinishes
+  }, [stockManagementData])
 
   // Handle row selection
   const handleRowSelect = useCallback((alloyId, checked) => {
@@ -218,14 +258,17 @@ const SmartProductionDashboard = () => {
   // Handle select all
   const handleSelectAll = useCallback((checked) => {
     if (checked) {
-      const allIds = new Set(filteredStockData.map(a => a.id))
+      // Only select items with stock > 0
+      const selectableItems = filteredStockData.filter(a => (a.inHouseStock || 0) > 0)
+      const allIds = new Set(selectableItems.map(a => a.id))
       setSelectedRows(allIds)
-      // Initialize all conversion plans
+      // Initialize all conversion plans with first available finish
       const newPlans = {}
-      filteredStockData.forEach(alloy => {
+      selectableItems.forEach(alloy => {
+        const availableFinishes = getAvailableTargetFinishes(alloy)
         newPlans[alloy.id] = {
           sourceAlloy: alloy,
-          targetFinish: 'Chrome',
+          targetFinish: availableFinishes.length > 0 ? availableFinishes[0].value : null,
           quantity: 1
         }
       })
@@ -234,7 +277,7 @@ const SmartProductionDashboard = () => {
       setSelectedRows(new Set())
       setConversionPlans({})
     }
-  }, [filteredStockData])
+  }, [filteredStockData, getAvailableTargetFinishes])
 
   // Update conversion plan
   const updateConversionPlan = useCallback((alloyId, field, value) => {
@@ -246,7 +289,6 @@ const SmartProductionDashboard = () => {
       }
     }))
   }, [])
-
 
   // Handle bulk plan creation
   const handleCreateBulkPlans = useCallback(async () => {
@@ -313,13 +355,14 @@ const SmartProductionDashboard = () => {
     return (
       <div 
         style={style} 
-        className={`flex items-center px-4 border-b hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+        className={`flex items-center px-4 border-b ${totalStock === 0 ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'} ${isSelected ? 'bg-blue-50' : ''}`}
       >
         {/* Checkbox - 40px */}
         <div className="w-10 flex-shrink-0">
           <Checkbox
             checked={isSelected}
             onChange={(e) => handleRowSelect(alloy.id, e.target.checked)}
+            disabled={totalStock === 0}
           />
         </div>
 
@@ -357,13 +400,18 @@ const SmartProductionDashboard = () => {
               value={plan?.targetFinish}
               onChange={(value) => updateConversionPlan(alloy.id, 'targetFinish', value)}
               className="flex-1"
+              notFoundContent="No other finishes available for this product"
             >
-              <Option value="Chrome">Chrome</Option>
-              <Option value="Diamond Cut">Diamond Cut</Option>
-              <Option value="Black">Black</Option>
-              <Option value="Silver">Silver</Option>
-              <Option value="Anthracite">Anthracite</Option>
-              <Option value="Gun Metal">Gun Metal</Option>
+              {getAvailableTargetFinishes(alloy).map(finish => (
+                <Option key={finish.value} value={finish.value}>
+                  <div className="flex justify-between items-center">
+                    <span>{finish.label}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({finish.stock} stock)
+                    </span>
+                  </div>
+                </Option>
+              ))}
             </Select>
             <InputNumber
               size="small"
@@ -377,7 +425,7 @@ const SmartProductionDashboard = () => {
         ) : (
           <div className="w-[280px] flex-shrink-0 px-2">
             <Text type="secondary" className="text-xs">
-              Select to configure
+              {totalStock === 0 ? 'No stock available' : 'Select to configure'}
             </Text>
           </div>
         )}
@@ -475,11 +523,11 @@ const SmartProductionDashboard = () => {
             <Divider type="vertical" className="h-8" />
 
             <Checkbox
-              checked={selectedRows.size === filteredStockData.length && filteredStockData.length > 0}
-              indeterminate={selectedRows.size > 0 && selectedRows.size < filteredStockData.length}
+              checked={selectedRows.size > 0 && selectedRows.size === filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length}
+              indeterminate={selectedRows.size > 0 && selectedRows.size < filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length}
               onChange={(e) => handleSelectAll(e.target.checked)}
             >
-              Select All ({filteredStockData.length})
+              Select All ({filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length} with stock)
             </Checkbox>
 
             <Button
@@ -628,15 +676,21 @@ const SmartProductionDashboard = () => {
               type="primary"
               size="small"
               onClick={() => {
-                // Auto-fill with Chrome
+                // Auto-fill with first available finish for each product
                 selectedRows.forEach(id => {
                   if (!conversionPlans[id]?.targetFinish) {
-                    updateConversionPlan(id, 'targetFinish', 'Chrome')
+                    const sourceAlloy = filteredStockData.find(a => a.id === id)
+                    if (sourceAlloy) {
+                      const availableFinishes = getAvailableTargetFinishes(sourceAlloy)
+                      if (availableFinishes.length > 0) {
+                        updateConversionPlan(id, 'targetFinish', availableFinishes[0].value)
+                      }
+                    }
                   }
                 })
               }}
             >
-              Auto-fill Chrome
+              Auto-fill First Available
             </Button>
           </div>
         )}
@@ -659,6 +713,7 @@ const SmartProductionDashboard = () => {
               // Clear saved state
               localStorage.removeItem('smartProductionState')
             }}
+            getAvailableTargetFinishes={getAvailableTargetFinishes}
           />
         )}
       </div>
