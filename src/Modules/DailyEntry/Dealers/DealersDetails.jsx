@@ -43,8 +43,7 @@ import {
   getMiddleDealers,
   getPaymentEntries
 } from '../../../redux/api/entriesAPI'
-const { Title, Text } = Typography;
-const { Search } = Input;
+
 import Button from '../../../Core/Components/CustomButton'
 import {
   updateChargesEntryById,
@@ -55,6 +54,9 @@ import { client } from '../../../Utils/axiosClient'
 import moment from 'moment'
 import CustomSelect from '../../../Core/Components/CustomSelect'
 import { getAllProducts } from '../../../redux/api/stockAPI'
+
+const { Title, Text } = Typography;
+const { Search } = Input;
 
 const AdminDealerDetails = () => {
   const [activeTab, setActiveTab] = useState(1)
