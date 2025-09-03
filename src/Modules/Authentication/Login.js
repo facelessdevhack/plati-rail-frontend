@@ -1,4 +1,4 @@
-import { Col, Row } from "antd";
+import { Col, Row, Alert } from "antd";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -6,12 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { CustomInputWithController } from "../../Core/Components/CustomInput";
 import Button from "../../Core/Components/CustomButton";
 import { userAuthenticate } from "../../redux/api/userAPI";
+import { updateUserData } from "../../redux/slices/user.slice";
 import GlobalLoader from "../../Core/Components/GlobalLoader";
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { loggedIn, tryingAuth, user } = useSelector(
+  const { loggedIn, tryingAuth, user, error, authError } = useSelector(
     (state) => state.userDetails
   );
   const { handleSubmit, control, formState } = useForm({
@@ -46,23 +47,22 @@ const Login = () => {
     }
   }, [loggedIn]);
 
-  const onSubmit = async (e) => {
+  const onSubmit = (e) => {
     const { email, password } = e;
-    try {
-      dispatch(
-        userAuthenticate({
-          email,
-          password,
-        })
-      );
-    } catch (error) {
-      // setError(error.response.data.type, {
-      //   type: 'server',
-      //   message: error.response.data.message,
-      // });
-      console.error(error, "Login Error");
-      alert("Login Error", error);
+    // Clear any existing errors before attempting login
+    if (authError) {
+      dispatch(updateUserData([
+        { key: 'authError', value: false },
+        { key: 'error', value: null }
+      ]));
     }
+    
+    dispatch(
+      userAuthenticate({
+        email,
+        password,
+      })
+    );
   };
 
   // const validationForEmail = {
@@ -141,6 +141,18 @@ const Login = () => {
                 onSubmit={handleSubmit((e) => onSubmit(e))}
                 className="space-y-6"
               >
+                {/* Error Alert */}
+                {authError && error && (
+                  <Alert
+                    message="Login Failed"
+                    description={error.message || error || "Invalid email or password. Please try again."}
+                    type="error"
+                    showIcon
+                    closable
+                    className="mb-4 bg-red-50 border-red-200"
+                  />
+                )}
+
                 <div className="space-y-4">
                   <CustomInputWithController
                     control={control}
