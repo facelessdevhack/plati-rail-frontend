@@ -228,56 +228,76 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
         collapsible
         collapsed={collapsed}
         onCollapse={value => setCollapsed(value)}
-        className='shadow-lg border-r border-border'
+        className='shadow-lg border-r border-border/20'
+        width={280}
+        collapsedWidth={80}
         style={{
-          background: 'linear-gradient(135deg, #313C6F 0%, #273059 100%)'
+          background: '#FFFFFF',
+          borderRight: '1px solid rgba(0, 0, 0, 0.06)'
         }}
       >
         {/* Logo Section */}
         <div
-          className={`transition-all duration-300 ease-in-out border-b border-white/10 ${
+          className={`transition-all duration-300 ease-in-out border-b border-border/10 bg-gradient-to-r from-primary-50 to-accent-50 ${
             collapsed ? 'flex items-center justify-center py-4' : 'p-6'
           }`}
         >
-          <img
-            className={`transition-all duration-300 ${
-              collapsed ? 'h-8 w-auto' : 'h-10 w-auto'
-            }`}
-            src='/assets/logo.png'
-            alt='Plati India'
-          />
+          <div className='flex items-center space-x-3'>
+            <div className={`w-8 h-8 bg-primary rounded-lg flex items-center justify-center transition-all duration-300 ${
+              collapsed ? '' : 'mr-2'
+            }`}>
+              <span className='text-white font-bold text-lg'>P</span>
+            </div>
+            {!collapsed && (
+              <div>
+                <h3 className='text-lg font-bold text-primary'>Plati India</h3>
+                <p className='text-xs text-secondary-600 -mt-1'>Manufacturing ERP</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Navigation Menu */}
-        <Menu
-          theme='dark'
-          selectedKeys={getActiveMenuKey}
-          defaultOpenKeys={getOpenKeys}
-          mode='inline'
-          items={items}
-          className='border-none bg-transparent'
-          style={{
-            background: 'transparent'
-          }}
-        />
+        <div className='px-4 py-2'>
+          <Menu
+            theme='light'
+            selectedKeys={getActiveMenuKey}
+            defaultOpenKeys={getOpenKeys}
+            mode='inline'
+            items={items}
+            className='border-none bg-transparent'
+            style={{
+              background: 'transparent',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          />
+        </div>
       </Sider>
 
       <Layout className='bg-background'>
         {/* Enhanced Header */}
-        <Header className='bg-white/80 backdrop-blur-sm border-b border-border shadow-sm px-6 h-16 flex items-center justify-between'>
+        <Header className='bg-white border-b border-border/20 shadow-sm px-6 h-16 flex items-center justify-between sticky top-0 z-10'>
           <div className='flex items-center space-x-4'>
             <Tooltip title={collapsed ? 'Expand Menu' : 'Collapse Menu'}>
               <button
                 onClick={() => setCollapsed(!collapsed)}
-                className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'
+                className='flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 transition-all duration-200 hover:shadow-sm'
               >
-                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                {collapsed ? <MenuUnfoldOutlined className='text-secondary-600' /> : <MenuFoldOutlined className='text-secondary-600' />}
               </button>
             </Tooltip>
             <div className='h-6 w-px bg-border' />
-            <h1 className='text-xl font-semibold text-foreground truncate'>
-              {title}
-            </h1>
+            <div className='flex flex-col'>
+              <h1 className='text-lg font-semibold text-foreground truncate'>
+                {title}
+              </h1>
+              <div className='flex items-center space-x-1 text-xs text-secondary-500'>
+                <span>Dashboard</span>
+                <span>›</span>
+                <span className='text-primary font-medium'>{title}</span>
+              </div>
+            </div>
           </div>
 
           <div className='flex items-center space-x-3'>
@@ -285,9 +305,9 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
             <Tooltip title={darkMode ? 'Light Mode' : 'Dark Mode'}>
               <button
                 onClick={toggleDarkMode}
-                className='flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors'
+                className='flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 transition-all duration-200 hover:shadow-sm'
               >
-                {darkMode ? <SunOutlined /> : <MoonOutlined />}
+                {darkMode ? <SunOutlined className='text-secondary-600' /> : <MoonOutlined className='text-secondary-600' />}
               </button>
             </Tooltip>
 
@@ -303,7 +323,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
               placement='bottomRight'
               arrow
             >
-              <button className='flex items-center space-x-2 px-3 py-1.5 rounded-md hover:bg-muted transition-colors'>
+              <button className='flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-secondary-50 transition-all duration-200 border border-transparent hover:border-secondary-200 hover:shadow-sm'>
                 <Avatar
                   size={32}
                   icon={<UserOutlined />}
@@ -325,17 +345,21 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
         </Header>
 
         {/* Main Content */}
-        <div className='flex-1 overflow-auto bg-muted/30'>
-          <div className='animate-in'>{content}</div>
+        <div className='flex-1 overflow-auto bg-gradient-to-br from-secondary-50/30 via-white to-primary-50/20'>
+          <div className='animate-in p-6'>
+            <div className='max-w-[1600px] mx-auto'>
+              {content}
+            </div>
+          </div>
         </div>
 
         {/* Enhanced Footer */}
-        <Footer className='bg-white/80 backdrop-blur-sm border-t border-border text-center py-4'>
-          <div className='text-sm text-muted-foreground'>
-            <span className='font-medium text-foreground'>
+        <Footer className='bg-white border-t border-border/20 text-center py-3'>
+          <div className='text-xs text-secondary-500'>
+            <span className='font-medium text-secondary-700'>
               Plati India Pvt. Ltd.
             </span>{' '}
-            © {new Date().getFullYear()} - All rights reserved
+            © {new Date().getFullYear()} - All rights reserved | Manufacturing ERP System
           </div>
         </Footer>
       </Layout>

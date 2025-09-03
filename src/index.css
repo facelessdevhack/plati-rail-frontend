@@ -2,77 +2,190 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Parkinsans:wght@300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
 
 @layer base {
   :root {
+    /* Professional Light Theme */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 210 11% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 210 11% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142 71% 45%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 210 40% 98%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 210 11% 15%;
+    --primary: 213 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 7% 56%;
+    --secondary-foreground: 0 0% 100%;
     --muted: 210 40% 98%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 195 77% 39%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 142 71% 45%;
+    --muted-foreground: 210 7% 56%;
+    --accent: 186 77% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 32% 91%;
+    --input: 210 32% 91%;
+    --ring: 213 100% 40%;
     --radius: 0.5rem;
     
-    font-family: "Parkinsans", serif !important;
+    /* Typography */
+    font-family: "Inter", system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142 71% 45%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 195 77% 39%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 71% 45%;
+    /* Professional Dark Theme */
+    --background: 210 11% 15%;
+    --foreground: 0 0% 98%;
+    --card: 210 11% 15%;
+    --card-foreground: 0 0% 98%;
+    --popover: 210 11% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 213 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 7% 26%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 210 7% 26%;
+    --muted-foreground: 210 7% 66%;
+    --accent: 186 77% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 7% 26%;
+    --input: 210 7% 26%;
+    --ring: 213 100% 40%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
-    font-family: "Parkinsans", serif !important;
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
   }
   
   body {
     @apply bg-background text-foreground;
     margin: 0;
-    font-family: "Parkinsans", serif !important;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Professional Ant Design Overrides */
   .ant-table {
-    font-family: "Parkinsans" !important;
+    font-family: "Inter", system-ui, sans-serif !important;
+    font-size: 14px;
+    border-radius: 12px !important;
+  }
+  
+  .ant-table-thead > tr > th {
+    background: #F8F9FA !important;
+    color: #495057 !important;
+    font-weight: 600 !important;
+    border: none !important;
+    font-size: 13px !important;
+  }
+  
+  .ant-menu {
+    font-family: "Inter", system-ui, sans-serif !important;
+    border: none !important;
+  }
+  
+  .ant-menu-item {
+    border-radius: 8px !important;
+    margin: 2px 0 !important;
+    font-weight: 500 !important;
+  }
+  
+  .ant-menu-item-selected {
+    background: rgba(0, 102, 204, 0.1) !important;
+    color: #0066CC !important;
+  }
+  
+  .ant-menu-item:hover {
+    background: rgba(0, 102, 204, 0.05) !important;
+    color: #0066CC !important;
+  }
+  
+  .ant-btn {
+    font-family: "Inter", system-ui, sans-serif !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .ant-btn-primary {
+    background: #0066CC !important;
+    border-color: #0066CC !important;
+  }
+  
+  .ant-btn-primary:hover {
+    background: #0052A3 !important;
+    border-color: #0052A3 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2) !important;
+  }
+  
+  .ant-card {
+    border-radius: 12px !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .ant-layout-sider-children {
+    background: #FFFFFF !important;
+  }
+  
+  .ant-modal {
+    border-radius: 16px !important;
+  }
+  
+  .ant-modal-content {
+    border-radius: 16px !important;
+    overflow: hidden;
+  }
+  
+  .ant-input, .ant-select-selector {
+    border-radius: 8px !important;
+    font-family: "Inter", system-ui, sans-serif !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .ant-input:focus, .ant-select-focused .ant-select-selector {
+    border-color: #0066CC !important;
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1) !important;
+  }
+  
+  .ant-pagination-item {
+    border-radius: 6px !important;
+  }
+  
+  .ant-pagination-item-active {
+    background: #0066CC !important;
+    border-color: #0066CC !important;
+  }
+  
+  .ant-tag {
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
   }
 
-  code {
-    font-family: "Parkinsans", monospace !important;
+  code, pre {
+    font-family: "JetBrains Mono", ui-monospace, monospace !important;
+    font-size: 13px;
   }
 
   /* Scrollbar Styling */
@@ -116,24 +229,28 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
-  /* Gradient backgrounds */
+  /* Modern Gradient Backgrounds */
   .gradient-primary {
-    background: linear-gradient(135deg, #4C9A58 0%, #57A166 100%);
+    background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
   }
 
   .gradient-secondary {
-    background: linear-gradient(135deg, #313C6F 0%, #273059 100%);
+    background: linear-gradient(135deg, #6C757D 0%, #495057 100%);
   }
 
   .gradient-accent {
-    background: linear-gradient(135deg, #0892BD 0%, #067597 100%);
+    background: linear-gradient(135deg, #17A2B8 0%, #138296 100%);
+  }
+  
+  .gradient-mesh {
+    background: linear-gradient(135deg, rgba(0, 102, 204, 0.1) 0%, rgba(23, 162, 184, 0.1) 100%);
   }
 }
 
 @layer components {
-  /* Custom button variants */
+  /* Enhanced button variants */
   .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:shadow-sm;
   }
 
   .btn-primary {
@@ -185,8 +302,97 @@
     @apply flex items-center p-6 pt-0;
   }
 
-  /* Input components */
+  /* Enhanced input components */
   .input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200;
   }
+  
+  /* Professional layout utilities */
+  .layout-container {
+    @apply max-w-[1600px] mx-auto;
+  }
+  
+  .content-section {
+    @apply bg-white rounded-xl shadow-sm border border-border/20 p-6;
+  }
+  
+  .section-header {
+    @apply border-b border-border/10 pb-4 mb-6;
+  }
+  
+  .data-grid {
+    @apply bg-white rounded-lg shadow-sm overflow-hidden;
+  }
+  
+  /* Enhanced focus styles for accessibility */
+  .focus-ring-enhanced {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white;
+  }
+  
+  /* Professional status indicators */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full mr-2;
+  }
+  
+  .status-success {
+    @apply bg-success-500;
+  }
+  
+  .status-warning {
+    @apply bg-warning-500;
+  }
+  
+  .status-error {
+    @apply bg-destructive-500;
+  }
+  
+  .status-info {
+    @apply bg-primary-500;
+  }
+  
+  /* Modern card designs */
+  .metric-card {
+    @apply bg-white p-6 rounded-xl border border-border/20 hover:border-border/40 transition-all duration-200 hover:shadow-md;
+  }
+  
+  .nav-item {
+    @apply flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary-50 hover:text-primary-600;
+  }
+  
+  .nav-item.active {
+    @apply bg-primary-50 text-primary-600 border-r-2 border-primary-500;
+  }
+  
+  /* Responsive utilities */
+  .mobile-hidden {
+    @apply hidden md:block;
+  }
+  
+  .mobile-only {
+    @apply block md:hidden;
+  }
+  
+  .tablet-hidden {
+    @apply hidden lg:block;
+  }
+  
+  /* Professional animations */
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
 }

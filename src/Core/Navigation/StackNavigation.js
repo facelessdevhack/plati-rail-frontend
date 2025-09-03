@@ -439,6 +439,19 @@ const StackNavigation = () => {
         }
       />
 
+      {/* Entry Inventory Management System */}
+      <Route
+        path='/entry-inventory-system'
+        element={
+          <PrivateRoute allowedRoles={[3]}>
+            <EntryLayout
+              title='Inventory Management'
+              items={entrySiderRoutes}
+              content={<InventoryManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
 
       {/* New Inventory Management System */}
       <Route

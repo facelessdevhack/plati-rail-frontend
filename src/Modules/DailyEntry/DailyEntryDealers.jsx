@@ -70,37 +70,65 @@
 
 // export default AdminDailyEntryDealersPage;
 
-import React, { useEffect, useState } from "react";
-import { Row, Col } from "antd";
-import CustomTable from "../../Core/Components/CustomTable";
-import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import CustomInput from "../../Core/Components/CustomInput";
-import { getAllDealers } from "../../redux/api/stockAPI";
+import React, { useEffect, useState } from 'react';
+import { 
+  Row, 
+  Col, 
+  Input, 
+  Table, 
+  Tag, 
+  Badge, 
+  Space, 
+  Typography,
+  Button,
+  Avatar,
+  Tooltip
+} from 'antd';
+import { 
+  SearchOutlined, 
+  UserOutlined, 
+  SyncOutlined,
+  ArrowRightOutlined
+} from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { getAllDealers } from '../../redux/api/stockAPI';
+
+const { Text } = Typography;
+const { Search } = Input;
 
 const AdminDailyEntryDealersPage = () => {
-    const [activeTab, setActiveTab] = useState(1);
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { allDealers, dealersPagination } = useSelector((state) => state.stockDetails);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
-    const [searchQuery, setSearchQuery] = useState("");
     const { user } = useSelector((state) => state.userDetails);
+    
+    // State management
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchDealers();
     }, [dispatch, currentPage, pageSize, searchQuery]);
 
-    const fetchDealers = () => {
-        const params = { page: currentPage, limit: pageSize };
-        if (user.roleId !== 5) {
-            params.id = user.userId;
+    const fetchDealers = async () => {
+        setLoading(true);
+        try {
+            const params = { page: currentPage, limit: pageSize };
+            if (user.roleId !== 5) {
+                params.id = user.userId;
+            }
+            if (searchQuery) {
+                params.search = searchQuery;
+            }
+            await dispatch(getAllDealers(params));
+        } catch (error) {
+            console.error('Error fetching dealers:', error);
+        } finally {
+            setLoading(false);
         }
-        if (searchQuery) {
-            params.search = searchQuery;
-        }
-        dispatch(getAllDealers(params));
     };
 
     // Handle page change
@@ -111,60 +139,196 @@ const AdminDailyEntryDealersPage = () => {
         }
     };
 
+    // Handle search with debouncing
+    const handleSearch = (value) => {
+        setSearchQuery(value);
+        setCurrentPage(1); // Reset to first page on search
+    };
 
-
-    const columns = [
-        {
-            title: "Dealer Name",
-            dataIndex: "label",
-            key: "label",
-            render: (text) => <div className="cursor-pointer">{text}</div>,
-        },
-        {
-            title: "Unchecked Entries",
-            dataIndex: "uncheckedCount",
-            key: 'uncheckedCount',
-            render: (text) => <div className="bg-orange-500 text-white px-3 py-1 rounded-full max-w-fit font-bold">{text}</div>
-        }
-    ];
-
-    // Function to handle row click
-    const handleRowClick = (record) => {
-        console.log(record, 'RECORD');
-        navigate(`/admin-dealers/${record.value}`, {
-            state: { id: record.value, name: record.label },
+    // Handle dealer click
+    const handleDealerClick = (dealer) => {
+        console.log('Selected dealer:', dealer);
+        navigate(`/admin-dealers/${dealer.value}`, {
+            state: { id: dealer.value, name: dealer.label },
         });
     };
 
+
+
+
+    // Table columns for table view
+    const columns = [
+        {
+            title: 'Dealer',
+            dataIndex: 'label',
+            key: 'label',
+            render: (text, record) => (
+                <div className='flex items-center space-x-3'>
+                    <Avatar 
+                        size={40} 
+                        icon={<UserOutlined />} 
+                        style={{ 
+                            backgroundColor: '#F3F4F6',
+                            color: '#4B5563',
+                            border: '1px solid #D1D5DB'
+                        }} 
+                    />
+                    <div>
+                        <div className='font-semibold text-foreground'>{text}</div>
+                        <div className='text-xs' style={{ color: '#6B7280' }}>ID: {record.value}</div>
+                    </div>
+                </div>
+            ),
+            sorter: (a, b) => a.label.localeCompare(b.label),
+        },
+        {
+            title: 'Pending Entries',
+            dataIndex: 'uncheckedCount',
+            key: 'uncheckedCount',
+            width: 150,
+            render: (count) => {
+                if (count > 0) {
+                    return (
+                        <Badge 
+                            count={count} 
+                            style={{ 
+                                backgroundColor: '#EF4444',
+                                color: '#FFFFFF',
+                                fontWeight: '600',
+                                border: '1px solid #DC2626',
+                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '20px',
+                                height: '20px',
+                                lineHeight: '18px'
+                            }} 
+                        />
+                    );
+                }
+                return (
+                    <Tag 
+                        style={{
+                            backgroundColor: '#F0FDF4',
+                            color: '#059669',
+                            border: '1px solid #BBF7D0',
+                            fontWeight: '500'
+                        }}
+                    >
+                        Up to date
+                    </Tag>
+                );
+            },
+            sorter: (a, b) => (a.uncheckedCount || 0) - (b.uncheckedCount || 0),
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            width: 100,
+            render: (_, record) => (
+                <Space>
+                    <Tooltip title='View Details'>
+                        <Button
+                            type='text'
+                            icon={<ArrowRightOutlined />}
+                            onClick={() => handleDealerClick(record)}
+                            style={{
+                                color: '#6B7280',
+                                border: '1px solid transparent'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = '#F9FAFB';
+                                e.target.style.color = '#374151';
+                                e.target.style.borderColor = '#D1D5DB';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = 'transparent';
+                                e.target.style.color = '#6B7280';
+                                e.target.style.borderColor = 'transparent';
+                            }}
+                        />
+                    </Tooltip>
+                </Space>
+            ),
+        },
+    ];
+
+
     return (
-        <div className="w-full h-full p-5 bg-gray-200">
-            <Row gutter={16}>
-                <Col span={24}>
-                    <div>
-                        {/* Search input */}
-                        <CustomInput
-                            placeholder={"Search Dealers"}
-                            intent={"search"}
+        <div className='layout-container'>
+
+            {/* Controls Section */}
+            <div className='content-section mb-6'>
+                <Row gutter={[16, 16]} align='middle'>
+                    <Col xs={24} md={16}>
+                        <Search
+                            placeholder='Search dealers by name...'
+                            allowClear
+                            enterButton
+                            size='large'
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            onSearch={handleSearch}
+                            prefix={<SearchOutlined />}
+                            className='w-full'
                         />
-                    </div>
-                    <div>
-                        <CustomTable
-                            data={allDealers}
-                            titleOnTop={false}
-                            position="bottomRight"
-                            columns={columns}
-                            expandable={false}
-                            totalCount={dealersPagination?.total || 0}
-                            currentPage={currentPage}
-                            handlePageChange={handlePageChange}
-                            currentPageSize={pageSize}
-                            onRowClick={handleRowClick}
-                        />
-                    </div>
-                </Col>
-            </Row>
+                    </Col>
+                    <Col xs={24} md={8} className='text-right'>
+                        <Button 
+                            icon={<SyncOutlined />} 
+                            onClick={fetchDealers}
+                            loading={loading}
+                            style={{
+                                backgroundColor: '#F9FAFB',
+                                borderColor: '#D1D5DB',
+                                color: '#374151'
+                            }}
+                        >
+                            Refresh
+                        </Button>
+                    </Col>
+                </Row>
+            </div>
+
+            {/* Content Section */}
+            <div className='content-section'>
+                <Table
+                    columns={columns}
+                    dataSource={allDealers}
+                    rowKey='value'
+                    loading={loading}
+                    pagination={{
+                        current: currentPage,
+                        pageSize: pageSize,
+                        total: dealersPagination?.total || 0,
+                        onChange: handlePageChange,
+                        onShowSizeChange: handlePageChange,
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total, range) => 
+                            `${range[0]}-${range[1]} of ${total} dealers`,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                    }}
+                    onRow={(record) => ({
+                        onClick: () => handleDealerClick(record),
+                        style: { cursor: 'pointer' },
+                        onMouseEnter: (e) => {
+                            e.currentTarget.style.backgroundColor = '#F9FAFB';
+                        },
+                        onMouseLeave: (e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                    })}
+                    className='data-grid'
+                    style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '8px',
+                        border: '1px solid #E5E7EB',
+                        overflow: 'hidden'
+                    }}
+                />
+            </div>
         </div>
     );
 };

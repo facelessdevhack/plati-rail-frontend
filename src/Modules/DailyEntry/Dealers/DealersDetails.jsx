@@ -2,16 +2,36 @@ import React, { useEffect, useState } from 'react'
 import {
   Row,
   Col,
-  Flex,
-  Segmented,
+  Card,
+  Tabs,
   DatePicker,
   Modal,
   Spin,
-  message
+  message,
+  Button as AntButton,
+  Space,
+  Typography,
+  Statistic,
+  Badge,
+  Avatar,
+  Tooltip,
+  Divider,
+  Input
 } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { DownloadOutlined } from '@ant-design/icons'
+import { 
+  DownloadOutlined, 
+  UserOutlined,
+  WalletOutlined,
+  ReloadOutlined,
+  PlusOutlined,
+  FileTextOutlined,
+  SearchOutlined,
+  CalendarOutlined,
+  ArrowLeftOutlined,
+  DollarOutlined
+} from '@ant-design/icons'
 import CustomTable from '../../../Core/Components/CustomTable'
 import CustomInput from '../../../Core/Components/CustomInput'
 import {
@@ -23,7 +43,8 @@ import {
   getMiddleDealers,
   getPaymentEntries
 } from '../../../redux/api/entriesAPI'
-import AdminLayout from '../../Layout/adminLayout'
+const { Title, Text } = Typography;
+const { Search } = Input;
 import Button from '../../../Core/Components/CustomButton'
 import {
   updateChargesEntryById,
@@ -642,91 +663,96 @@ const AdminDealerDetails = () => {
     }
   }
 
-  // Handle Tab Content Render
-  const handleTabContentRender = () => {
-    switch (activeTab) {
+  // Render tab content
+  const renderTabContent = (tabKey) => {
+    switch (tabKey) {
       case 1:
         const sortedFilteredDealers = [...filteredDealers].sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         )
 
         return (
-          <div>
-            <div className='mt-5 flex justify-between items-center'>
-              <CustomInput
-                placeholder={'Search Entries'}
-                intent={'search'}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              <div className='flex justify-end items-center gap-4'>
-                {/* {isAdmin && ( */}
-                <div
-                  onClick={handleOrderDashboard}
-                  className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                >
-                  <div className='flex items-center gap-x-2'>
-                    <div>Check Orders</div>
-                  </div>
-                </div>
-                {/* )} */}
-                {isAdmin && (
-                  <div
-                    onClick={showPaymentModalFunction}
-                    className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
+          <div className='pt-6'>
+            <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
+              <div className='flex-1 max-w-md'>
+                <Search
+                  placeholder='Search entries...'
+                  allowClear
+                  size='large'
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  prefix={<SearchOutlined />}
+                />
+              </div>
+              <div className='flex items-center gap-3'>
+                <Tooltip title='Check Orders'>
+                  <AntButton
+                    icon={<FileTextOutlined />}
+                    onClick={handleOrderDashboard}
+                    size='large'
+                    className='hover:bg-blue-50 hover:border-blue-300'
                   >
-                    <div className='flex items-center gap-x-2'>
-                      <div>Add Payment</div>
-                    </div>
-                  </div>
+                    Orders
+                  </AntButton>
+                </Tooltip>
+                {isAdmin && (
+                  <Tooltip title='Add Payment Entry'>
+                    <AntButton
+                      type='primary'
+                      icon={<PlusOutlined />}
+                      onClick={showPaymentModalFunction}
+                      size='large'
+                      className='bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700'
+                    >
+                      Add Payment
+                    </AntButton>
+                  </Tooltip>
                 )}
-                <div
-                  onClick={handleRecalculateBalance}
-                  className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                >
-                  <div className='flex items-center gap-x-2'>
-                    <div>Recalculate Balance</div>
-                  </div>
-                </div>
-
-                <div
-                  onClick={showDownloadModal}
-                  className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                >
-                  <div className='flex items-center gap-x-2'>
-                    <DownloadOutlined
-                      style={{
-                        fontSize: 24,
-                        color: '#f26933' // Change color to match the theme
-                      }}
-                    />
-                    <div>Export </div>
-                  </div>
-                </div>
+                <Tooltip title='Recalculate Balance'>
+                  <AntButton
+                    icon={<ReloadOutlined />}
+                    onClick={handleRecalculateBalance}
+                    size='large'
+                    className='hover:bg-orange-50 hover:border-orange-300'
+                  >
+                    Recalculate
+                  </AntButton>
+                </Tooltip>
+                <Tooltip title='Export Report'>
+                  <AntButton
+                    icon={<DownloadOutlined />}
+                    onClick={showDownloadModal}
+                    size='large'
+                    className='hover:bg-gray-50 hover:border-gray-300'
+                  >
+                    Export
+                  </AntButton>
+                </Tooltip>
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
-                  className='rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all'
-                  style={{
-                    padding: '8px 12px', // Add some padding for a better look
-                    width: '250px' // Adjust the width as needed
-                  }}
+                  size='large'
+                  className='min-w-[280px]'
+                  placeholder={['Start Date', 'End Date']}
+                  suffixIcon={<CalendarOutlined />}
                 />
               </div>
             </div>
-            <CustomTable
-              isAdmin={isAdmin}
-              editFunction={showEditModalFunction}
-              data={sortedFilteredDealers}
-              titleOnTop={false}
-              position='bottomRight'
-              columns={columns}
-              expandable={false}
-              totalCount={searchQuery ? filteredDealers?.length : dealerEntriesPagination?.total || dealerEntryCount}
-              currentPage={currentPage}
-              handlePageChange={handlePages}
-              currentPageSize={pageSize}
-              showSort={true}
-            />
+            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden'>
+              <CustomTable
+                isAdmin={isAdmin}
+                editFunction={showEditModalFunction}
+                data={sortedFilteredDealers}
+                titleOnTop={false}
+                position='bottomRight'
+                columns={columns}
+                expandable={false}
+                totalCount={searchQuery ? filteredDealers?.length : dealerEntriesPagination?.total || dealerEntryCount}
+                currentPage={currentPage}
+                handlePageChange={handlePages}
+                currentPageSize={pageSize}
+                showSort={true}
+              />
+            </div>
           </div>
         )
       case 2:
@@ -734,82 +760,78 @@ const AdminDealerDetails = () => {
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         )
         return (
-          <div>
-            {/* <div className="mt-5 -mb-5">
-                            <CustomInput
-                                placeholder={"Search Entries"}
-                                intent={"search"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <DatePicker.RangePicker onChange={handleDateChange} />
-                        </div> */}
-
-            <div className='mt-5 flex justify-between items-center'>
-              <CustomInput
-                placeholder={'Search Entries'}
-                intent={'search'}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              <div className='flex justify-end items-center gap-4'>
+          <div className='pt-6'>
+            <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
+              <div className='flex-1 max-w-md'>
+                <Search
+                  placeholder='Search payments...'
+                  allowClear
+                  size='large'
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  prefix={<SearchOutlined />}
+                />
+              </div>
+              <div className='flex items-center gap-3'>
                 {isAdmin && (
-                  <div
-                    onClick={handleRecalculateBalance}
-                    className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                  >
-                    <div className='flex items-center gap-x-2'>
-                      <div>Recalculate Balance</div>
-                    </div>
-                  </div>
+                  <Tooltip title='Add Payment Entry'>
+                    <AntButton
+                      type='primary'
+                      icon={<PlusOutlined />}
+                      onClick={showPaymentModalFunction}
+                      size='large'
+                      className='bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700'
+                    >
+                      Add Payment
+                    </AntButton>
+                  </Tooltip>
                 )}
                 {isAdmin && (
-                  <div
-                    onClick={showPaymentModalFunction}
-                    className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                  >
-                    <div className='flex items-center gap-x-2'>
-                      <div>Add Payment</div>
-                    </div>
-                  </div>
+                  <Tooltip title='Recalculate Balance'>
+                    <AntButton
+                      icon={<ReloadOutlined />}
+                      onClick={handleRecalculateBalance}
+                      size='large'
+                      className='hover:bg-orange-50 hover:border-orange-300'
+                    >
+                      Recalculate
+                    </AntButton>
+                  </Tooltip>
                 )}
-                <div
-                  onClick={showDownloadModal}
-                  className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-                >
-                  <div className='flex items-center gap-x-2'>
-                    <DownloadOutlined
-                      style={{
-                        fontSize: 24,
-                        color: '#f26933' // Change color to match the theme
-                      }}
-                    />
-                    <div>Export </div>
-                  </div>
-                </div>
+                <Tooltip title='Export Report'>
+                  <AntButton
+                    icon={<DownloadOutlined />}
+                    onClick={showDownloadModal}
+                    size='large'
+                    className='hover:bg-gray-50 hover:border-gray-300'
+                  >
+                    Export
+                  </AntButton>
+                </Tooltip>
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
-                  className='rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all'
-                  style={{
-                    padding: '8px 12px', // Add some padding for a better look
-                    width: '250px' // Adjust the width as needed
-                  }}
+                  size='large'
+                  className='min-w-[280px]'
+                  placeholder={['Start Date', 'End Date']}
+                  suffixIcon={<CalendarOutlined />}
                 />
               </div>
             </div>
-            <CustomTable
-              isAdmin={isAdmin}
-              editFunction={showEditModalFunction}
-              data={sortedFilteredPayments}
-              titleOnTop={false}
-              position='bottomRight'
-              columns={paymentColumns}
-              expandable={false}
-              totalCount={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount}
-              currentPage={currentPage}
-              handlePageChange={handlePages}
-              currentPageSize={pageSize}
-            />
+            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden'>
+              <CustomTable
+                isAdmin={isAdmin}
+                editFunction={showEditModalFunction}
+                data={sortedFilteredPayments}
+                titleOnTop={false}
+                position='bottomRight'
+                columns={paymentColumns}
+                expandable={false}
+                totalCount={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount}
+                currentPage={currentPage}
+                handlePageChange={handlePages}
+                currentPageSize={pageSize}
+              />
+            </div>
           </div>
         )
       default:
@@ -820,146 +842,211 @@ const AdminDealerDetails = () => {
   // Determine the color class based on the balance
 
   return (
-    <AdminLayout
-      title={
-        <div>
-          {state?.name}
-          <div className='text-sm text-gray-700 font-semibold'>
-            {dealerInfo?.currentBal !== null &&
-              dealerInfo?.currentBal !== undefined && (
-                <div className='text-sm text-gray-700 font-semibold'>
-                  <div>
-                    Current Balance -{' '}
-                    {dealerInfo?.currentBal !== null &&
-                    dealerInfo?.currentBal !== undefined ? (
-                      <span className={getBalanceColor(dealerInfo?.currentBal)}>
-                        {formatINR(dealerInfo?.currentBal)}
-                      </span>
-                    ) : (
-                      'N/A'
-                    )}
-                  </div>
-                </div>
-              )}
-          </div>
-        </div>
-      }
-      content={
-        <div className='w-full h-full p-5 bg-gray-200'>
-          <div>
-            {(loader || spinLoader) && (
-              <Spin
+    <div className='layout-container min-h-screen bg-gradient-to-br from-secondary-50/30 via-white to-primary-50/20 p-6'>
+      {(loader || spinLoader) && (
+        <Spin
+          size='large'
+          spinning={loader || spinLoader}
+          className='fixed inset-0 z-50 bg-white/80 backdrop-blur-sm'
+        />
+      )}
+      
+      {/* Header Section */}
+      <div className='content-section mb-6'>
+        <div className='flex items-start justify-between mb-6'>
+          {/* Back Button and Title */}
+          <div className='flex items-center space-x-4'>
+            <Tooltip title='Back to Dealers'>
+              <AntButton 
+                icon={<ArrowLeftOutlined />}
+                onClick={() => navigate('/admin-daily-entry-dealers')}
+                className='hover:bg-gray-50 hover:border-gray-300'
                 size='large'
-                spinning={loader || spinLoader}
-                fullscreen={true}
-                className='z-20'
-              ></Spin>
-            )}
-            <Row gutter={16}>
-              <Col span={24}>
-                <div className='flex items-baseline justify-between w-full '>
-                  <Flex
-                    gap='small'
-                    align='flex-start'
-                    vertical
-                    className='shadow-lg'
-                  >
-                    <Segmented
-                      onChange={setActiveTab}
-                      options={[
-                        {
-                          label: (
-                            <div
-                              style={{
-                                padding: 4
-                              }}
-                              className={`flex items-center justify-between gap-x-1 ${
-                                activeTab === 1
-                                  ? 'font-semibold'
-                                  : 'font-medium'
-                              }`}
-                            >
-                              <div>Entries</div>
-                              <div>({dealerEntryCount})</div>
-                            </div>
-                          ),
-                          value: 1
-                        },
-                        {
-                          label: (
-                            <div
-                              style={{
-                                padding: 4
-                              }}
-                              className={`flex items-center justify-between gap-x-1 ${
-                                activeTab === 2
-                                  ? 'font-semibold'
-                                  : 'font-medium'
-                              }`}
-                            >
-                              <div>Payments</div>
-                              <div>({pmEntryCount})</div>
-                            </div>
-                          ),
-                          value: 2
-                        }
-                      ]}
-                    />
-                  </Flex>
-                </div>
-                <div>{handleTabContentRender()}</div>
-              </Col>
-            </Row>
-
-            {/* Modal for downloading report */}
-            <Modal
-              title={`Download Report for ${state?.name}`}
-              open={isModalVisible}
-              onOk={handleModalOk}
-              onCancel={handleModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handleModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button key='submit' type='primary' onClick={handleModalOk}>
-                    Download
-                  </Button>
+              />
+            </Tooltip>
+            <div className='flex items-center space-x-4'>
+              <Avatar 
+                size={64} 
+                icon={<UserOutlined />} 
+                className='bg-primary-100 text-primary-600 border-2 border-primary-200'
+              />
+              <div>
+                <Title level={2} className='mb-1'>{state?.name}</Title>
+                <Text type='secondary' className='text-base'>Dealer ID: {id}</Text>
+              </div>
+            </div>
+          </div>
+          
+          {/* Balance Card */}
+          <Card className='min-w-[200px] shadow-lg border-l-4' style={{ borderLeftColor: dealerInfo?.currentBal < 0 ? '#EF4444' : '#10B981' }}>
+            <Statistic
+              title={
+                <div className='flex items-center space-x-2'>
+                  <WalletOutlined className='text-gray-500' />
+                  <span>Current Balance</span>
                 </div>
               }
+              value={dealerInfo?.currentBal || 0}
+              formatter={(value) => (
+                <span className={getBalanceColor(value)}>
+                  {formatINR(value)}
+                </span>
+              )}
+              precision={0}
+            />
+          </Card>
+        </div>
+        
+        {/* Quick Stats */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Total Entries'
+                value={dealerEntryCount || 0}
+                prefix={<FileTextOutlined />}
+                valueStyle={{ color: '#374151' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Payment Entries'
+                value={pmEntryCount || 0}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: '#374151' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Unchecked Entries'
+                value={allDealerEntries?.filter(entry => entry.isChecked === 0).length || 0}
+                valueStyle={{ color: '#DC2626' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Unchecked Payments'
+                value={allPMEntries?.filter(entry => entry.isPaid === 0).length || 0}
+                valueStyle={{ color: '#DC2626' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+      
+      {/* Main Content */}
+      <div className='content-section'>
+        <Tabs 
+          activeKey={activeTab.toString()} 
+          onChange={(key) => setActiveTab(parseInt(key))}
+          size='large'
+          className='professional-tabs'
+          items={[
+            {
+              key: '1',
+              label: (
+                <div className='flex items-center space-x-2'>
+                  <FileTextOutlined />
+                  <span>Entries</span>
+                </div>
+              ),
+              children: renderTabContent(1)
+            },
+            {
+              key: '2', 
+              label: (
+                <div className='flex items-center space-x-2'>
+                  <DollarOutlined />
+                  <span>Payments</span>
+                </div>
+              ),
+              children: renderTabContent(2)
+            }
+          ]}
+        />
+
+      </div>
+      
+      {/* Download Report Modal */}
+      <Modal
+        title={
+          <div className='flex items-center space-x-3'>
+            <DownloadOutlined className='text-primary' />
+            <span>Download Report for {state?.name}</span>
+          </div>
+        }
+        open={isModalVisible}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        width={500}
+        footer={
+          <div className='flex justify-end items-center gap-3'>
+            <AntButton onClick={handleModalCancel} size='large'>
+              Cancel
+            </AntButton>
+            <AntButton 
+              type='primary' 
+              onClick={handleModalOk} 
+              size='large'
+              icon={<DownloadOutlined />}
+              style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
             >
-              <div>
-                <p className='mt-5 mb-3 italic text-xs'>
-                  *Please select the start and end date to export the data for
-                  specific dates.
-                </p>
-                <DatePicker.RangePicker
-                  onChange={handleDateChange}
-                  style={{ width: '100%' }}
-                />
-              </div>
+              Download Report
+            </AntButton>
+          </div>
+        }
+            >
+        <div className='py-4'>
+          <div className='mb-4'>
+            <Text type='secondary' className='text-sm'>
+              Select date range to export data for specific period. Leave empty to export all data.
+            </Text>
+          </div>
+          <DatePicker.RangePicker
+            onChange={handleDateChange}
+            style={{ width: '100%' }}
+            size='large'
+            placeholder={['Start Date', 'End Date']}
+            suffixIcon={<CalendarOutlined />}
+          />
+        </div>
             </Modal>
 
-            {/* Modal for Adding Payment Entry */}
-            <Modal
-              title={`Add Payment Entry For ${state?.name}`}
-              open={showPaymentModal}
-              onOk={handlePaymentModalOk}
-              onCancel={handlePaymentModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handlePaymentModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button
-                    key='submit'
-                    type='primary'
-                    onClick={handlePaymentModalOk}
-                  >
-                    Create Entry
-                  </Button>
-                </div>
-              }
+      {/* Add Payment Entry Modal */}
+      <Modal
+        title={
+          <div className='flex items-center space-x-3'>
+            <PlusOutlined className='text-green-600' />
+            <span>Add Payment Entry for {state?.name}</span>
+          </div>
+        }
+        open={showPaymentModal}
+        onOk={handlePaymentModalOk}
+        onCancel={handlePaymentModalCancel}
+        width={600}
+        footer={
+          <div className='flex justify-end items-center gap-3'>
+            <AntButton onClick={handlePaymentModalCancel} size='large'>
+              Cancel
+            </AntButton>
+            <AntButton
+              type='primary'
+              onClick={handlePaymentModalOk}
+              size='large'
+              icon={<PlusOutlined />}
+              style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+              disabled={!cashAmount || !entryDate}
+            >
+              Create Payment Entry
+            </AntButton>
+          </div>
+        }
             >
               <div>
                 {loader && (
@@ -1029,26 +1116,33 @@ const AdminDealerDetails = () => {
               </div>
             </Modal>
 
-            {/* Modal for Editing Entry */}
-            <Modal
-              title={`Edit Entry`}
-              open={showEditModal}
-              onOk={handleEditModalOk}
-              onCancel={handleEditModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handleEditModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button
-                    key='submit'
-                    type='primary'
-                    onClick={handleEditModalOk}
-                  >
-                    Edit Entry
-                  </Button>
-                </div>
-              }
+      {/* Edit Entry Modal */}
+      <Modal
+        title={
+          <div className='flex items-center space-x-3'>
+            <FileTextOutlined className='text-blue-600' />
+            <span>Edit Entry</span>
+          </div>
+        }
+        open={showEditModal}
+        onOk={handleEditModalOk}
+        onCancel={handleEditModalCancel}
+        width={600}
+        footer={
+          <div className='flex justify-end items-center gap-3'>
+            <AntButton onClick={handleEditModalCancel} size='large'>
+              Cancel
+            </AntButton>
+            <AntButton
+              type='primary'
+              onClick={handleEditModalOk}
+              size='large'
+              style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
+            >
+              Update Entry
+            </AntButton>
+          </div>
+        }
             >
               <div>
                 {loader && (
@@ -1169,10 +1263,7 @@ const AdminDealerDetails = () => {
                 )}
               </div>
             </Modal>
-          </div>
-        </div>
-      }
-    />
+    </div>
   )
 }
 

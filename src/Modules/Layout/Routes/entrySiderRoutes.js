@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import {
-  CodeSandboxOutlined,
+  DashboardOutlined,
+  FileAddOutlined,
+  ImportOutlined,
+  BankOutlined,
   StockOutlined,
-  PieChartOutlined,
-  AlertOutlined,
   SafetyCertificateOutlined,
+  DatabaseOutlined,
   SettingOutlined,
-  DatabaseOutlined
+  TeamOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -14,60 +16,99 @@ function getItemLayout (label, key, icon, children) {
     key,
     icon,
     children,
-    label
+    label,
+    style: icon === null ? {
+      color: '#6C757D',
+      fontSize: '11px',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      margin: '16px 0 8px 0',
+      cursor: 'default',
+      pointerEvents: 'none',
+      padding: '0 12px'
+    } : {
+      margin: '2px 0',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }
   }
 }
 
 export const entrySiderRoutes = [
+  // Data Entry Operations
   getItemLayout(
-    <Link to='/entry-dashboard'>Dashboard</Link>,
-    '1',
-    <PieChartOutlined />
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Entry</span>,
+    'entry-divider',
+    null,
+    []
   ),
+  
   getItemLayout(
-    <Link to='/add-daily-entry'>Add Outwards Entry</Link>,
+    <Link to='/add-daily-entry'>Outwards Entry</Link>,
     '2',
-    <StockOutlined />
+    <FileAddOutlined style={{ fontSize: '16px' }} />
   ),
   getItemLayout(
-    <Link to='/add-inwards-entry'>Add Inwards Entry</Link>,
+    <Link to='/add-inwards-entry'>Inwards Entry</Link>,
     '3',
-    <StockOutlined />
+    <ImportOutlined style={{ fontSize: '16px' }} />
   ),
   getItemLayout(
-    <Link to='/add-payment-entry'>Add Payment Entry</Link>,
+    <Link to='/add-payment-entry'>Payment Entry</Link>,
     '4',
-    <StockOutlined />
+    <BankOutlined style={{ fontSize: '16px' }} />
   ),
   getItemLayout(
-    <Link to='/entry-daily-entry-dealers'>Select Dealers</Link>,
+    <Link to='/entry-daily-entry-dealers'>Dealer Selection</Link>,
     '5',
-    <PieChartOutlined />
+    <TeamOutlined style={{ fontSize: '16px' }} />
   ),
+  
+  // Inventory Management
   getItemLayout(
-    <Link to='/dealer-warranty'>Dealer Warranty</Link>,
-    '6',
-    <SafetyCertificateOutlined />
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inventory</span>,
+    'inventory-divider',
+    null,
+    []
   ),
+  
   getItemLayout(
-    <Link to='/stock-management'>Stock Management</Link>,
-    '7',
-    <StockOutlined />
-  ),
-  getItemLayout(
-    <Link to='/inventory-management-v2'>Inventory Management</Link>,
+    <Link to='/entry-inventory-system'>Inventory System</Link>,
     '8',
-    <DatabaseOutlined />
+    <DatabaseOutlined style={{ fontSize: '16px' }} />
   ),
+  
+  // Business Operations
   getItemLayout(
-    'Masters',
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business</span>,
+    'business-divider',
+    null,
+    []
+  ),
+  
+  getItemLayout(
+    <Link to='/dealer-warranty'>Warranty Management</Link>,
+    '6',
+    <SafetyCertificateOutlined style={{ fontSize: '16px' }} />
+  ),
+  
+  // System Administration
+  getItemLayout(
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Administration</span>,
+    'admin-divider',
+    null,
+    []
+  ),
+  
+  getItemLayout(
+    'Master Data',
     'masters',
-    <SettingOutlined />,
+    <SettingOutlined style={{ fontSize: '16px' }} />,
     [
       getItemLayout(
-        <Link to='/dealers-list'>Dealers</Link>,
-        '9',
-        <StockOutlined />
+        <Link to='/dealers-list'>Dealer Management</Link>,
+        '9'
       )
     ]
   )

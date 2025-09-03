@@ -179,12 +179,39 @@ const ProductionListing = () => {
   }
 
   const handleDelete = record => {
+    const jobCardCount = record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
+    const hasJobCards = jobCardCount > 0
+
+    const warningContent = hasJobCards ? (
+      <div>
+        <p className="mb-3">Are you sure you want to delete production plan #{record.id}?</p>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+          <div className="flex items-start gap-2">
+            <span className="text-orange-500 text-lg">⚠️</span>
+            <div>
+              <div className="font-semibold text-orange-800 mb-1">Warning</div>
+              <div className="text-orange-700 text-sm">
+                This production plan has <strong>{jobCardCount} job card{jobCardCount > 1 ? 's' : ''}</strong> associated with it.
+              </div>
+              <div className="text-orange-700 text-sm mt-1">
+                All job cards and their progress will be permanently deleted along with the production plan.
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-red-600 font-medium">This action cannot be undone.</p>
+      </div>
+    ) : (
+      `Are you sure you want to delete production plan #${record.id}? This action cannot be undone.`
+    )
+
     confirm({
       title: 'Delete Production Plan',
-      content: `Are you sure you want to delete production plan ${record.id}? This action cannot be undone.`,
-      okText: 'Yes, Delete',
+      content: warningContent,
+      okText: hasJobCards ? 'Yes, Delete All' : 'Yes, Delete',
       okType: 'danger',
       cancelText: 'Cancel',
+      width: hasJobCards ? 500 : 416,
       onOk () {
         dispatch(deleteProductionPlan(record.id))
       }
@@ -633,55 +660,79 @@ const ProductionListing = () => {
   }
 
   // Create dropdown menu for mobile actions
-  const getActionMenu = record => (
-    <Menu
-      items={[
-        {
-          key: 'view',
-          label: 'View Details',
-          icon: <EyeOutlined />,
-          onClick: () => handleView(record)
-        },
-        {
-          key: 'edit',
-          label: 'Edit Plan',
-          icon: <EditOutlined />,
-          onClick: () => handleEdit(record)
-        },
-        {
-          key: 'createJobCard',
-          label: 'Create Job Card',
-          icon: <PlayCircleOutlined />,
-          onClick: () => handleCreateJobCard(record),
-          disabled: !canCreateJobCard(record)
-        },
-        // Only show Assign Preset if no workflow is assigned yet
-        ...(!record.workflowInfo?.hasCustomWorkflow && !record.hasWorkflowSteps ? [{
-          key: 'preset',
-          label: 'Assign Preset',
-          icon: <SettingOutlined />,
-          onClick: () => handleAssignPreset(record)
-        }] : []),
-        {
-          key: 'nextStep',
-          label: 'Move to Next Step',
-          icon: <ArrowRightOutlined />,
-          onClick: () => handleMoveToNextStep(record),
-          disabled: !canMoveToNextStep(record)
-        },
-        {
-          type: 'divider'
-        },
-        {
-          key: 'delete',
-          label: 'Delete Plan',
-          icon: <DeleteOutlined />,
-          onClick: () => handleDelete(record),
-          danger: true
+  const getActionMenu = record => {
+    const menuItems = [
+      {
+        key: 'view',
+        label: 'View Details',
+        icon: <EyeOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleView(record)
         }
-      ]}
-    />
-  )
+      },
+      {
+        key: 'edit',
+        label: 'Edit Plan',
+        icon: <EditOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleEdit(record)
+        }
+      },
+      {
+        key: 'createJobCard',
+        label: 'Create Job Card',
+        icon: <PlayCircleOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleCreateJobCard(record)
+        },
+        disabled: !canCreateJobCard(record)
+      }
+    ]
+
+    // Only add Assign Preset if no workflow is assigned yet
+    if (!record.workflowInfo?.hasCustomWorkflow && !record.hasWorkflowSteps) {
+      menuItems.push({
+        key: 'preset',
+        label: 'Assign Preset',
+        icon: <SettingOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleAssignPreset(record)
+        }
+      })
+    }
+
+    menuItems.push(
+      {
+        key: 'nextStep',
+        label: 'Move to Next Step',
+        icon: <ArrowRightOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleMoveToNextStep(record)
+        },
+        disabled: !canMoveToNextStep(record)
+      },
+      {
+        type: 'divider'
+      },
+      {
+        key: 'delete',
+        label: 'Delete Plan',
+        icon: <DeleteOutlined />,
+        onClick: (e) => {
+          e.domEvent?.stopPropagation?.()
+          handleDelete(record)
+        },
+        danger: true
+      }
+    )
+
+    return { items: menuItems }
+  }
 
   // Clean, modern table columns with better UX
   const columns = [

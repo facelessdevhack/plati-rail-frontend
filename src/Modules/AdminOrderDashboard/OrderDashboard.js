@@ -2,20 +2,41 @@ import React, { useEffect, useState } from 'react'
 import {
   Row,
   Col,
-  Flex,
-  Segmented,
+  Card,
+  Tabs,
   DatePicker,
   Modal,
   Spin,
   message,
-  Alert
+  Alert,
+  Typography,
+  Avatar,
+  Tag,
+  Space,
+  Tooltip,
+  Statistic,
+  Input,
+  Button as AntButton,
+  Badge,
+  Divider
 } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { DownloadOutlined } from '@ant-design/icons'
+import { 
+  SyncOutlined, 
+  UserOutlined, 
+  SearchOutlined,
+  ArrowLeftOutlined,
+  WalletOutlined,
+  FileTextOutlined,
+  DollarOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ReloadOutlined
+} from '@ant-design/icons'
 import CustomInput from '../../Core/Components/CustomInput'
 import { editEntryAPI } from '../../redux/api/entriesAPI'
-import AdminLayout from '../Layout/adminLayout'
 import Button from '../../Core/Components/CustomButton'
 import {
   updateChargesEntryById,
@@ -28,6 +49,9 @@ import CustomSelect from '../../Core/Components/CustomSelect'
 import CustomTable from '../../Core/Components/CustomTable'
 import { getAllDealersOrders } from '../../redux/api/entriesAPI'
 import { renderPaymentStatus } from '../../Utils/renderPaymentStatus'
+
+const { Text, Title } = Typography;
+const { Search } = Input;
 
 const AdminOrderDashboard = () => {
   const [activeTab, setActiveTab] = useState(1)
@@ -286,49 +310,110 @@ const AdminOrderDashboard = () => {
     return value < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'
   }
 
-  // Columns for Entries
+  // Clean columns without action buttons
   const columns = [
     {
-      title: 'Date',
+      title: 'Order Date',
       dataIndex: 'orderDate',
       key: 'orderDate',
-      render: text => <div>{moment(text).format('DD/MM/YYYY') || '-'}</div>
+      render: text => (
+        <div className='flex flex-col'>
+          <Text className='text-sm font-medium text-gray-900'>
+            {moment(text).format('DD MMM YYYY') || '-'}
+          </Text>
+          <Text className='text-xs text-gray-500'>
+            {moment(text).format('dddd') || ''}
+          </Text>
+        </div>
+      ),
+      sorter: (a, b) => moment(a.orderDate).unix() - moment(b.orderDate).unix(),
     },
     {
       title: 'Payment Status',
       dataIndex: 'paymentStatus',
       key: 'paymentStatus',
-      render: text => <div>{renderPaymentStatus(text)}</div>
+      render: (status) => {
+        const statusConfig = {
+          1: { color: '#DC2626', bg: '#FEF2F2', text: 'Pending' },
+          2: { color: '#059669', bg: '#F0FDF4', text: 'Completed' },
+          3: { color: '#D97706', bg: '#FFFBEB', text: 'Partial' }
+        };
+        const config = statusConfig[status] || statusConfig[1];
+        return (
+          <div className='flex items-center'>
+            <div 
+              className='w-2 h-2 rounded-full mr-2'
+              style={{ backgroundColor: config.color }}
+            ></div>
+            <Text 
+              className='text-sm font-medium'
+              style={{ color: config.color }}
+            >
+              {config.text}
+            </Text>
+          </div>
+        );
+      },
+      filters: [
+        { text: 'Pending', value: 1 },
+        { text: 'Completed', value: 2 },
+        { text: 'Partial', value: 3 },
+      ],
+      onFilter: (value, record) => record.paymentStatus === value,
     },
     {
       title: 'Total Amount',
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: text => <div>{formatINR(text)}</div>
+      render: text => (
+        <Text className='text-sm font-semibold text-gray-900'>
+          {formatINR(text)}
+        </Text>
+      ),
+      sorter: (a, b) => (a.totalAmount || 0) - (b.totalAmount || 0),
     },
     {
-      title: 'Pending Payment',
-      dataIndex: 'pendingAmount',
+      title: 'Pending Amount',
+      dataIndex: 'pendingAmount', 
       key: 'pendingAmount',
-      render: (text, record) => (
-        <div>
-          {record.paymentStatus === 1
-            ? formatINR(record.totalAmount)
-            : formatINR(text)}
-        </div>
-      )
+      render: (text, record) => {
+        const pendingAmount = record.paymentStatus === 1 
+          ? record.totalAmount 
+          : text;
+        const isOverdue = pendingAmount > 0;
+        return (
+          <Text 
+            className={`text-sm font-medium ${
+              isOverdue ? 'text-red-600' : 'text-gray-400'
+            }`}
+          >
+            {formatINR(pendingAmount)}
+          </Text>
+        );
+      },
+      sorter: (a, b) => {
+        const aPending = a.paymentStatus === 1 ? a.totalAmount : a.pendingAmount;
+        const bPending = b.paymentStatus === 1 ? b.totalAmount : b.pendingAmount;
+        return (aPending || 0) - (bPending || 0);
+      },
     },
     {
       title: 'Payment Date',
       dataIndex: 'paymentDate',
       key: 'paymentDate',
       render: text => (
-        <div>
-          {text
-            ? moment(text).format('DD/MM/YYYY')
-            : 'Payment Not Yet Received'}
-        </div>
-      )
+        <Text className={`text-sm ${
+          text ? 'text-gray-900' : 'text-gray-400 italic'
+        }`}>
+          {text ? moment(text).format('DD MMM YYYY') : 'Not received'}
+        </Text>
+      ),
+      sorter: (a, b) => {
+        if (!a.paymentDate && !b.paymentDate) return 0;
+        if (!a.paymentDate) return 1;
+        if (!b.paymentDate) return -1;
+        return moment(a.paymentDate).unix() - moment(b.paymentDate).unix();
+      },
     }
   ]
 
@@ -373,43 +458,53 @@ const AdminOrderDashboard = () => {
   const handleTabContentRender = () => {
     switch (activeTab) {
       case 1:
-        // const sortedFilteredDealers = [...filteredDealers].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
         return (
-          <div>
-            <div className='mt-5 flex justify-between items-center'>
-              <div
-                onClick={handleRefreshOrders}
-                className='px-3 bg-white rounded-xl p-2 shadow-lg cursor-pointer border border-gray-300 hover:border-gray-400 transition-all'
-              >
-                <div className='flex items-center gap-x-2'>
-                  <div>Refresh Orders</div>
-                </div>
+          <div className='pt-6'>
+            <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
+              <div className='flex-1 max-w-md'>
+                <Search
+                  placeholder='Search orders...'
+                  allowClear
+                  size='large'
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  prefix={<SearchOutlined />}
+                />
               </div>
-              <div className='flex justify-end items-center gap-4'>
+              <div className='flex items-center gap-3'>
+                <Tooltip title='Refresh Orders'>
+                  <AntButton
+                    icon={<ReloadOutlined />}
+                    onClick={handleRefreshOrders}
+                    size='large'
+                    className='hover:bg-blue-50 hover:border-blue-300'
+                    loading={loader}
+                  >
+                    Refresh
+                  </AntButton>
+                </Tooltip>
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
-                  className='rounded-xl shadow-lg border border-gray-300 hover:border-gray-400 transition-all'
-                  style={{
-                    padding: '8px 12px', // Add some padding for a better look
-                    width: '250px' // Adjust the width as needed
-                  }}
+                  size='large'
+                  className='min-w-[280px]'
+                  placeholder={['Start Date', 'End Date']}
+                  suffixIcon={<CalendarOutlined />}
                 />
               </div>
             </div>
-            <CustomTable
-              isAdmin={isAdmin}
-              editFunction={showEditModalFunction}
-              data={allDealersOrders}
-              titleOnTop={false}
-              position='bottomRight'
-              columns={columns}
-              expandable={false}
-              totalCount={dealersOrdersCount}
-              currentPage={currentPage}
-              handlePageChange={handlePages}
-              pageSize={pageSize}
-            />
+            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden'>
+              <CustomTable
+                data={allDealersOrders}
+                columns={columns}
+                titleOnTop={false}
+                position='bottomRight'
+                expandable={false}
+                totalCount={dealersOrdersCount}
+                currentPage={currentPage}
+                handlePageChange={handlePages}
+                pageSize={pageSize}
+              />
+            </div>
           </div>
         )
 
@@ -421,300 +516,132 @@ const AdminOrderDashboard = () => {
   // Determine the color class based on the balance
 
   return (
-    <AdminLayout
-      title={
-        isAdmin ? (
-          <div>
-            {dealerInfo?.dealerName + ' - ' + dealerInfo?.district}
-            <div className='text-sm text-gray-700 font-semibold'>
-              {dealerInfo?.currentBal !== null &&
-                dealerInfo?.currentBal !== undefined && (
-                  <div className='text-sm text-gray-700 font-semibold'>
-                    <div>
-                      Current Balance -{' '}
-                      {dealerInfo?.currentBal !== null &&
-                      dealerInfo?.currentBal !== undefined ? (
-                        <span
-                          className={getBalanceColor(dealerInfo?.currentBal)}
-                        >
-                          {formatINR(dealerInfo?.currentBal)}
-                        </span>
-                      ) : (
-                        'N/A'
-                      )}
-                    </div>
-                  </div>
-                )}
+    <div className='layout-container min-h-screen bg-gradient-to-br from-secondary-50/30 via-white to-primary-50/20 p-6'>
+      {(loader || spinLoader) && (
+        <Spin
+          size='large'
+          spinning={loader || spinLoader}
+          className='fixed inset-0 z-50 bg-white/80 backdrop-blur-sm'
+        />
+      )}
+      
+      {/* Header Section */}
+      <div className='content-section mb-6'>
+        <div className='flex items-start justify-between mb-6'>
+          {/* Back Button and Title */}
+          <div className='flex items-center space-x-4'>
+            <Tooltip title='Back to Dealers'>
+              <AntButton 
+                icon={<ArrowLeftOutlined />}
+                onClick={() => navigate('/admin-daily-entry-dealers')}
+                className='hover:bg-gray-50 hover:border-gray-300'
+                size='large'
+              />
+            </Tooltip>
+            <div className='flex items-center space-x-4'>
+              <Avatar 
+                size={64} 
+                icon={<UserOutlined />} 
+                className='bg-primary-100 text-primary-600 border-2 border-primary-200'
+              />
+              <div>
+                <Title level={2} className='mb-1'>{dealerInfo?.dealerName || 'Order Dashboard'}</Title>
+                <Text type='secondary' className='text-base'>
+                  {dealerInfo?.district ? `${dealerInfo.district} • Dealer ID: ${id}` : `Dealer ID: ${id}`}
+                </Text>
+              </div>
             </div>
           </div>
-        ) : (
-          dealerInfo?.dealerName
-        )
-      }
-      content={
-        <div className='w-full h-full p-5 bg-gray-200'>
-          <div>
-            {
-              <Spin
-                size='large'
-                spinning={loader || spinLoader}
-                fullscreen={true}
-                className='z-20'
-              ></Spin>
-            }
-            <Row gutter={16}>
-              <Col span={24}>
-                <div>{handleTabContentRender()}</div>
-              </Col>
-            </Row>
-
-            {/* Modal for downloading report */}
-            <Modal
-              title={`Download Report for ${state?.name}`}
-              open={isModalVisible}
-              onOk={handleModalOk}
-              onCancel={handleModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handleModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button key='submit' type='primary' onClick={handleModalOk}>
-                    Download
-                  </Button>
+          
+          {/* Balance Card */}
+          <Card className='min-w-[200px] shadow-lg border-l-4' style={{ borderLeftColor: dealerInfo?.currentBal < 0 ? '#EF4444' : '#10B981' }}>
+            <Statistic
+              title={
+                <div className='flex items-center space-x-2'>
+                  <WalletOutlined className='text-gray-500' />
+                  <span>Current Balance</span>
                 </div>
               }
-            >
-              <div>
-                <p className='mt-5 mb-3 italic text-xs'>
-                  *Please select the start and end date to export the data for
-                  specific dates.
-                </p>
-                <DatePicker.RangePicker
-                  onChange={handleDateChange}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </Modal>
-
-            {/* Modal for Adding Payment Entry */}
-            <Modal
-              title={`Add Payment Entry For ${state?.name}`}
-              open={showPaymentModal}
-              onOk={handlePaymentModalOk}
-              onCancel={handlePaymentModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handlePaymentModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button
-                    key='submit'
-                    type='primary'
-                    onClick={handlePaymentModalOk}
-                  >
-                    Create Entry
-                  </Button>
-                </div>
-              }
-            >
-              <div>
-                {loader && (
-                  <Spin
-                    size='large'
-                    spinning={loader}
-                    fullscreen={true}
-                    className='z-20'
-                  ></Spin>
-                )}
-                <div>
-                  <div>Enter Description</div>
-                  <CustomInput
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div>Enter Amount</div>
-                  <CustomInput
-                    type='number'
-                    value={cashAmount}
-                    onChange={e => setCashAmount(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div>Payment Date</div>
-                  <CustomInput
-                    type='date'
-                    value={entryDate}
-                    onChange={e => {
-                      setEntryDate(e.target.value)
-                      console.log(e.target.value, 'PAYMENT DATE')
-                    }}
-                  />
-                </div>
-                <div>
-                  <div>Select Mid-Dealer</div>
-                  <CustomSelect
-                    showSearch={true}
-                    className='w-full'
-                    options={allMiddleDealers}
-                    value={middleDealerId}
-                    onChange={(e, l) => setMiddleDealerId(e)}
-                  />
-                </div>
-                <div>
-                  <div>Payment Method</div>
-                  <div className='flex justify-start'>
-                    {adminPaymentMethods?.map(method => (
-                      <label
-                        key={method}
-                        className='mr-4 flex justify-start gap-x-2'
-                      >
-                        <input
-                          type='radio'
-                          name='paymentMethod'
-                          value={method.id}
-                          checked={paymentMethod === method.id}
-                          onChange={() => setPaymentMethod(method.id)}
-                        />
-                        {method.methodName}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Modal>
-
-            {/* Modal for Editing Entry */}
-            <Modal
-              title={`Edit Entry`}
-              open={showEditModal}
-              onOk={handleEditModalOk}
-              onCancel={handleEditModalCancel}
-              footer={
-                <div className='flex justify-end items-center gap-4'>
-                  <Button key='back' onClick={handleEditModalCancel}>
-                    Cancel
-                  </Button>
-                  <Button
-                    key='submit'
-                    type='primary'
-                    onClick={handleEditModalOk}
-                  >
-                    Edit Entry
-                  </Button>
-                </div>
-              }
-            >
-              <div>
-                {loader && (
-                  <Spin
-                    size='large'
-                    spinning={loader}
-                    fullscreen={true}
-                    className='z-20'
-                  ></Spin>
-                )}
-                {editingEntry && editingEntry.sourceType === 2 ? (
-                  <div className='flex flex-col gap-y-2'>
-                    <div>
-                      <div>Change Description</div>
-                      <CustomInput
-                        value={editingEntry?.description}
-                        onChange={e => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            description: e.target.value
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Pricing</div>
-                      <CustomInput
-                        value={
-                          editingEntry?.sourceType === 2
-                            ? editingEntry?.amount
-                            : editingEntry?.price
-                        }
-                        onChange={e => {
-                          if (editingEntry?.sourceType === 2) {
-                            setEditingEntry({
-                              ...editingEntry,
-                              amount: e.target.value
-                            })
-                          } else {
-                            setEditingEntry({
-                              ...editingEntry,
-                              price: e.target.value
-                            })
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className='flex flex-col gap-y-2'>
-                    <div>
-                      <div>Select Product</div>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allProducts}
-                        value={editingEntry?.productId}
-                        onChange={(e, l) => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            productId: e,
-                            productName: l ? l.label : null
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Quantity</div>
-                      <CustomInput
-                        value={editingEntry?.quantity}
-                        onChange={e => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            quantity: e.target.value
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Pricing</div>
-                      <CustomInput
-                        value={
-                          editingEntry?.sourceType === 2
-                            ? editingEntry?.amount
-                            : editingEntry?.price
-                        }
-                        onChange={e => {
-                          if (editingEntry?.sourceType === 2) {
-                            setEditingEntry({
-                              ...editingEntry,
-                              amount: e.target.value
-                            })
-                          } else {
-                            setEditingEntry({
-                              ...editingEntry,
-                              price: e.target.value
-                            })
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Modal>
-          </div>
+              value={dealerInfo?.currentBal || 0}
+              formatter={(value) => (
+                <span className={getBalanceColor(value)}>
+                  {formatINR(value)}
+                </span>
+              )}
+              precision={0}
+            />
+          </Card>
         </div>
-      }
-    />
+        
+        {/* Quick Stats */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Total Orders'
+                value={dealersOrdersCount || 0}
+                prefix={<FileTextOutlined />}
+                valueStyle={{ color: '#374151' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Pending Orders'
+                value={allDealersOrders?.filter(order => order.paymentStatus === 1).length || 0}
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: '#DC2626' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Completed Orders'
+                value={allDealersOrders?.filter(order => order.paymentStatus === 2).length || 0}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#059669' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card className='text-center hover:shadow-md transition-shadow'>
+              <Statistic
+                title='Total Amount'
+                value={allDealersOrders?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0}
+                prefix={<DollarOutlined />}
+                formatter={(value) => formatINR(value)}
+                valueStyle={{ color: '#374151' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+      
+      {/* Main Content */}
+      <div className='content-section'>
+        <Tabs 
+          activeKey={activeTab.toString()} 
+          onChange={(key) => setActiveTab(parseInt(key))}
+          size='large'
+          className='professional-tabs'
+          items={[
+            {
+              key: '1',
+              label: (
+                <div className='flex items-center space-x-2'>
+                  <FileTextOutlined />
+                  <span>Orders</span>
+                  <Badge count={dealersOrdersCount} showZero style={{ backgroundColor: '#6B7280' }} />
+                </div>
+              ),
+              children: handleTabContentRender()
+            }
+          ]}
+        />
+      </div>
+    </div>
   )
 }
 
