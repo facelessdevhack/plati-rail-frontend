@@ -93,13 +93,13 @@ const InventoryManagement = () => {
     if (!inventory.length) return []
     
     return inventory.filter(item => {
-      // Search text filter
+      // Search text filter - safely convert all values to strings before comparison
       const matchesSearch = !searchText || 
-        item.productName?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.model?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.brand?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.color?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.uniqueId?.toLowerCase().includes(searchText.toLowerCase())
+        String(item.productName || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.model || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.brand || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.color || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.uniqueId || '').toLowerCase().includes(searchText.toLowerCase())
       
       // Product type filter
       const matchesProductType = !selectedProductType || item.productType === selectedProductType

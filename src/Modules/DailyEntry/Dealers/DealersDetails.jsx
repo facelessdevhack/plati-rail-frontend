@@ -16,6 +16,7 @@ import CustomTable from '../../../Core/Components/CustomTable'
 import CustomInput from '../../../Core/Components/CustomInput'
 import {
   editEntryAPI,
+  editInwardsEntryAPI,
   getAdminPaymentMethods,
   getAllEntriesAdmin,
   getAllPaymentMethods,

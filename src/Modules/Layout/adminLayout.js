@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { Layout, Menu, theme, Avatar, Dropdown, Badge, Tooltip } from 'antd'
-import { useLocation } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useSelector, useDispatch } from 'react-redux'
 import {
   BellOutlined,
   UserOutlined,
@@ -14,12 +14,15 @@ import {
 } from '@ant-design/icons'
 import { adminSiderRoutes } from './Routes/adminSiderRoutes'
 import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
+import { resetToInitialUser } from '../../redux/slices/user.slice'
 const { Header, Footer, Sider } = Layout
 
 const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   const [collapsed, setCollapsed] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
   const { user } = useSelector(state => state.userDetails)
   const {
     token: { colorBgContainer }
@@ -51,13 +54,24 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   const handleUserMenuClick = ({ key }) => {
     switch (key) {
       case 'logout':
-        // Handle logout
+        // Clear local storage
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        localStorage.removeItem('persist:root')
+        
+        // Reset Redux state
+        dispatch(resetToInitialUser())
+        
+        // Navigate to login page
+        navigate('/login')
         break
       case 'profile':
         // Handle profile
+        navigate('/profile')
         break
       case 'settings':
         // Handle settings
+        navigate('/settings')
         break
       default:
         break
