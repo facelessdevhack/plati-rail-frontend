@@ -22,9 +22,9 @@ import {
 } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { 
-  SyncOutlined, 
-  UserOutlined, 
+import {
+  SyncOutlined,
+  UserOutlined,
   SearchOutlined,
   ArrowLeftOutlined,
   WalletOutlined,
@@ -50,8 +50,8 @@ import CustomTable from '../../Core/Components/CustomTable'
 import { getAllDealersOrders } from '../../redux/api/entriesAPI'
 import { renderPaymentStatus } from '../../Utils/renderPaymentStatus'
 
-const { Text, Title } = Typography;
-const { Search } = Input;
+const { Text, Title } = Typography
+const { Search } = Input
 
 const AdminOrderDashboard = () => {
   const [activeTab, setActiveTab] = useState(1)
@@ -326,40 +326,40 @@ const AdminOrderDashboard = () => {
           </Text>
         </div>
       ),
-      sorter: (a, b) => moment(a.orderDate).unix() - moment(b.orderDate).unix(),
+      sorter: (a, b) => moment(a.orderDate).unix() - moment(b.orderDate).unix()
     },
     {
       title: 'Payment Status',
       dataIndex: 'paymentStatus',
       key: 'paymentStatus',
-      render: (status) => {
+      render: status => {
         const statusConfig = {
           1: { color: '#DC2626', bg: '#FEF2F2', text: 'Pending' },
-          2: { color: '#059669', bg: '#F0FDF4', text: 'Completed' },
-          3: { color: '#D97706', bg: '#FFFBEB', text: 'Partial' }
-        };
-        const config = statusConfig[status] || statusConfig[1];
+          2: { color: '#D97706', bg: '#FFFBEB', text: 'Partial' },
+          3: { color: '#059669', bg: '#F0FDF4', text: 'Completed' }
+        }
+        const config = statusConfig[status] || statusConfig[1]
         return (
           <div className='flex items-center'>
-            <div 
+            <div
               className='w-2 h-2 rounded-full mr-2'
               style={{ backgroundColor: config.color }}
             ></div>
-            <Text 
+            <Text
               className='text-sm font-medium'
               style={{ color: config.color }}
             >
               {config.text}
             </Text>
           </div>
-        );
+        )
       },
       filters: [
         { text: 'Pending', value: 1 },
         { text: 'Completed', value: 2 },
-        { text: 'Partial', value: 3 },
+        { text: 'Partial', value: 3 }
       ],
-      onFilter: (value, record) => record.paymentStatus === value,
+      onFilter: (value, record) => record.paymentStatus === value
     },
     {
       title: 'Total Amount',
@@ -370,50 +370,51 @@ const AdminOrderDashboard = () => {
           {formatINR(text)}
         </Text>
       ),
-      sorter: (a, b) => (a.totalAmount || 0) - (b.totalAmount || 0),
+      sorter: (a, b) => (a.totalAmount || 0) - (b.totalAmount || 0)
     },
     {
       title: 'Pending Amount',
-      dataIndex: 'pendingAmount', 
+      dataIndex: 'pendingAmount',
       key: 'pendingAmount',
       render: (text, record) => {
-        const pendingAmount = record.paymentStatus === 1 
-          ? record.totalAmount 
-          : text;
-        const isOverdue = pendingAmount > 0;
+        const pendingAmount =
+          record.paymentStatus === 1 ? record.totalAmount : text
+        const isOverdue = pendingAmount > 0
         return (
-          <Text 
+          <Text
             className={`text-sm font-medium ${
               isOverdue ? 'text-red-600' : 'text-gray-400'
             }`}
           >
             {formatINR(pendingAmount)}
           </Text>
-        );
+        )
       },
       sorter: (a, b) => {
-        const aPending = a.paymentStatus === 1 ? a.totalAmount : a.pendingAmount;
-        const bPending = b.paymentStatus === 1 ? b.totalAmount : b.pendingAmount;
-        return (aPending || 0) - (bPending || 0);
-      },
+        const aPending = a.paymentStatus === 1 ? a.totalAmount : a.pendingAmount
+        const bPending = b.paymentStatus === 1 ? b.totalAmount : b.pendingAmount
+        return (aPending || 0) - (bPending || 0)
+      }
     },
     {
       title: 'Payment Date',
       dataIndex: 'paymentDate',
       key: 'paymentDate',
       render: text => (
-        <Text className={`text-sm ${
-          text ? 'text-gray-900' : 'text-gray-400 italic'
-        }`}>
+        <Text
+          className={`text-sm ${
+            text ? 'text-gray-900' : 'text-gray-400 italic'
+          }`}
+        >
           {text ? moment(text).format('DD MMM YYYY') : 'Not received'}
         </Text>
       ),
       sorter: (a, b) => {
-        if (!a.paymentDate && !b.paymentDate) return 0;
-        if (!a.paymentDate) return 1;
-        if (!b.paymentDate) return -1;
-        return moment(a.paymentDate).unix() - moment(b.paymentDate).unix();
-      },
+        if (!a.paymentDate && !b.paymentDate) return 0
+        if (!a.paymentDate) return 1
+        if (!b.paymentDate) return -1
+        return moment(a.paymentDate).unix() - moment(b.paymentDate).unix()
+      }
     }
   ]
 
@@ -524,14 +525,14 @@ const AdminOrderDashboard = () => {
           className='fixed inset-0 z-50 bg-white/80 backdrop-blur-sm'
         />
       )}
-      
+
       {/* Header Section */}
       <div className='content-section mb-6'>
         <div className='flex items-start justify-between mb-6'>
           {/* Back Button and Title */}
           <div className='flex items-center space-x-4'>
             <Tooltip title='Back to Dealers'>
-              <AntButton 
+              <AntButton
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/admin-daily-entry-dealers')}
                 className='hover:bg-gray-50 hover:border-gray-300'
@@ -539,22 +540,32 @@ const AdminOrderDashboard = () => {
               />
             </Tooltip>
             <div className='flex items-center space-x-4'>
-              <Avatar 
-                size={64} 
-                icon={<UserOutlined />} 
+              <Avatar
+                size={64}
+                icon={<UserOutlined />}
                 className='bg-primary-100 text-primary-600 border-2 border-primary-200'
               />
               <div>
-                <Title level={2} className='mb-1'>{dealerInfo?.dealerName || 'Order Dashboard'}</Title>
+                <Title level={2} className='mb-1'>
+                  {dealerInfo?.dealerName || 'Order Dashboard'}
+                </Title>
                 <Text type='secondary' className='text-base'>
-                  {dealerInfo?.district ? `${dealerInfo.district} • Dealer ID: ${id}` : `Dealer ID: ${id}`}
+                  {dealerInfo?.district
+                    ? `${dealerInfo.district} • Dealer ID: ${id}`
+                    : `Dealer ID: ${id}`}
                 </Text>
               </div>
             </div>
           </div>
-          
+
           {/* Balance Card */}
-          <Card className='min-w-[200px] shadow-lg border-l-4' style={{ borderLeftColor: dealerInfo?.currentBal < 0 ? '#EF4444' : '#10B981' }}>
+          <Card
+            className='min-w-[200px] shadow-lg border-l-4'
+            style={{
+              borderLeftColor:
+                dealerInfo?.currentBal < 0 ? '#EF4444' : '#10B981'
+            }}
+          >
             <Statistic
               title={
                 <div className='flex items-center space-x-2'>
@@ -563,7 +574,7 @@ const AdminOrderDashboard = () => {
                 </div>
               }
               value={dealerInfo?.currentBal || 0}
-              formatter={(value) => (
+              formatter={value => (
                 <span className={getBalanceColor(value)}>
                   {formatINR(value)}
                 </span>
@@ -572,7 +583,7 @@ const AdminOrderDashboard = () => {
             />
           </Card>
         </div>
-        
+
         {/* Quick Stats */}
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>
@@ -589,7 +600,10 @@ const AdminOrderDashboard = () => {
             <Card className='text-center hover:shadow-md transition-shadow'>
               <Statistic
                 title='Pending Orders'
-                value={allDealersOrders?.filter(order => order.paymentStatus === 1).length || 0}
+                value={
+                  allDealersOrders?.filter(order => order.paymentStatus === 1)
+                    .length || 0
+                }
                 prefix={<ClockCircleOutlined />}
                 valueStyle={{ color: '#DC2626' }}
               />
@@ -599,7 +613,10 @@ const AdminOrderDashboard = () => {
             <Card className='text-center hover:shadow-md transition-shadow'>
               <Statistic
                 title='Completed Orders'
-                value={allDealersOrders?.filter(order => order.paymentStatus === 2).length || 0}
+                value={
+                  allDealersOrders?.filter(order => order.paymentStatus === 2)
+                    .length || 0
+                }
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: '#059669' }}
               />
@@ -609,21 +626,26 @@ const AdminOrderDashboard = () => {
             <Card className='text-center hover:shadow-md transition-shadow'>
               <Statistic
                 title='Total Amount'
-                value={allDealersOrders?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0}
+                value={
+                  allDealersOrders?.reduce(
+                    (sum, order) => sum + (order.totalAmount || 0),
+                    0
+                  ) || 0
+                }
                 prefix={<DollarOutlined />}
-                formatter={(value) => formatINR(value)}
+                formatter={value => formatINR(value)}
                 valueStyle={{ color: '#374151' }}
               />
             </Card>
           </Col>
         </Row>
       </div>
-      
+
       {/* Main Content */}
       <div className='content-section'>
-        <Tabs 
-          activeKey={activeTab.toString()} 
-          onChange={(key) => setActiveTab(parseInt(key))}
+        <Tabs
+          activeKey={activeTab.toString()}
+          onChange={key => setActiveTab(parseInt(key))}
           size='large'
           className='professional-tabs'
           items={[
@@ -633,7 +655,11 @@ const AdminOrderDashboard = () => {
                 <div className='flex items-center space-x-2'>
                   <FileTextOutlined />
                   <span>Orders</span>
-                  <Badge count={dealersOrdersCount} showZero style={{ backgroundColor: '#6B7280' }} />
+                  <Badge
+                    count={dealersOrdersCount}
+                    showZero
+                    style={{ backgroundColor: '#6B7280' }}
+                  />
                 </div>
               ),
               children: handleTabContentRender()
