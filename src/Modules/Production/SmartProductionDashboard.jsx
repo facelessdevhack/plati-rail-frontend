@@ -74,6 +74,7 @@ const SmartProductionDashboard = () => {
   const [filterFinish, setFilterFinish] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showOnlyWithStock, setShowOnlyWithStock] = useState(false)
+  const [showWithoutPaint, setShowWithoutPaint] = useState(false)
   const [conversionPlans, setConversionPlans] = useState({})
   const [isCreatingPlans, setIsCreatingPlans] = useState(false)
   const [showSelectedPanel, setShowSelectedPanel] = useState(true)
@@ -90,6 +91,7 @@ const SmartProductionDashboard = () => {
         filterPcd: filterPcd,
         filterFinish: filterFinish,
         showOnlyWithStock: showOnlyWithStock,
+        showWithoutPaint: showWithoutPaint,
         timestamp: Date.now()
       }
       localStorage.setItem('smartProductionState', JSON.stringify(stateToSave))
@@ -130,6 +132,7 @@ const SmartProductionDashboard = () => {
           if (parsed.filterPcd) setFilterPcd(parsed.filterPcd)
           if (parsed.filterFinish) setFilterFinish(parsed.filterFinish)
           if (typeof parsed.showOnlyWithStock === 'boolean') setShowOnlyWithStock(parsed.showOnlyWithStock)
+          if (typeof parsed.showWithoutPaint === 'boolean') setShowWithoutPaint(parsed.showWithoutPaint)
 
           notification.info({
             message: 'Session Restored',
@@ -158,6 +161,14 @@ const SmartProductionDashboard = () => {
         if (stock === 0) return false
       }
 
+      // Filter by without paint if toggle is on
+      if (showWithoutPaint) {
+        const finish = alloy.finish ? alloy.finish.toLowerCase() : ''
+        if (!finish.includes('without paint') && !finish.includes('without lacquer')) {
+          return false
+        }
+      }
+
       const matchesSearch =
         !searchTerm ||
         (alloy.productName ? alloy.productName.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
@@ -172,7 +183,7 @@ const SmartProductionDashboard = () => {
 
       return matchesSearch && matchesSize && matchesPcd && matchesFinish
     })
-  }, [stockManagementData, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock])
+  }, [stockManagementData, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock, showWithoutPaint])
 
   // Toggle panel collapse
   const handleTogglePanel = useCallback(() => {
@@ -307,9 +318,17 @@ const SmartProductionDashboard = () => {
     setIsCreatingPlans(true)
     try {
       const planPromises = validPlans.map(async plan => {
+        // Find the target alloy ID based on the selected target finish
+        const availableFinishes = getAvailableTargetFinishes(plan.sourceAlloy)
+        const targetFinishOption = availableFinishes.find(f => f.value === plan.targetFinish)
+        
+        if (!targetFinishOption) {
+          throw new Error(`Target finish "${plan.targetFinish}" not found for alloy ${plan.sourceAlloy.productName}`)
+        }
+
         const planData = {
           alloyId: plan.sourceAlloy.id,
-          convertId: plan.sourceAlloy.id,
+          convertId: targetFinishOption.alloyId, // Use the correct target alloy ID
           quantity: plan.quantity,
           urgent: false,
           userId: user?.id || 1,
@@ -518,6 +537,13 @@ const SmartProductionDashboard = () => {
               onChange={(e) => setShowOnlyWithStock(e.target.checked)}
             >
               Only with stock
+            </Checkbox>
+
+            <Checkbox
+              checked={showWithoutPaint}
+              onChange={(e) => setShowWithoutPaint(e.target.checked)}
+            >
+              Without paint
             </Checkbox>
 
             <Divider type="vertical" className="h-8" />
