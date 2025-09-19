@@ -255,8 +255,17 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
     try {
       setLoading(true)
       
+      if (!jobCard.jobCardId) {
+        notification.error({
+          message: 'Error',
+          description: 'Job card ID not found. Please refresh the page and try again.'
+        })
+        setLoading(false)
+        return
+      }
+      
       await dispatch(updateJobCardProgress({
-        jobCardId: jobCard.id,
+        jobCardId: jobCard.jobCardId,
         ...values
       })).unwrap()
       
@@ -320,8 +329,19 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
           
           // Build update data matching what the backend controller expects
           // The controller expects: jobCardId, prodStep, planStepId (optional), notes (optional)
+          const jobCardId = jobCard.jobCardId || jobCard.jobcardid || jobCard.id
+          
+          if (!jobCardId) {
+            notification.error({
+              message: 'Error',
+              description: 'Job card ID not found. Please refresh the page and try again.'
+            })
+            setLoading(false)
+            return
+          }
+          
           const updateData = {
-            jobCardId: Number(jobCard.jobcardid || jobCard.id),  // Required
+            jobCardId: Number(jobCardId),                          // Required
             prodStep: Number(jobCard.prodStep) + 1,               // Move to next step
             notes: ''                                              // Optional notes
           }
