@@ -79,6 +79,7 @@ const SmartProductionDashboard = () => {
   const [isCreatingPlans, setIsCreatingPlans] = useState(false)
   const [showSelectedPanel, setShowSelectedPanel] = useState(true)
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
+  const [planCounter, setPlanCounter] = useState(0) // Counter for unique plan IDs
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -86,6 +87,7 @@ const SmartProductionDashboard = () => {
       const stateToSave = {
         selectedRows: Array.from(selectedRows),
         conversionPlans: conversionPlans,
+        planCounter: planCounter,
         searchTerm: searchTerm,
         filterSize: filterSize,
         filterPcd: filterPcd,
@@ -96,7 +98,7 @@ const SmartProductionDashboard = () => {
       }
       localStorage.setItem('smartProductionState', JSON.stringify(stateToSave))
     }
-  }, [selectedRows, conversionPlans, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock])
+  }, [selectedRows, conversionPlans, planCounter, searchTerm, filterSize, filterPcd, filterFinish, showOnlyWithStock])
 
   // Load initial data and restore state
   useEffect(() => {
@@ -126,6 +128,9 @@ const SmartProductionDashboard = () => {
           }
           if (parsed.conversionPlans) {
             setConversionPlans(parsed.conversionPlans)
+          }
+          if (typeof parsed.planCounter === 'number') {
+            setPlanCounter(parsed.planCounter)
           }
           if (parsed.searchTerm) setSearchTerm(parsed.searchTerm)
           if (parsed.filterSize) setFilterSize(parsed.filterSize)
@@ -194,8 +199,8 @@ const SmartProductionDashboard = () => {
     })
   }, [])
 
-  // Get available target finishes for a specific alloy
-  const getAvailableTargetFinishes = useCallback((sourceAlloy) => {
+  // Get available target finishes for a specific alloy, excluding already selected finishes for this alloy
+  const getAvailableTargetFinishes = useCallback((sourceAlloy, excludeFinishesForAlloy = []) => {
     if (!stockManagementData || !sourceAlloy) return []
 
     // Extract base product specification from productName (everything except the finish)
@@ -215,6 +220,7 @@ const SmartProductionDashboard = () => {
         return (
           alloyBaseProduct === sourceBaseProduct && // Same base product specification
           alloy.finish !== sourceAlloy.finish && // Different finish
+          !excludeFinishesForAlloy.includes(alloy.finish) && // Not already selected for this alloy
           (alloy.inHouseStock || 0) >= 0 // Include all finishes (even with 0 stock for conversion targets)
         )
       })
@@ -233,69 +239,110 @@ const SmartProductionDashboard = () => {
     return availableFinishes
   }, [stockManagementData])
 
-  // Handle row selection
-  const handleRowSelect = useCallback((alloyId, checked) => {
+  // Handle adding alloy to plan (allows multiple finishes for same alloy)
+  const handleAddToPlan = useCallback((alloyId) => {
+    const alloy = filteredStockData.find(a => a.id === alloyId)
+    if (!alloy) return
+
+    // Create unique plan ID
+    const planId = `${alloyId}_${planCounter}`
+    setPlanCounter(prev => prev + 1)
+
+    // Add to selected rows
+    setSelectedRows(prev => new Set(prev).add(planId))
+
+    // Initialize conversion plan
+    setConversionPlans(plans => ({
+      ...plans,
+      [planId]: {
+        sourceAlloy: alloy,
+        targetFinish: null,
+        quantity: 1,
+        originalAlloyId: alloyId // Keep reference to original alloy ID
+      }
+    }))
+  }, [filteredStockData, planCounter])
+
+  // Handle removing plan
+  const handleRemovePlan = useCallback((planId) => {
     setSelectedRows(prev => {
       const newSet = new Set(prev)
-      if (checked) {
-        newSet.add(alloyId)
-        // Initialize conversion plan if not exists
-        if (!conversionPlans[alloyId]) {
-          const alloy = filteredStockData.find(a => a.id === alloyId)
-          if (alloy) {
-            setConversionPlans(plans => ({
-              ...plans,
-              [alloyId]: {
-                sourceAlloy: alloy,
-                targetFinish: null,
-                quantity: 1
-              }
-            }))
-          }
-        }
-      } else {
-        newSet.delete(alloyId)
-        // Remove conversion plan
-        setConversionPlans(plans => {
-          const newPlans = { ...plans }
-          delete newPlans[alloyId]
-          return newPlans
-        })
-      }
+      newSet.delete(planId)
       return newSet
     })
-  }, [conversionPlans, filteredStockData])
+    
+    setConversionPlans(plans => {
+      const newPlans = { ...plans }
+      delete newPlans[planId]
+      return newPlans
+    })
+  }, [])
 
-  // Handle select all
+  // Handle row selection/deselection
+  const handleRowSelect = useCallback((id, isSelected) => {
+    if (isSelected) {
+      setSelectedRows(prev => new Set(prev).add(id))
+    } else {
+      setSelectedRows(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
+      
+      // Remove from conversion plans when deselected
+      setConversionPlans(plans => {
+        const newPlans = { ...plans }
+        delete newPlans[id]
+        return newPlans
+      })
+    }
+  }, [])
+
+  // Get already selected finishes for a specific alloy ID
+  const getSelectedFinishesForAlloy = useCallback((alloyId) => {
+    return Array.from(selectedRows)
+      .map(planId => conversionPlans[planId])
+      .filter(plan => plan && plan.originalAlloyId === alloyId && plan.targetFinish)
+      .map(plan => plan.targetFinish)
+  }, [selectedRows, conversionPlans])
+
+  // Handle select all (creates one plan per alloy with first available finish)
   const handleSelectAll = useCallback((checked) => {
     if (checked) {
       // Only select items with stock > 0
       const selectableItems = filteredStockData.filter(a => (a.inHouseStock || 0) > 0)
-      const allIds = new Set(selectableItems.map(a => a.id))
-      setSelectedRows(allIds)
-      // Initialize all conversion plans with first available finish
+      const newRows = new Set()
       const newPlans = {}
+      
       selectableItems.forEach(alloy => {
         const availableFinishes = getAvailableTargetFinishes(alloy)
-        newPlans[alloy.id] = {
-          sourceAlloy: alloy,
-          targetFinish: availableFinishes.length > 0 ? availableFinishes[0].value : null,
-          quantity: 1
+        if (availableFinishes.length > 0) {
+          const planId = `${alloy.id}_${planCounter + newRows.size}`
+          newRows.add(planId)
+          newPlans[planId] = {
+            sourceAlloy: alloy,
+            targetFinish: availableFinishes[0].value,
+            quantity: 1,
+            originalAlloyId: alloy.id
+          }
         }
       })
+      
+      setSelectedRows(newRows)
       setConversionPlans(newPlans)
+      setPlanCounter(prev => prev + newRows.size)
     } else {
       setSelectedRows(new Set())
       setConversionPlans({})
     }
-  }, [filteredStockData, getAvailableTargetFinishes])
+  }, [filteredStockData, getAvailableTargetFinishes, planCounter])
 
   // Update conversion plan
-  const updateConversionPlan = useCallback((alloyId, field, value) => {
+  const updateConversionPlan = useCallback((planId, field, value) => {
     setConversionPlans(prev => ({
       ...prev,
-      [alloyId]: {
-        ...prev[alloyId],
+      [planId]: {
+        ...prev[planId],
         [field]: value
       }
     }))
@@ -304,7 +351,7 @@ const SmartProductionDashboard = () => {
   // Handle bulk plan creation
   const handleCreateBulkPlans = useCallback(async () => {
     const validPlans = Array.from(selectedRows)
-      .map(id => conversionPlans[id])
+      .map(planId => conversionPlans[planId])
       .filter(plan => plan && plan.targetFinish && plan.quantity > 0)
 
     if (validPlans.length === 0) {
@@ -348,6 +395,7 @@ const SmartProductionDashboard = () => {
       // Reset
       setSelectedRows(new Set())
       setConversionPlans({})
+      setPlanCounter(0)
       // Clear saved state after successful creation
       localStorage.removeItem('smartProductionState')
       navigate('/production-plans')
@@ -359,7 +407,7 @@ const SmartProductionDashboard = () => {
     } finally {
       setIsCreatingPlans(false)
     }
-  }, [selectedRows, conversionPlans, user, dispatch, navigate])
+  }, [selectedRows, conversionPlans, user, dispatch, navigate, getAvailableTargetFinishes])
 
   // Table row renderer for virtual list
   const Row = ({ index, style }) => {
@@ -367,21 +415,31 @@ const SmartProductionDashboard = () => {
     if (!alloy) return null
 
     const totalStock = alloy.inHouseStock || 0
-    const isSelected = selectedRows.has(alloy.id)
-    const plan = conversionPlans[alloy.id]
     const stockStatus = totalStock === 0 ? 'error' : totalStock < 10 ? 'warning' : 'success'
+    
+    // Check how many plans exist for this alloy
+    const alloyPlans = Array.from(selectedRows)
+      .map(planId => ({ planId, plan: conversionPlans[planId] }))
+      .filter(({ plan }) => plan && plan.originalAlloyId === alloy.id)
+    
+    const hasPlans = alloyPlans.length > 0
+    const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
+    const availableFinishes = getAvailableTargetFinishes(alloy, selectedFinishes)
 
     return (
       <div 
         style={style} 
-        className={`flex items-center px-4 border-b ${totalStock === 0 ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'} ${isSelected ? 'bg-blue-50' : ''}`}
+        className={`flex items-center px-4 border-b ${totalStock === 0 ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'} ${hasPlans ? 'bg-blue-50' : ''}`}
       >
-        {/* Checkbox - 40px */}
+        {/* Add to Plan Button - 40px */}
         <div className="w-10 flex-shrink-0">
-          <Checkbox
-            checked={isSelected}
-            onChange={(e) => handleRowSelect(alloy.id, e.target.checked)}
-            disabled={totalStock === 0}
+          <Button
+            size="small"
+            type={hasPlans ? "primary" : "default"}
+            icon={<PlusCircleOutlined />}
+            onClick={() => handleAddToPlan(alloy.id)}
+            disabled={totalStock === 0 || availableFinishes.length === 0}
+            title={availableFinishes.length === 0 ? "No additional finishes available" : "Add to Plan"}
           />
         </div>
 
@@ -397,6 +455,11 @@ const SmartProductionDashboard = () => {
           <div className="text-xs text-gray-500 truncate">
             {alloy.modelName} • {alloy.holes}H • {alloy.width}W • {alloy.finish}
           </div>
+          {hasPlans && (
+            <div className="text-xs text-blue-600 mt-1">
+              {alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''} configured
+            </div>
+          )}
         </div>
 
         {/* Stock - 120px */}
@@ -410,44 +473,23 @@ const SmartProductionDashboard = () => {
           </div>
         </div>
 
-        {/* Plan Controls - 280px */}
-        {isSelected ? (
-          <div className="w-[280px] flex-shrink-0 px-2 flex gap-2">
-            <Select
-              size="small"
-              placeholder="Target Finish"
-              value={plan?.targetFinish}
-              onChange={(value) => updateConversionPlan(alloy.id, 'targetFinish', value)}
-              className="flex-1"
-              notFoundContent="No other finishes available for this product"
-            >
-              {getAvailableTargetFinishes(alloy).map(finish => (
-                <Option key={finish.value} value={finish.value}>
-                  <div className="flex justify-between items-center">
-                    <span>{finish.label}</span>
-                    <span className="text-xs text-gray-500 ml-2">
-                      ({finish.stock} stock)
-                    </span>
-                  </div>
-                </Option>
-              ))}
-            </Select>
-            <InputNumber
-              size="small"
-              min={1}
-              max={totalStock}
-              value={plan?.quantity || 1}
-              onChange={(value) => updateConversionPlan(alloy.id, 'quantity', value)}
-              className="w-20"
-            />
-          </div>
-        ) : (
-          <div className="w-[280px] flex-shrink-0 px-2">
+        {/* Plan Status - 280px */}
+        <div className="w-[280px] flex-shrink-0 px-2">
+          {totalStock === 0 ? (
+            <Text type="secondary" className="text-xs">No stock available</Text>
+          ) : hasPlans ? (
+            <div className="text-xs">
+              <Text strong className="text-blue-600">{alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''}</Text>
+              {availableFinishes.length > 0 && (
+                <Text type="secondary"> • {availableFinishes.length} more finish{availableFinishes.length > 1 ? 'es' : ''} available</Text>
+              )}
+            </div>
+          ) : (
             <Text type="secondary" className="text-xs">
-              {totalStock === 0 ? 'No stock available' : 'Select to configure'}
+              {availableFinishes.length} finish{availableFinishes.length > 1 ? 'es' : ''} available for conversion
             </Text>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
   }
@@ -548,19 +590,32 @@ const SmartProductionDashboard = () => {
 
             <Divider type="vertical" className="h-8" />
 
-            <Checkbox
-              checked={selectedRows.size > 0 && selectedRows.size === filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length}
-              indeterminate={selectedRows.size > 0 && selectedRows.size < filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length}
-              onChange={(e) => handleSelectAll(e.target.checked)}
+            <Button
+              icon={<PlusCircleOutlined />}
+              onClick={() => {
+                // Add one plan for each alloy with stock that doesn't have any plans yet
+                filteredStockData
+                  .filter(alloy => (alloy.inHouseStock || 0) > 0)
+                  .forEach(alloy => {
+                    const existingPlans = Array.from(selectedRows)
+                      .map(planId => conversionPlans[planId])
+                      .filter(plan => plan && plan.originalAlloyId === alloy.id)
+                    
+                    if (existingPlans.length === 0) {
+                      handleAddToPlan(alloy.id)
+                    }
+                  })
+              }}
             >
-              Select All ({filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length} with stock)
-            </Checkbox>
+              Add All ({filteredStockData.filter(a => (a.inHouseStock || 0) > 0).length} with stock)
+            </Button>
 
             <Button
               icon={<ClearOutlined />}
               onClick={() => {
                 setSelectedRows(new Set())
                 setConversionPlans({})
+                setPlanCounter(0)
                 // Clear saved state
                 localStorage.removeItem('smartProductionState')
               }}
@@ -642,12 +697,12 @@ const SmartProductionDashboard = () => {
 
         {/* Table Header */}
         <div className="bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm" style={{ paddingRight: showSelectedPanel ? (isPanelCollapsed ? '60px' : '416px') : '24px' }}>
-          <div className="w-10 flex-shrink-0"></div>
+          <div className="w-10 flex-shrink-0">Add</div>
           <div className="w-[100px] flex-shrink-0 px-2">Size/PCD</div>
           <div className="flex-1 px-2">Product Details</div>
           <div className="w-[120px] flex-shrink-0 px-2 text-center">Stock</div>
           <div className="w-[280px] flex-shrink-0 px-2">
-            Plan Configuration
+            Plan Status
           </div>
         </div>
 

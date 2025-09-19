@@ -58,10 +58,10 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         localStorage.removeItem('persist:root')
-        
+
         // Reset Redux state
         dispatch(resetToInitialUser())
-        
+
         // Navigate to login page
         navigate('/login')
         break
@@ -215,7 +215,23 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     if (['3', '4'].includes(activeKey)) {
       return ['sub1'] // Dealer Metrics submenu
     }
-    if (['5a', '6', '6a', '6b', '6c', '6d', '6e', '7a', '8', '9', '10', '11', '12'].includes(activeKey)) {
+    if (
+      [
+        '5a',
+        '6',
+        '6a',
+        '6b',
+        '6c',
+        '6d',
+        '6e',
+        '7a',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12'
+      ].includes(activeKey)
+    ) {
       return ['sub2'] // Production submenu
     }
 
@@ -243,15 +259,19 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
           }`}
         >
           <div className='flex items-center space-x-3'>
-            <div className={`w-8 h-8 bg-primary rounded-lg flex items-center justify-center transition-all duration-300 ${
-              collapsed ? '' : 'mr-2'
-            }`}>
+            <div
+              className={`w-8 h-8 bg-primary rounded-lg flex items-center justify-center transition-all duration-300 ${
+                collapsed ? '' : 'mr-2'
+              }`}
+            >
               <span className='text-white font-bold text-lg'>P</span>
             </div>
             {!collapsed && (
               <div>
                 <h3 className='text-lg font-bold text-primary'>Plati India</h3>
-                <p className='text-xs text-secondary-600 -mt-1'>Manufacturing ERP</p>
+                <p className='text-xs text-secondary-600 -mt-1'>
+                  Manufacturing ERP
+                </p>
               </div>
             )}
           </div>
@@ -284,7 +304,11 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
                 onClick={() => setCollapsed(!collapsed)}
                 className='flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 transition-all duration-200 hover:shadow-sm'
               >
-                {collapsed ? <MenuUnfoldOutlined className='text-secondary-600' /> : <MenuFoldOutlined className='text-secondary-600' />}
+                {collapsed ? (
+                  <MenuUnfoldOutlined className='text-secondary-600' />
+                ) : (
+                  <MenuFoldOutlined className='text-secondary-600' />
+                )}
               </button>
             </Tooltip>
             <div className='h-6 w-px bg-border' />
@@ -307,7 +331,11 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
                 onClick={toggleDarkMode}
                 className='flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 transition-all duration-200 hover:shadow-sm'
               >
-                {darkMode ? <SunOutlined className='text-secondary-600' /> : <MoonOutlined className='text-secondary-600' />}
+                {darkMode ? (
+                  <SunOutlined className='text-secondary-600' />
+                ) : (
+                  <MoonOutlined className='text-secondary-600' />
+                )}
               </button>
             </Tooltip>
 
@@ -347,9 +375,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
         {/* Main Content */}
         <div className='flex-1 overflow-auto bg-gradient-to-br from-secondary-50/30 via-white to-primary-50/20'>
           <div className='animate-in p-6'>
-            <div className='max-w-[1600px] mx-auto'>
-              {content}
-            </div>
+            <div className='max-w-[1800px] mx-auto'>{content}</div>
           </div>
         </div>
 
@@ -359,7 +385,8 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
             <span className='font-medium text-secondary-700'>
               Plati India Pvt. Ltd.
             </span>{' '}
-            © {new Date().getFullYear()} - All rights reserved | Manufacturing ERP System
+            © {new Date().getFullYear()} - All rights reserved | Manufacturing
+            ERP System
           </div>
         </Footer>
       </Layout>

@@ -179,27 +179,37 @@ const ProductionListing = () => {
   }
 
   const handleDelete = record => {
-    const jobCardCount = record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
+    const jobCardCount =
+      record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
     const hasJobCards = jobCardCount > 0
 
     const warningContent = hasJobCards ? (
       <div>
-        <p className="mb-3">Are you sure you want to delete production plan #{record.id}?</p>
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-          <div className="flex items-start gap-2">
-            <span className="text-orange-500 text-lg">⚠️</span>
+        <p className='mb-3'>
+          Are you sure you want to delete production plan #{record.id}?
+        </p>
+        <div className='bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3'>
+          <div className='flex items-start gap-2'>
+            <span className='text-orange-500 text-lg'>⚠️</span>
             <div>
-              <div className="font-semibold text-orange-800 mb-1">Warning</div>
-              <div className="text-orange-700 text-sm">
-                This production plan has <strong>{jobCardCount} job card{jobCardCount > 1 ? 's' : ''}</strong> associated with it.
+              <div className='font-semibold text-orange-800 mb-1'>Warning</div>
+              <div className='text-orange-700 text-sm'>
+                This production plan has{' '}
+                <strong>
+                  {jobCardCount} job card{jobCardCount > 1 ? 's' : ''}
+                </strong>{' '}
+                associated with it.
               </div>
-              <div className="text-orange-700 text-sm mt-1">
-                All job cards and their progress will be permanently deleted along with the production plan.
+              <div className='text-orange-700 text-sm mt-1'>
+                All job cards and their progress will be permanently deleted
+                along with the production plan.
               </div>
             </div>
           </div>
         </div>
-        <p className="text-red-600 font-medium">This action cannot be undone.</p>
+        <p className='text-red-600 font-medium'>
+          This action cannot be undone.
+        </p>
       </div>
     ) : (
       `Are you sure you want to delete production plan #${record.id}? This action cannot be undone.`
@@ -375,7 +385,7 @@ const ProductionListing = () => {
     setAssignPresetModalVisible(false)
     setSelectedPlanForPreset(null)
     message.success('Preset assigned successfully!')
-    
+
     // Refresh the production plans list with a small delay to ensure backend updates
     setTimeout(() => {
       dispatch(
@@ -416,13 +426,13 @@ const ProductionListing = () => {
     }, 500)
   }
 
-
   // Check if a plan can move to next step
   const canMoveToNextStep = record => {
     const stepStatus = record.currentStepStatus
 
     // Check if has workflow steps defined (use workflowInfo for accurate check)
-    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasWorkflow =
+      record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
     if (!hasWorkflow && record.currentStepName === 'Not Started') {
       return false // No workflow defined
     }
@@ -435,25 +445,31 @@ const ProductionListing = () => {
   const canCreateJobCard = record => {
     // Require a preset/workflow on the plan AND remaining quantity
     const remaining = record.quantityTracking?.remainingQuantity ?? 0
-    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
-    const hasPreset = record.workflowInfo?.presetName || record.presetName || record.preset_name
+    const hasWorkflow =
+      record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasPreset =
+      record.workflowInfo?.presetName || record.presetName || record.preset_name
     return remaining > 0 && (hasWorkflow || hasPreset)
   }
 
   // Get tooltip message for create job card button
   const getCreateJobCardTooltip = record => {
     const remaining = record.quantityTracking?.remainingQuantity ?? 0
-    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
-    const hasPreset = record.workflowInfo?.presetName || record.presetName || record.preset_name
-    if (!hasWorkflow && !hasPreset) return 'Assign a preset/workflow to the plan before creating job cards'
-    if (remaining <= 0) return 'Cannot create job cards - no remaining quantity available'
+    const hasWorkflow =
+      record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasPreset =
+      record.workflowInfo?.presetName || record.presetName || record.preset_name
+    if (!hasWorkflow && !hasPreset)
+      return 'Assign a preset/workflow to the plan before creating job cards'
+    if (remaining <= 0)
+      return 'Cannot create job cards - no remaining quantity available'
     return `Create job card from this production plan (${remaining.toLocaleString()} units available)`
   }
 
   // Get tooltip message for move to next step button
   const getMoveTooltip = record => {
-
-    const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+    const hasWorkflow =
+      record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
     if (!hasWorkflow && record.currentStepName === 'Not Started') {
       return 'No workflow defined - please assign a preset first'
     }
@@ -467,15 +483,22 @@ const ProductionListing = () => {
 
   // Handle expanding a row to show job cards
   const handleExpand = async (expanded, record) => {
-    const keys = expanded ? [...expandedRowKeys, record.id] : expandedRowKeys.filter(key => key !== record.id)
+    const keys = expanded
+      ? [...expandedRowKeys, record.id]
+      : expandedRowKeys.filter(key => key !== record.id)
     setExpandedRowKeys(keys)
 
     // Fetch job cards if expanding and not already loaded
     if (expanded && !jobCardsData[record.id]) {
       setLoadingJobCards(prev => ({ ...prev, [record.id]: true }))
       try {
-        const response = await dispatch(getJobCardsWithDetails({ prodPlanId: record.id })).unwrap()
-        setJobCardsData(prev => ({ ...prev, [record.id]: response.jobCards || [] }))
+        const response = await dispatch(
+          getJobCardsWithDetails({ prodPlanId: record.id })
+        ).unwrap()
+        setJobCardsData(prev => ({
+          ...prev,
+          [record.id]: response.jobCards || []
+        }))
       } catch (error) {
         console.error('Error loading job cards:', error)
         message.error('Failed to load job cards')
@@ -487,7 +510,7 @@ const ProductionListing = () => {
   }
 
   // Render expanded row content (job cards)
-  const expandedRowRender = (record) => {
+  const expandedRowRender = record => {
     const jobCards = jobCardsData[record.id] || []
     const loading = loadingJobCards[record.id]
 
@@ -500,7 +523,8 @@ const ProductionListing = () => {
     }
 
     if (jobCards.length === 0) {
-      const hasWorkflow = record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+      const hasWorkflow =
+        record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
       return (
         <div className='p-8 text-center'>
           <div className='text-gray-500'>No job cards created yet</div>
@@ -534,14 +558,14 @@ const ProductionListing = () => {
         dataIndex: 'id',
         key: 'id',
         width: 100,
-        render: (id) => <span className='font-semibold text-blue-600'>#{id}</span>
+        render: id => <span className='font-semibold text-blue-600'>#{id}</span>
       },
       {
         title: 'Quantity',
         dataIndex: 'quantity',
         key: 'quantity',
         width: 120,
-        render: (qty) => (
+        render: qty => (
           <div className='text-center'>
             <div className='text-lg font-semibold'>{qty?.toLocaleString()}</div>
             <div className='text-xs text-gray-500'>units</div>
@@ -553,21 +577,28 @@ const ProductionListing = () => {
         key: 'currentStep',
         width: 200,
         render: (_, jobCard) => {
-          const totalSteps = jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
+          const totalSteps =
+            jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
           const currentStepNum = jobCard.prodStep || jobCard.prod_step || 1
           const progress = Math.round((currentStepNum / totalSteps) * 100)
-          const presetName = jobCard.presetName || jobCard.preset_name || 'Standard'
+          const presetName =
+            jobCard.presetName || jobCard.preset_name || 'Standard'
 
           return (
             <div className='space-y-2'>
               <div className='flex items-center gap-2'>
-                <span className='text-sm font-medium'>Step {currentStepNum} of {totalSteps}</span>
-                <Tag color={progress === 100 ? 'green' : 'blue'} className='text-xs'>
+                <span className='text-sm font-medium'>
+                  Step {currentStepNum} of {totalSteps}
+                </span>
+                <Tag
+                  color={progress === 100 ? 'green' : 'blue'}
+                  className='text-xs'
+                >
                   {progress}%
                 </Tag>
               </div>
               <div className='w-full bg-gray-200 rounded-full h-2'>
-                <div 
+                <div
                   className={`h-2 rounded-full transition-all duration-300 ${
                     progress === 100 ? 'bg-green-500' : 'bg-blue-500'
                   }`}
@@ -584,7 +615,8 @@ const ProductionListing = () => {
         key: 'status',
         width: 120,
         render: (_, jobCard) => {
-          const totalSteps = jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
+          const totalSteps =
+            jobCard.totalWorkflowSteps || jobCard.total_workflow_steps || 11
           const currentStep = jobCard.prodStep || jobCard.prod_step || 1
           const isCompleted = currentStep >= totalSteps
 
@@ -666,7 +698,7 @@ const ProductionListing = () => {
         key: 'view',
         label: 'View Details',
         icon: <EyeOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleView(record)
         }
@@ -675,7 +707,7 @@ const ProductionListing = () => {
         key: 'edit',
         label: 'Edit Plan',
         icon: <EditOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleEdit(record)
         }
@@ -684,7 +716,7 @@ const ProductionListing = () => {
         key: 'createJobCard',
         label: 'Create Job Card',
         icon: <PlayCircleOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleCreateJobCard(record)
         },
@@ -698,7 +730,7 @@ const ProductionListing = () => {
         key: 'preset',
         label: 'Assign Preset',
         icon: <SettingOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleAssignPreset(record)
         }
@@ -710,7 +742,7 @@ const ProductionListing = () => {
         key: 'nextStep',
         label: 'Move to Next Step',
         icon: <ArrowRightOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleMoveToNextStep(record)
         },
@@ -723,7 +755,7 @@ const ProductionListing = () => {
         key: 'delete',
         label: 'Delete Plan',
         icon: <DeleteOutlined />,
-        onClick: (e) => {
+        onClick: e => {
           e.domEvent?.stopPropagation?.()
           handleDelete(record)
         },
@@ -739,20 +771,32 @@ const ProductionListing = () => {
     {
       title: 'Production Plan',
       key: 'planDetails',
-      width: 320,
+      width: 280,
       fixed: 'left',
       render: (_, record) => {
-        const sourceProduct = record.sourceProduct || record.alloyName || record.sourceproductname || `Alloy ${record.alloyId}`
-        const targetProduct = record.targetProduct || record.convertName || record.targetproductname || `Convert ${record.convertToAlloyId}`
-        
+        const sourceProduct =
+          record.alloyName ||
+          record.sourceProduct ||
+          record.sourceproductname ||
+          `Alloy ${record.alloyId}`
+        const targetProduct =
+          record.convertName ||
+          record.targetProduct ||
+          record.targetproductname ||
+          `Convert ${record.convertToAlloyId}`
+
+        console.log(record.alloyName, 'SOURCE PRODUCT')
+
         return (
           <div className='py-2'>
             {/* Header with ID and Priority */}
             <div className='flex items-center justify-between mb-2'>
               <div className='flex items-center gap-2'>
-                <span className='font-semibold text-blue-600 text-sm'>#{record.id}</span>
+                <span className='font-semibold text-blue-600 text-sm'>
+                  #{record.id}
+                </span>
                 {record.urgent && (
-                  <Tag color="red" size="small" className='text-xs font-medium'>
+                  <Tag color='red' size='small' className='text-xs font-medium'>
                     🔥 URGENT
                   </Tag>
                 )}
@@ -766,20 +810,26 @@ const ProductionListing = () => {
             <div className='bg-gray-50 rounded-lg p-3 space-y-2'>
               <div>
                 <div className='text-xs text-gray-600 mb-1'>From:</div>
-                <div className='font-medium text-sm text-gray-900 truncate' title={sourceProduct}>
+                <div
+                  className='font-medium text-sm text-gray-900 truncate'
+                  title={sourceProduct}
+                >
                   {sourceProduct}
                 </div>
               </div>
-              
+
               <div className='flex items-center justify-center'>
                 <div className='flex-1 h-px bg-gray-300'></div>
                 <span className='px-2 text-gray-400'>→</span>
                 <div className='flex-1 h-px bg-gray-300'></div>
               </div>
-              
+
               <div>
                 <div className='text-xs text-gray-600 mb-1'>To:</div>
-                <div className='font-medium text-sm text-blue-700 truncate' title={targetProduct}>
+                <div
+                  className='font-medium text-sm text-blue-700 truncate'
+                  title={targetProduct}
+                >
                   {targetProduct}
                 </div>
               </div>
@@ -796,7 +846,8 @@ const ProductionListing = () => {
         const total = record.quantity || 0
         const allocated = record.quantityTracking?.allocatedQuantity || 0
         const remaining = record.quantityTracking?.remainingQuantity || 0
-        const jobCards = record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
+        const jobCards =
+          record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
         const acceptedQty = record.quantityTracking?.acceptedQuantity || 0
         const rejectedQty = record.quantityTracking?.rejectedQuantity || 0
         const completedCards = record.quantityTracking?.completedJobCards || 0
@@ -807,7 +858,9 @@ const ProductionListing = () => {
           <div className='py-2 space-y-3'>
             {/* Total Quantity */}
             <div className='text-center'>
-              <div className='text-2xl font-bold text-gray-900'>{total.toLocaleString()}</div>
+              <div className='text-2xl font-bold text-gray-900'>
+                {total.toLocaleString()}
+              </div>
               <div className='text-xs text-gray-500'>Total Units</div>
             </div>
 
@@ -818,11 +871,15 @@ const ProductionListing = () => {
                 <span className='font-medium'>{percentage}%</span>
               </div>
               <div className='w-full bg-gray-200 rounded-full h-2'>
-                <div 
+                <div
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    percentage === 100 ? 'bg-red-500' : 
-                    percentage > 50 ? 'bg-orange-500' : 
-                    percentage > 0 ? 'bg-blue-500' : 'bg-gray-300'
+                    percentage === 100
+                      ? 'bg-red-500'
+                      : percentage > 50
+                      ? 'bg-orange-500'
+                      : percentage > 0
+                      ? 'bg-blue-500'
+                      : 'bg-gray-300'
                   }`}
                   style={{ width: `${Math.max(percentage, 2)}%` }}
                 />
@@ -834,16 +891,20 @@ const ProductionListing = () => {
               <div className='space-y-1'>
                 <div className='flex justify-between text-xs'>
                   <span className='text-gray-600'>Job Cards Progress</span>
-                  <span className='font-medium'>{Math.round(avgProgress)}%</span>
+                  <span className='font-medium'>
+                    {Math.round(avgProgress)}%
+                  </span>
                 </div>
                 <div className='w-full bg-gray-200 rounded-full h-1.5'>
-                  <div 
+                  <div
                     className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
                     style={{ width: `${Math.max(avgProgress, 2)}%` }}
                   />
                 </div>
                 <div className='flex justify-between text-xs text-gray-500'>
-                  <span>{completedCards}/{jobCards} completed</span>
+                  <span>
+                    {completedCards}/{jobCards} completed
+                  </span>
                 </div>
               </div>
             )}
@@ -851,11 +912,17 @@ const ProductionListing = () => {
             {/* Stats Row */}
             <div className='grid grid-cols-2 gap-2 text-xs'>
               <div className='text-center bg-blue-50 rounded p-2'>
-                <div className='font-semibold text-blue-700'>{allocated.toLocaleString()}</div>
+                <div className='font-semibold text-blue-700'>
+                  {allocated.toLocaleString()}
+                </div>
                 <div className='text-blue-600'>Allocated</div>
               </div>
               <div className='text-center bg-green-50 rounded p-2'>
-                <div className={`font-semibold ${remaining > 0 ? 'text-green-700' : 'text-gray-500'}`}>
+                <div
+                  className={`font-semibold ${
+                    remaining > 0 ? 'text-green-700' : 'text-gray-500'
+                  }`}
+                >
                   {remaining.toLocaleString()}
                 </div>
                 <div className='text-green-600'>Remaining</div>
@@ -866,11 +933,15 @@ const ProductionListing = () => {
             {(acceptedQty > 0 || rejectedQty > 0) && (
               <div className='grid grid-cols-2 gap-2 text-xs'>
                 <div className='text-center'>
-                  <div className='font-semibold text-green-600'>{acceptedQty.toLocaleString()}</div>
+                  <div className='font-semibold text-green-600'>
+                    {acceptedQty.toLocaleString()}
+                  </div>
                   <div className='text-gray-500'>Accepted</div>
                 </div>
                 <div className='text-center'>
-                  <div className='font-semibold text-red-600'>{rejectedQty.toLocaleString()}</div>
+                  <div className='font-semibold text-red-600'>
+                    {rejectedQty.toLocaleString()}
+                  </div>
                   <div className='text-gray-500'>Rejected</div>
                 </div>
               </div>
@@ -879,8 +950,8 @@ const ProductionListing = () => {
             {/* Job Cards Badge */}
             {jobCards > 0 && (
               <div className='flex justify-center'>
-                <Badge 
-                  count={jobCards} 
+                <Badge
+                  count={jobCards}
                   style={{ backgroundColor: '#52c41a' }}
                   className='text-xs'
                 >
@@ -888,7 +959,7 @@ const ProductionListing = () => {
                     type='text'
                     size='small'
                     className='text-xs text-gray-600 p-0'
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation()
                       handleExpand(!expandedRowKeys.includes(record.id), record)
                     }}
@@ -904,38 +975,53 @@ const ProductionListing = () => {
     },
     {
       title: 'Workflow Status',
-      key: 'workflowStatus', 
+      key: 'workflowStatus',
       width: 180,
       render: (_, record) => {
         const stepName = record.currentStepName || 'Not Started'
         const status = record.currentStepStatus || 'waiting'
         const workflowInfo = record.workflowInfo || {}
-        
-        const getStatusColor = (status) => {
+
+        const getStatusColor = status => {
           switch (status) {
-            case 'completed': return 'bg-green-100 text-green-800'
-            case 'in_progress': return 'bg-blue-100 text-blue-800' 
-            case 'pending': return 'bg-orange-100 text-orange-800'
-            case 'paused': return 'bg-yellow-100 text-yellow-800'
-            case 'waiting': return 'bg-gray-100 text-gray-600'
-            default: return 'bg-gray-100 text-gray-600'
+            case 'completed':
+              return 'bg-green-100 text-green-800'
+            case 'in_progress':
+              return 'bg-blue-100 text-blue-800'
+            case 'pending':
+              return 'bg-orange-100 text-orange-800'
+            case 'paused':
+              return 'bg-yellow-100 text-yellow-800'
+            case 'waiting':
+              return 'bg-gray-100 text-gray-600'
+            default:
+              return 'bg-gray-100 text-gray-600'
           }
         }
 
-        const getStatusIcon = (status) => {
+        const getStatusIcon = status => {
           switch (status) {
-            case 'completed': return '✓'
-            case 'in_progress': return '⚡'
-            case 'pending': return '⏳'
-            case 'paused': return '⏸'
-            default: return '○'
+            case 'completed':
+              return '✓'
+            case 'in_progress':
+              return '⚡'
+            case 'pending':
+              return '⏳'
+            case 'paused':
+              return '⏸'
+            default:
+              return '○'
           }
         }
 
         return (
           <div className='py-2 space-y-2'>
             {/* Current Step */}
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                status
+              )}`}
+            >
               <span>{getStatusIcon(status)}</span>
               <span className='truncate max-w-[120px]' title={stepName}>
                 {stepName}
@@ -947,12 +1033,20 @@ const ProductionListing = () => {
               <div className='space-y-1'>
                 <div className='flex justify-between text-xs text-gray-600'>
                   <span>Overall Progress</span>
-                  <span>{workflowInfo.completedSteps}/{workflowInfo.totalSteps}</span>
+                  <span>
+                    {workflowInfo.completedSteps}/{workflowInfo.totalSteps}
+                  </span>
                 </div>
                 <div className='w-full bg-gray-200 rounded-full h-1.5'>
                   <div
                     className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
-                    style={{ width: `${(workflowInfo.completedSteps / workflowInfo.totalSteps) * 100}%` }}
+                    style={{
+                      width: `${
+                        (workflowInfo.completedSteps /
+                          workflowInfo.totalSteps) *
+                        100
+                      }%`
+                    }}
                   />
                 </div>
               </div>
@@ -987,7 +1081,13 @@ const ProductionListing = () => {
             </Tooltip>
 
             {/* Assign Preset - visible when no workflow/preset on plan */}
-            {!(record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps || record.workflowInfo?.presetName || record.presetName || record.preset_name) && (
+            {!(
+              record.workflowInfo?.hasCustomWorkflow ||
+              record.hasWorkflowSteps ||
+              record.workflowInfo?.presetName ||
+              record.presetName ||
+              record.preset_name
+            ) && (
               <Tooltip title='Assign a preset/workflow to this plan'>
                 <Button
                   type='default'
@@ -1002,7 +1102,7 @@ const ProductionListing = () => {
                 </Button>
               </Tooltip>
             )}
-            
+
             {/* Secondary Action - Move to Next Step */}
             <Tooltip title={getMoveTooltip(record)}>
               <Button
@@ -1018,7 +1118,7 @@ const ProductionListing = () => {
                 Next
               </Button>
             </Tooltip>
-            
+
             {/* More Actions Dropdown */}
             <Dropdown
               menu={getActionMenu(record)}
@@ -1045,252 +1145,256 @@ const ProductionListing = () => {
     { value: 'false', label: 'Normal' }
   ]
 
-
   return (
-    <Layout>
-      <div className='p-2 sm:p-4 md:p-6 bg-gray-50 min-h-screen w-[calc(100vw-100px)] overflow-hidden'>
-        {/* Header */}
-        <div className='bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 mb-3 md:mb-6 w-full'>
-          <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4'>
-            <div>
-              <h1 className='text-xl md:text-2xl font-bold text-gray-900'>
-                Production Plans
-              </h1>
-              <p className='text-gray-600 mt-1 text-sm md:text-base'>
-                Manage and track your production planning
-              </p>
-            </div>
-            <div className='flex flex-col sm:flex-row gap-2'>
-              <CustomButton
-                type='primary'
-                icon={<PlusOutlined />}
-                size='middle'
-                onClick={handleCreatePlan}
-                className='w-full sm:w-auto px-5 py-3'
-              >
-                Create Plan
-              </CustomButton>
-              <CustomButton
-                type='primary'
-                icon={<ArrowRightOutlined />}
-                size='middle'
-                onClick={() => navigate('/smart-production')}
-                className='w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0'
-              >
-                🚀 Smart Bulk Planner
-              </CustomButton>
-            </div>
-          </div>
-
-          {/* Search and Filters */}
-          <div className='space-y-3'>
-            {/* Search Bar */}
-            <div className='flex flex-col md:flex-row gap-2 md:gap-3 items-stretch md:items-center'>
-              <div className='flex-1 max-w-full md:max-w-md'>
-                <Input
-                  placeholder='Search plans...'
-                  value={localSearch}
-                  onChange={e => setLocalSearch(e.target.value)}
-                  onPressEnter={handleSearch}
-                  prefix={<SearchOutlined className='text-gray-400' />}
-                  allowClear
-                  size='middle'
-                />
-              </div>
-              <div className='flex gap-2 flex-wrap'>
-                <Button
-                  type='primary'
-                  onClick={handleSearch}
-                  icon={<SearchOutlined />}
-                  size='middle'
-                  className='flex-shrink-0'
-                >
-                  Search
-                </Button>
-                <Button
-                  type='default'
-                  icon={<FilterOutlined />}
-                  onClick={() => setShowFilters(!showFilters)}
-                  size='middle'
-                  className='flex-shrink-0'
-                >
-                  Filters
-                </Button>
-                {(searchTerm ||
-                  filters.urgent ||
-                  filters.dateRange) && (
-                  <Button
-                    onClick={handleClearFilters}
-                    size='middle'
-                    className='flex-shrink-0'
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Filter Row */}
-            {showFilters && (
-              <div className='bg-gray-50 p-3 md:p-4 rounded-lg'>
-                <Row gutter={[8, 12]} className='max-w-full'>
-                  <Col xs={24} sm={12} md={6}>
-                    <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
-                      Priority
-                    </div>
-                    <Select
-                      value={filters.urgent}
-                      onChange={value => handleFilterChange('urgent', value)}
-                      options={urgentOptions}
-                      className='w-full'
-                      placeholder='Priority'
-                      size='small'
-                    />
-                  </Col>
-                  <Col xs={24} sm={12} md={8}>
-                    <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
-                      Date Range
-                    </div>
-                    <RangePicker
-                      value={
-                        filters.dateRange
-                          ? [
-                              moment(filters.dateRange[0]),
-                              moment(filters.dateRange[1])
-                            ]
-                          : null
-                      }
-                      onChange={handleDateRangeChange}
-                      className='w-full'
-                      placeholder={['Start', 'End']}
-                      size='small'
-                    />
-                  </Col>
-                  <Col xs={24} sm={12} md={4}>
-                    <div className='mb-2 hidden md:block'>&nbsp;</div>
-                    <Button
-                      onClick={handleClearFilters}
-                      className='w-full'
-                      size='small'
-                    >
-                      Clear Filters
-                    </Button>
-                  </Col>
-                </Row>
-              </div>
-            )}
-          </div>
-
-          {/* Summary Stats */}
-          <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 md:mt-6 pt-4 border-t border-gray-200'>
-            <div className='bg-blue-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-              <div className='text-lg sm:text-xl md:text-2xl font-bold text-blue-600'>
-                {totalPlansCount}
-              </div>
-              <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-                Total Plans
-              </div>
-            </div>
-            <div className='bg-orange-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-              <div className='text-lg sm:text-xl md:text-2xl font-bold text-orange-600'>
-                {productionPlans.filter(p => p.urgent).length}
-              </div>
-              <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-                Urgent Plans
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className='bg-white rounded-lg shadow-sm overflow-hidden'>
-          <div className='p-3 md:p-4 border-b border-gray-200'>
-            <h2 className='text-base md:text-lg font-semibold text-gray-900'>
-              Production Plans List
-            </h2>
-            <p className='text-xs md:text-sm text-gray-500 mt-1'>
-              {totalPlansCount > 0
-                ? `Showing ${productionPlans.length} of ${totalPlansCount} plans`
-                : 'No plans found'}
+    <div className='sm:p-4 md:p-2 bg-gray-50 min-h-screen w-full overflow-hidden'>
+      {/* Header */}
+      <div className='bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 mb-3 md:mb-6 w-full'>
+        <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4'>
+          <div>
+            <h1 className='text-xl md:text-2xl font-bold text-gray-900'>
+              Production Plans
+            </h1>
+            <p className='text-gray-600 mt-1 text-sm md:text-base'>
+              Manage and track your production planning
             </p>
           </div>
-          <div className='overflow-x-auto'>
-            <CustomTable
-              title=''
-              data={productionPlans}
-              totalCount={totalPlansCount}
-              columns={columns}
-              currentPage={currentPage}
-              currentPageSize={pageSize}
-              handlePageChange={handlePageChange}
-              loading={loading}
-              scroll={{ x: 900, y: 600 }}
-              onRowClick={handleView}
-              showSort={true}
+          <div className='flex flex-col sm:flex-row gap-2'>
+            <CustomButton
+              type='primary'
+              icon={<PlusOutlined />}
               size='middle'
-              rowClassName={() => 'hover:bg-gray-50'}
-              className='production-plans-table'
-              expandable={{
-                expandedRowKeys,
-                onExpand: handleExpand,
-                expandedRowRender,
-                expandRowByClick: false,
-                expandIcon: ({ expanded, onExpand, record }) => (
-                  <Button
-                    type='text'
-                    size='small'
-                    icon={expanded ? <ArrowRightOutlined style={{ transform: 'rotate(90deg)' }} /> : <ArrowRightOutlined />}
-                    onClick={e => {
-                      e.stopPropagation()
-                      onExpand(record, e)
-                    }}
-                  />
-                )
-              }}
-              pagination={{
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} plans`,
-                size: 'default',
-                pageSizeOptions: ['5', '10', '20', '50']
-              }}
-            />
+              onClick={handleCreatePlan}
+              className='w-full sm:w-auto px-5 py-3'
+            >
+              Create Plan
+            </CustomButton>
+            <CustomButton
+              type='primary'
+              icon={<ArrowRightOutlined />}
+              size='middle'
+              onClick={() => navigate('/smart-production')}
+              className='w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0'
+            >
+              🚀 Smart Bulk Planner
+            </CustomButton>
           </div>
         </div>
 
-        {/* Production Plan Details Modal */}
-        <ProductionPlanDetailsModal
-          visible={detailsModalVisible}
-          onClose={handleDetailsModalClose}
-          planId={selectedPlanForDetails?.id}
-          planData={selectedPlanForDetails}
-        />
+        {/* Search and Filters */}
+        <div className='space-y-3'>
+          {/* Search Bar */}
+          <div className='flex flex-col md:flex-row gap-2 md:gap-3 items-stretch md:items-center'>
+            <div className='flex-1 max-w-full md:max-w-md'>
+              <Input
+                placeholder='Search plans...'
+                value={localSearch}
+                onChange={e => setLocalSearch(e.target.value)}
+                onPressEnter={handleSearch}
+                prefix={<SearchOutlined className='text-gray-400' />}
+                allowClear
+                size='middle'
+              />
+            </div>
+            <div className='flex gap-2 flex-wrap'>
+              <Button
+                type='primary'
+                onClick={handleSearch}
+                icon={<SearchOutlined />}
+                size='middle'
+                className='flex-shrink-0'
+              >
+                Search
+              </Button>
+              <Button
+                type='default'
+                icon={<FilterOutlined />}
+                onClick={() => setShowFilters(!showFilters)}
+                size='middle'
+                className='flex-shrink-0'
+              >
+                Filters
+              </Button>
+              {(searchTerm || filters.urgent || filters.dateRange) && (
+                <Button
+                  onClick={handleClearFilters}
+                  size='middle'
+                  className='flex-shrink-0'
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
 
-        {/* Edit Production Plan Modal */}
-        <EditProductionPlanModal
-          visible={editModalVisible}
-          onClose={handleEditModalClose}
-          planData={selectedPlanForEdit}
-          onSuccess={handleEditSuccess}
-        />
+          {/* Filter Row */}
+          {showFilters && (
+            <div className='bg-gray-50 p-3 md:p-4 rounded-lg'>
+              <Row gutter={[8, 12]} className='max-w-full'>
+                <Col xs={24} sm={12} md={6}>
+                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
+                    Priority
+                  </div>
+                  <Select
+                    value={filters.urgent}
+                    onChange={value => handleFilterChange('urgent', value)}
+                    options={urgentOptions}
+                    className='w-full'
+                    placeholder='Priority'
+                    size='small'
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
+                    Date Range
+                  </div>
+                  <RangePicker
+                    value={
+                      filters.dateRange
+                        ? [
+                            moment(filters.dateRange[0]),
+                            moment(filters.dateRange[1])
+                          ]
+                        : null
+                    }
+                    onChange={handleDateRangeChange}
+                    className='w-full'
+                    placeholder={['Start', 'End']}
+                    size='small'
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={4}>
+                  <div className='mb-2 hidden md:block'>&nbsp;</div>
+                  <Button
+                    onClick={handleClearFilters}
+                    className='w-full'
+                    size='small'
+                  >
+                    Clear Filters
+                  </Button>
+                </Col>
+              </Row>
+            </div>
+          )}
+        </div>
 
-        {/* Assign Preset Modal */}
-        <AssignPresetModal
-          visible={assignPresetModalVisible}
-          onClose={handleAssignPresetModalClose}
-          planData={selectedPlanForPreset}
-          onSuccess={handlePresetAssignSuccess}
-        />
-
-        {/* Job Card Creation Modal */}
-        <JobCardCreationModal
-          visible={jobCardModalVisible}
-          onCancel={handleJobCardModalClose}
-          onSuccess={handleJobCardCreateSuccess}
-          selectedPlan={selectedPlanForJobCard}
-        />
+        {/* Summary Stats */}
+        <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 md:mt-6 pt-4 border-t border-gray-200'>
+          <div className='bg-blue-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
+            <div className='text-lg sm:text-xl md:text-2xl font-bold text-blue-600'>
+              {totalPlansCount}
+            </div>
+            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
+              Total Plans
+            </div>
+          </div>
+          <div className='bg-orange-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
+            <div className='text-lg sm:text-xl md:text-2xl font-bold text-orange-600'>
+              {productionPlans.filter(p => p.urgent).length}
+            </div>
+            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
+              Urgent Plans
+            </div>
+          </div>
+        </div>
       </div>
-    </Layout>
+
+      {/* Table */}
+      <div className='bg-white rounded-lg shadow-sm overflow-hidden'>
+        <div className='p-3 md:p-4 border-b border-gray-200'>
+          <h2 className='text-base md:text-lg font-semibold text-gray-900'>
+            Production Plans List
+          </h2>
+          <p className='text-xs md:text-sm text-gray-500 mt-1'>
+            {totalPlansCount > 0
+              ? `Showing ${productionPlans.length} of ${totalPlansCount} plans`
+              : 'No plans found'}
+          </p>
+        </div>
+        <div className='overflow-x-auto'>
+          <CustomTable
+            title=''
+            data={productionPlans}
+            totalCount={totalPlansCount}
+            columns={columns}
+            currentPage={currentPage}
+            currentPageSize={pageSize}
+            handlePageChange={handlePageChange}
+            loading={loading}
+            scroll={{ x: 900, y: 600 }}
+            onRowClick={handleView}
+            showSort={true}
+            size='middle'
+            rowClassName={() => 'hover:bg-gray-50'}
+            className='production-plans-table'
+            expandable={{
+              expandedRowKeys,
+              onExpand: handleExpand,
+              expandedRowRender,
+              expandRowByClick: false,
+              expandIcon: ({ expanded, onExpand, record }) => (
+                <Button
+                  type='text'
+                  size='small'
+                  icon={
+                    expanded ? (
+                      <ArrowRightOutlined
+                        style={{ transform: 'rotate(90deg)' }}
+                      />
+                    ) : (
+                      <ArrowRightOutlined />
+                    )
+                  }
+                  onClick={e => {
+                    e.stopPropagation()
+                    onExpand(record, e)
+                  }}
+                />
+              )
+            }}
+            pagination={{
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} plans`,
+              size: 'default',
+              pageSizeOptions: ['5', '10', '20', '50']
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Production Plan Details Modal */}
+      <ProductionPlanDetailsModal
+        visible={detailsModalVisible}
+        onClose={handleDetailsModalClose}
+        planId={selectedPlanForDetails?.id}
+        planData={selectedPlanForDetails}
+      />
+
+      {/* Edit Production Plan Modal */}
+      <EditProductionPlanModal
+        visible={editModalVisible}
+        onClose={handleEditModalClose}
+        planData={selectedPlanForEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Assign Preset Modal */}
+      <AssignPresetModal
+        visible={assignPresetModalVisible}
+        onClose={handleAssignPresetModalClose}
+        planData={selectedPlanForPreset}
+        onSuccess={handlePresetAssignSuccess}
+      />
+
+      {/* Job Card Creation Modal */}
+      <JobCardCreationModal
+        visible={jobCardModalVisible}
+        onCancel={handleJobCardModalClose}
+        onSuccess={handleJobCardCreateSuccess}
+        selectedPlan={selectedPlanForJobCard}
+      />
+    </div>
   )
 }
 

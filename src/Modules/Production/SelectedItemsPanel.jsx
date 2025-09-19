@@ -3,7 +3,7 @@ import {
   Card,
   Button,
   Select,
-  InputNumber,
+  Input,
   Tag,
   Space,
   Empty,
@@ -34,21 +34,23 @@ const SelectedItemsPanel = ({
   onUpdatePlan,
   onRemoveItem,
   onRemoveAll,
-  getAvailableTargetFinishes
+  getAvailableTargetFinishes,
+  getSelectedFinishesForAlloy
 }) => {
-  // Get selected items data
+  // Get selected items data (now works with plan IDs)
   const selectedItems = useMemo(() => {
-    return Array.from(selectedRows).map(id => {
-      const alloy = filteredStockData.find(a => a.id === id)
-      const plan = conversionPlans[id]
+    return Array.from(selectedRows).map(planId => {
+      const plan = conversionPlans[planId]
+      if (!plan) return null
+      
       return {
-        id,
-        alloy,
+        planId,
+        alloy: plan.sourceAlloy,
         plan,
         isConfigured: plan?.targetFinish ? true : false
       }
-    }).filter(item => item.alloy) // Filter out any items not found in data
-  }, [selectedRows, filteredStockData, conversionPlans])
+    }).filter(item => item && item.alloy) // Filter out any items not found in data
+  }, [selectedRows, conversionPlans])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -85,13 +87,13 @@ const SelectedItemsPanel = ({
                 {alloy.inches}" • {alloy.pcd} • {alloy.finish}
               </div>
             </div>
-            <Tooltip title="Remove from selection">
+            <Tooltip title="Remove this plan">
               <Button
                 size="small"
                 type="text"
                 danger
                 icon={<DeleteOutlined />}
-                onClick={() => onRemoveItem(alloy.id)}
+                onClick={() => onRemoveItem(item.planId)}
               />
             </Tooltip>
           </div>
@@ -109,7 +111,7 @@ const SelectedItemsPanel = ({
               size="small"
               placeholder="Select target finish"
               value={plan?.targetFinish}
-              onChange={(value) => onUpdatePlan(alloy.id, 'targetFinish', value)}
+              onChange={(value) => onUpdatePlan(item.planId, 'targetFinish', value)}
               className="w-full"
               status={!plan?.targetFinish ? 'warning' : ''}
               notFoundContent="No other finishes available for this product"
@@ -127,14 +129,20 @@ const SelectedItemsPanel = ({
             </Select>
             
             <div className="flex gap-2">
-              <InputNumber
+              <Input
                 size="small"
-                min={1}
+                type="number"
+                min="1"
                 max={totalStock}
                 value={plan?.quantity || 1}
-                onChange={(value) => onUpdatePlan(alloy.id, 'quantity', value)}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 1
+                  const clampedValue = Math.max(1, Math.min(value, totalStock))
+                  onUpdatePlan(item.planId, 'quantity', clampedValue)
+                }}
                 className="flex-1"
                 addonBefore="Qty"
+                placeholder="Enter quantity"
               />
               {isConfigured && (
                 <Tag color="success" icon={<CheckCircleOutlined />}>
@@ -243,7 +251,7 @@ const SelectedItemsPanel = ({
           // Regular list for small number of items
           <div className="overflow-y-auto h-full">
             {selectedItems.map((item, index) => (
-              <div key={item.id} className="px-3 py-2">
+              <div key={item.planId} className="px-3 py-2">
                 <ItemRow index={index} style={{}} />
               </div>
             ))}
