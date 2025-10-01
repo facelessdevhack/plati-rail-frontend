@@ -505,3 +505,31 @@ export const getAllDealersOrders = createAsyncThunk(
     }
   }
 )
+
+export const deletePaymentEntryAPI = async ({ paymentId, reason }) => {
+  try {
+    const response = await client.delete(`entries/remove-payment-entry`, {
+      data: {
+        paymentId,
+        reason
+      }
+    })
+    console.log(response, 'DELETE PAYMENT ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('DELETE PAYMENT ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+export const checkMultipleEntriesAPI = async ({ entryIds, entryType }) => {
+  try {
+    const response = await client.post('/entries/check-multiple-entries', {
+      entryIds,
+      entryType
+    })
+    return response.data
+  } catch (error) {
+    throw error
+  }
+}

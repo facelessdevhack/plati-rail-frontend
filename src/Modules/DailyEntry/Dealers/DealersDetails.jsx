@@ -41,7 +41,9 @@ import {
   getAllEntriesAdmin,
   getAllPaymentMethods,
   getMiddleDealers,
-  getPaymentEntries
+  getPaymentEntries,
+  checkMultipleEntriesAPI,
+  deletePaymentEntryAPI
 } from '../../../redux/api/entriesAPI'
 
 import Button from '../../../Core/Components/CustomButton'
@@ -80,6 +82,8 @@ const AdminDealerDetails = () => {
   const [middleDealerId, setMiddleDealerId] = useState(null)
   const [loader, setLoader] = useState(false)
   const [editingEntry, setEditingEntry] = useState(null)
+  const [selectedEntries, setSelectedEntries] = useState([])
+  const [selectedPayments, setSelectedPayments] = useState([])
   const { user } = useSelector(state => state.userDetails)
 
   const navigate = useNavigate()
@@ -257,6 +261,125 @@ const AdminDealerDetails = () => {
       setLoader(false)
       console.log(e, 'CHECK ENTRY ERROR')
     }
+  }
+// Delete Payment Entry Function
+  const handleDeletePaymentEntry = async (record) => {
+    Modal.confirm({
+      title: 'Delete Payment Entry',
+      content: (
+        <div>
+          <p>Are you sure you want to delete this payment entry?</p>
+          <p><strong>Description:</strong> {record.description}</p>
+          <p><strong>Amount:</strong> {formatINR(record.amount)}</p>
+          <p><strong>Date:</strong> {moment(record.paymentDate).format('DD/MM/YYYY')}</p>
+          <p className="text-red-500 text-sm">
+            Note: This entry will be archived and can be restored if needed.
+          </p>
+        </div>
+      ),
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setLoader(true)
+          const response = await deletePaymentEntryAPI({
+            paymentId: record.id,
+            reason: 'Deleted by admin from dealer details page'
+          })
+          
+          if (response.data?.message) {
+            message.success('Payment entry deleted and archived successfully!')
+            // Refresh the payment entries
+            getPaymentEntries({ dealerId: id })
+            getDealerInfo() // Refresh dealer info to update balance
+          } else {
+            message.error('Failed to delete payment entry')
+          }
+        } catch (error) {
+          console.error('Error deleting payment entry:', error)
+          message.error('Failed to delete payment entry')
+        } finally {
+          setLoader(false)
+        }
+      }
+    })
+  }
+
+  // Multi-select entry check function
+  const handleCheckMultipleEntries = async () => {
+    if (selectedEntries.length === 0) {
+      message.warning('Please select at least one entry to check')
+      return
+    }
+
+    try {
+      setLoader(true)
+      const response = await checkMultipleEntriesAPI({
+        entryIds: selectedEntries,
+        entryType: 1 // Regular entries
+      })
+
+      if (response) {
+        message.success(`${response.checkedCount || selectedEntries.length} entries checked successfully`)
+        setSelectedEntries([])
+        setCheckedEntry(!checkedEntry)
+        setLoader(false)
+      }
+    } catch (e) {
+      setLoader(false)
+      message.error('Failed to check entries')
+      console.log(e, 'MULTI-CHECK ENTRY ERROR')
+    }
+  }
+
+  // Multi-select payment check function
+  const handleCheckMultiplePayments = async () => {
+    if (selectedPayments.length === 0) {
+      message.warning('Please select at least one payment to check')
+      return
+    }
+
+    try {
+      setLoader(true)
+      const response = await checkMultipleEntriesAPI({
+        entryIds: selectedPayments,
+        entryType: 2 // Payment entries
+      })
+
+      if (response) {
+        message.success(`${response.checkedCount || selectedPayments.length} payments checked successfully`)
+        setSelectedPayments([])
+        setCheckedEntry(!checkedEntry)
+        setLoader(false)
+      }
+    } catch (e) {
+      setLoader(false)
+      message.error('Failed to check payments')
+      console.log(e, 'MULTI-CHECK PAYMENT ERROR')
+    }
+  }
+
+  // Handle selection change for entries
+  const handleEntrySelectionChange = (selectedRowKeys) => {
+    setSelectedEntries(selectedRowKeys)
+  }
+
+  // Handle selection change for payments
+  const handlePaymentSelectionChange = (selectedRowKeys) => {
+    setSelectedPayments(selectedRowKeys)
+  }
+
+  // Select all unchecked entries
+  const handleSelectAllUncheckedEntries = () => {
+    const uncheckedEntries = filteredDealers.filter(entry => entry.isChecked === 0).map(entry => entry.entryId)
+    setSelectedEntries(uncheckedEntries)
+  }
+
+  // Select all unchecked payments
+  const handleSelectAllUncheckedPayments = () => {
+    const uncheckedPayments = filteredPayments.filter(payment => payment.isPaid === 0).map(payment => payment.id)
+    setSelectedPayments(uncheckedPayments)
   }
 
   const handleDownloadReport = async ({
@@ -448,6 +571,44 @@ const AdminDealerDetails = () => {
 
   // Columns for Entries
   const columns = [
+    ...(isAdmin
+      ? [
+          {
+            title: () => (
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={selectedEntries.length > 0 && selectedEntries.length === filteredDealers.filter(entry => entry.isChecked === 0).length}
+                  onChange={handleSelectAllUncheckedEntries}
+                  disabled={filteredDealers.filter(entry => entry.isChecked === 0).length === 0}
+                  className="cursor-pointer"
+                />
+              </div>
+            ),
+            dataIndex: 'entryId',
+            key: 'entryId',
+            render: (text, record) => (
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={selectedEntries.includes(text)}
+                  onChange={() => {
+                    if (selectedEntries.includes(text)) {
+                      setSelectedEntries(selectedEntries.filter(id => id !== text))
+                    } else {
+                      setSelectedEntries([...selectedEntries, text])
+                    }
+                  }}
+                  disabled={record.isChecked === 1}
+                  className="cursor-pointer"
+                />
+              </div>
+            ),
+            width: 60,
+            align: 'center'
+          }
+        ]
+      : []),
     {
       title: 'Date',
       dataIndex: 'date',
@@ -546,6 +707,44 @@ const AdminDealerDetails = () => {
 
   // Columns for Payments
   const paymentColumns = [
+    ...(isAdmin
+      ? [
+          {
+            title: () => (
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={selectedPayments.length > 0 && selectedPayments.length === filteredPayments.filter(payment => payment.isPaid === 0).length}
+                  onChange={handleSelectAllUncheckedPayments}
+                  disabled={filteredPayments.filter(payment => payment.isPaid === 0).length === 0}
+                  className="cursor-pointer"
+                />
+              </div>
+            ),
+            dataIndex: 'id',
+            key: 'id',
+            render: (text, record) => (
+              <div className="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={selectedPayments.includes(text)}
+                  onChange={() => {
+                    if (selectedPayments.includes(text)) {
+                      setSelectedPayments(selectedPayments.filter(id => id !== text))
+                    } else {
+                      setSelectedPayments([...selectedPayments, text])
+                    }
+                  }}
+                  disabled={record.isPaid === 1}
+                  className="cursor-pointer"
+                />
+              </div>
+            ),
+            width: 60,
+            align: 'center'
+          }
+        ]
+      : []),
     {
       title: 'Date',
       dataIndex: 'paymentDate',
@@ -598,6 +797,21 @@ const AdminDealerDetails = () => {
     },
     ...(isAdmin
       ? [
+          {
+            title: 'Actions',
+            key: 'actions',
+            render: (text, record) => (
+              <Button
+                size="slim"
+                padding="slim"
+                type="primary"
+                danger
+                onClick={() => handleDeletePaymentEntry(record)}
+              >
+                Delete
+              </Button>
+            )
+          },
           {
             title: 'Checked',
             dataIndex: 'isPaid',
@@ -675,6 +889,29 @@ const AdminDealerDetails = () => {
 
         return (
           <div className='pt-6'>
+            {isAdmin && selectedEntries.length > 0 && (
+              <div className='mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <span className='text-blue-800 font-medium'>
+                    {selectedEntries.length} entr{selectedEntries.length > 1 ? 'ies' : 'y'} selected
+                  </span>
+                  <AntButton
+                    type='primary'
+                    size='small'
+                    onClick={handleCheckMultipleEntries}
+                    className='bg-blue-600 border-blue-600 hover:bg-blue-700'
+                  >
+                    Check Selected
+                  </AntButton>
+                  <AntButton
+                    size='small'
+                    onClick={() => setSelectedEntries([])}
+                  >
+                    Clear Selection
+                  </AntButton>
+                </div>
+              </div>
+            )}
             <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
               <div className='flex-1 max-w-md'>
                 <Search
@@ -763,6 +1000,29 @@ const AdminDealerDetails = () => {
         )
         return (
           <div className='pt-6'>
+            {isAdmin && selectedPayments.length > 0 && (
+              <div className='mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <span className='text-green-800 font-medium'>
+                    {selectedPayments.length} payment{selectedPayments.length > 1 ? 's' : ''} selected
+                  </span>
+                  <AntButton
+                    type='primary'
+                    size='small'
+                    onClick={handleCheckMultiplePayments}
+                    className='bg-green-600 border-green-600 hover:bg-green-700'
+                  >
+                    Check Selected
+                  </AntButton>
+                  <AntButton
+                    size='small'
+                    onClick={() => setSelectedPayments([])}
+                  >
+                    Clear Selection
+                  </AntButton>
+                </div>
+              </div>
+            )}
             <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
               <div className='flex-1 max-w-md'>
                 <Search
@@ -944,9 +1204,13 @@ const AdminDealerDetails = () => {
       
       {/* Main Content */}
       <div className='content-section'>
-        <Tabs 
-          activeKey={activeTab.toString()} 
-          onChange={(key) => setActiveTab(parseInt(key))}
+        <Tabs
+          activeKey={activeTab.toString()}
+          onChange={(key) => {
+            setActiveTab(parseInt(key))
+            setSelectedEntries([])
+            setSelectedPayments([])
+          }}
           size='large'
           className='professional-tabs'
           items={[
