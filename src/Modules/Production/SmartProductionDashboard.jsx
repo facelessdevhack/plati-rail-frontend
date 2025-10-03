@@ -250,52 +250,78 @@ const SmartProductionDashboard = () => {
     (sourceAlloy, excludeFinishesForAlloy = []) => {
       if (!stockManagementData || !sourceAlloy) return []
 
-      // Extract base product specification from productName (everything except the finish)
-      const getBaseProduct = (productName, finish) => {
-        if (!productName || !finish) return productName
-        // Remove the finish from the end of productName to get base specification
-        return productName
-          .replace(
-            new RegExp(
-              `\\s*${finish.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`
-            ),
-            ''
-          )
-          .trim()
-      }
+      console.log('🔍 Finding finishes for:', sourceAlloy.productName, {
+        modelId: sourceAlloy.modelId,
+        inchesId: sourceAlloy.inchesId,
+        pcdId: sourceAlloy.pcdId,
+        holesId: sourceAlloy.holesId,
+        cbId: sourceAlloy.cbId,
+        widthId: sourceAlloy.widthId,
+        offsetId: sourceAlloy.offsetId,
+        finishId: sourceAlloy.finishId
+      })
 
-      const sourceBaseProduct = getBaseProduct(
-        sourceAlloy.productName,
-        sourceAlloy.finish
-      )
+      // Find all alloys with the EXACT same specification IDs but different finishes
+      const matchedAlloys = stockManagementData.filter(alloy => {
+        // Match by specification IDs (model, inches, pcd, holes, cb, width, offset)
+        // Use modelId if available, otherwise fall back to modelName
+        const modelMatch = sourceAlloy.modelId
+          ? alloy.modelId === sourceAlloy.modelId
+          : alloy.modelName === sourceAlloy.modelName
 
-      // Find all alloys with the same base product specification but different finishes
-      const availableFinishes = stockManagementData
-        .filter(alloy => {
-          const alloyBaseProduct = getBaseProduct(
-            alloy.productName,
-            alloy.finish
-          )
+        const sameSpecs =
+          modelMatch &&
+          alloy.inchesId === sourceAlloy.inchesId &&
+          alloy.pcdId === sourceAlloy.pcdId &&
+          alloy.holesId === sourceAlloy.holesId &&
+          alloy.cbId === sourceAlloy.cbId &&
+          alloy.widthId === sourceAlloy.widthId &&
+          alloy.offsetId === sourceAlloy.offsetId
 
-          return (
-            alloyBaseProduct === sourceBaseProduct && // Same base product specification
-            alloy.finish !== sourceAlloy.finish && // Different finish
-            !excludeFinishesForAlloy.includes(alloy.finish) && // Not already selected for this alloy
-            (alloy.inHouseStock || 0) >= 0 // Include all finishes (even with 0 stock for conversion targets)
+        const differentFinish =
+          alloy.finishId !== sourceAlloy.finishId &&
+          alloy.finish !== sourceAlloy.finish
+        const notExcluded = !excludeFinishesForAlloy.includes(alloy.finish)
+
+        if (sameSpecs && differentFinish) {
+          console.log(
+            `  Match: ${alloy.productName} | Finish: ${
+              alloy.finish
+            } | Excluded: ${!notExcluded}`
           )
-        })
+        }
+
+        return (
+          sameSpecs &&
+          differentFinish &&
+          notExcluded &&
+          (alloy.inHouseStock || 0) >= 0
+        )
+      })
+
+      console.log(`Total matches before dedup: ${matchedAlloys.length}`)
+
+      const availableFinishes = matchedAlloys
         .map(alloy => ({
           value: alloy.finish,
           label: alloy.finish,
           stock: alloy.inHouseStock || 0,
           alloyId: alloy.id
         }))
-        .filter(
-          (finish, index, arr) =>
-            // Remove duplicates by finish name
-            arr.findIndex(f => f.value === finish.value) === index
-        )
+        .filter((finish, index, arr) => {
+          // Remove duplicates by finish name
+          const firstIndex = arr.findIndex(f => f.value === finish.value)
+          if (firstIndex !== index) {
+            console.log(`  Duplicate removed: ${finish.value}`)
+          }
+          return firstIndex === index
+        })
         .sort((a, b) => a.label.localeCompare(b.label))
+
+      console.log(
+        `Final finishes (${availableFinishes.length}):`,
+        availableFinishes.map(f => f.label)
+      )
 
       return availableFinishes
     },

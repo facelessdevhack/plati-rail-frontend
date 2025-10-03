@@ -313,11 +313,17 @@ const AlloySelection = () => {
           type='primary'
           size='small'
           icon={<PlusOutlined />}
-          onClick={() => {
+          onClick={async () => {
             setSelectedAlloy(record)
             setCreatePlanModalVisible(true)
             // Fetch conversion options for this alloy
-            dispatch(getConversionOptions({ alloyId: record.id }))
+            console.log('Fetching conversion options for alloy:', record.id, record.productName)
+            const result = await dispatch(getConversionOptions({ alloyId: record.id }))
+            console.log('Conversion options result:', result)
+            if (result.payload) {
+              console.log('Conversion options data:', result.payload.data)
+              console.log('Number of options:', result.payload.data?.length)
+            }
           }}
           className='w-full'
         >
@@ -712,11 +718,15 @@ const AlloySelection = () => {
               <Select
                 showSearch
                 placeholder='Select target alloy finish to convert to (same specifications, different finish)'
-                optionFilterProp='children'
-                filterOption={(input, option) =>
-                  option?.children?.props?.children?.[0]?.props?.children?.toLowerCase()?.includes(input.toLowerCase()) ||
-                  option?.children?.props?.children?.[1]?.props?.children?.toLowerCase()?.includes(input.toLowerCase())
-                }
+                filterOption={(input, option) => {
+                  const alloy = conversionOptions?.find(a => a.id === option.value)
+                  if (!alloy) return false
+                  const searchText = input.toLowerCase()
+                  return (
+                    alloy.finishName?.toLowerCase()?.includes(searchText) ||
+                    alloy.productName?.toLowerCase()?.includes(searchText)
+                  )
+                }}
                 size='large'
                 loading={loading}
                 notFoundContent={
@@ -725,23 +735,29 @@ const AlloySelection = () => {
                     : 'Loading...'
                 }
               >
-                {(conversionOptions || []).map(alloy => (
-                  <Option key={alloy.id} value={alloy.id}>
-                    <div className='py-1'>
-                      <div className='font-semibold text-gray-800'>{alloy.productName}</div>
-                      <div className='text-xs text-gray-500 flex items-center justify-between'>
-                        <span>{alloy.finishName} finish</span>
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          (alloy.totalStock || 0) > 0 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          Stock: {alloy.totalStock || 0}
-                        </span>
-                      </div>
-                    </div>
-                  </Option>
-                ))}
+                {(() => {
+                  console.log('Rendering conversion options:', conversionOptions)
+                  return (conversionOptions || []).map((alloy, index) => {
+                    console.log(`Option ${index}:`, alloy.id, alloy.productName, alloy.finishName)
+                    return (
+                      <Option key={alloy.id || `option-${index}`} value={alloy.id}>
+                        <div className='py-1'>
+                          <div className='font-semibold text-gray-800'>{alloy.productName}</div>
+                          <div className='text-xs text-gray-500 flex items-center justify-between'>
+                            <span>{alloy.finishName} finish</span>
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              (alloy.totalStock || 0) > 0
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              Stock: {alloy.totalStock || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </Option>
+                    )
+                  })
+                })()}
               </Select>
             </Form.Item>
 
