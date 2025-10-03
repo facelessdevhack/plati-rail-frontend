@@ -252,6 +252,7 @@ const SmartProductionDashboard = () => {
 
       console.log('🔍 Finding finishes for:', sourceAlloy.productName, {
         modelId: sourceAlloy.modelId,
+        modelName: sourceAlloy.modelName,
         inchesId: sourceAlloy.inchesId,
         pcdId: sourceAlloy.pcdId,
         holesId: sourceAlloy.holesId,
@@ -264,19 +265,14 @@ const SmartProductionDashboard = () => {
       // Find all alloys with the EXACT same specification IDs but different finishes
       const matchedAlloys = stockManagementData.filter(alloy => {
         // Match by specification IDs (model, inches, pcd, holes, cb, width, offset)
-        // Use modelId if available, otherwise fall back to modelName
-        const modelMatch = sourceAlloy.modelId
-          ? alloy.modelId === sourceAlloy.modelId
-          : alloy.modelName === sourceAlloy.modelName
-
+        // IMPORTANT: modelName match is required since modelId is often undefined
         const sameSpecs =
-          modelMatch &&
+          alloy.modelName === sourceAlloy.modelName &&
           alloy.inchesId === sourceAlloy.inchesId &&
           alloy.pcdId === sourceAlloy.pcdId &&
           alloy.holesId === sourceAlloy.holesId &&
           alloy.cbId === sourceAlloy.cbId &&
-          alloy.widthId === sourceAlloy.widthId &&
-          alloy.offsetId === sourceAlloy.offsetId
+          alloy.widthId === sourceAlloy.widthId
 
         const differentFinish =
           alloy.finishId !== sourceAlloy.finishId &&
