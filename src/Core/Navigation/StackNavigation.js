@@ -31,6 +31,7 @@ import AddDailyEntryCAP from '../../Modules/DataEntry/AddDailyEntry-CAP'
 import AddDailyEntryPPF from '../../Modules/DataEntry/AddDailyEntry-PPF'
 import AddChargesEntry from '../../Modules/DataEntry/AddChargesEntry'
 import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
+import { dataUserSiderRoutes } from '../../Modules/Layout/Routes/dataUserSiderRoutes'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
 import DealerMetrics from '../../Modules/Admin/DealerMetrics'
 import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
@@ -68,6 +69,8 @@ const StackNavigation = () => {
           navigate('/admin-dashboard')
         } else if (roleId === 3) {
           navigate('/entry-dashboard')
+        } else if (roleId === 6) {
+          navigate('/production-dashboard')
         } else if (roleId === 1) {
           navigate('/inventory-dashboard')
         } else {
@@ -439,6 +442,7 @@ const StackNavigation = () => {
         }
       />
 
+
       {/* Entry Inventory Management System */}
       <Route
         path='/entry-inventory-system'
@@ -471,10 +475,10 @@ const StackNavigation = () => {
       <Route
         path='/production-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
             <AdminLayout
               title='Production Dashboard'
-              items={adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<ProductionDashboard />}
             />
           </PrivateRoute>
@@ -483,10 +487,10 @@ const StackNavigation = () => {
       <Route
         path='/production-plans'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
             <AdminLayout
               title='Production Plans'
-              items={adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<ProductionListing />}
             />
           </PrivateRoute>
@@ -495,18 +499,22 @@ const StackNavigation = () => {
       <Route
         path='/production-alloys'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
-            <AlloySelection />
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Alloy Selection'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<AlloySelection />}
+            />
           </PrivateRoute>
         }
       />
       <Route
         path='/production-presets'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
             <AdminLayout
               title='Preset Management'
-              items={adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<PresetManagement />}
             />
           </PrivateRoute>
@@ -515,16 +523,24 @@ const StackNavigation = () => {
       <Route
         path='/smart-production'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
-            <SmartProductionDashboard />
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Smart Production Dashboard'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<SmartProductionDashboard />}
+            />
           </PrivateRoute>
         }
       />
       <Route
         path='/job-cards'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
-            <JobCardListing />
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Job Cards'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              content={<JobCardListing />}
+            />
           </PrivateRoute>
         }
       />
