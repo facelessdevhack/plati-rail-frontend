@@ -271,7 +271,6 @@ const SmartProductionDashboard = () => {
           alloy.inchesId === sourceAlloy.inchesId &&
           alloy.pcdId === sourceAlloy.pcdId &&
           alloy.holesId === sourceAlloy.holesId &&
-          alloy.cbId === sourceAlloy.cbId &&
           alloy.widthId === sourceAlloy.widthId
 
         const differentFinish =
