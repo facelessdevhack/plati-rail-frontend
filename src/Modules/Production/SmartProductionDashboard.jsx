@@ -1271,6 +1271,52 @@ const SmartProductionDashboard = () => {
                 </div>
               </div>
 
+              {/* Available Finishes */}
+              <div className='bg-purple-50 p-4 rounded-lg'>
+                <h4 className='font-semibold text-purple-800 mb-3'>
+                  Available Finishes
+                </h4>
+                {(() => {
+                  const availableFinishes = getAvailableTargetFinishes(selectedProductInfo)
+
+                  if (availableFinishes.length === 0) {
+                    return (
+                      <div className='text-sm text-gray-500 text-center py-2'>
+                        No other finishes available for this product specification
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className='space-y-2'>
+                      {availableFinishes.map((finish, index) => (
+                        <div
+                          key={finish.value}
+                          className='flex items-center justify-between p-2 bg-white rounded border border-purple-200'
+                        >
+                          <div className='flex items-center gap-2'>
+                            <span className='text-sm font-medium text-gray-800'>
+                              {finish.label}
+                            </span>
+                          </div>
+                          <Tag
+                            color={
+                              finish.stock > 10
+                                ? 'green'
+                                : finish.stock > 0
+                                ? 'orange'
+                                : 'red'
+                            }
+                          >
+                            {finish.stock} units
+                          </Tag>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+
               {/* Production Status - For all alloys */}
               <div className='bg-blue-50 p-4 rounded-lg'>
                 <h4 className='font-semibold text-blue-800 mb-3'>

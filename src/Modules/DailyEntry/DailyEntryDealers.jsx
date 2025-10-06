@@ -82,17 +82,22 @@ import {
   Typography,
   Button,
   Avatar,
-  Tooltip
+  Tooltip,
+  message,
+  Modal
 } from 'antd';
 import { 
   SearchOutlined, 
   UserOutlined, 
   SyncOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
+import { Checkbox } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllDealers } from '../../redux/api/stockAPI';
+import { client } from '../../Utils/axiosClient';
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -108,10 +113,12 @@ const AdminDailyEntryDealersPage = () => {
     const [pageSize, setPageSize] = useState(20);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+    const [recalculatingAll, setRecalculatingAll] = useState(false);
 
     useEffect(() => {
         fetchDealers();
-    }, [dispatch, currentPage, pageSize, searchQuery]);
+    }, [dispatch, currentPage, pageSize, searchQuery, showOverdueOnly]);
 
     const fetchDealers = async () => {
         setLoading(true);
@@ -122,6 +129,9 @@ const AdminDailyEntryDealersPage = () => {
             }
             if (searchQuery) {
                 params.search = searchQuery;
+            }
+            if (showOverdueOnly) {
+                params.overdue = true;
             }
             await dispatch(getAllDealers(params));
         } catch (error) {
@@ -150,6 +160,75 @@ const AdminDailyEntryDealersPage = () => {
         console.log('Selected dealer:', dealer);
         navigate(`/admin-dealers/${dealer.value}`, {
             state: { id: dealer.value, name: dealer.label },
+        });
+    };
+
+    // Handle recalculate all orders
+    const handleRecalculateAll = async () => {
+        const hide = message.loading('Recalculating orders for all dealers...', 0);
+        
+        try {
+            setRecalculatingAll(true);
+            const response = await client.post('/entries/recalculate-all-orders');
+            
+            hide(); // Close loading message
+            
+            if (response.data && response.data.success) {
+                const { summary } = response.data;
+                
+                // Show detailed success message
+                message.success({
+                    content: `Successfully recalculated orders for ${summary.successful.length} out of ${summary.totalDealers} dealers`,
+                    duration: 5
+                });
+                
+                // Show failures if any
+                if (summary.failed.length > 0) {
+                    message.warning({
+                        content: `Warning: ${summary.failed.length} dealers failed - check console for details`,
+                        duration: 8
+                    });
+                    console.error('Failed dealers:', summary.failed);
+                }
+                
+                // Refresh dealer list to get updated data
+                await fetchDealers();
+            }
+        } catch (error) {
+            hide(); // Close loading message
+            message.error({
+                content: 'Failed to recalculate orders. Please try again.',
+                duration: 5
+            });
+            console.error('Recalculation error:', error);
+        } finally {
+            setRecalculatingAll(false);
+        }
+    };
+
+    // Confirmation modal for recalculate all
+    const confirmRecalculateAll = () => {
+        if (recalculatingAll) {
+            message.info('Order recalculation is already in progress');
+            return;
+        }
+        
+        Modal.confirm({
+            title: 'Recalculate All Dealer Orders?',
+            content: (
+                <div>
+                    <p>This will recalculate orders for all dealers.</p>
+                    <p className="text-orange-600 font-semibold mt-2">
+                        ⚠️ This may take several minutes. Please do not close this page.
+                    </p>
+                </div>
+            ),
+            okText: 'Yes, Recalculate',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: handleRecalculateAll,
+            maskClosable: false,
+            keyboard: false
         });
     };
 
@@ -223,6 +302,45 @@ const AdminDailyEntryDealersPage = () => {
             sorter: (a, b) => (a.uncheckedCount || 0) - (b.uncheckedCount || 0),
         },
         {
+            title: 'Overdue Amount',
+            dataIndex: 'overdueAmount',
+            key: 'overdueAmount',
+            width: 180,
+            render: (amount) => {
+                const overdueAmt = parseFloat(amount) || 0;
+                if (overdueAmt > 0) {
+                    return (
+                        <div className='flex items-center gap-2'>
+                            <Tag 
+                                color='error'
+                                style={{
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    padding: '4px 8px'
+                                }}
+                            >
+                                ₹{overdueAmt.toLocaleString('en-IN')}
+                            </Tag>
+                            <span className='text-xs text-red-600'>(&gt;30 days)</span>
+                        </div>
+                    );
+                }
+                return (
+                    <Tag 
+                        style={{
+                            backgroundColor: '#F0FDF4',
+                            color: '#059669',
+                            border: '1px solid #BBF7D0',
+                            fontWeight: '500'
+                        }}
+                    >
+                        No overdue
+                    </Tag>
+                );
+            },
+            sorter: (a, b) => (parseFloat(a.overdueAmount) || 0) - (parseFloat(b.overdueAmount) || 0),
+        },
+        {
             title: 'Actions',
             key: 'actions',
             width: 100,
@@ -274,19 +392,47 @@ const AdminDailyEntryDealersPage = () => {
                             className='w-full'
                         />
                     </Col>
-                    <Col xs={24} md={8} className='text-right'>
-                        <Button 
-                            icon={<SyncOutlined />} 
-                            onClick={fetchDealers}
-                            loading={loading}
-                            style={{
-                                backgroundColor: '#F9FAFB',
-                                borderColor: '#D1D5DB',
-                                color: '#374151'
+                    <Col xs={24} md={8} className='flex items-center justify-end gap-3'>
+                        <Checkbox
+                            checked={showOverdueOnly}
+                            onChange={(e) => {
+                                setShowOverdueOnly(e.target.checked);
+                                setCurrentPage(1);
                             }}
                         >
-                            Refresh
-                        </Button>
+                            Show Overdue Only
+                        </Checkbox>
+                    </Col>
+                    <Col xs={24} md={24} className='flex items-center justify-end gap-3'>
+                        <Tooltip title='Refresh dealer list'>
+                            <Button 
+                                icon={<SyncOutlined />} 
+                                onClick={fetchDealers}
+                                loading={loading}
+                                style={{
+                                    backgroundColor: '#F9FAFB',
+                                    borderColor: '#D1D5DB',
+                                    color: '#374151'
+                                }}
+                            >
+                                Refresh
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title='Recalculate orders for all dealers (may take several minutes)'>
+                            <Button 
+                                icon={<ReloadOutlined spin={recalculatingAll} />}
+                                onClick={confirmRecalculateAll}
+                                loading={recalculatingAll}
+                                danger
+                                style={{
+                                    backgroundColor: recalculatingAll ? '#FEF2F2' : '#FFF',
+                                    borderColor: '#DC2626',
+                                    color: '#DC2626'
+                                }}
+                            >
+                                Refresh All Orders
+                            </Button>
+                        </Tooltip>
                     </Col>
                 </Row>
             </div>
