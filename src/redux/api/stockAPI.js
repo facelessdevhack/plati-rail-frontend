@@ -3,10 +3,12 @@ import { client, getError } from '../../Utils/axiosClient'
 
 export const getAllAlloys = createAsyncThunk(
   'stock/getAllAlloys',
-  async ({ page=1, limit=10 }, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       // Use stock management API instead of complex alloys API
-      const response = await client.get(`/alloys/stock/management?page=${page}&limit=${limit}`)
+      const response = await client.get(
+        `/alloys/stock/management?page=${page}&limit=${limit}`
+      )
       console.log(response.data, 'DATA OF ALLOYS FROM STOCK API')
       // Transform the response to match expected format
       return response.data.data || []
@@ -31,7 +33,10 @@ export const getAllFinishes = createAsyncThunk(
 
 export const getAllDealers = createAsyncThunk(
   'dealers/getAllDealers',
-  async ({ id, page = 1, limit = 10, search, overdue }, { rejectWithValue }) => {
+  async (
+    { id, page = 1, limit = 10, search, overdue },
+    { rejectWithValue }
+  ) => {
     try {
       let url = `/master/all-dealers?page=${page}&limit=${limit}`
       if (id) {
@@ -90,9 +95,9 @@ export const getAllSizes = createAsyncThunk(
   'stock/getAllSizes',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Calling getAllSizes API...')
+      // console.log('Calling getAllSizes API...')
       const response = await client.get('/alloys/sizes')
-      console.log('getAllSizes response:', response.data)
+      // console.log('getAllSizes response:', response.data)
       return response.data
     } catch (e) {
       console.error('getAllSizes error:', e)
@@ -105,9 +110,9 @@ export const getAllPcd = createAsyncThunk(
   'stock/getAllPcd',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Calling getAllPcd API...')
+      // console.log('Calling getAllPcd API...')
       const response = await client.get('/alloys/pcds')
-      console.log('getAllPcd response:', response.data)
+      // console.log('getAllPcd response:', response.data)
       return response.data
     } catch (e) {
       console.error('getAllPcd error:', e)
@@ -302,12 +307,22 @@ export const addModel = createAsyncThunk(
 // Stock Management API Functions
 export const getStockManagement = createAsyncThunk(
   'stock/getStockManagement',
-  async ({ page = 1, limit = 50, search = '', filter = 'all', pcd = null, inches = null }, { rejectWithValue }) => {
+  async (
+    {
+      page = 1,
+      limit = 50,
+      search = '',
+      filter = 'all',
+      pcd = null,
+      inches = null
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const params = { page, limit, search, filter }
       if (pcd) params.pcd = pcd
       if (inches) params.inches = inches
-      
+
       const response = await client.get(`/alloys/stock/management`, { params })
       return response.data
     } catch (error) {
@@ -318,7 +333,10 @@ export const getStockManagement = createAsyncThunk(
 
 export const updateStock = createAsyncThunk(
   'stock/updateStock',
-  async ({ alloyId, in_house_stock, showroom_stock, reason }, { rejectWithValue }) => {
+  async (
+    { alloyId, in_house_stock, showroom_stock, reason },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await client.put(`/alloys/stock/update/${alloyId}`, {
         in_house_stock,
@@ -349,6 +367,18 @@ export const deleteStockProduct = createAsyncThunk(
   async ({ alloyId }, { rejectWithValue }) => {
     try {
       const response = await client.delete(`/alloys/stock/delete/${alloyId}`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+export const getEntriesByProductId = createAsyncThunk(
+  'stock/getEntriesByProductId',
+  async ({ productId }, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/inventory/entries/${productId}`)
       return response.data
     } catch (error) {
       return rejectWithValue(getError(error))

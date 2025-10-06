@@ -518,42 +518,4 @@ export const getSalesPerformanceMetrics = createAsyncThunk(
 )
 
 // Get finish-specific sales metrics for Smart Production Dashboard
-export const getFinishSalesMetrics = createAsyncThunk(
-  'production/getFinishSalesMetrics',
-  async ({
-    modelName = '',
-    inches = '',
-    width = '',
-    pcd = '',
-    finish = '',
-    months = 6
-  }, { rejectWithValue }) => {
-    try {
-      const params = new URLSearchParams({
-        modelName,
-        inches,
-        width,
-        pcd,
-        finish,
-        months: months.toString()
-      })
-
-      console.log('📊 Fetching finish sales metrics:', { modelName, inches, width, pcd, finish, months })
-
-      const response = await client.get(`/production/finish-sales-metrics?${params}`)
-
-      console.log('📊 Finish sales metrics response:', response.data)
-      console.log('📊 Response structure:', {
-        success: response.data?.success,
-        data: response.data?.data,
-        error: response.data?.error,
-        message: response.data?.message
-      })
-
-      return response.data
-    } catch (error) {
-      console.error('📊 Error fetching finish sales metrics:', error)
-      return rejectWithValue(getError(error))
-    }
-  }
-)
+// getFinishSalesMetrics - REMOVED
