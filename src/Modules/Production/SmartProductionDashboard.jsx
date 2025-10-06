@@ -28,11 +28,13 @@ import {
   ClearOutlined,
   PlusCircleOutlined,
   SearchOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  DownOutlined,
+  UpOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { FixedSizeList as List } from 'react-window'
+import { VariableSizeList as List } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import Layout from '../Layout/layout'
 import AISuggestionsPanel from './AISuggestionsPanel'
@@ -81,6 +83,7 @@ const SmartProductionDashboard = () => {
   const [selectedProductInfo, setSelectedProductInfo] = useState(null)
   const [productionData, setProductionData] = useState([])
   const [loadingProductionData, setLoadingProductionData] = useState(false)
+  const [expandedRows, setExpandedRows] = useState(new Set())
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -724,6 +727,75 @@ const SmartProductionDashboard = () => {
   ])
 
   // Table row renderer for virtual list
+  // Toggle row expansion
+  const toggleRowExpansion = useCallback((alloyId) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(alloyId)) {
+        newSet.delete(alloyId)
+      } else {
+        newSet.add(alloyId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Add finish directly from expanded row
+  const handleAddFinishFromExpanded = useCallback((alloy, targetFinish) => {
+    const newPlanId = `plan-${Date.now()}-${planCounter}`
+    setPlanCounter(prev => prev + 1)
+
+    setConversionPlans(prev => ({
+      ...prev,
+      [newPlanId]: {
+        sourceAlloy: alloy,
+        originalAlloyId: alloy.id,
+        targetFinish: targetFinish,
+        quantity: 1
+      }
+    }))
+
+    setSelectedRows(prev => new Set([...prev, newPlanId]))
+  }, [planCounter])
+
+  // Calculate row size for variable height
+  const getItemSize = useCallback((index) => {
+    const alloy = filteredStockData[index]
+    if (!alloy) return 80
+
+    const isExpanded = expandedRows.has(alloy.id)
+    if (!isExpanded) return 80
+
+    const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
+    const availableFinishes = getAvailableTargetFinishes(alloy, selectedFinishes)
+
+    // Calculate height based on finishes and their production status
+    let totalHeight = 120 // Base expanded height
+
+    availableFinishes.forEach(finish => {
+      totalHeight += 44 // Base finish row height
+
+      // Check if this finish has production data
+      const finishAlloy = stockManagementData?.find(
+        a => a.modelName === alloy.modelName &&
+             a.inchesId === alloy.inchesId &&
+             a.pcdId === alloy.pcdId &&
+             a.holesId === alloy.holesId &&
+             a.widthId === alloy.widthId &&
+             a.finish === finish.value
+      )
+      const finishProductionData = finishAlloy
+        ? getAllProductionDataForAlloy(finishAlloy, productionData)
+        : null
+
+      if (finishProductionData && finishProductionData.totalPlans > 0) {
+        totalHeight += 30 // Additional height for production status
+      }
+    })
+
+    return totalHeight
+  }, [filteredStockData, expandedRows, getSelectedFinishesForAlloy, getAvailableTargetFinishes, stockManagementData, productionData, getAllProductionDataForAlloy])
+
   const Row = ({ index, style }) => {
     const alloy = filteredStockData[index]
     if (!alloy) return null
@@ -744,13 +816,16 @@ const SmartProductionDashboard = () => {
       selectedFinishes
     )
 
+    const isExpanded = expandedRows.has(alloy.id)
+
     return (
       <div
         style={style}
-        className={`flex items-center px-4 border-b ${
+        className={`border-b ${
           totalStock === 0 ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'
         } ${hasPlans ? 'bg-blue-50' : ''}`}
       >
+        <div className='flex items-center px-4 h-20'>
         {/* Add to Plan Button - 40px */}
         <div className='w-10 flex-shrink-0'>
           <Button
@@ -832,8 +907,17 @@ const SmartProductionDashboard = () => {
           )}
         </div>
 
-        {/* Info Button - 50px */}
-        <div className='w-[50px] flex-shrink-0 px-2 text-center'>
+        {/* Expand & Info Buttons - 90px */}
+        <div className='w-[90px] flex-shrink-0 px-2 flex gap-1 justify-center'>
+          <Button
+            size='small'
+            type='text'
+            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+            onClick={() => toggleRowExpansion(alloy.id)}
+            title={isExpanded ? 'Collapse' : 'Expand to see available finishes'}
+            className='text-gray-600 hover:bg-gray-100'
+            disabled={availableFinishes.length === 0}
+          />
           <Button
             size='small'
             type='text'
@@ -843,9 +927,95 @@ const SmartProductionDashboard = () => {
             className='text-blue-600 hover:bg-blue-50'
           />
         </div>
+        </div>
+
+        {/* Expanded Content */}
+        {isExpanded && availableFinishes.length > 0 && (
+          <div className='px-4 pb-3 bg-white border-t'>
+            <div className='text-xs font-semibold text-gray-700 mb-2 mt-2'>
+              Available Finishes for Conversion:
+            </div>
+            <div className='space-y-2'>
+              {availableFinishes.map((finish) => {
+                // Get production data for this specific finish variant
+                const finishAlloy = stockManagementData?.find(
+                  a => a.modelName === alloy.modelName &&
+                       a.inchesId === alloy.inchesId &&
+                       a.pcdId === alloy.pcdId &&
+                       a.holesId === alloy.holesId &&
+                       a.widthId === alloy.widthId &&
+                       a.finish === finish.value
+                )
+                const finishProductionData = finishAlloy
+                  ? getAllProductionDataForAlloy(finishAlloy, productionData)
+                  : null
+
+                return (
+                  <div
+                    key={finish.value}
+                    className='bg-purple-50 rounded border border-purple-200 overflow-hidden'
+                  >
+                    <div className='flex items-center justify-between p-2'>
+                      <div className='flex items-center gap-3'>
+                        <span className='text-sm font-medium text-gray-800'>
+                          {finish.label}
+                        </span>
+                        <Tag
+                          color={
+                            finish.stock > 10
+                              ? 'green'
+                              : finish.stock > 0
+                              ? 'orange'
+                              : 'red'
+                          }
+                        >
+                          {finish.stock} units in stock
+                        </Tag>
+                      </div>
+                      <Button
+                        size='small'
+                        type='primary'
+                        icon={<PlusCircleOutlined />}
+                        onClick={() => handleAddFinishFromExpanded(alloy, finish.value)}
+                        disabled={selectedFinishes.includes(finish.value)}
+                      >
+                        {selectedFinishes.includes(finish.value) ? 'Added' : 'Add to Plan'}
+                      </Button>
+                    </div>
+
+                    {/* Production Status for this finish */}
+                    {finishProductionData && finishProductionData.totalPlans > 0 && (
+                      <div className='px-2 pb-2 pt-1 border-t border-purple-200 bg-purple-25'>
+                        <div className='flex gap-2 text-xs'>
+                          <span className='text-gray-600'>Production:</span>
+                          <Tag color='blue' className='text-xs m-0'>
+                            {finishProductionData.totalPlans} plan{finishProductionData.totalPlans > 1 ? 's' : ''}
+                          </Tag>
+                          <Tag color='orange' className='text-xs m-0'>
+                            {finishProductionData.pendingQuantity} pending
+                          </Tag>
+                          <Tag color='green' className='text-xs m-0'>
+                            {finishProductionData.inProductionQuantity} in prod
+                          </Tag>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
+
+  // Reset list cache when expanded rows change
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.resetAfterIndex(0)
+    }
+  }, [expandedRows])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1005,48 +1175,60 @@ const SmartProductionDashboard = () => {
 
             {/* Collapsible Filters */}
             {showFilters && (
-              <div className='mt-3 pt-3 border-t flex gap-3'>
-                <Select
-                  placeholder='Filter by Size'
-                  value={filterSize}
-                  onChange={setFilterSize}
-                  allowClear
-                  className='w-32'
-                >
-                  {(allSizes || []).map(size => (
-                    <Option key={size.value} value={size.label}>
-                      {size.label}"
-                    </Option>
-                  ))}
-                </Select>
+              <div className='mt-3 pt-3 border-t flex gap-3 flex-wrap items-end'>
+                <div className='flex flex-col'>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>Size</label>
+                  <Select
+                    placeholder='Filter by Size'
+                    value={filterSize}
+                    onChange={setFilterSize}
+                    allowClear
+                    className='w-32'
+                  >
+                    {(allSizes || [])
+                      .slice()
+                      .sort((a, b) => parseFloat(a.label) - parseFloat(b.label))
+                      .map(size => (
+                        <Option key={size.value} value={size.label}>
+                          {size.label}"
+                        </Option>
+                      ))}
+                  </Select>
+                </div>
 
-                <Select
-                  placeholder='Filter by PCD'
-                  value={filterPcd}
-                  onChange={setFilterPcd}
-                  allowClear
-                  className='w-40'
-                >
-                  {(allPcd || []).map(pcd => (
-                    <Option key={pcd.value} value={pcd.label}>
-                      {pcd.label}
-                    </Option>
-                  ))}
-                </Select>
+                <div className='flex flex-col'>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>PCD</label>
+                  <Select
+                    placeholder='Filter by PCD'
+                    value={filterPcd}
+                    onChange={setFilterPcd}
+                    allowClear
+                    className='w-40'
+                  >
+                    {(allPcd || []).map(pcd => (
+                      <Option key={pcd.value} value={pcd.label}>
+                        {pcd.label}
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
 
-                <Select
-                  placeholder='Filter by Finish'
-                  value={filterFinish}
-                  onChange={setFilterFinish}
-                  allowClear
-                  className='w-40'
-                >
-                  {(allFinishes?.data || []).map(finish => (
-                    <Option key={finish.id} value={finish.finish}>
-                      {finish.finish}
-                    </Option>
-                  ))}
-                </Select>
+                <div className='flex flex-col'>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>Finish</label>
+                  <Select
+                    placeholder='Filter by Finish'
+                    value={filterFinish}
+                    onChange={setFilterFinish}
+                    allowClear
+                    className='w-40'
+                  >
+                    {(allFinishes?.data || []).map(finish => (
+                      <Option key={finish.id} value={finish.finish}>
+                        {finish.finish}
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
 
                 <Button
                   size='small'
@@ -1114,7 +1296,7 @@ const SmartProductionDashboard = () => {
                     ref={listRef}
                     height={height}
                     itemCount={filteredStockData.length}
-                    itemSize={60}
+                    itemSize={getItemSize}
                     width={width}
                   >
                     {Row}

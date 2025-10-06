@@ -31,7 +31,7 @@ export const getAllFinishes = createAsyncThunk(
 
 export const getAllDealers = createAsyncThunk(
   'dealers/getAllDealers',
-  async ({ id, page = 1, limit = 10, search }, { rejectWithValue }) => {
+  async ({ id, page = 1, limit = 10, search, overdue }, { rejectWithValue }) => {
     try {
       let url = `/master/all-dealers?page=${page}&limit=${limit}`
       if (id) {
@@ -39,6 +39,9 @@ export const getAllDealers = createAsyncThunk(
       }
       if (search) {
         url += `&search=${encodeURIComponent(search)}`
+      }
+      if (overdue) {
+        url += `&overdue=true`
       }
       const response = await client.get(url)
       return response.data
