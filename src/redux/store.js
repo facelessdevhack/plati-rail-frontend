@@ -19,6 +19,9 @@ const rootReducer = combineReducers({
   internalInventory: internalInventorySlice
 });
 
+console.log('🔍 Root reducer created:', Object.keys(rootReducer));
+console.log('🔍 productionSlice reducer:', productionSlice);
+
 const persistConfig = {
   key: 'root',
   version: 1,

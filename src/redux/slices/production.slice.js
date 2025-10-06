@@ -25,7 +25,8 @@ import {
   // AI suggestions
   getAIProductionSuggestions,
   // Sales metrics
-  getSalesPerformanceMetrics
+  getSalesPerformanceMetrics,
+  getFinishSalesMetrics
 } from "../api/productionAPI";
 
 const initialState = {
@@ -95,7 +96,12 @@ const initialState = {
     sortOrder: 'desc'
   },
   salesMetricsLoading: false,
-  
+
+  // Finish Sales Metrics (for Smart Production Dashboard)
+  finishSalesMetrics: {},
+  finishSalesMetricsLoading: false,
+  finishSalesMetricsError: null,
+
   // Filters and Search
   searchTerm: "",
   filters: {
@@ -116,7 +122,10 @@ const initialState = {
 
 const productionSlice = createSlice({
   name: "production",
-  initialState,
+  initialState: (() => {
+    console.log('🔍 Initializing production slice with initial state:', initialState)
+    return initialState
+  })(),
   reducers: {
     // UI state management
     setSearchTerm: (state, action) => {
@@ -520,6 +529,35 @@ const productionSlice = createSlice({
       .addCase(getSalesPerformanceMetrics.rejected, (state, action) => {
         state.salesMetricsLoading = false;
         state.error = action.payload;
+      })
+
+      // Finish Sales Metrics (for Smart Production Dashboard)
+      .addCase(getFinishSalesMetrics.pending, (state) => {
+        state.finishSalesMetricsLoading = true;
+        state.finishSalesMetricsError = null;
+      })
+      .addCase(getFinishSalesMetrics.fulfilled, (state, action) => {
+        state.finishSalesMetricsLoading = false;
+
+        console.log('🔍 Redux reducer received:', action.payload);
+
+        // Create a unique key for this finish
+        const finishKey = `${action.payload.data?.modelName}_${action.payload.data?.inches}_${action.payload.data?.width}_${action.payload.data?.pcd}_${action.payload.data?.finish}`;
+
+        console.log('🔍 Creating finishKey:', finishKey);
+        console.log('🔍 Storing data:', action.payload.data);
+
+        state.finishSalesMetrics = {
+          ...state.finishSalesMetrics,
+          [finishKey]: action.payload.data
+        };
+
+        console.log('🔍 Updated finishSalesMetrics state:', state.finishSalesMetrics);
+      })
+      .addCase(getFinishSalesMetrics.rejected, (state, action) => {
+        state.finishSalesMetricsLoading = false;
+        state.finishSalesMetricsError = action.payload;
+        console.log('❌ Redux reducer rejected:', action.payload);
       });
   },
 });

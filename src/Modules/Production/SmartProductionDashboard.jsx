@@ -16,7 +16,8 @@ import {
   Badge,
   Checkbox,
   Modal,
-  Divider
+  Divider,
+  Statistic
 } from 'antd'
 import {
   RocketOutlined,
@@ -48,12 +49,264 @@ import {
 import {
   createProductionPlan,
   getStepPresets,
-  getProductionPlansWithQuantities
+  getProductionPlansWithQuantities,
+  getFinishSalesMetrics
 } from '../../redux/api/productionAPI'
 
 const { Title, Text } = Typography
 const { Search } = Input
 const { Option } = Select
+
+// Sales Metrics Display Component
+const SalesMetricsDisplay = ({
+  alloy,
+  finish,
+  dispatch,
+  finishSalesMetrics,
+  finishSalesMetricsLoading,
+  finishSalesMetricsError
+}) => {
+  const [showDetails, setShowDetails] = useState(false)
+  const [fetchAttempted, setFetchAttempted] = useState(false)
+
+  // Create finishKey using IDs for exact matching
+  const finishKey = useMemo(() => {
+    if (!alloy?.modelId || !alloy?.inchesId || !alloy?.widthId || !alloy?.pcdId || !finish?.id) {
+      console.log('🔍 Missing IDs for finishKey:', {
+        modelId: alloy?.modelId,
+        inchesId: alloy?.inchesId,
+        widthId: alloy?.widthId,
+        pcdId: alloy?.pcdId,
+        finishId: finish?.id
+      })
+      return null
+    }
+    const key = `${alloy.modelId}_${alloy.inchesId}_${alloy.widthId}_${alloy.pcdId}_${finish.id}`
+    console.log('🔍 Created finishKey (using IDs):', key)
+    return key
+  }, [alloy?.modelId, alloy?.inchesId, alloy?.widthId, alloy?.pcdId, finish?.id])
+
+  const salesData = finishSalesMetrics?.[finishKey]
+  const hasLoaded = salesData || finishSalesMetricsError
+
+  console.log('🔍 SalesMetricsDisplay state:', {
+    finishKey,
+    salesData,
+    hasLoaded,
+    finishSalesMetricsLoading,
+    finishSalesMetricsError,
+    availableKeys: Object.keys(finishSalesMetrics || {}),
+    alloyIds: {
+      modelId: alloy?.modelId,
+      inchesId: alloy?.inchesId,
+      widthId: alloy?.widthId,
+      pcdId: alloy?.pcdId,
+      finishId: finish?.id
+    }
+  })
+
+  // Debounced fetch to prevent too many rapid calls
+  useEffect(() => {
+    if (!salesData && !fetchAttempted && finishKey) {
+      console.log('🚀 Triggering sales fetch for:', finishKey)
+      setFetchAttempted(true)
+
+      // Add small delay to batch multiple requests
+      const timeoutId = setTimeout(() => {
+        console.log('📡 Dispatching getFinishSalesMetrics with IDs:', {
+          modelId: alloy.modelId,
+          inchesId: alloy.inchesId,
+          widthId: alloy.widthId,
+          pcdId: alloy.pcdId,
+          finishId: finish.id
+        })
+        dispatch(
+          getFinishSalesMetrics({
+            modelId: alloy.modelId,
+            inchesId: alloy.inchesId,
+            widthId: alloy.widthId,
+            pcdId: alloy.pcdId,
+            finishId: finish.id,
+            months: 6
+          })
+        )
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [
+    alloy.modelName,
+    alloy.inches,
+    alloy.width,
+    alloy.pcd,
+    finish,
+    dispatch,
+    salesData,
+    fetchAttempted,
+    finishKey
+  ])
+
+  // Reset fetch flag when data is successfully loaded OR when key changes
+  useEffect(() => {
+    if (salesData && fetchAttempted) {
+      setFetchAttempted(false)
+    }
+  }, [salesData, fetchAttempted])
+
+  // Reset fetch flag when finishKey changes
+  useEffect(() => {
+    setFetchAttempted(false)
+  }, [finishKey])
+
+  // Early return if required props are missing (after all hooks)
+  if (!alloy || !finish || !dispatch || !alloy.modelName || !alloy.inches || !alloy.width || !alloy.pcd || !finishKey) {
+    return null
+  }
+
+  // Loading state
+  if (finishSalesMetricsLoading && !hasLoaded) {
+    return (
+      <div className='px-2 py-2 border-t border-gray-200 bg-gray-50'>
+        <div className='flex items-center justify-center gap-2 text-xs text-gray-500'>
+          <Spin size='small' />
+          <span>Loading sales data...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (finishSalesMetricsError) {
+    return (
+      <div className='px-2 py-2 border-t border-gray-200 bg-red-50'>
+        <div className='flex items-center justify-center gap-2 text-xs text-red-600'>
+          <span>⚠️ Error loading sales data</span>
+        </div>
+      </div>
+    )
+  }
+
+  // No data state (API call succeeded but no sales data found)
+  if (!salesData) {
+    return (
+      <div className='px-2 py-2 border-t border-gray-200 bg-gray-50'>
+        <div className='flex items-center justify-center gap-2 text-xs text-gray-500'>
+          <span>📊 No sales data available</span>
+        </div>
+      </div>
+    )
+  }
+
+  const getTrendIcon = trend => {
+    switch (trend) {
+      case 'up':
+        return '📈'
+      case 'down':
+        return '📉'
+      default:
+        return '➡️'
+    }
+  }
+
+  const getTrendColor = trend => {
+    switch (trend) {
+      case 'up':
+        return '#52c41a'
+      case 'down':
+        return '#ff4d4f'
+      default:
+        return '#8c8c8c'
+    }
+  }
+
+  const getSalesVolumeColor = average => {
+    if (average >= 50) return '#52c41a' // High sales - green
+    if (average >= 20) return '#faad14' // Medium sales - orange
+    return '#8c8c8c' // Low sales - gray
+  }
+
+  return (
+    <div className='px-2 py-2 border-t border-gray-200 bg-blue-50'>
+      <div className='flex items-center justify-between mb-2'>
+        <div className='flex items-center gap-3'>
+          <span className='text-xs font-medium text-gray-700'>
+            📊 Sales Performance
+          </span>
+          <Tooltip
+            title={`${
+              salesData.actualMonthsWithData || 0
+            } months with data out of ${salesData.monthsAnalyzed} analyzed`}
+          >
+            <Tag color='blue' className='text-xs'>
+              {salesData.monthsAnalyzed}m analysis
+            </Tag>
+          </Tooltip>
+        </div>
+        <Button
+          type='text'
+          size='small'
+          onClick={() => setShowDetails(!showDetails)}
+          className='text-xs p-0 h-4'
+        >
+          {showDetails ? 'Hide' : 'Show'} Details
+        </Button>
+      </div>
+
+      {/* Main sales metrics */}
+      <div className='grid grid-cols-2 gap-2 mb-2'>
+        <div className='text-center p-2 bg-white rounded border border-gray-200'>
+          <div
+            className='text-lg font-bold'
+            style={{ color: getSalesVolumeColor(salesData.monthlyAverage) }}
+          >
+            {salesData.monthlyAverage}
+          </div>
+          <div className='text-xs text-gray-600'>units/month</div>
+        </div>
+        <div className='text-center p-2 bg-white rounded border border-gray-200'>
+          <div
+            className='text-lg font-bold flex items-center justify-center gap-1'
+            style={{ color: getTrendColor(salesData.trend) }}
+          >
+            {getTrendIcon(salesData.trend)}
+            {salesData.trendPercentage}%
+          </div>
+          <div className='text-xs text-gray-600'>{salesData.trend} trend</div>
+        </div>
+      </div>
+
+      {/* Additional stats */}
+      <div className='flex gap-4 text-xs text-gray-600 justify-center'>
+        <span>Total: {salesData.totalSales} units</span>
+        <span>•</span>
+        <span>
+          Transactions:{' '}
+          {salesData.monthlyData?.reduce(
+            (sum, m) => sum + (m.transactions || 0),
+            0
+          ) || 0}
+        </span>
+      </div>
+
+      {/* Detailed monthly data */}
+      {showDetails && salesData.monthlyData?.length > 0 && (
+        <div className='mt-3 p-2 bg-white rounded border border-gray-200'>
+          <div className='text-xs font-medium text-gray-700 mb-2'>
+            Monthly Breakdown:
+          </div>
+          <div className='space-y-1 max-h-32 overflow-y-auto'>
+            {salesData.monthlyData.map(month => (
+              <div key={month.month} className='flex justify-between text-xs'>
+                <span className='text-gray-600'>{month.month}</span>
+                <span className='font-medium'>{month.sales} units</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const SmartProductionDashboard = () => {
   const dispatch = useDispatch()
@@ -64,6 +317,24 @@ const SmartProductionDashboard = () => {
   const { stockManagementData, loading, allSizes, allPcd, allFinishes } =
     useSelector(state => state.stockDetails)
   const { user } = useSelector(state => state.userDetails)
+  const productionState = useSelector(state => {
+    console.log('🔍 Full Redux state keys:', Object.keys(state))
+    console.log('🔍 productionDetails state:', state.productionDetails)
+    console.log('🔍 Full Redux state:', state)
+    return state.productionDetails || {}
+  })
+  const {
+    finishSalesMetrics = {},
+    finishSalesMetricsLoading = false
+  } = productionState
+  const finishSalesMetricsError = productionState?.finishSalesMetricsError
+
+  console.log('🔍 Destructured production state:', {
+    finishSalesMetrics,
+    finishSalesMetricsLoading,
+    finishSalesMetricsError,
+    finishSalesMetricsKeys: Object.keys(finishSalesMetrics || {})
+  })
 
   // Local state
   const [selectedRows, setSelectedRows] = useState(new Set())
@@ -120,6 +391,23 @@ const SmartProductionDashboard = () => {
     dispatch(getAllPcd())
     dispatch(getAllFinishes())
     dispatch(getStepPresets())
+
+    // Also fetch production data for expanded rows
+    const fetchProductionData = async () => {
+      try {
+        const result = await dispatch(
+          getProductionPlansWithQuantities({
+            page: 1,
+            limit: 1000
+          })
+        ).unwrap()
+        setProductionData(result.productionPlans || [])
+      } catch (error) {
+        console.error('Failed to fetch production data:', error)
+        setProductionData([])
+      }
+    }
+    fetchProductionData()
 
     // Load panel state from localStorage
     const savedPanelState = localStorage.getItem('selectedPanelCollapsed')
@@ -304,7 +592,8 @@ const SmartProductionDashboard = () => {
           value: alloy.finish,
           label: alloy.finish,
           stock: alloy.inHouseStock || 0,
-          alloyId: alloy.id
+          alloyId: alloy.id,
+          id: alloy.finishId // Add finish ID for backend queries
         }))
         .filter((finish, index, arr) => {
           // Remove duplicates by finish name
@@ -497,8 +786,10 @@ const SmartProductionDashboard = () => {
 
       // Find all production plans where this alloy is involved (as source or target)
       const relevantPlans = productionPlans.filter(plan => {
-        // Match by alloyId (exact match)
-        const matchesById = plan.alloyId === selectedAlloy.id
+        // Match by alloyId (exact match) - check both source and target
+        const matchesById =
+          plan.alloyId === selectedAlloy.id ||
+          plan.convertToAlloyId === selectedAlloy.id
 
         // Match by product specifications - try multiple field combinations
         const matchesByProduct =
@@ -521,8 +812,15 @@ const SmartProductionDashboard = () => {
         console.log('🔍 Checking plan:', {
           planId: plan.id,
           planAlloyId: plan.alloyId,
+          planConvertToAlloyId: plan.convertToAlloyId,
           selectedAlloyId: selectedAlloy.id,
           matchesById: matchesById,
+          matchType:
+            plan.alloyId === selectedAlloy.id
+              ? 'source'
+              : plan.convertToAlloyId === selectedAlloy.id
+              ? 'target'
+              : 'none',
           plan: {
             sourceProductName: plan.sourceProductName,
             sourceFinish: plan.sourceFinish,
@@ -727,8 +1025,38 @@ const SmartProductionDashboard = () => {
   ])
 
   // Table row renderer for virtual list
+  // Format finish name to include color if needed
+  const formatFinishDisplay = useCallback((finish, productName) => {
+    if (!finish) return ''
+
+    const finishUpper = finish.toUpperCase()
+
+    // If finish contains "WITHOUT" (lacquer, paint, etc.), extract color from product name
+    if (finishUpper.includes('WITHOUT') && productName) {
+      // Extract color that appears right before the finish in the product name
+      // e.g., "PY-021 17*7.5/114.3 x 5 BLACK WITHOUT LACQUER" -> "BLACK"
+      const productNameUpper = productName.toUpperCase()
+      const finishIndex = productNameUpper.indexOf(finishUpper)
+
+      if (finishIndex > 0) {
+        // Get the part before the finish and split by spaces
+        const beforeFinish = productName.substring(0, finishIndex).trim()
+        const words = beforeFinish.split(/\s+/)
+        // The last word should be the color
+        const color = words[words.length - 1]
+
+        // Check if it's a valid color word (alphabetic characters, possibly with hyphen)
+        if (color && color.match(/^[A-Z-]+$/i)) {
+          return `${color.toUpperCase()} ${finish.toUpperCase()}`
+        }
+      }
+    }
+
+    return finish
+  }, [])
+
   // Toggle row expansion
-  const toggleRowExpansion = useCallback((alloyId) => {
+  const toggleRowExpansion = useCallback(alloyId => {
     setExpandedRows(prev => {
       const newSet = new Set(prev)
       if (newSet.has(alloyId)) {
@@ -741,60 +1069,88 @@ const SmartProductionDashboard = () => {
   }, [])
 
   // Add finish directly from expanded row
-  const handleAddFinishFromExpanded = useCallback((alloy, targetFinish) => {
-    const newPlanId = `plan-${Date.now()}-${planCounter}`
-    setPlanCounter(prev => prev + 1)
+  const handleAddFinishFromExpanded = useCallback(
+    (alloy, targetFinish) => {
+      const newPlanId = `plan-${Date.now()}-${planCounter}`
+      setPlanCounter(prev => prev + 1)
 
-    setConversionPlans(prev => ({
-      ...prev,
-      [newPlanId]: {
-        sourceAlloy: alloy,
-        originalAlloyId: alloy.id,
-        targetFinish: targetFinish,
-        quantity: 1
-      }
-    }))
+      setConversionPlans(prev => ({
+        ...prev,
+        [newPlanId]: {
+          sourceAlloy: alloy,
+          originalAlloyId: alloy.id,
+          targetFinish: targetFinish,
+          quantity: 1
+        }
+      }))
 
-    setSelectedRows(prev => new Set([...prev, newPlanId]))
-  }, [planCounter])
+      setSelectedRows(prev => new Set([...prev, newPlanId]))
+    },
+    [planCounter]
+  )
 
-  // Calculate row size for variable height
-  const getItemSize = useCallback((index) => {
-    const alloy = filteredStockData[index]
-    if (!alloy) return 80
+  // Calculate row size for variable height - now more compact
+  const getItemSize = useCallback(
+    index => {
+      const alloy = filteredStockData[index]
+      if (!alloy) return 80
 
-    const isExpanded = expandedRows.has(alloy.id)
-    if (!isExpanded) return 80
+      const isExpanded = expandedRows.has(alloy.id)
+      if (!isExpanded) return 80
 
-    const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
-    const availableFinishes = getAvailableTargetFinishes(alloy, selectedFinishes)
-
-    // Calculate height based on finishes and their production status
-    let totalHeight = 120 // Base expanded height
-
-    availableFinishes.forEach(finish => {
-      totalHeight += 44 // Base finish row height
-
-      // Check if this finish has production data
-      const finishAlloy = stockManagementData?.find(
-        a => a.modelName === alloy.modelName &&
-             a.inchesId === alloy.inchesId &&
-             a.pcdId === alloy.pcdId &&
-             a.holesId === alloy.holesId &&
-             a.widthId === alloy.widthId &&
-             a.finish === finish.value
+      const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
+      const availableFinishes = getAvailableTargetFinishes(
+        alloy,
+        selectedFinishes
       )
-      const finishProductionData = finishAlloy
-        ? getAllProductionDataForAlloy(finishAlloy, productionData)
-        : null
 
-      if (finishProductionData && finishProductionData.totalPlans > 0) {
-        totalHeight += 30 // Additional height for production status
-      }
-    })
+      // Calculate dynamic height based on actual content
+      let totalHeight = 110 // Base row + header (80 + 30)
 
-    return totalHeight
-  }, [filteredStockData, expandedRows, getSelectedFinishesForAlloy, getAvailableTargetFinishes, stockManagementData, productionData, getAllProductionDataForAlloy])
+      availableFinishes.forEach(finish => {
+        // Base Card height (compact)
+        let cardHeight = 50 // Finish name + button
+
+        // Check if this finish has production data
+        const finishAlloy = stockManagementData?.find(
+          a =>
+            a.modelName === alloy.modelName &&
+            a.inchesId === alloy.inchesId &&
+            a.pcdId === alloy.pcdId &&
+            a.holesId === alloy.holesId &&
+            a.widthId === alloy.widthId &&
+            a.finish === finish.value
+        )
+        const finishProductionData = finishAlloy
+          ? getAllProductionDataForAlloy(finishAlloy, productionData)
+          : null
+
+        // Add height only if production data exists
+        if (finishProductionData && finishProductionData.totalPlans > 0) {
+          cardHeight += 32 // Production status section
+        }
+
+        // Sales metrics section (compact)
+        cardHeight += 50 // Sales metrics always shown but compact
+
+        // Card spacing
+        cardHeight += 8
+
+        totalHeight += cardHeight
+      })
+
+      return totalHeight
+    },
+    [
+      filteredStockData,
+      expandedRows,
+      getSelectedFinishesForAlloy,
+      getAvailableTargetFinishes,
+      stockManagementData,
+      productionData,
+      getAllProductionDataForAlloy
+    ]
+  )
 
   const Row = ({ index, style }) => {
     const alloy = filteredStockData[index]
@@ -826,140 +1182,161 @@ const SmartProductionDashboard = () => {
         } ${hasPlans ? 'bg-blue-50' : ''}`}
       >
         <div className='flex items-center px-4 h-20'>
-        {/* Add to Plan Button - 40px */}
-        <div className='w-10 flex-shrink-0'>
-          <Button
-            size='small'
-            type={hasPlans ? 'primary' : 'default'}
-            icon={<PlusCircleOutlined />}
-            onClick={() => handleAddToPlan(alloy.id)}
-            disabled={totalStock === 0 || availableFinishes.length === 0}
-            title={
-              availableFinishes.length === 0
-                ? 'No additional finishes available'
-                : 'Add to Plan'
-            }
-          />
-        </div>
-
-        {/* Size & PCD - 100px */}
-        <div className='w-[100px] flex-shrink-0 px-2'>
-          <div className='font-semibold text-lg text-blue-600'>
-            {alloy.inches}"
+          {/* Add to Plan Button - 40px */}
+          <div className='w-10 flex-shrink-0'>
+            <Button
+              size='small'
+              type={hasPlans ? 'primary' : 'default'}
+              icon={<PlusCircleOutlined />}
+              onClick={() => handleAddToPlan(alloy.id)}
+              disabled={totalStock === 0 || availableFinishes.length === 0}
+              title={
+                availableFinishes.length === 0
+                  ? 'No additional finishes available'
+                  : 'Add to Plan'
+              }
+            />
           </div>
-          <div className='text-xs text-gray-500'>{alloy.pcd}</div>
-        </div>
 
-        {/* Product Info - Flexible */}
-        <div className='flex-1 px-2 min-w-0'>
-          <div className='font-medium truncate'>{alloy.productName}</div>
-          <div className='text-xs text-gray-500 truncate'>
-            {alloy.modelName} • {alloy.holes}H • {alloy.width}W • {alloy.finish}
-          </div>
-          {hasPlans && (
-            <div className='text-xs text-blue-600 mt-1'>
-              {alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''}{' '}
-              configured
+          {/* Size & PCD - 100px */}
+          <div className='w-[100px] flex-shrink-0 px-2'>
+            <div className='font-semibold text-lg text-blue-600'>
+              {alloy.inches}"
             </div>
-          )}
-        </div>
-
-        {/* Stock - 120px */}
-        <div className='w-[120px] flex-shrink-0 px-2 text-center'>
-          <div
-            className={`font-bold text-lg ${
-              stockStatus === 'error'
-                ? 'text-red-600'
-                : stockStatus === 'warning'
-                ? 'text-orange-600'
-                : 'text-green-600'
-            }`}
-          >
-            {totalStock} units
+            <div className='text-xs text-gray-500'>{alloy.pcd}</div>
           </div>
-        </div>
 
-        {/* Plan Status - 280px */}
-        <div className='w-[280px] flex-shrink-0 px-2'>
-          {totalStock === 0 ? (
-            <Text type='secondary' className='text-xs'>
-              No stock available
-            </Text>
-          ) : hasPlans ? (
-            <div className='text-xs'>
-              <Text strong className='text-blue-600'>
-                {alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''}
+          {/* Product Info - Flexible */}
+          <div className='flex-1 px-2 min-w-0'>
+            <div className='font-medium truncate'>{alloy.productName}</div>
+            <div className='text-xs text-gray-500 truncate'>
+              {alloy.modelName} • {alloy.holes}H • {alloy.width}W •{' '}
+              {formatFinishDisplay(alloy.finish, alloy.productName)}
+            </div>
+            {hasPlans && (
+              <div className='text-xs text-blue-600 mt-1'>
+                {alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''}{' '}
+                configured
+              </div>
+            )}
+          </div>
+
+          {/* Stock - 120px */}
+          <div className='w-[120px] flex-shrink-0 px-2 text-center'>
+            <div
+              className={`font-bold text-lg ${
+                stockStatus === 'error'
+                  ? 'text-red-600'
+                  : stockStatus === 'warning'
+                  ? 'text-orange-600'
+                  : 'text-green-600'
+              }`}
+            >
+              {totalStock} units
+            </div>
+          </div>
+
+          {/* Plan Status - 280px */}
+          <div className='w-[280px] flex-shrink-0 px-2'>
+            {totalStock === 0 ? (
+              <Text type='secondary' className='text-xs'>
+                No stock available
               </Text>
-              {availableFinishes.length > 0 && (
-                <Text type='secondary'>
-                  {' '}
-                  • {availableFinishes.length} more finish
-                  {availableFinishes.length > 1 ? 'es' : ''} available
+            ) : hasPlans ? (
+              <div className='text-xs'>
+                <Text strong className='text-blue-600'>
+                  {alloyPlans.length} plan{alloyPlans.length > 1 ? 's' : ''}
                 </Text>
-              )}
-            </div>
-          ) : (
-            <Text type='secondary' className='text-xs'>
-              {availableFinishes.length} finish
-              {availableFinishes.length > 1 ? 'es' : ''} available for
-              conversion
-            </Text>
-          )}
-        </div>
+                {availableFinishes.length > 0 && (
+                  <Text type='secondary'>
+                    {' '}
+                    • {availableFinishes.length} more finish
+                    {availableFinishes.length > 1 ? 'es' : ''} available
+                  </Text>
+                )}
+              </div>
+            ) : (
+              <Text type='secondary' className='text-xs'>
+                {availableFinishes.length} finish
+                {availableFinishes.length > 1 ? 'es' : ''} available for
+                conversion
+              </Text>
+            )}
+          </div>
 
-        {/* Expand & Info Buttons - 90px */}
-        <div className='w-[90px] flex-shrink-0 px-2 flex gap-1 justify-center'>
-          <Button
-            size='small'
-            type='text'
-            icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
-            onClick={() => toggleRowExpansion(alloy.id)}
-            title={isExpanded ? 'Collapse' : 'Expand to see available finishes'}
-            className='text-gray-600 hover:bg-gray-100'
-            disabled={availableFinishes.length === 0}
-          />
-          <Button
-            size='small'
-            type='text'
-            icon={<InfoCircleOutlined />}
-            onClick={() => handleShowInfo(alloy)}
-            title='View product information'
-            className='text-blue-600 hover:bg-blue-50'
-          />
-        </div>
+          {/* Expand & Info Buttons - 90px */}
+          <div className='w-[90px] flex-shrink-0 px-2 flex gap-1 justify-center'>
+            <Button
+              size='small'
+              type='text'
+              icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={() => toggleRowExpansion(alloy.id)}
+              title={
+                isExpanded ? 'Collapse' : 'Expand to see available finishes'
+              }
+              className='text-gray-600 hover:bg-gray-100'
+              disabled={availableFinishes.length === 0}
+            />
+            <Button
+              size='small'
+              type='text'
+              icon={<InfoCircleOutlined />}
+              onClick={() => handleShowInfo(alloy)}
+              title='View product information'
+              className='text-blue-600 hover:bg-blue-50'
+            />
+          </div>
         </div>
 
         {/* Expanded Content */}
         {isExpanded && availableFinishes.length > 0 && (
-          <div className='px-4 pb-3 bg-white border-t'>
-            <div className='text-xs font-semibold text-gray-700 mb-2 mt-2'>
-              Available Finishes for Conversion:
+          <div className='px-3 pb-2 bg-gray-50 border-t border-gray-200'>
+            <div className='flex items-center gap-2 py-1.5'>
+              <Badge count={availableFinishes.length} color='purple' size='small' />
+              <Text className='text-xs text-gray-600'>Available Conversions</Text>
             </div>
-            <div className='space-y-2'>
-              {availableFinishes.map((finish) => {
+
+            <div className='space-y-1.5'>
+              {availableFinishes.map(finish => {
                 // Get production data for this specific finish variant
                 const finishAlloy = stockManagementData?.find(
-                  a => a.modelName === alloy.modelName &&
-                       a.inchesId === alloy.inchesId &&
-                       a.pcdId === alloy.pcdId &&
-                       a.holesId === alloy.holesId &&
-                       a.widthId === alloy.widthId &&
-                       a.finish === finish.value
+                  a =>
+                    a.modelName === alloy.modelName &&
+                    a.inchesId === alloy.inchesId &&
+                    a.pcdId === alloy.pcdId &&
+                    a.holesId === alloy.holesId &&
+                    a.widthId === alloy.widthId &&
+                    a.finish === finish.value
                 )
-                const finishProductionData = finishAlloy
-                  ? getAllProductionDataForAlloy(finishAlloy, productionData)
-                  : null
+                const finishProductionData =
+                  finishAlloy && productionData?.length > 0
+                    ? getAllProductionDataForAlloy(finishAlloy, productionData)
+                    : null
+
+                const isAlreadyAdded = selectedFinishes.includes(finish.value)
 
                 return (
-                  <div
+                  <Card
                     key={finish.value}
-                    className='bg-purple-50 rounded border border-purple-200 overflow-hidden'
+                    size='small'
+                    className='hover:shadow transition-shadow'
+                    bodyStyle={{ padding: '8px 10px' }}
+                    style={{
+                      borderLeft: `3px solid ${
+                        finish.stock > 10
+                          ? '#52c41a'
+                          : finish.stock > 0
+                          ? '#faad14'
+                          : '#ff4d4f'
+                      }`
+                    }}
                   >
-                    <div className='flex items-center justify-between p-2'>
-                      <div className='flex items-center gap-3'>
-                        <span className='text-sm font-medium text-gray-800'>
+                    {/* Finish Name and Stock */}
+                    <div className='flex items-center justify-between gap-2 mb-1.5'>
+                      <Space size={4}>
+                        <Text strong className='text-sm'>
                           {finish.label}
-                        </span>
+                        </Text>
                         <Tag
                           color={
                             finish.stock > 10
@@ -968,39 +1345,63 @@ const SmartProductionDashboard = () => {
                               ? 'orange'
                               : 'red'
                           }
+                          className='text-xs m-0'
                         >
-                          {finish.stock} units in stock
+                          {finish.stock}
                         </Tag>
-                      </div>
+                      </Space>
                       <Button
+                        type={isAlreadyAdded ? 'default' : 'primary'}
                         size='small'
-                        type='primary'
-                        icon={<PlusCircleOutlined />}
-                        onClick={() => handleAddFinishFromExpanded(alloy, finish.value)}
-                        disabled={selectedFinishes.includes(finish.value)}
+                        icon={
+                          isAlreadyAdded ? (
+                            <CheckCircleOutlined />
+                          ) : (
+                            <PlusCircleOutlined />
+                          )
+                        }
+                        onClick={() =>
+                          handleAddFinishFromExpanded(alloy, finish.value)
+                        }
+                        disabled={isAlreadyAdded}
+                        className='text-xs h-6'
                       >
-                        {selectedFinishes.includes(finish.value) ? 'Added' : 'Add to Plan'}
+                        {isAlreadyAdded ? 'Added' : 'Add'}
                       </Button>
                     </div>
 
-                    {/* Production Status for this finish */}
-                    {finishProductionData && finishProductionData.totalPlans > 0 && (
-                      <div className='px-2 pb-2 pt-1 border-t border-purple-200 bg-purple-25'>
-                        <div className='flex gap-2 text-xs'>
-                          <span className='text-gray-600'>Production:</span>
-                          <Tag color='blue' className='text-xs m-0'>
-                            {finishProductionData.totalPlans} plan{finishProductionData.totalPlans > 1 ? 's' : ''}
-                          </Tag>
-                          <Tag color='orange' className='text-xs m-0'>
-                            {finishProductionData.pendingQuantity} pending
-                          </Tag>
-                          <Tag color='green' className='text-xs m-0'>
-                            {finishProductionData.inProductionQuantity} in prod
-                          </Tag>
+                    {/* Production Status */}
+                    {finishProductionData &&
+                      finishProductionData.totalPlans > 0 && (
+                        <div className='bg-blue-50 rounded px-2 py-1 mb-1'>
+                          <Space wrap size={[4, 2]}>
+                            <Text type='secondary' className='text-xs'>
+                              Production:
+                            </Text>
+                            <Tag color='blue' className='text-xs m-0 px-1 py-0'>
+                              {finishProductionData.totalPlans} plan
+                              {finishProductionData.totalPlans > 1 ? 's' : ''}
+                            </Tag>
+                            <Tag color='orange' className='text-xs m-0 px-1 py-0'>
+                              {finishProductionData.pendingQuantity} pending
+                            </Tag>
+                            <Tag color='green' className='text-xs m-0 px-1 py-0'>
+                              {finishProductionData.inProductionQuantity} in prod
+                            </Tag>
+                          </Space>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+
+                    {/* Sales Metrics for this finish */}
+                    <SalesMetricsDisplay
+                      alloy={alloy}
+                      finish={finish.value}
+                      dispatch={dispatch}
+                      finishSalesMetrics={finishSalesMetrics}
+                      finishSalesMetricsLoading={finishSalesMetricsLoading}
+                      finishSalesMetricsError={finishSalesMetricsError}
+                    />
+                  </Card>
                 )
               })}
             </div>
@@ -1177,7 +1578,9 @@ const SmartProductionDashboard = () => {
             {showFilters && (
               <div className='mt-3 pt-3 border-t flex gap-3 flex-wrap items-end'>
                 <div className='flex flex-col'>
-                  <label className='text-xs text-gray-600 mb-1 font-medium'>Size</label>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>
+                    Size
+                  </label>
                   <Select
                     placeholder='Filter by Size'
                     value={filterSize}
@@ -1197,7 +1600,9 @@ const SmartProductionDashboard = () => {
                 </div>
 
                 <div className='flex flex-col'>
-                  <label className='text-xs text-gray-600 mb-1 font-medium'>PCD</label>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>
+                    PCD
+                  </label>
                   <Select
                     placeholder='Filter by PCD'
                     value={filterPcd}
@@ -1214,7 +1619,9 @@ const SmartProductionDashboard = () => {
                 </div>
 
                 <div className='flex flex-col'>
-                  <label className='text-xs text-gray-600 mb-1 font-medium'>Finish</label>
+                  <label className='text-xs text-gray-600 mb-1 font-medium'>
+                    Finish
+                  </label>
                   <Select
                     placeholder='Filter by Finish'
                     value={filterFinish}
@@ -1459,12 +1866,14 @@ const SmartProductionDashboard = () => {
                   Available Finishes
                 </h4>
                 {(() => {
-                  const availableFinishes = getAvailableTargetFinishes(selectedProductInfo)
+                  const availableFinishes =
+                    getAvailableTargetFinishes(selectedProductInfo)
 
                   if (availableFinishes.length === 0) {
                     return (
                       <div className='text-sm text-gray-500 text-center py-2'>
-                        No other finishes available for this product specification
+                        No other finishes available for this product
+                        specification
                       </div>
                     )
                   }

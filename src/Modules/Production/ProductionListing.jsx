@@ -30,7 +30,9 @@ import {
   SettingOutlined,
   ArrowRightOutlined,
   MoreOutlined,
-  PlayCircleOutlined
+  PlayCircleOutlined,
+  DownloadOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons'
 import moment from 'moment'
 
@@ -82,6 +84,7 @@ const ProductionListing = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState([])
   const [jobCardsData, setJobCardsData] = useState({})
   const [loadingJobCards, setLoadingJobCards] = useState({})
+  const [isTodayFilter, setIsTodayFilter] = useState(false)
 
   const {
     productionPlans,
@@ -103,7 +106,8 @@ const ProductionListing = () => {
         page: currentPage,
         limit: pageSize,
         search: searchTerm,
-        urgent: filters.urgent
+        urgent: filters.urgent,
+        dateRange: filters.dateRange
       })
     )
   }, [dispatch, currentPage, pageSize, searchTerm, filters])
@@ -141,6 +145,11 @@ const ProductionListing = () => {
   }
 
   const handleDateRangeChange = dates => {
+    // Turn off Today filter when user manually changes date range
+    if (isTodayFilter) {
+      setIsTodayFilter(false)
+    }
+
     dispatch(
       setFilters({
         dateRange: dates
@@ -153,7 +162,41 @@ const ProductionListing = () => {
 
   const handleClearFilters = () => {
     setLocalSearch('')
+    setIsTodayFilter(false)
     dispatch(clearFilters())
+    dispatch(setCurrentPage(1))
+  }
+
+  // Calculate total quantity from filtered production plans
+  const getTotalQuantity = () => {
+    return productionPlans.reduce((total, plan) => {
+      return total + (plan.quantity || 0)
+    }, 0)
+  }
+
+  // Handle Today filter
+  const handleTodayFilter = () => {
+    const today = moment().format('YYYY-MM-DD')
+    const newTodayState = !isTodayFilter
+
+    setIsTodayFilter(newTodayState)
+
+    if (newTodayState) {
+      // Set date range to today only
+      dispatch(
+        setFilters({
+          dateRange: [today, today]
+        })
+      )
+    } else {
+      // Clear date range filter
+      dispatch(
+        setFilters({
+          dateRange: null
+        })
+      )
+    }
+
     dispatch(setCurrentPage(1))
   }
 
@@ -319,7 +362,8 @@ const ProductionListing = () => {
               limit: pageSize,
               search: searchTerm,
               urgent: filters.urgent,
-              status: filters.status
+              status: filters.status,
+              dateRange: filters.dateRange
             })
           )
         } catch (error) {
@@ -349,6 +393,97 @@ const ProductionListing = () => {
     navigate('/production-alloys')
   }
 
+  // Handle export to Excel/CSV
+  const handleExport = format => {
+    try {
+      // Prepare data for export
+      const exportData = productionPlans.map(plan => {
+        const sourceProduct = plan.alloyName || plan.sourceProduct || plan.sourceproductname || `Alloy ${plan.alloyId}`
+        const targetProduct = plan.convertName || plan.targetProduct || plan.targetproductname || `Convert ${plan.convertToAlloyId}`
+        
+        return {
+          'Production Plan ID': plan.id,
+          'Date': plan.createdAt ? moment(plan.createdAt).format('YYYY-MM-DD') : '',
+          'From Alloy': sourceProduct,
+          'To Alloy': targetProduct,
+          'Quantity': plan.quantity
+        }
+      })
+
+      if (format === 'csv') {
+        // CSV Export
+        const headers = Object.keys(exportData[0])
+        const csvContent = [
+          headers.join(','),
+          ...exportData.map(row => 
+            headers.map(header => {
+              const value = row[header]
+              // Escape commas and quotes in values
+              return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+                ? `"${value.replace(/"/g, '""')}"`
+                : value
+            }).join(',')
+          )
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `production_plans_${moment().format('YYYY-MM-DD')}.csv`
+        link.click()
+        message.success('CSV file downloaded successfully')
+      } else {
+        // Excel Export - using simple HTML table method
+        const tableHTML = `
+          <table>
+            <thead>
+              <tr>
+                ${Object.keys(exportData[0]).map(header => `<th>${header}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${exportData.map(row => `
+                <tr>
+                  ${Object.values(row).map(value => `<td>${value}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `
+        
+        const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `production_plans_${moment().format('YYYY-MM-DD')}.xls`
+        link.click()
+        message.success('Excel file downloaded successfully')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      message.error('Failed to export data')
+    }
+  }
+
+  // Export menu items
+  const exportMenu = (
+    <Menu
+      items={[
+        {
+          key: 'excel',
+          icon: <FileExcelOutlined />,
+          label: 'Export to Excel',
+          onClick: () => handleExport('excel')
+        },
+        {
+          key: 'csv',
+          icon: <DownloadOutlined />,
+          label: 'Export to CSV',
+          onClick: () => handleExport('csv')
+        }
+      ]}
+    />
+  )
+
   // Handle details modal close
   const handleDetailsModalClose = () => {
     setDetailsModalVisible(false)
@@ -375,7 +510,8 @@ const ProductionListing = () => {
         page: currentPage,
         limit: pageSize,
         search: searchTerm,
-        urgent: filters.urgent
+        urgent: filters.urgent,
+        dateRange: filters.dateRange
       })
     )
   }
@@ -394,7 +530,8 @@ const ProductionListing = () => {
           limit: pageSize,
           search: searchTerm,
           urgent: filters.urgent,
-          status: filters.status
+          status: filters.status,
+          dateRange: filters.dateRange
         })
       )
     }, 500)
@@ -420,7 +557,8 @@ const ProductionListing = () => {
           limit: pageSize,
           search: searchTerm,
           urgent: filters.urgent,
-          status: filters.status
+          status: filters.status,
+          dateRange: filters.dateRange
         })
       )
     }, 500)
@@ -1159,6 +1297,17 @@ const ProductionListing = () => {
             </p>
           </div>
           <div className='flex flex-col sm:flex-row gap-2'>
+            <Dropdown overlay={exportMenu} trigger={['click']} disabled={productionPlans.length === 0}>
+              <CustomButton
+                type='default'
+                icon={<DownloadOutlined />}
+                size='middle'
+                className='w-full sm:w-auto px-5 py-3'
+                disabled={productionPlans.length === 0}
+              >
+                Export
+              </CustomButton>
+            </Dropdown>
             <CustomButton
               type='primary'
               icon={<PlusOutlined />}
@@ -1206,6 +1355,14 @@ const ProductionListing = () => {
                 Search
               </Button>
               <Button
+                type={isTodayFilter ? 'primary' : 'default'}
+                onClick={handleTodayFilter}
+                size='middle'
+                className='flex-shrink-0'
+              >
+                📅 Today
+              </Button>
+              <Button
                 type='default'
                 icon={<FilterOutlined />}
                 onClick={() => setShowFilters(!showFilters)}
@@ -1214,7 +1371,7 @@ const ProductionListing = () => {
               >
                 Filters
               </Button>
-              {(searchTerm || filters.urgent || filters.dateRange) && (
+              {(searchTerm || filters.urgent || filters.dateRange || isTodayFilter) && (
                 <Button
                   onClick={handleClearFilters}
                   size='middle'
@@ -1244,8 +1401,13 @@ const ProductionListing = () => {
                   />
                 </Col>
                 <Col xs={24} sm={12} md={8}>
-                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
+                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700 flex items-center gap-2'>
                     Date Range
+                    {isTodayFilter && (
+                      <Tag color='blue' size='small'>
+                        Today Active
+                      </Tag>
+                    )}
                   </div>
                   <RangePicker
                     value={
@@ -1260,7 +1422,13 @@ const ProductionListing = () => {
                     className='w-full'
                     placeholder={['Start', 'End']}
                     size='small'
+                    disabled={isTodayFilter}
                   />
+                  {isTodayFilter && (
+                    <div className='text-xs text-blue-600 mt-1'>
+                      Today filter is active - use Today button to disable
+                    </div>
+                  )}
                 </Col>
                 <Col xs={24} sm={12} md={4}>
                   <div className='mb-2 hidden md:block'>&nbsp;</div>
@@ -1278,7 +1446,7 @@ const ProductionListing = () => {
         </div>
 
         {/* Summary Stats */}
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 md:mt-6 pt-4 border-t border-gray-200'>
+        <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 md:mt-6 pt-4 border-t border-gray-200'>
           <div className='bg-blue-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
             <div className='text-lg sm:text-xl md:text-2xl font-bold text-blue-600'>
               {totalPlansCount}
@@ -1287,12 +1455,31 @@ const ProductionListing = () => {
               Total Plans
             </div>
           </div>
+          <div className='bg-green-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
+            <div className='text-lg sm:text-xl md:text-2xl font-bold text-green-600'>
+              {getTotalQuantity().toLocaleString()}
+            </div>
+            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
+              Total Quantity
+            </div>
+          </div>
           <div className='bg-orange-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
             <div className='text-lg sm:text-xl md:text-2xl font-bold text-orange-600'>
               {productionPlans.filter(p => p.urgent).length}
             </div>
             <div className='text-xs sm:text-sm text-gray-600 mt-1'>
               Urgent Plans
+            </div>
+          </div>
+          <div className='bg-purple-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
+            <div className='text-lg sm:text-xl md:text-2xl font-bold text-purple-600'>
+              {productionPlans.filter(p => {
+                const stepStatus = p.currentStepStatus
+                return ['pending', 'in_progress'].includes(stepStatus)
+              }).length}
+            </div>
+            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
+              Active Plans
             </div>
           </div>
         </div>
