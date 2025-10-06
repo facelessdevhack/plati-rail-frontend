@@ -42,7 +42,7 @@ const SalesChart = ({ salesHistory = [], height = 200 }) => {
     },
     tooltip: {
       formatter: (data) => {
-        const sales = data?.sales || 0
+        const sales = data?.sales === null || data?.sales === undefined ? 0 : data.sales
         const month = data?.month || 'Unknown'
         return {
           name: 'Units Sold',
