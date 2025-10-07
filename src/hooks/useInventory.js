@@ -13,7 +13,7 @@ export const useInventory = () => {
 
     try {
       const data = await InventoryApiService.getAllInventory()
-      setInventory(data.result || [])
+      setInventory(data.data || [])
     } catch (err) {
       setError(err.message)
       message.error(`Failed to fetch inventory: ${err.message}`)

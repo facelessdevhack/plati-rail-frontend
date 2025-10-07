@@ -1091,7 +1091,16 @@ const SmartProductionDashboard = () => {
       if (!alloy) return 100
 
       const isExpanded = expandedRows.has(alloy.id)
-      if (!isExpanded) return 100
+
+      // Check if this is a without paint/lacquer alloy that will show monthly average
+      const alloyFinish = alloy.finish ? alloy.finish.toLowerCase() : ''
+      const isWithoutPaint = alloyFinish.includes('without paint') || alloyFinish.includes('without lacquer')
+      const hasMonthlyAvg = isWithoutPaint && entriesData[alloy.id]?.monthlyAverageSales > 0
+
+      if (!isExpanded) {
+        // Base height is 100px, add 20px if monthly average badge is present
+        return hasMonthlyAvg ? 120 : 100
+      }
 
       const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
       const availableFinishes = getAvailableTargetFinishes(

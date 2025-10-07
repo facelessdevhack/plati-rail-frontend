@@ -66,17 +66,19 @@ const InventoryManagement = () => {
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [analysisModalVisible, setAnalysisModalVisible] = useState(false)
   const [batchUpdateModalVisible, setBatchUpdateModalVisible] = useState(false)
-  const [productionRequestModalVisible, setProductionRequestModalVisible] = useState(false)
+  const [productionRequestModalVisible, setProductionRequestModalVisible] =
+    useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [analysisData, setAnalysisData] = useState(null)
-  const [productionRequestLoading, setProductionRequestLoading] = useState(false)
-  
+  const [productionRequestLoading, setProductionRequestLoading] =
+    useState(false)
+
   // Filter and search state
   const [searchText, setSearchText] = useState('')
   const [selectedInches, setSelectedInches] = useState(null)
   const [selectedPcd, setSelectedPcd] = useState(null)
   const [selectedProductType, setSelectedProductType] = useState(null)
-  
+
   // Master data state
   const [inchesOptions, setInchesOptions] = useState([])
   const [pcdOptions, setPcdOptions] = useState([])
@@ -91,67 +93,91 @@ const InventoryManagement = () => {
   // Filter inventory data
   const filteredInventory = React.useMemo(() => {
     if (!inventory.length) return []
-    
+
     return inventory.filter(item => {
       // Search text filter - safely convert all values to strings before comparison
-      const matchesSearch = !searchText || 
-        String(item.productName || '').toLowerCase().includes(searchText.toLowerCase()) ||
-        String(item.model || '').toLowerCase().includes(searchText.toLowerCase()) ||
-        String(item.brand || '').toLowerCase().includes(searchText.toLowerCase()) ||
-        String(item.color || '').toLowerCase().includes(searchText.toLowerCase()) ||
-        String(item.uniqueId || '').toLowerCase().includes(searchText.toLowerCase())
-      
+      const matchesSearch =
+        !searchText ||
+        String(item.productName || '')
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        String(item.model || '')
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        String(item.brand || '')
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        String(item.color || '')
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        String(item.uniqueId || '')
+          .toLowerCase()
+          .includes(searchText.toLowerCase())
+
       // Product type filter
-      const matchesProductType = !selectedProductType || item.productType === selectedProductType
-      
+      const matchesProductType =
+        !selectedProductType || item.productType === selectedProductType
+
       // Size filter
-      const matchesInches = !selectedInches || 
-        item.size === selectedInches || 
-        item.inches === selectedInches ||  
+      const matchesInches =
+        !selectedInches ||
+        item.size === selectedInches ||
+        item.inches === selectedInches ||
         item.size?.toString() === selectedInches?.toString()
-      
+
       // PCD filter
-      const matchesPcd = !selectedPcd || 
-        item.pcd === selectedPcd || 
+      const matchesPcd =
+        !selectedPcd ||
+        item.pcd === selectedPcd ||
         item.pcd?.toString() === selectedPcd?.toString()
-      
+
       return matchesSearch && matchesProductType && matchesInches && matchesPcd
     })
   }, [inventory, searchText, selectedProductType, selectedInches, selectedPcd])
-  
+
   // Generate filter options from inventory data
   useEffect(() => {
     if (inventory.length > 0) {
       setMasterDataLoading(true)
-      
+
       // Generate unique sizes for filter
-      const uniqueSizes = [...new Set(inventory.map(item => item.size || item.inches).filter(Boolean))]
-      const sizeOptions = uniqueSizes.sort((a, b) => {
-        // Try to sort numerically if possible, otherwise alphabetically
-        const numA = parseFloat(a)
-        const numB = parseFloat(b)
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB
-        }
-        return a.toString().localeCompare(b.toString())
-      }).map(size => ({ label: size, value: size }))
-      
+      const uniqueSizes = [
+        ...new Set(
+          inventory.map(item => item.size || item.inches).filter(Boolean)
+        )
+      ]
+      const sizeOptions = uniqueSizes
+        .sort((a, b) => {
+          // Try to sort numerically if possible, otherwise alphabetically
+          const numA = parseFloat(a)
+          const numB = parseFloat(b)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB
+          }
+          return a.toString().localeCompare(b.toString())
+        })
+        .map(size => ({ label: size, value: size }))
+
       setInchesOptions(sizeOptions)
-      
+
       // Generate unique PCD values for filter
-      const uniquePcds = [...new Set(inventory.map(item => item.pcd).filter(Boolean))]
-      const pcdOptions = uniquePcds.sort((a, b) => {
-        // Try to sort numerically if possible, otherwise alphabetically
-        const numA = parseFloat(a)
-        const numB = parseFloat(b)
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB
-        }
-        return a.toString().localeCompare(b.toString())
-      }).map(pcd => ({ label: pcd, value: pcd }))
-      
+      const uniquePcds = [
+        ...new Set(inventory.map(item => item.pcd).filter(Boolean))
+      ]
+      const pcdOptions = uniquePcds
+        .sort((a, b) => {
+          // Try to sort numerically if possible, otherwise alphabetically
+          const numA = parseFloat(a)
+          const numB = parseFloat(b)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB
+          }
+          return a.toString().localeCompare(b.toString())
+        })
+        .map(pcd => ({ label: pcd, value: pcd }))
+
       setPcdOptions(pcdOptions)
-      
+
       setMasterDataLoading(false)
     }
   }, [inventory])
@@ -162,27 +188,22 @@ const InventoryManagement = () => {
       return { total: 0, lowStock: 0, totalValue: 0, outOfStock: 0 }
 
     const total = filteredInventory.length
-    const lowStock = filteredInventory.filter(
-      item => {
-        const stock = parseInt(item.inHouseStock || 0)
-        return stock > 0 && stock < 10
-      }
-    ).length
+    const lowStock = filteredInventory.filter(item => {
+      const stock = parseInt(item.inHouseStock || 0)
+      return stock > 0 && stock < 10
+    }).length
     const outOfStock = filteredInventory.filter(
       item => parseInt(item.inHouseStock || 0) === 0
     ).length
-    const totalValue = filteredInventory.reduce(
-      (sum, item) => {
-        const price = parseFloat(item.price || 0)
-        const stock = parseInt(item.inHouseStock || 0)
-        return sum + (price * stock)
-      },
-      0
-    )
+    const totalValue = filteredInventory.reduce((sum, item) => {
+      const price = parseFloat(item.price || 0)
+      const stock = parseInt(item.inHouseStock || 0)
+      return sum + price * stock
+    }, 0)
 
     return { total, lowStock, totalValue, outOfStock }
   }, [filteredInventory])
-  
+
   const clearFilters = () => {
     setSearchText('')
     setSelectedProductType(null)
@@ -304,31 +325,38 @@ const InventoryManagement = () => {
   const onProductionRequestFinish = async values => {
     try {
       setProductionRequestLoading(true)
-      
+
       const token = localStorage.getItem('token')
       const response = await axios.post(
         'http://localhost:4000/v2/production/add-production-plan',
         values,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
       )
 
       if (response.data.success) {
-        message.success(`Production plan created successfully! Plan ID: ${response.data.data.planId}`)
+        message.success(
+          `Production plan created successfully! Plan ID: ${response.data.data.planId}`
+        )
         setProductionRequestModalVisible(false)
         productionRequestForm.resetFields()
         // Optionally refresh inventory data
         refetch()
       } else {
-        message.error('Failed to create production plan: ' + response.data.message)
+        message.error(
+          'Failed to create production plan: ' + response.data.message
+        )
       }
     } catch (error) {
       console.error('Production request failed:', error)
-      message.error('Failed to create production plan: ' + (error.response?.data?.message || error.message))
+      message.error(
+        'Failed to create production plan: ' +
+          (error.response?.data?.message || error.message)
+      )
     } finally {
       setProductionRequestLoading(false)
     }
@@ -338,7 +366,7 @@ const InventoryManagement = () => {
     const inHouseStock = parseInt(inHouse || 0)
     const showroomStock = parseInt(showroom || 0)
     const total = inHouseStock + showroomStock
-    
+
     if (total === 0) return { status: 'error', text: 'Out of Stock' }
     if (total < 10) return { status: 'warning', text: 'Low Stock' }
     return { status: 'success', text: 'In Stock' }
@@ -365,11 +393,12 @@ const InventoryManagement = () => {
       dataIndex: 'productType',
       key: 'productType',
       width: 80,
-      sorter: (a, b) => (a.productType || '').localeCompare(b.productType || ''),
+      sorter: (a, b) =>
+        (a.productType || '').localeCompare(b.productType || ''),
       render: text => {
         const colorMap = {
           alloy: 'blue',
-          tyre: 'green', 
+          tyre: 'green',
           ppf: 'purple',
           caps: 'orange'
         }
@@ -391,9 +420,7 @@ const InventoryManagement = () => {
         const bSize = parseInt(b.size) || 0
         return aSize - bSize
       },
-      render: text => (
-        <Tag color="blue">{text || 'N/A'}</Tag>
-      )
+      render: text => <Tag color='blue'>{text || 'N/A'}</Tag>
     },
     {
       title: 'In-House Stock',
@@ -409,13 +436,13 @@ const InventoryManagement = () => {
       render: text => {
         const stock = parseInt(text) || 0
         return (
-          <Badge 
-            count={stock} 
+          <Badge
+            count={stock}
             showZero={true}
             overflowCount={999999}
-            style={{ 
-              backgroundColor: stock > 0 ? '#52c41a' : '#ff4d4f' 
-            }} 
+            style={{
+              backgroundColor: stock > 0 ? '#52c41a' : '#ff4d4f'
+            }}
           />
         )
       }
@@ -491,9 +518,9 @@ const InventoryManagement = () => {
               size='small'
               icon={<BuildOutlined />}
               onClick={() => handleProductionRequest(record)}
-              style={{ 
-                color: '#1890ff', 
-                borderColor: '#1890ff' 
+              style={{
+                color: '#1890ff',
+                borderColor: '#1890ff'
               }}
             />
           </Tooltip>
@@ -613,9 +640,7 @@ const InventoryManagement = () => {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Space>
-              <Button onClick={clearFilters}>
-                Clear Filters
-              </Button>
+              <Button onClick={clearFilters}>Clear Filters</Button>
               <Text type='secondary'>
                 {filteredInventory.length} of {inventory.length} products
               </Text>
@@ -635,13 +660,13 @@ const InventoryManagement = () => {
           }}
         >
           <Space>
-            <Button
+            {/* <Button
               type='primary'
               icon={<PlusOutlined />}
               onClick={() => setAddModalVisible(true)}
             >
               Add Inventory
-            </Button>
+            </Button> */}
             <Button
               type='default'
               icon={<ReloadOutlined />}
@@ -675,14 +700,18 @@ const InventoryManagement = () => {
                   icon={<BuildOutlined />}
                   onClick={() => {
                     if (selectedRowKeys.length === 0) {
-                      message.warning('Please select items for bulk production request')
+                      message.warning(
+                        'Please select items for bulk production request'
+                      )
                       return
                     }
-                    message.info(`Bulk production request for ${selectedRowKeys.length} items - Feature coming soon!`)
+                    message.info(
+                      `Bulk production request for ${selectedRowKeys.length} items - Feature coming soon!`
+                    )
                   }}
-                  style={{ 
-                    color: '#52c41a', 
-                    borderColor: '#52c41a' 
+                  style={{
+                    color: '#52c41a',
+                    borderColor: '#52c41a'
                   }}
                 >
                   Bulk Production ({selectedRowKeys.length})
@@ -785,12 +814,14 @@ const InventoryManagement = () => {
               <Form.Item
                 label='Product Type'
                 name='productType'
-                rules={[{ required: true, message: 'Please select product type' }]}
+                rules={[
+                  { required: true, message: 'Please select product type' }
+                ]}
               >
                 <Select
                   placeholder='Select product type'
                   style={{ width: '100%' }}
-                  onChange={(value) => {
+                  onChange={value => {
                     // Reset form when product type changes
                     addForm.setFieldsValue({
                       productName: '',
@@ -811,7 +842,9 @@ const InventoryManagement = () => {
               <Form.Item
                 label='Product Name'
                 name='productName'
-                rules={[{ required: true, message: 'Please enter product name' }]}
+                rules={[
+                  { required: true, message: 'Please enter product name' }
+                ]}
               >
                 <Input placeholder='e.g., PY-8533 18" FLAT SILVER' />
               </Form.Item>
@@ -823,7 +856,9 @@ const InventoryManagement = () => {
               <Form.Item
                 label='Model/Brand'
                 name='model'
-                rules={[{ required: true, message: 'Please enter model/brand' }]}
+                rules={[
+                  { required: true, message: 'Please enter model/brand' }
+                ]}
               >
                 <Input placeholder='e.g., PY-8533, Michelin' />
               </Form.Item>
@@ -843,11 +878,13 @@ const InventoryManagement = () => {
                 name='price'
                 rules={[{ required: true, message: 'Please enter price' }]}
               >
-                <InputNumber 
-                  min={0} 
+                <InputNumber
+                  min={0}
                   style={{ width: '100%' }}
                   placeholder='0'
-                  formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  formatter={value =>
+                    `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  }
                   parser={value => value.replace(/₹\s?|(,*)/g, '')}
                 />
               </Form.Item>
@@ -861,29 +898,23 @@ const InventoryManagement = () => {
                 name='quantity'
                 rules={[{ required: true, message: 'Please enter quantity' }]}
               >
-                <InputNumber 
-                  min={0} 
+                <InputNumber
+                  min={0}
                   style={{ width: '100%' }}
                   placeholder='0'
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                label='Color/Finish'
-                name='color'
-              >
+              <Form.Item label='Color/Finish' name='color'>
                 <Input placeholder='e.g., Silver, Black, Chrome' />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item
-            label='Additional Notes'
-            name='notes'
-          >
-            <Input.TextArea 
-              rows={2} 
+          <Form.Item label='Additional Notes' name='notes'>
+            <Input.TextArea
+              rows={2}
               placeholder='Any additional specifications or notes...'
             />
           </Form.Item>
@@ -1110,15 +1141,19 @@ const InventoryManagement = () => {
       >
         <div style={{ marginBottom: '16px' }}>
           <Alert
-            message="Production Request"
-            description="Create a new production plan to manufacture more units of this product. This will integrate with your existing production workflow."
-            type="info"
+            message='Production Request'
+            description='Create a new production plan to manufacture more units of this product. This will integrate with your existing production workflow.'
+            type='info'
             showIcon
             style={{ marginBottom: '16px' }}
           />
         </div>
 
-        <Form form={productionRequestForm} layout='vertical' onFinish={onProductionRequestFinish}>
+        <Form
+          form={productionRequestForm}
+          layout='vertical'
+          onFinish={onProductionRequestFinish}
+        >
           <Form.Item name='alloyId' hidden>
             <Input />
           </Form.Item>
@@ -1127,11 +1162,11 @@ const InventoryManagement = () => {
             <Col span={12}>
               <Form.Item
                 label='Source Product'
-                tooltip="The product that will be used as raw material"
+                tooltip='The product that will be used as raw material'
               >
-                <Input 
-                  value={selectedItem?.productName || 'N/A'} 
-                  disabled 
+                <Input
+                  value={selectedItem?.productName || 'N/A'}
+                  disabled
                   style={{ backgroundColor: '#f5f5f5' }}
                 />
               </Form.Item>
@@ -1140,12 +1175,14 @@ const InventoryManagement = () => {
               <Form.Item
                 label='Target Product ID'
                 name='convertId'
-                rules={[{ required: true, message: 'Please enter target product ID' }]}
-                tooltip="The ID of the product you want to produce (usually same as source for replenishment)"
+                rules={[
+                  { required: true, message: 'Please enter target product ID' }
+                ]}
+                tooltip='The ID of the product you want to produce (usually same as source for replenishment)'
               >
-                <InputNumber 
+                <InputNumber
                   style={{ width: '100%' }}
-                  placeholder="Enter target product ID"
+                  placeholder='Enter target product ID'
                 />
               </Form.Item>
             </Col>
@@ -1158,26 +1195,26 @@ const InventoryManagement = () => {
                 name='quantity'
                 rules={[
                   { required: true, message: 'Please enter quantity' },
-                  { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+                  {
+                    type: 'number',
+                    min: 1,
+                    message: 'Quantity must be at least 1'
+                  }
                 ]}
               >
-                <InputNumber 
+                <InputNumber
                   min={1}
                   style={{ width: '100%' }}
-                  placeholder="Enter quantity to produce"
+                  placeholder='Enter quantity to produce'
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                label='Priority'
-                name='urgent'
-                valuePropName='checked'
-              >
+              <Form.Item label='Priority' name='urgent' valuePropName='checked'>
                 <Space>
                   <Switch />
                   <span>Mark as Urgent</span>
-                  <Tooltip title="Urgent production plans will be prioritized in the production queue">
+                  <Tooltip title='Urgent production plans will be prioritized in the production queue'>
                     <WarningOutlined style={{ color: '#faad14' }} />
                   </Tooltip>
                 </Space>
@@ -1188,32 +1225,37 @@ const InventoryManagement = () => {
           <Form.Item
             label='Production Preset (Optional)'
             name='presetName'
-            tooltip="Select a pre-configured production workflow or leave empty for default steps"
+            tooltip='Select a pre-configured production workflow or leave empty for default steps'
           >
             <Select
-              placeholder="Select production preset (optional)"
+              placeholder='Select production preset (optional)'
               allowClear
             >
-              <Option value="standard_wheel">Standard Wheel Production</Option>
-              <Option value="premium_finish">Premium Finish Process</Option>
-              <Option value="custom_design">Custom Design Process</Option>
+              <Option value='standard_wheel'>Standard Wheel Production</Option>
+              <Option value='premium_finish'>Premium Finish Process</Option>
+              <Option value='custom_design'>Custom Design Process</Option>
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label='Additional Notes'
-            name='notes'
-          >
-            <Input.TextArea 
-              rows={3} 
-              placeholder="Any special instructions or requirements for this production run..."
+          <Form.Item label='Additional Notes' name='notes'>
+            <Input.TextArea
+              rows={3}
+              placeholder='Any special instructions or requirements for this production run...'
             />
           </Form.Item>
 
-          <div style={{ backgroundColor: '#fafafa', padding: '12px', borderRadius: '6px', marginTop: '16px' }}>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              <RocketOutlined /> This will create a new production plan that will be visible in the Production Management system. 
-              The plan will go through your standard 11-step manufacturing workflow.
+          <div
+            style={{
+              backgroundColor: '#fafafa',
+              padding: '12px',
+              borderRadius: '6px',
+              marginTop: '16px'
+            }}
+          >
+            <Text type='secondary' style={{ fontSize: '12px' }}>
+              <RocketOutlined /> This will create a new production plan that
+              will be visible in the Production Management system. The plan will
+              go through your standard 11-step manufacturing workflow.
             </Text>
           </div>
         </Form>
