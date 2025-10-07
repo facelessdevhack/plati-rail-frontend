@@ -12,19 +12,22 @@ const SalesChart = ({ salesHistory = [], height = 200 }) => {
     { month: 'Dec', quantity: 72, orders: 18 }
   ]
 
-  const effectiveData = (!salesHistory || salesHistory.length === 0) ? mockData : salesHistory
+  const effectiveData =
+    !salesHistory || salesHistory.length === 0 ? mockData : salesHistory
 
   // Prepare data for the chart
-  const chartData = effectiveData.map((item, index) => {
-    const quantity = item?.quantity || item?.sales || 0
-    const month = item?.month || `Month ${index + 1}`
+  const chartData = effectiveData
+    .map((item, index) => {
+      const quantity = item?.quantity || item?.sales || 0
+      const month = item?.month || `Month ${index + 1}`
 
-    return {
-      month: month,
-      sales: parseInt(quantity) || 0,
-      orders: parseInt(item?.orders || 0)
-    }
-  }).reverse() // Reverse to show chronological order
+      return {
+        month: month,
+        sales: parseInt(quantity) || 0,
+        orders: parseInt(item?.orders || 0)
+      }
+    })
+    .reverse() // Reverse to show chronological order
 
   const config = {
     data: chartData,
@@ -34,41 +37,51 @@ const SalesChart = ({ salesHistory = [], height = 200 }) => {
     columnWidthRatio: 0.8,
     color: '#1890ff',
     label: {
-      position: 'middle',
+      position: 'top',
       style: {
-        fill: '#fff',
-        opacity: 0.8,
-      },
+        fill: '#262626',
+        fontSize: 16,
+        fontWeight: 'bold',
+        opacity: 1,
+        background: {
+          fill: '#ffffff',
+          stroke: '#e0e0e0',
+          lineWidth: 1,
+          radius: 8,
+          padding: [4, 8]
+        }
+      }
     },
     tooltip: {
-      formatter: (data) => {
-        const sales = data?.sales === null || data?.sales === undefined ? 0 : data.sales
+      formatter: data => {
+        const sales =
+          data?.sales === null || data?.sales === undefined ? 0 : data.sales
         const month = data?.month || 'Unknown'
         return {
           name: 'Units Sold',
-          value: `${sales} units in ${month}`,
+          value: `${sales} units in ${month}`
         }
-      },
+      }
     },
     xAxis: {
       type: 'cat',
       tickCount: Math.min(chartData.length, 6),
       label: {
         autoHide: true,
-        autoRotate: false,
-      },
+        autoRotate: false
+      }
     },
     yAxis: {
       title: {
-        text: 'Units Sold',
-      },
+        text: 'Units Sold'
+      }
     },
     interactions: [
       {
         type: 'active-region',
-        enable: false,
-      },
-    ],
+        enable: false
+      }
+    ]
   }
 
   return <Column {...config} />

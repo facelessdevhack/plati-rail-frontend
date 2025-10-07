@@ -488,6 +488,19 @@ export const getAIProductionSuggestions = createAsyncThunk(
   }
 )
 
+// Get smart production suggestions (16-inch alloys only)
+export const getSmartProductionSuggestions = createAsyncThunk(
+  'production/getSmartProductionSuggestions',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/production/smart-production')
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
 // Get sales performance metrics
 export const getSalesPerformanceMetrics = createAsyncThunk(
   'production/getSalesPerformanceMetrics',

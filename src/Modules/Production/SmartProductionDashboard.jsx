@@ -30,7 +30,9 @@ import {
   SearchOutlined,
   InfoCircleOutlined,
   DownOutlined,
-  UpOutlined
+  UpOutlined,
+  BulbOutlined,
+  LoadingOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -49,7 +51,8 @@ import {
 import {
   createProductionPlan,
   getStepPresets,
-  getProductionPlansWithQuantities
+  getProductionPlansWithQuantities,
+  getSmartProductionSuggestions
 } from '../../redux/api/productionAPI'
 
 import { updateConversionPlan } from '../../redux/slices/production.slice'
@@ -107,6 +110,8 @@ const SmartProductionDashboard = () => {
   const [expandedRows, setExpandedRows] = useState(new Set())
   const [entriesData, setEntriesData] = useState({}) // Store entries by alloyId
   const [loadingEntries, setLoadingEntries] = useState({})
+  const [aiSuggestions, setAiSuggestions] = useState(null)
+  const [loadingAiSuggestions, setLoadingAiSuggestions] = useState(false)
 
   // Reset virtual list when entries data changes (affects row heights)
   useEffect(() => {
@@ -508,6 +513,92 @@ const SmartProductionDashboard = () => {
     },
     [dispatch]
   )
+
+  // Handle getting AI production suggestions
+  const handleGetAISuggestions = useCallback(async () => {
+    setLoadingAiSuggestions(true)
+    try {
+      const result = await dispatch(getSmartProductionSuggestions()).unwrap()
+      console.log('AI Suggestions Response:', result)
+
+      setAiSuggestions(result.data)
+      notification.success({
+        message: 'AI Suggestions Loaded',
+        description: `Found ${result.data?.suggestions?.length || 0} AI production suggestions for 16-inch alloys`,
+        duration: 4
+      })
+    } catch (error) {
+      console.error('Failed to get AI suggestions:', error)
+      notification.error({
+        message: 'AI Suggestions Failed',
+        description: error.message || 'Could not load AI production suggestions',
+        duration: 4
+      })
+    } finally {
+      setLoadingAiSuggestions(false)
+    }
+  }, [dispatch])
+
+  // Handle applying AI suggestions
+  const handleApplyAISuggestions = useCallback(() => {
+    if (!aiSuggestions?.suggestions || aiSuggestions.suggestions.length === 0) {
+      notification.warning({
+        message: 'No Suggestions Available',
+        description: 'No AI suggestions to apply'
+      })
+      return
+    }
+
+    let appliedCount = 0
+    const newConversionPlans = { ...conversionPlans }
+    const newSelectedRows = new Set(selectedRows)
+
+    aiSuggestions.suggestions.forEach(suggestion => {
+      // Find matching alloy in filtered stock data
+      const matchingAlloy = filteredStockData.find(alloy =>
+        alloy.inches === 16 && // Only 16-inch alloys
+        alloy.modelName === suggestion.modelName &&
+        alloy.finish === suggestion.currentFinish
+      )
+
+      if (matchingAlloy) {
+        // Get available target finishes for this alloy
+        const availableFinishes = getAvailableTargetFinishes(matchingAlloy)
+        const targetFinishOption = availableFinishes.find(f =>
+          f.value === suggestion.recommendedFinish
+        )
+
+        if (targetFinishOption) {
+          // Create unique plan ID
+          const planId = `${matchingAlloy.id}_${planCounter + appliedCount}`
+
+          // Add to selected rows
+          newSelectedRows.add(planId)
+
+          // Add conversion plan
+          newConversionPlans[planId] = {
+            sourceAlloy: matchingAlloy,
+            targetFinish: suggestion.recommendedFinish,
+            quantity: Math.max(suggestion.recommendedQuantity, 1),
+            originalAlloyId: matchingAlloy.id
+          }
+
+          appliedCount++
+        }
+      }
+    })
+
+    // Update state
+    setSelectedRows(newSelectedRows)
+    setConversionPlans(newConversionPlans)
+    setPlanCounter(prev => prev + appliedCount)
+
+    notification.success({
+      message: 'AI Suggestions Applied',
+      description: `Successfully applied ${appliedCount} AI production suggestions`,
+      duration: 4
+    })
+  }, [aiSuggestions, filteredStockData, conversionPlans, selectedRows, planCounter, getAvailableTargetFinishes])
 
   // Calculate pending production quantities by finish for a base material
   const getPendingProductionByFinish = useCallback(
@@ -1203,18 +1294,17 @@ const SmartProductionDashboard = () => {
                         <Text strong className='text-sm'>
                           {finish.label}
                         </Text>
-                        <Tag
-                          color={
+                        <div
+                          className={`px-3 py-1.5 rounded-full font-bold text-sm ${
                             finish.stock > 10
-                              ? 'green'
+                              ? 'bg-green-100 text-green-700 border-2 border-green-300'
                               : finish.stock > 0
-                              ? 'orange'
-                              : 'red'
-                          }
-                          className='text-xs m-0'
+                              ? 'bg-orange-100 text-orange-700 border-2 border-orange-300'
+                              : 'bg-red-100 text-red-700 border-2 border-red-300'
+                          }`}
                         >
-                          {finish.stock}
-                        </Tag>
+                          {finish.stock} In Stock
+                        </div>
                       </Space>
                       <Button
                         type={isAlreadyAdded ? 'default' : 'primary'}
@@ -1551,6 +1641,14 @@ const SmartProductionDashboard = () => {
                   Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
                 </Text>
                 <Button
+                  icon={loadingAiSuggestions ? <LoadingOutlined /> : <BulbOutlined />}
+                  onClick={handleGetAISuggestions}
+                  loading={loadingAiSuggestions}
+                  className="bg-purple-600 border-purple-600 hover:bg-purple-700 text-white"
+                >
+                  AI Suggestions
+                </Button>
+                <Button
                   icon={<ArrowRightOutlined />}
                   onClick={() => navigate('/production-workflow')}
                 >
@@ -1725,11 +1823,10 @@ const SmartProductionDashboard = () => {
           <div
             className='bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm'
             style={{
-              paddingRight: showSelectedPanel
-                ? isPanelCollapsed
-                  ? '60px'
-                  : '416px'
-                : '24px'
+              paddingRight: (
+                (showSelectedPanel ? (isPanelCollapsed ? 60 : 416) : 24) +
+                (aiSuggestions?.suggestions ? 384 : 0)
+              ) + 'px'
             }}
           >
             <div className='w-10 flex-shrink-0'>Add</div>
@@ -1746,12 +1843,10 @@ const SmartProductionDashboard = () => {
           <div
             className='flex-1 bg-white'
             style={{
-              marginRight:
-                showSelectedPanel && selectedRows.size > 0
-                  ? isPanelCollapsed
-                    ? '48px'
-                    : '400px'
-                  : '0'
+              marginRight: (
+                (showSelectedPanel && selectedRows.size > 0 ? (isPanelCollapsed ? 48 : 400) : 0) +
+                (aiSuggestions?.suggestions ? 384 : 0)
+              ) + 'px'
             }}
           >
             {loading ? (
@@ -1834,6 +1929,104 @@ const SmartProductionDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* AI Suggestions Panel */}
+        {aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 && (
+          <div className="w-96 bg-white border-l border-gray-200 shadow-lg overflow-y-auto">
+            <div className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BulbOutlined className="text-xl" />
+                  <h3 className="font-semibold text-lg">AI Suggestions</h3>
+                </div>
+                <Button
+                  size="small"
+                  type="text"
+                  className="text-white hover:bg-purple-500"
+                  onClick={() => setAiSuggestions(null)}
+                >
+                  ✕
+                </Button>
+              </div>
+              <div className="text-sm text-purple-100">
+                {aiSuggestions.suggestions.length} production suggestions for 16-inch alloys
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-gray-600">
+                  Based on current market trends and inventory analysis
+                </div>
+                <Button
+                  size="small"
+                  type="primary"
+                  className="bg-purple-600 border-purple-600 hover:bg-purple-700"
+                  onClick={handleApplyAISuggestions}
+                >
+                  Apply All
+                </Button>
+              </div>
+
+              {aiSuggestions.suggestions.map((suggestion, index) => {
+                const matchingAlloy = filteredStockData.find(alloy =>
+                  alloy.inches === 16 &&
+                  alloy.modelName === suggestion.modelName &&
+                  alloy.finish === suggestion.currentFinish
+                )
+
+                return (
+                  <Card
+                    key={index}
+                    size="small"
+                    className="border-purple-200 hover:border-purple-400 transition-colors"
+                    bodyStyle={{ padding: '12px' }}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-gray-800">
+                            {suggestion.modelName}
+                          </div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            {suggestion.currentFinish} → {suggestion.recommendedFinish}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-purple-600">
+                            {suggestion.recommendedQuantity}
+                          </div>
+                          <div className="text-xs text-gray-500">units</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span>Reason:</span>
+                        <Tag color="purple" className="text-xs">
+                          {suggestion.reason}
+                        </Tag>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Priority:</span>
+                        <Tag color={suggestion.priority === 'high' ? 'red' : suggestion.priority === 'medium' ? 'orange' : 'green'}>
+                          {suggestion.priority}
+                        </Tag>
+                        {!matchingAlloy && (
+                          <Tag color="default">Not available in current stock</Tag>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                        <strong>Analysis:</strong> {suggestion.analysis}
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Selected Items Panel */}
         {showSelectedPanel && selectedRows.size > 0 && (
