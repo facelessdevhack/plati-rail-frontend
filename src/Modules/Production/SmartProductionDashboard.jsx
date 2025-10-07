@@ -524,14 +524,17 @@ const SmartProductionDashboard = () => {
       setAiSuggestions(result.data)
       notification.success({
         message: 'AI Suggestions Loaded',
-        description: `Found ${result.data?.suggestions?.length || 0} AI production suggestions for 16-inch alloys`,
+        description: `Found ${
+          result.data?.suggestions?.length || 0
+        } AI production suggestions for 16-inch alloys`,
         duration: 4
       })
     } catch (error) {
       console.error('Failed to get AI suggestions:', error)
       notification.error({
         message: 'AI Suggestions Failed',
-        description: error.message || 'Could not load AI production suggestions',
+        description:
+          error.message || 'Could not load AI production suggestions',
         duration: 4
       })
     } finally {
@@ -555,17 +558,18 @@ const SmartProductionDashboard = () => {
 
     aiSuggestions.suggestions.forEach(suggestion => {
       // Find matching alloy in filtered stock data
-      const matchingAlloy = filteredStockData.find(alloy =>
-        alloy.inches === 16 && // Only 16-inch alloys
-        alloy.modelName === suggestion.modelName &&
-        alloy.finish === suggestion.currentFinish
+      const matchingAlloy = filteredStockData.find(
+        alloy =>
+          alloy.inches === 16 && // Only 16-inch alloys
+          alloy.modelName === suggestion.modelName &&
+          alloy.finish === suggestion.currentFinish
       )
 
       if (matchingAlloy) {
         // Get available target finishes for this alloy
         const availableFinishes = getAvailableTargetFinishes(matchingAlloy)
-        const targetFinishOption = availableFinishes.find(f =>
-          f.value === suggestion.recommendedFinish
+        const targetFinishOption = availableFinishes.find(
+          f => f.value === suggestion.recommendedFinish
         )
 
         if (targetFinishOption) {
@@ -598,7 +602,14 @@ const SmartProductionDashboard = () => {
       description: `Successfully applied ${appliedCount} AI production suggestions`,
       duration: 4
     })
-  }, [aiSuggestions, filteredStockData, conversionPlans, selectedRows, planCounter, getAvailableTargetFinishes])
+  }, [
+    aiSuggestions,
+    filteredStockData,
+    conversionPlans,
+    selectedRows,
+    planCounter,
+    getAvailableTargetFinishes
+  ])
 
   // Calculate pending production quantities by finish for a base material
   const getPendingProductionByFinish = useCallback(
@@ -784,6 +795,57 @@ const SmartProductionDashboard = () => {
       return result
     },
     []
+  )
+
+  // Get combined monthly average and stock for "without paint/lacquer" finishes
+  const getCombinedWithoutPaintData = useCallback(
+    baseAlloy => {
+      if (!baseAlloy || !stockManagementData) {
+        return {
+          combinedMonthlyAverage: 0,
+          combinedTotalStock: 0,
+          finishes: []
+        }
+      }
+
+      // Find all finishes of the same base alloy that are "without paint" or "without lacquer"
+      const withoutPaintFinishes = stockManagementData.filter(alloy => {
+        const sameBaseAlloy =
+          alloy.modelName === baseAlloy.modelName &&
+          alloy.inchesId === baseAlloy.inchesId &&
+          alloy.pcdId === baseAlloy.pcdId &&
+          alloy.holesId === baseAlloy.holesId &&
+          alloy.widthId === baseAlloy.widthId
+
+        const finish = alloy.finish ? alloy.finish.toLowerCase() : ''
+        const isWithoutPaint =
+          finish.includes('without paint') || finish.includes('without lacquer')
+
+        return sameBaseAlloy && isWithoutPaint
+      })
+
+      // Calculate combined monthly average and total stock
+      let combinedMonthlyAverage = 0
+      let combinedTotalStock = 0
+
+      withoutPaintFinishes.forEach(alloy => {
+        // Add stock
+        combinedTotalStock += alloy.inHouseStock || 0
+
+        // Add monthly average if entries data exists
+        const alloyEntries = entriesData[alloy.id]
+        if (alloyEntries?.monthlyAverageSales) {
+          combinedMonthlyAverage += alloyEntries.monthlyAverageSales
+        }
+      })
+
+      return {
+        combinedMonthlyAverage,
+        combinedTotalStock,
+        finishes: withoutPaintFinishes.map(f => f.finish)
+      }
+    },
+    [stockManagementData, entriesData]
   )
 
   // Get already selected finishes for a specific alloy ID
@@ -1074,7 +1136,7 @@ const SmartProductionDashboard = () => {
         // Check if we have sales data for this alloy (shared across all finishes)
         const alloySalesData = entriesData[alloy.id]
         const hasSalesData = alloySalesData?.monthlySalesData?.length > 0
-        cardHeight += hasSalesData ? 160 : 130 // Enhanced vs Compact layout
+        cardHeight += hasSalesData ? 200 : 180 // Enhanced vs Compact layout
 
         // Debug: Log height calculation for this finish (Content Library)
         if (process.env.NODE_ENV === 'development') {
@@ -1184,6 +1246,51 @@ const SmartProductionDashboard = () => {
             >
               {totalStock} units
             </div>
+
+            {/* Combined monthly average for without paint/lacquer alloys */}
+            {(() => {
+              const alloyFinish = alloy.finish ? alloy.finish.toLowerCase() : ''
+              const isWithoutPaint =
+                alloyFinish.includes('without paint') ||
+                alloyFinish.includes('without lacquer')
+
+              if (isWithoutPaint) {
+                // Find all finishes of the same base alloy
+                const allFinishesForBaseAlloy = stockManagementData.filter(
+                  a =>
+                    a.modelName === alloy.modelName &&
+                    a.inchesId === alloy.inchesId &&
+                    a.pcdId === alloy.pcdId &&
+                    a.holesId === alloy.holesId &&
+                    a.widthId === alloy.widthId
+                )
+
+                let totalMonthlyAvg = 0
+                let hasData = false
+
+                // Simply add up the monthlyAverageSales from entries data
+                allFinishesForBaseAlloy.forEach(a => {
+                  const entries = entriesData[a.id]
+                  if (
+                    entries?.monthlyAverageSales &&
+                    entries.monthlyAverageSales > 0
+                  ) {
+                    totalMonthlyAvg += entries.monthlyAverageSales
+                    hasData = true
+                  }
+                })
+
+                if (hasData && totalMonthlyAvg > 0) {
+                  return (
+                    <div className='mt-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300 font-medium text-xs inline-block'>
+                      📊 {totalMonthlyAvg.toLocaleString()}/mo
+                    </div>
+                  )
+                }
+              }
+
+              return null
+            })()}
           </div>
 
           {/* Plan Status - 280px */}
@@ -1294,16 +1401,55 @@ const SmartProductionDashboard = () => {
                         <Text strong className='text-sm'>
                           {finish.label}
                         </Text>
-                        <div
-                          className={`px-3 py-1.5 rounded-full font-bold text-sm ${
-                            finish.stock > 10
-                              ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                              : finish.stock > 0
-                              ? 'bg-orange-100 text-orange-700 border-2 border-orange-300'
-                              : 'bg-red-100 text-red-700 border-2 border-red-300'
-                          }`}
-                        >
-                          {finish.stock} In Stock
+                        <div className='flex items-center gap-2'>
+                          <div
+                            className={`px-3 py-1.5 rounded-full font-bold text-sm ${
+                              finish.stock > 10
+                                ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                                : finish.stock > 0
+                                ? 'bg-orange-100 text-orange-700 border-2 border-orange-300'
+                                : 'bg-red-100 text-red-700 border-2 border-red-300'
+                            }`}
+                          >
+                            {finish.stock} In Stock
+                          </div>
+
+                          {/* Add monthly average for without paint/lacquer finishes */}
+                          {(() => {
+                            const finishText = finish.label
+                              ? finish.label.toLowerCase()
+                              : ''
+                            const isWithoutPaint =
+                              finishText.includes('without paint') ||
+                              finishText.includes('without lacquer')
+
+                            if (isWithoutPaint) {
+                              const finishAlloyData = stockManagementData?.find(
+                                a =>
+                                  a.modelName === alloy.modelName &&
+                                  a.inchesId === alloy.inchesId &&
+                                  a.pcdId === alloy.pcdId &&
+                                  a.holesId === alloy.holesId &&
+                                  a.widthId === alloy.widthId &&
+                                  a.finish === finish.value
+                              )
+
+                              const alloyEntries =
+                                entriesData[finishAlloyData?.id]
+                              const monthlyAverage =
+                                alloyEntries?.monthlyAverageSales || 0
+
+                              if (monthlyAverage > 0) {
+                                return (
+                                  <div className='px-2 py-1 rounded-full bg-purple-100 text-purple-700 border border-purple-300 font-medium text-xs'>
+                                    📊 {monthlyAverage.toLocaleString()}/mo
+                                  </div>
+                                )
+                              }
+                            }
+
+                            return null
+                          })()}
                         </div>
                       </Space>
                       <Button
@@ -1641,10 +1787,16 @@ const SmartProductionDashboard = () => {
                   Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
                 </Text>
                 <Button
-                  icon={loadingAiSuggestions ? <LoadingOutlined /> : <BulbOutlined />}
+                  icon={
+                    loadingAiSuggestions ? (
+                      <LoadingOutlined />
+                    ) : (
+                      <BulbOutlined />
+                    )
+                  }
                   onClick={handleGetAISuggestions}
                   loading={loadingAiSuggestions}
-                  className="bg-purple-600 border-purple-600 hover:bg-purple-700 text-white"
+                  className='bg-purple-600 border-purple-600 hover:bg-purple-700 text-white'
                 >
                   AI Suggestions
                 </Button>
@@ -1823,10 +1975,10 @@ const SmartProductionDashboard = () => {
           <div
             className='bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm'
             style={{
-              paddingRight: (
+              paddingRight:
                 (showSelectedPanel ? (isPanelCollapsed ? 60 : 416) : 24) +
-                (aiSuggestions?.suggestions ? 384 : 0)
-              ) + 'px'
+                (aiSuggestions?.suggestions ? 384 : 0) +
+                'px'
             }}
           >
             <div className='w-10 flex-shrink-0'>Add</div>
@@ -1843,10 +1995,14 @@ const SmartProductionDashboard = () => {
           <div
             className='flex-1 bg-white'
             style={{
-              marginRight: (
-                (showSelectedPanel && selectedRows.size > 0 ? (isPanelCollapsed ? 48 : 400) : 0) +
-                (aiSuggestions?.suggestions ? 384 : 0)
-              ) + 'px'
+              marginRight:
+                (showSelectedPanel && selectedRows.size > 0
+                  ? isPanelCollapsed
+                    ? 48
+                    : 400
+                  : 0) +
+                (aiSuggestions?.suggestions ? 384 : 0) +
+                'px'
             }}
           >
             {loading ? (
@@ -1932,36 +2088,37 @@ const SmartProductionDashboard = () => {
 
         {/* AI Suggestions Panel */}
         {aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 && (
-          <div className="w-96 bg-white border-l border-gray-200 shadow-lg overflow-y-auto">
-            <div className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <BulbOutlined className="text-xl" />
-                  <h3 className="font-semibold text-lg">AI Suggestions</h3>
+          <div className='w-96 bg-white border-l border-gray-200 shadow-lg overflow-y-auto'>
+            <div className='p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white'>
+              <div className='flex items-center justify-between mb-2'>
+                <div className='flex items-center gap-2'>
+                  <BulbOutlined className='text-xl' />
+                  <h3 className='font-semibold text-lg'>AI Suggestions</h3>
                 </div>
                 <Button
-                  size="small"
-                  type="text"
-                  className="text-white hover:bg-purple-500"
+                  size='small'
+                  type='text'
+                  className='text-white hover:bg-purple-500'
                   onClick={() => setAiSuggestions(null)}
                 >
                   ✕
                 </Button>
               </div>
-              <div className="text-sm text-purple-100">
-                {aiSuggestions.suggestions.length} production suggestions for 16-inch alloys
+              <div className='text-sm text-purple-100'>
+                {aiSuggestions.suggestions.length} production suggestions for
+                16-inch alloys
               </div>
             </div>
 
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm text-gray-600">
+            <div className='p-4 space-y-3'>
+              <div className='flex items-center justify-between mb-4'>
+                <div className='text-sm text-gray-600'>
                   Based on current market trends and inventory analysis
                 </div>
                 <Button
-                  size="small"
-                  type="primary"
-                  className="bg-purple-600 border-purple-600 hover:bg-purple-700"
+                  size='small'
+                  type='primary'
+                  className='bg-purple-600 border-purple-600 hover:bg-purple-700'
                   onClick={handleApplyAISuggestions}
                 >
                   Apply All
@@ -1969,55 +2126,67 @@ const SmartProductionDashboard = () => {
               </div>
 
               {aiSuggestions.suggestions.map((suggestion, index) => {
-                const matchingAlloy = filteredStockData.find(alloy =>
-                  alloy.inches === 16 &&
-                  alloy.modelName === suggestion.modelName &&
-                  alloy.finish === suggestion.currentFinish
+                const matchingAlloy = filteredStockData.find(
+                  alloy =>
+                    alloy.inches === 16 &&
+                    alloy.modelName === suggestion.modelName &&
+                    alloy.finish === suggestion.currentFinish
                 )
 
                 return (
                   <Card
                     key={index}
-                    size="small"
-                    className="border-purple-200 hover:border-purple-400 transition-colors"
+                    size='small'
+                    className='border-purple-200 hover:border-purple-400 transition-colors'
                     bodyStyle={{ padding: '12px' }}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm text-gray-800">
+                    <div className='space-y-2'>
+                      <div className='flex items-start justify-between'>
+                        <div className='flex-1'>
+                          <div className='font-medium text-sm text-gray-800'>
                             {suggestion.modelName}
                           </div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            {suggestion.currentFinish} → {suggestion.recommendedFinish}
+                          <div className='text-xs text-gray-600 mt-1'>
+                            {suggestion.currentFinish} →{' '}
+                            {suggestion.recommendedFinish}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-purple-600">
+                        <div className='text-right'>
+                          <div className='text-lg font-bold text-purple-600'>
                             {suggestion.recommendedQuantity}
                           </div>
-                          <div className="text-xs text-gray-500">units</div>
+                          <div className='text-xs text-gray-500'>units</div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                      <div className='flex items-center gap-2 text-xs text-gray-600'>
                         <span>Reason:</span>
-                        <Tag color="purple" className="text-xs">
+                        <Tag color='purple' className='text-xs'>
                           {suggestion.reason}
                         </Tag>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className='flex items-center gap-2 text-xs text-gray-500'>
                         <span>Priority:</span>
-                        <Tag color={suggestion.priority === 'high' ? 'red' : suggestion.priority === 'medium' ? 'orange' : 'green'}>
+                        <Tag
+                          color={
+                            suggestion.priority === 'high'
+                              ? 'red'
+                              : suggestion.priority === 'medium'
+                              ? 'orange'
+                              : 'green'
+                          }
+                        >
                           {suggestion.priority}
                         </Tag>
                         {!matchingAlloy && (
-                          <Tag color="default">Not available in current stock</Tag>
+                          <Tag color='default'>
+                            Not available in current stock
+                          </Tag>
                         )}
                       </div>
 
-                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                      <div className='text-xs text-gray-500 bg-gray-50 p-2 rounded'>
                         <strong>Analysis:</strong> {suggestion.analysis}
                       </div>
                     </div>
