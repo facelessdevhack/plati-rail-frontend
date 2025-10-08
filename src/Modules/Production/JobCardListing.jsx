@@ -211,16 +211,7 @@ const JobCardListing = () => {
           )
         })
 
-        // TEMPORARY: Mock preset data for demonstration
-        // Remove this when backend returns preset fields
-        const mockPresetData =
-          index === 0
-            ? {
-                presetName: 'Black Milling',
-                stepAssignmentMode: 'preset'
-              }
-            : {}
-
+  
         return {
           ...jc,
           // Fix field name mapping
@@ -254,7 +245,11 @@ const JobCardListing = () => {
             jc.workflow_preset ||
             jc.workflowPreset ||
             jc.workflow_preset_name ||
-            mockPresetData.presetName ||
+            null,
+          presetId:
+            jc.presetid ||
+            jc.presetId ||
+            jc.preset_id ||
             null,
           stepAssignmentMode:
             jc.stepassignmentmode ||
@@ -262,7 +257,6 @@ const JobCardListing = () => {
             jc.step_assignment_mode ||
             jc.workflow_mode ||
             jc.workflowMode ||
-            mockPresetData.stepAssignmentMode ||
             'standard',
 
           // Allocation details
@@ -317,44 +311,45 @@ const JobCardListing = () => {
       'Loading presets for job cards:',
       jobCards.map(jc => ({
         id: jc.id,
+        presetId: jc.presetId,
         presetName: jc.presetName,
         stepAssignmentMode: jc.stepAssignmentMode
       }))
     )
 
     const presetPromises = []
-    const presetsToLoad = new Set()
+    const presetsToLoad = new Map()
 
     jobCards.forEach(jc => {
       console.log(
-        `Job card ${jc.id}: presetName="${jc.presetName}", stepAssignmentMode="${jc.stepAssignmentMode}"`
+        `Job card ${jc.id}: presetId="${jc.presetId}", presetName="${jc.presetName}", stepAssignmentMode="${jc.stepAssignmentMode}"`
       )
-      if (jc.presetName && jc.stepAssignmentMode === 'preset') {
-        presetsToLoad.add(jc.presetName)
+      if (jc.presetId && jc.stepAssignmentMode === 'preset') {
+        presetsToLoad.set(jc.presetId, jc.presetName) // Store both ID and name
       }
     })
 
-    console.log('Presets to load:', Array.from(presetsToLoad))
+    console.log('Presets to load:', Array.from(presetsToLoad.entries()))
 
     if (presetsToLoad.size === 0) {
       console.log('No presets to load')
       return
     }
 
-    for (const presetName of presetsToLoad) {
+    for (const [presetId, presetName] of presetsToLoad.entries()) {
       presetPromises.push(
-        dispatch(getPresetDetails({ presetName }))
+        dispatch(getPresetDetails({ presetId }))
           .unwrap()
           .then(result => {
             // Handle different response structures
-            console.log(`Raw preset response for ${presetName}:`, result)
-            const steps = result?.data?.steps || result?.steps || result || []
-            console.log(`Loaded preset ${presetName}:`, steps)
-            return { presetName, steps }
+            console.log(`Raw preset response for presetId ${presetId}:`, result)
+            const steps = result?.steps || result?.data?.steps || result || []
+            console.log(`Loaded preset ${presetName} (${presetId}):`, steps)
+            return { presetId, presetName, steps }
           })
           .catch(error => {
-            console.warn(`Failed to load preset ${presetName}:`, error)
-            return { presetName, steps: [] }
+            console.warn(`Failed to load preset ${presetName} (${presetId}):`, error)
+            return { presetId, presetName, steps: [] }
           })
       )
     }
@@ -363,8 +358,11 @@ const JobCardListing = () => {
       const presetResults = await Promise.all(presetPromises)
       const presetMap = {}
 
-      presetResults.forEach(({ presetName, steps }) => {
+      presetResults.forEach(({ presetId, presetName, steps }) => {
+        // Use presetName as the key for backward compatibility with existing code
         presetMap[presetName] = Array.isArray(steps) ? steps : []
+        // Also store by ID for more robust lookup
+        presetMap[presetId] = Array.isArray(steps) ? steps : []
       })
 
       console.log('Loaded preset map:', presetMap)
@@ -394,13 +392,16 @@ const JobCardListing = () => {
 
   // Get steps for a job card
   const getJobCardSteps = record => {
+    // Try presetId first, then presetName for backward compatibility
+    const presetKey = record.presetId || record.presetName
+
     if (
-      record.presetName &&
+      presetKey &&
       record.stepAssignmentMode === 'preset' &&
-      jobCardPresets[record.presetName]
+      jobCardPresets[presetKey]
     ) {
       // Create a copy of the array before sorting to avoid modifying frozen Redux state
-      const steps = [...jobCardPresets[record.presetName]]
+      const steps = [...jobCardPresets[presetKey]]
       return steps.sort((a, b) => a.stepOrder - b.stepOrder)
     }
     return PRODUCTION_STEPS
@@ -600,11 +601,11 @@ const JobCardListing = () => {
                   </Tag>
                 )}
               </div>
-
+              {console.log(record, 'RECORD')}
               <div className='text-sm text-gray-600 mb-2'>
-                <span className='font-medium'>{record.alloyName}</span>
+                <span className='font-medium'>{record.sourceProductName}</span>
                 <ArrowRightOutlined className='mx-2 text-xs' />
-                <span className='font-medium'>{record.convertName}</span>
+                <span className='font-medium'>{record.targetProductName}</span>
               </div>
 
               <div className='flex items-center gap-4'>

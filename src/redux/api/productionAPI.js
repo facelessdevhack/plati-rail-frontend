@@ -437,10 +437,10 @@ export const deleteStepPreset = createAsyncThunk(
 // Assign preset to production plan
 export const assignPresetToPlan = createAsyncThunk(
   'production/assignPresetToPlan',
-  async ({ planId, presetName }, { rejectWithValue }) => {
+  async ({ planId, presetId }, { rejectWithValue }) => {
     try {
       const response = await client.post(`/production/plan/${planId}/assign-preset`, {
-        presetName
+        presetId
       })
       return response.data
     } catch (error) {

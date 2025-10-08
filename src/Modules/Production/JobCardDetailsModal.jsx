@@ -101,7 +101,7 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
   // Determine if job card uses preset
   useEffect(() => {
     if (jobCard) {
-      const usesPreset = jobCard.presetName && jobCard.stepAssignmentMode === 'preset'
+      const usesPreset = (jobCard.presetId || jobCard.presetName) && jobCard.stepAssignmentMode === 'preset'
       setIsPresetBased(usesPreset)
     }
   }, [jobCard])
@@ -118,32 +118,29 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
       setLoading(true)
       
       // Load preset steps if job card uses preset
-      if (jobCard.presetName && jobCard.stepAssignmentMode === 'preset') {
-        // TEMPORARY: Mock Black Milling preset for demonstration
-        // Remove this when backend returns preset data properly
-       
-          try {
-            const presetResult = await dispatch(getPresetDetails({ 
-              presetName: jobCard.presetName 
-            })).unwrap()
-            
-            // Handle different response structures
-            const steps = presetResult?.data?.steps || presetResult?.steps || presetResult || []
-            
-            if (Array.isArray(steps) && steps.length > 0) {
-              // Create a copy and sort steps by order to avoid frozen array issues
-              const sortedSteps = [...steps].sort((a, b) => a.stepOrder - b.stepOrder)
-              setPresetSteps(sortedSteps)
-              console.log(`Loaded ${sortedSteps.length} preset steps for ${jobCard.presetName}`)
-            } else {
-              console.warn('No preset steps found for:', jobCard.presetName)
-              setPresetSteps([])
-            }
-          } catch (error) {
-            console.error('Failed to load preset details:', error)
-            // Fallback to default steps
+      if ((jobCard.presetId || jobCard.presetName) && jobCard.stepAssignmentMode === 'preset') {
+        try {
+          const presetResult = await dispatch(getPresetDetails({
+            presetId: jobCard.presetId || jobCard.presetName
+          })).unwrap()
+
+          // Handle different response structures
+          const steps = presetResult?.steps || presetResult?.data?.steps || presetResult || []
+
+          if (Array.isArray(steps) && steps.length > 0) {
+            // Create a copy and sort steps by order to avoid frozen array issues
+            const sortedSteps = [...steps].sort((a, b) => a.stepOrder - b.stepOrder)
+            setPresetSteps(sortedSteps)
+            console.log(`Loaded ${sortedSteps.length} preset steps for ${jobCard.presetName || jobCard.presetId}`)
+          } else {
+            console.warn('No preset steps found for:', jobCard.presetName || jobCard.presetId)
             setPresetSteps([])
           }
+        } catch (error) {
+          console.error('Failed to load preset details:', error)
+          // Fallback to default steps
+          setPresetSteps([])
+        }
       }
       
       // Load job card progress

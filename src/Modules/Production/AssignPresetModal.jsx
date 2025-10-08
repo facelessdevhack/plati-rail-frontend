@@ -124,7 +124,7 @@ const AssignPresetModal = ({
       // Call the actual API to assign preset
       await dispatch(assignPresetToPlan({
         planId: planData.id,
-        presetName: selectedPreset.presetName
+        presetId: selectedPreset.id
       })).unwrap()
 
       notification.success({
