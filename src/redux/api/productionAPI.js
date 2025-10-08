@@ -382,12 +382,12 @@ export const getStepPresets = createAsyncThunk(
   }
 )
 
-// Get preset details by name
+// Get preset details by ID
 export const getPresetDetails = createAsyncThunk(
   'production/getPresetDetails',
-  async ({ presetName }, { rejectWithValue }) => {
+  async ({ presetId }, { rejectWithValue }) => {
     try {
-      const response = await client.get(`/production/step-presets/${presetName}`)
+      const response = await client.get(`/production/step-presets/${presetId}`)
       return response.data
     } catch (error) {
       return rejectWithValue(getError(error))

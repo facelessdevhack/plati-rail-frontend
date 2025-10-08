@@ -505,7 +505,7 @@ const EditProductionPlanModal = ({
             <Divider>Production Steps ({presetDetails.length})</Divider>
 
             <div className="space-y-3 max-h-300 overflow-y-auto">
-              {presetDetails
+              {[...presetDetails]
                 .sort((a, b) => a.stepOrder - b.stepOrder)
                 .map((step) => (
                   <div

@@ -109,16 +109,16 @@ const { Option } = Select
 // Enhanced step icons with animations
 const STEP_ICONS = {
   'Material Request': { icon: '📦', color: '#1890ff' },
-  'Painting': { icon: '🎨', color: '#722ed1' },
-  'Machining': { icon: '⚙️', color: '#fa8c16' },
+  Painting: { icon: '🎨', color: '#722ed1' },
+  Machining: { icon: '⚙️', color: '#fa8c16' },
   'PVD Powder Coating': { icon: '🔧', color: '#eb2f96' },
   'PVD Process': { icon: '⚡', color: '#13c2c2' },
-  'Milling': { icon: '🏭', color: '#52c41a' },
+  Milling: { icon: '🏭', color: '#52c41a' },
   'Acrylic Coating': { icon: '💧', color: '#1890ff' },
   'Lacquer Finish': { icon: '✨', color: '#faad14' },
-  'Packaging': { icon: '📋', color: '#8c8c8c' },
+  Packaging: { icon: '📋', color: '#8c8c8c' },
   'Quality Check': { icon: '🔍', color: '#f5222d' },
-  'Dispatch': { icon: '🚚', color: '#fa541c' }
+  Dispatch: { icon: '🚚', color: '#fa541c' }
 }
 
 // Enhanced color palette
@@ -173,23 +173,27 @@ const PresetManagement = () => {
   const tourSteps = [
     {
       title: 'Welcome to Preset Management',
-      description: 'Manage your production workflow presets efficiently with our enhanced interface.',
-      target: () => document.querySelector('.preset-header'),
+      description:
+        'Manage your production workflow presets efficiently with our enhanced interface.',
+      target: () => document.querySelector('.preset-header')
     },
     {
       title: 'Create New Presets',
-      description: 'Click here to create custom production workflows with drag-and-drop step builder.',
-      target: () => document.querySelector('.create-preset-btn'),
+      description:
+        'Click here to create custom production workflows with drag-and-drop step builder.',
+      target: () => document.querySelector('.create-preset-btn')
     },
     {
       title: 'View Statistics',
-      description: 'See real-time statistics about your presets and their usage.',
-      target: () => document.querySelector('.stats-section'),
+      description:
+        'See real-time statistics about your presets and their usage.',
+      target: () => document.querySelector('.stats-section')
     },
     {
       title: 'Filter and Search',
-      description: 'Easily find presets using our advanced search and filtering options.',
-      target: () => document.querySelector('.filter-section'),
+      description:
+        'Easily find presets using our advanced search and filtering options.',
+      target: () => document.querySelector('.filter-section')
     }
   ]
 
@@ -217,20 +221,26 @@ const PresetManagement = () => {
   // Update available steps when production steps load
   useEffect(() => {
     if (productionSteps && productionSteps.length > 0) {
-      setAvailableSteps(productionSteps.map(step => ({
-        ...step,
-        id: step.id?.toString(),
-        ...STEP_ICONS[step.stepName]
-      })))
+      setAvailableSteps(
+        productionSteps.map(step => ({
+          ...step,
+          id: step.id?.toString(),
+          ...STEP_ICONS[step.stepName]
+        }))
+      )
     }
   }, [productionSteps])
 
   // Enhanced filtering and sorting
   const filteredAndSortedPresets = (stepPresets || [])
     .filter(preset => {
-      const matchesSearch = preset.presetName?.toLowerCase().includes(searchText.toLowerCase()) ||
-                            preset.presetDescription?.toLowerCase().includes(searchText.toLowerCase())
-      const matchesCategory = filterCategory === 'all' || preset.category === filterCategory
+      const matchesSearch =
+        preset.presetName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        preset.presetDescription
+          ?.toLowerCase()
+          .includes(searchText.toLowerCase())
+      const matchesCategory =
+        filterCategory === 'all' || preset.category === filterCategory
       const matchesFavorites = !showFavorites || preset.isFavorite
       return matchesSearch && matchesCategory && matchesFavorites
     })
@@ -256,7 +266,7 @@ const PresetManagement = () => {
     })
 
   // Handle drag end with enhanced animations
-  const handleDragEnd = (result) => {
+  const handleDragEnd = result => {
     if (!result.destination) return
 
     const items = Array.from(selectedSteps)
@@ -274,7 +284,7 @@ const PresetManagement = () => {
   }
 
   // Enhanced step addition with animation
-  const handleAddStep = (step) => {
+  const handleAddStep = step => {
     if (selectedSteps.length >= 20) {
       notification.warning({
         message: 'Step Limit Reached',
@@ -305,7 +315,7 @@ const PresetManagement = () => {
   }
 
   // Remove step with animation
-  const handleRemoveStep = (stepId) => {
+  const handleRemoveStep = stepId => {
     setAnimatingCards(new Set([stepId]))
     setTimeout(() => {
       setSelectedSteps(selectedSteps.filter(s => s.id !== stepId))
@@ -316,24 +326,24 @@ const PresetManagement = () => {
   // Enhanced update step duration
   const handleUpdateStepDuration = (stepId, duration) => {
     setStepDurations({ ...stepDurations, [stepId]: duration })
-    setSelectedSteps(selectedSteps.map(step =>
-      step.id === stepId
-        ? { ...step, estimatedDuration: duration }
-        : step
-    ))
+    setSelectedSteps(
+      selectedSteps.map(step =>
+        step.id === stepId ? { ...step, estimatedDuration: duration } : step
+      )
+    )
   }
 
   // Toggle step required status
-  const handleToggleRequired = (stepId) => {
-    setSelectedSteps(selectedSteps.map(step =>
-      step.id === stepId
-        ? { ...step, isRequired: !step.isRequired }
-        : step
-    ))
+  const handleToggleRequired = stepId => {
+    setSelectedSteps(
+      selectedSteps.map(step =>
+        step.id === stepId ? { ...step, isRequired: !step.isRequired } : step
+      )
+    )
   }
 
   // Enhanced create preset with better feedback
-  const handleCreatePreset = async (values) => {
+  const handleCreatePreset = async values => {
     try {
       const steps = selectedSteps.map((step, index) => ({
         stepId: parseInt(step.id),
@@ -344,13 +354,15 @@ const PresetManagement = () => {
         notes: step.notes || ''
       }))
 
-      await dispatch(createStepPreset({
-        name: values.name,
-        description: values.description,
-        category: values.category,
-        isActive: values.isActive !== false,
-        steps
-      })).unwrap()
+      await dispatch(
+        createStepPreset({
+          name: values.name,
+          description: values.description,
+          category: values.category,
+          isActive: values.isActive !== false,
+          steps
+        })
+      ).unwrap()
 
       notification.success({
         message: '✅ Preset Created Successfully',
@@ -373,11 +385,13 @@ const PresetManagement = () => {
   }
 
   // Enhanced edit preset
-  const handleEditPreset = async (preset) => {
+  const handleEditPreset = async preset => {
     try {
-      const details = await dispatch(getPresetDetails({
-        presetName: preset.presetName
-      })).unwrap()
+      const details = await dispatch(
+        getPresetDetails({
+          presetName: preset.presetName
+        })
+      ).unwrap()
 
       setSelectedPreset(preset)
 
@@ -389,11 +403,12 @@ const PresetManagement = () => {
           isActive: preset.isActive !== false
         })
 
-        const steps = details.sort((a, b) => a.stepOrder - b.stepOrder)
+        const steps = details
+          .sort((a, b) => a.stepOrder - b.stepOrder)
           .map(step => ({
             id: step.stepId?.toString(),
             stepName: step.stepName,
-            ...STEP_ICONS[step.stepName] || { icon: '⚡', color: '#1890ff' },
+            ...(STEP_ICONS[step.stepName] || { icon: '⚡', color: '#1890ff' }),
             stepOrder: step.stepOrder,
             isRequired: step.isRequired !== false,
             estimatedDuration: step.estimatedDuration || 2,
@@ -414,7 +429,7 @@ const PresetManagement = () => {
   }
 
   // Enhanced update preset
-  const handleUpdatePreset = async (values) => {
+  const handleUpdatePreset = async values => {
     try {
       const steps = selectedSteps.map((step, index) => ({
         stepId: parseInt(step.id),
@@ -425,15 +440,17 @@ const PresetManagement = () => {
         notes: step.notes || ''
       }))
 
-      await dispatch(updateStepPreset({
-        presetName: selectedPreset.presetName,
-        presetData: {
-          description: values.description,
-          category: values.category,
-          isActive: values.isActive !== false,
-          steps
-        }
-      })).unwrap()
+      await dispatch(
+        updateStepPreset({
+          presetName: selectedPreset.presetName,
+          presetData: {
+            description: values.description,
+            category: values.category,
+            isActive: values.isActive !== false,
+            steps
+          }
+        })
+      ).unwrap()
 
       notification.success({
         message: '✅ Preset Updated Successfully',
@@ -457,7 +474,7 @@ const PresetManagement = () => {
   }
 
   // Enhanced delete preset
-  const handleDeletePreset = async (presetName) => {
+  const handleDeletePreset = async presetName => {
     try {
       const response = await dispatch(deleteStepPreset({ presetName })).unwrap()
 
@@ -472,7 +489,8 @@ const PresetManagement = () => {
       if (error?.message?.includes('currently being used')) {
         notification.warning({
           message: '⚠️ Cannot Delete Active Preset',
-          description: 'This preset is being used in active production plans and cannot be deleted.',
+          description:
+            'This preset is being used in active production plans and cannot be deleted.',
           icon: <InfoCircleOutlined style={{ color: '#fa8c16' }} />,
           duration: 6
         })
@@ -487,11 +505,13 @@ const PresetManagement = () => {
   }
 
   // Enhanced preview preset
-  const handlePreviewPreset = async (preset) => {
+  const handlePreviewPreset = async preset => {
     try {
-      await dispatch(getPresetDetails({
-        presetName: preset.presetName
-      })).unwrap()
+      await dispatch(
+        getPresetDetails({
+          presetName: preset.presetName
+        })
+      ).unwrap()
       setSelectedPreset(preset)
       setPreviewModalVisible(true)
     } catch (error) {
@@ -504,11 +524,13 @@ const PresetManagement = () => {
   }
 
   // Enhanced duplicate preset
-  const handleDuplicatePreset = async (preset) => {
+  const handleDuplicatePreset = async preset => {
     try {
-      const details = await dispatch(getPresetDetails({
-        presetName: preset.presetName
-      })).unwrap()
+      const details = await dispatch(
+        getPresetDetails({
+          presetName: preset.presetName
+        })
+      ).unwrap()
 
       if (details && details.length > 0) {
         createForm.setFieldsValue({
@@ -518,11 +540,12 @@ const PresetManagement = () => {
           isActive: true
         })
 
-        const steps = details.sort((a, b) => a.stepOrder - b.stepOrder)
+        const steps = details
+          .sort((a, b) => a.stepOrder - b.stepOrder)
           .map(step => ({
             id: step.stepId?.toString(),
             stepName: step.stepName,
-            ...STEP_ICONS[step.stepName] || { icon: '⚡', color: '#1890ff' },
+            ...(STEP_ICONS[step.stepName] || { icon: '⚡', color: '#1890ff' }),
             stepOrder: step.stepOrder,
             isRequired: step.isRequired !== false,
             estimatedDuration: step.estimatedDuration || 2,
@@ -544,12 +567,13 @@ const PresetManagement = () => {
   }
 
   // Calculate total duration with enhanced formatting
-  const calculateTotalDuration = (steps) => {
+  const calculateTotalDuration = steps => {
     const totalHours = steps.reduce((sum, step) => {
       const duration = step.estimatedDuration || 2
       const unit = step.estimatedDurationUnit || 'hours'
-      const hoursMultiplier = unit === 'days' ? 24 : unit === 'minutes' ? 1/60 : 1
-      return sum + (duration * hoursMultiplier)
+      const hoursMultiplier =
+        unit === 'days' ? 24 : unit === 'minutes' ? 1 / 60 : 1
+      return sum + duration * hoursMultiplier
     }, 0)
 
     if (totalHours >= 24) {
@@ -582,45 +606,57 @@ const PresetManagement = () => {
         onMouseEnter={() => setHoveredPreset(preset.presetName)}
         onMouseLeave={() => setHoveredPreset(null)}
         actions={[
-          <Tooltip title="Preview Preset" key="preview">
+          <Tooltip title='Preview Preset' key='preview'>
             <Button
-              type="text"
+              type='text'
               icon={<EyeOutlined style={{ color: categoryColor.text }} />}
               onClick={() => handlePreviewPreset(preset)}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Tooltip>,
-          <Tooltip title="Edit Preset" key="edit">
+          <Tooltip title='Edit Preset' key='edit'>
             <Button
-              type="text"
+              type='text'
               icon={<EditOutlined style={{ color: categoryColor.text }} />}
               onClick={() => handleEditPreset(preset)}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Tooltip>,
           <Dropdown
             overlay={
               <Menu>
                 <Menu.Item
-                  key="duplicate"
+                  key='duplicate'
                   icon={<CopyOutlined />}
                   onClick={() => handleDuplicatePreset(preset)}
                 >
                   Duplicate
                 </Menu.Item>
                 <Menu.Item
-                  key="favorite"
-                  icon={preset.isFavorite ? <HeartOutlined style={{ color: '#f5222d' }} /> : <HeartOutlined />}
+                  key='favorite'
+                  icon={
+                    preset.isFavorite ? (
+                      <HeartOutlined style={{ color: '#f5222d' }} />
+                    ) : (
+                      <HeartOutlined />
+                    )
+                  }
                   onClick={() => {
                     // Toggle favorite logic here
-                    message.success(preset.isFavorite ? 'Removed from favorites' : 'Added to favorites')
+                    message.success(
+                      preset.isFavorite
+                        ? 'Removed from favorites'
+                        : 'Added to favorites'
+                    )
                   }}
                 >
-                  {preset.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  {preset.isFavorite
+                    ? 'Remove from Favorites'
+                    : 'Add to Favorites'}
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
-                  key="delete"
+                  key='delete'
                   icon={<DeleteOutlined />}
                   danger
                   onClick={() => {
@@ -639,26 +675,26 @@ const PresetManagement = () => {
               </Menu>
             }
             trigger={['click']}
-            key="more"
+            key='more'
           >
             <Button
-              type="text"
+              type='text'
               icon={<MoreOutlined style={{ color: categoryColor.text }} />}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Dropdown>
         ]}
       >
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className='mb-4'>
+          <div className='flex items-center justify-between mb-3'>
             <Title
               level={4}
-              className="mb-0 font-bold"
+              className='mb-0 font-bold'
               style={{ color: categoryColor.text }}
             >
               {preset.presetName}
             </Title>
-            <Space size="small">
+            <Space size='small'>
               <Tag
                 color={categoryColor.text}
                 style={{
@@ -669,9 +705,7 @@ const PresetManagement = () => {
               >
                 {category.toUpperCase()}
               </Tag>
-              {!isActive && (
-                <Tag color="default">INACTIVE</Tag>
-              )}
+              {!isActive && <Tag color='default'>INACTIVE</Tag>}
               {preset.isFavorite && (
                 <HeartOutlined style={{ color: '#f5222d' }} />
               )}
@@ -680,43 +714,48 @@ const PresetManagement = () => {
 
           <Paragraph
             ellipsis={{ rows: 2 }}
-            className="text-gray-600 mb-4"
+            className='text-gray-600 mb-4'
             style={{ minHeight: '40px' }}
           >
             {preset.presetDescription || 'No description available'}
           </Paragraph>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className='grid grid-cols-2 gap-3 mb-4'>
             <div
-              className="p-3 rounded-lg text-center transform hover:scale-105 transition-all"
+              className='p-3 rounded-lg text-center transform hover:scale-105 transition-all'
               style={{ background: categoryColor.bg }}
             >
-              <div className="text-2xl font-bold" style={{ color: categoryColor.text }}>
+              <div
+                className='text-2xl font-bold'
+                style={{ color: categoryColor.text }}
+              >
                 {preset.stepCount || 0}
               </div>
-              <div className="text-xs text-gray-600 font-medium">Steps</div>
+              <div className='text-xs text-gray-600 font-medium'>Steps</div>
             </div>
             <div
-              className="p-3 rounded-lg text-center transform hover:scale-105 transition-all"
+              className='p-3 rounded-lg text-center transform hover:scale-105 transition-all'
               style={{ background: '#f0f9ff' }}
             >
-              <div className="text-2xl font-bold text-green-600">
+              <div className='text-2xl font-bold text-green-600'>
                 {preset.activeUsage || 0}
               </div>
-              <div className="text-xs text-gray-600 font-medium">Active Plans</div>
+              <div className='text-xs text-gray-600 font-medium'>
+                Active Plans
+              </div>
             </div>
           </div>
 
           {/* Mini progress bar for visual appeal */}
-          <div className="mt-4">
+          <div className='mt-4'>
             <Progress
               percent={Math.min((preset.activeUsage || 0) * 20, 100)}
               showInfo={false}
               strokeColor={categoryColor.text}
-              trailColor="#f0f0f0"
+              trailColor='#f0f0f0'
               height={4}
             />
-            <div className="text-xs text-gray-500 mt-1">
+            <div className='text-xs text-gray-500 mt-1'>
               Usage: {preset.activeUsage || 0} active plans
             </div>
           </div>
@@ -727,7 +766,7 @@ const PresetManagement = () => {
 
   // Enhanced timeline view component
   const TimelineView = ({ presets }) => (
-    <Timeline mode="left" className="preset-timeline">
+    <Timeline mode='left' className='preset-timeline'>
       {presets.map((preset, index) => {
         const category = preset.category || 'standard'
         const categoryColor = PRESET_COLORS[category] || PRESET_COLORS.standard
@@ -738,7 +777,7 @@ const PresetManagement = () => {
             color={categoryColor.text}
             dot={
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold"
+                className='w-8 h-8 rounded-full flex items-center justify-center text-white font-bold'
                 style={{ background: categoryColor.text }}
               >
                 {preset.stepCount || 0}
@@ -746,14 +785,14 @@ const PresetManagement = () => {
             }
           >
             <Card
-              size="small"
-              className="timeline-card hover:shadow-lg transition-all duration-300"
+              size='small'
+              className='timeline-card hover:shadow-lg transition-all duration-300'
               style={{ borderColor: categoryColor.border }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Title level={5} className="mb-0">
+              <div className='flex items-center justify-between'>
+                <div className='flex-1'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <Title level={5} className='mb-0'>
                       {preset.presetName}
                     </Title>
                     <Tag
@@ -766,24 +805,24 @@ const PresetManagement = () => {
                       {category.toUpperCase()}
                     </Tag>
                   </div>
-                  <Text type="secondary" className="text-sm">
+                  <Text type='secondary' className='text-sm'>
                     {preset.presetDescription || 'No description'}
                   </Text>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className='flex items-center gap-2'>
                   <Statistic
-                    title="Active Plans"
+                    title='Active Plans'
                     value={preset.activeUsage || 0}
                     valueStyle={{ fontSize: '16px' }}
                   />
                   <Space>
                     <Button
-                      type="text"
+                      type='text'
                       icon={<EyeOutlined />}
                       onClick={() => handlePreviewPreset(preset)}
                     />
                     <Button
-                      type="text"
+                      type='text'
                       icon={<EditOutlined />}
                       onClick={() => handleEditPreset(preset)}
                     />
@@ -806,24 +845,27 @@ const PresetManagement = () => {
       width: 300,
       sorter: true,
       render: (_, record) => (
-        <div className="py-2">
-          <div className="flex items-center gap-3">
+        <div className='py-2'>
+          <div className='flex items-center gap-3'>
             <Avatar
               size={48}
               style={{
-                backgroundColor: record.isActive !== false ? '#1890ff' : '#d9d9d9',
+                backgroundColor:
+                  record.isActive !== false ? '#1890ff' : '#d9d9d9',
                 fontSize: '20px',
                 fontWeight: 'bold'
               }}
             >
               {record.stepCount || 0}
             </Avatar>
-            <div className="flex-1">
-              <div className="font-medium text-base flex items-center gap-2">
+            <div className='flex-1'>
+              <div className='font-medium text-base flex items-center gap-2'>
                 {record.presetName}
-                {record.isFavorite && <HeartOutlined style={{ color: '#f5222d' }} />}
+                {record.isFavorite && (
+                  <HeartOutlined style={{ color: '#f5222d' }} />
+                )}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className='text-xs text-gray-500'>
                 {record.presetDescription || 'No description'}
               </div>
             </div>
@@ -845,7 +887,7 @@ const PresetManagement = () => {
         { text: 'Custom', value: 'custom' }
       ],
       onFilter: (value, record) => record.category === value,
-      render: (category) => {
+      render: category => {
         const categoryColor = PRESET_COLORS[category] || PRESET_COLORS.standard
         return (
           <Tag
@@ -868,7 +910,7 @@ const PresetManagement = () => {
       width: 100,
       align: 'center',
       sorter: (a, b) => (a.stepCount || 0) - (b.stepCount || 0),
-      render: (count) => (
+      render: count => (
         <Badge
           count={count || 0}
           style={{ backgroundColor: '#52c41a' }}
@@ -883,10 +925,12 @@ const PresetManagement = () => {
       width: 120,
       align: 'center',
       sorter: (a, b) => (a.activeUsage || 0) - (b.activeUsage || 0),
-      render: (count) => (
-        <div className={count > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-          <div className="text-lg font-bold">{count || 0}</div>
-          <div className="text-xs">active</div>
+      render: count => (
+        <div
+          className={count > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}
+        >
+          <div className='text-lg font-bold'>{count || 0}</div>
+          <div className='text-xs'>active</div>
         </div>
       )
     },
@@ -895,7 +939,7 @@ const PresetManagement = () => {
       dataIndex: 'isActive',
       key: 'isActive',
       width: 100,
-      render: (isActive) => (
+      render: isActive => (
         <Tag color={isActive !== false ? 'green' : 'default'}>
           {isActive !== false ? 'ACTIVE' : 'INACTIVE'}
         </Tag>
@@ -908,43 +952,43 @@ const PresetManagement = () => {
       width: 150,
       render: (_, record) => (
         <Space>
-          <Tooltip title="Preview">
+          <Tooltip title='Preview'>
             <Button
-              type="text"
+              type='text'
               icon={<EyeOutlined />}
               onClick={() => handlePreviewPreset(record)}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Tooltip>
-          <Tooltip title="Edit">
+          <Tooltip title='Edit'>
             <Button
-              type="text"
+              type='text'
               icon={<EditOutlined />}
               onClick={() => handleEditPreset(record)}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Tooltip>
-          <Tooltip title="Duplicate">
+          <Tooltip title='Duplicate'>
             <Button
-              type="text"
+              type='text'
               icon={<CopyOutlined />}
               onClick={() => handleDuplicatePreset(record)}
-              className="hover:scale-110 transition-transform"
+              className='hover:scale-110 transition-transform'
             />
           </Tooltip>
           <Popconfirm
-            title="Delete Preset"
+            title='Delete Preset'
             description={`Are you sure you want to delete "${record.presetName}"?`}
             onConfirm={() => handleDeletePreset(record.presetName)}
-            okText="Delete"
-            okType="danger"
+            okText='Delete'
+            okType='danger'
           >
-            <Tooltip title="Delete">
+            <Tooltip title='Delete'>
               <Button
-                type="text"
+                type='text'
                 icon={<DeleteOutlined />}
                 danger
-                className="hover:scale-110 transition-transform"
+                className='hover:scale-110 transition-transform'
               />
             </Tooltip>
           </Popconfirm>
@@ -955,64 +999,79 @@ const PresetManagement = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className='min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'>
         {/* Enhanced Header Section */}
-        <div className="preset-header bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 relative overflow-hidden">
+        <div className='preset-header bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 relative overflow-hidden'>
           {/* Animated background elements */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
-            <div className="absolute bottom-10 right-20 w-24 h-24 bg-white rounded-full animate-bounce"></div>
-            <div className="absolute top-20 right-40 w-16 h-16 bg-white rounded-full animate-ping"></div>
+          <div className='absolute inset-0 opacity-10'>
+            <div className='absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse'></div>
+            <div className='absolute bottom-10 right-20 w-24 h-24 bg-white rounded-full animate-bounce'></div>
+            <div className='absolute top-20 right-40 w-16 h-16 bg-white rounded-full animate-ping'></div>
           </div>
 
-          <div className="max-w-7xl mx-auto relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-4 mb-3">
+          <div className='max-w-7xl mx-auto relative z-10'>
+            <div className='flex items-center justify-between'>
+              <div className='flex-1'>
+                <div className='flex items-center gap-4 mb-3'>
                   <Avatar
                     size={64}
                     icon={<SettingOutlined />}
-                    className="bg-white/20 backdrop-blur-sm"
+                    className='bg-white/20 backdrop-blur-sm'
                   />
                   <div>
-                    <Title level={2} className="text-white mb-2 font-bold">
+                    <Title level={2} className='text-white mb-2 font-bold'>
                       Production Step Presets
                     </Title>
-                    <Text className="text-white/90 text-lg">
-                      Manage and customize workflow templates for production plans
+                    <Text className='text-white/90 text-lg'>
+                      Manage and customize workflow templates for production
+                      plans
                     </Text>
                   </div>
                 </div>
 
                 {/* Quick stats */}
-                <div className="flex items-center gap-6 mt-4">
-                  <div className="flex items-center gap-2">
-                    <ThunderboltOutlined className="text-yellow-300" />
-                    <Text className="text-white/80">
+                <div className='flex items-center gap-6 mt-4'>
+                  <div className='flex items-center gap-2'>
+                    <ThunderboltOutlined className='text-yellow-300' />
+                    <Text className='text-white/80'>
                       {stepPresets?.length || 0} total presets
                     </Text>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <PlayCircleOutlined className="text-green-300" />
-                    <Text className="text-white/80">
-                      {stepPresets?.filter(p => p.isActive !== false).length || 0} active
+                  <div className='flex items-center gap-2'>
+                    <PlayCircleOutlined className='text-green-300' />
+                    <Text className='text-white/80'>
+                      {stepPresets?.filter(p => p.isActive !== false).length ||
+                        0}{' '}
+                      active
                     </Text>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <TeamOutlined className="text-blue-300" />
-                    <Text className="text-white/80">
-                      {stepPresets?.reduce((sum, p) => sum + (p.activeUsage || 0), 0) || 0} total usage
+                  <div className='flex items-center gap-2'>
+                    <TeamOutlined className='text-blue-300' />
+                    <Text className='text-white/80'>
+                      {stepPresets?.reduce(
+                        (sum, p) => sum + (p.activeUsage || 0),
+                        0
+                      ) || 0}{' '}
+                      total usage
                     </Text>
                   </div>
                 </div>
               </div>
 
-              <div className="text-center stats-section">
-                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
+              <div className='text-center stats-section'>
+                <div className='bg-white/20 backdrop-blur-sm rounded-2xl p-6'>
                   <Statistic
-                    title={<span className="text-white/80 font-medium">Total Presets</span>}
+                    title={
+                      <span className='text-white/80 font-medium'>
+                        Total Presets
+                      </span>
+                    }
                     value={stepPresets?.length || 0}
-                    valueStyle={{ color: '#fff', fontSize: '42px', fontWeight: 'bold' }}
+                    valueStyle={{
+                      color: '#fff',
+                      fontSize: '42px',
+                      fontWeight: 'bold'
+                    }}
                     prefix={<DashboardOutlined />}
                   />
                 </div>
@@ -1022,19 +1081,19 @@ const PresetManagement = () => {
         </div>
 
         {/* Enhanced Controls Section */}
-        <div className="bg-white shadow-lg border-b sticky top-0 z-40 backdrop-blur-sm bg-opacity-95">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex flex-col lg:flex-row items-center gap-4">
-              <div className="flex items-center gap-4 flex-1 filter-section">
-                <div className="relative">
+        <div className='bg-white shadow-lg border-b sticky top-0 z-40 backdrop-blur-sm bg-opacity-95'>
+          <div className='max-w-7xl mx-auto px-6 py-4'>
+            <div className='flex flex-col lg:flex-row items-center gap-4'>
+              <div className='flex items-center gap-4 flex-1 filter-section'>
+                <div className='relative'>
                   <Input.Search
-                    placeholder="Search presets by name or description..."
+                    placeholder='Search presets by name or description...'
                     allowClear
-                    onChange={(e) => setSearchText(e.target.value)}
+                    onChange={e => setSearchText(e.target.value)}
                     style={{ width: 320 }}
-                    prefix={<SearchOutlined className="text-gray-400" />}
-                    size="large"
-                    className="search-input"
+                    prefix={<SearchOutlined className='text-gray-400' />}
+                    size='large'
+                    className='search-input'
                   />
                 </div>
 
@@ -1042,52 +1101,68 @@ const PresetManagement = () => {
                   value={filterCategory}
                   onChange={setFilterCategory}
                   style={{ width: 150 }}
-                  size="large"
-                  placeholder="Category"
+                  size='large'
+                  placeholder='Category'
                 >
-                  <Option value="all">All Categories</Option>
-                  <Option value="basic">Basic</Option>
-                  <Option value="standard">Standard</Option>
-                  <Option value="premium">Premium</Option>
-                  <Option value="chrome">Chrome</Option>
-                  <Option value="urgent">Urgent</Option>
-                  <Option value="custom">Custom</Option>
+                  <Option value='all'>All Categories</Option>
+                  <Option value='basic'>Basic</Option>
+                  <Option value='standard'>Standard</Option>
+                  <Option value='premium'>Premium</Option>
+                  <Option value='chrome'>Chrome</Option>
+                  <Option value='urgent'>Urgent</Option>
+                  <Option value='custom'>Custom</Option>
                 </Select>
 
                 <Select
                   value={sortBy}
                   onChange={setSortBy}
                   style={{ width: 140 }}
-                  size="large"
-                  placeholder="Sort by"
+                  size='large'
+                  placeholder='Sort by'
                 >
-                  <Option value="name">Name</Option>
-                  <Option value="usage">Usage</Option>
-                  <Option value="steps">Steps</Option>
-                  <Option value="created">Created</Option>
+                  <Option value='name'>Name</Option>
+                  <Option value='usage'>Usage</Option>
+                  <Option value='steps'>Steps</Option>
+                  <Option value='created'>Created</Option>
                 </Select>
 
                 <Button
-                  icon={sortOrder === 'asc' ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  size="large"
+                  icon={
+                    sortOrder === 'asc' ? (
+                      <SortAscendingOutlined />
+                    ) : (
+                      <SortDescendingOutlined />
+                    )
+                  }
+                  onClick={() =>
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                  }
+                  size='large'
                 />
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className='flex items-center gap-3'>
                 <Switch
                   checkedChildren={<HeartOutlined />}
                   unCheckedChildren={<HeartOutlined />}
                   checked={showFavorites}
                   onChange={setShowFavorites}
-                  title="Show favorites only"
+                  title='Show favorites only'
                 />
 
                 <Segmented
                   options={[
-                    { label: 'Grid', value: 'grid', icon: <AppstoreOutlined /> },
+                    {
+                      label: 'Grid',
+                      value: 'grid',
+                      icon: <AppstoreOutlined />
+                    },
                     { label: 'Table', value: 'table', icon: <BarsOutlined /> },
-                    { label: 'Timeline', value: 'timeline', icon: <ClockCircleOutlined /> }
+                    {
+                      label: 'Timeline',
+                      value: 'timeline',
+                      icon: <ClockCircleOutlined />
+                    }
                   ]}
                   value={viewMode}
                   onChange={setViewMode}
@@ -1097,18 +1172,18 @@ const PresetManagement = () => {
                   icon={<ReloadOutlined />}
                   onClick={loadData}
                   loading={loading}
-                  size="large"
-                  className="hover:scale-105 transition-transform"
+                  size='large'
+                  className='hover:scale-105 transition-transform'
                 >
                   Refresh
                 </Button>
 
                 <Button
-                  type="primary"
+                  type='primary'
                   icon={<PlusOutlined />}
                   onClick={() => setCreateDrawerVisible(true)}
-                  size="large"
-                  className="create-preset-btn bg-gradient-to-r from-blue-500 to-purple-500 border-0 hover:from-blue-600 hover:to-purple-600 hover:scale-105 transition-all shadow-lg"
+                  size='large'
+                  className='create-preset-btn bg-gradient-to-r from-blue-500 to-purple-500 border-0 hover:from-blue-600 hover:to-purple-600 hover:scale-105 transition-all shadow-lg'
                 >
                   Create Preset
                 </Button>
@@ -1118,36 +1193,36 @@ const PresetManagement = () => {
         </div>
 
         {/* Enhanced Content Section */}
-        <div className="max-w-7xl mx-auto p-6">
+        <div className='max-w-7xl mx-auto p-6'>
           {loading ? (
-            <div className="text-center py-12">
-              <Spin size="large" />
-              <div className="mt-4 text-gray-500">Loading presets...</div>
+            <div className='text-center py-12'>
+              <Spin size='large' />
+              <div className='mt-4 text-gray-500'>Loading presets...</div>
             </div>
           ) : filteredAndSortedPresets.length === 0 ? (
-            <Card className="text-center py-16">
+            <Card className='text-center py-16'>
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   <div>
-                    <Title level={4} className="text-gray-500">
+                    <Title level={4} className='text-gray-500'>
                       {searchText || filterCategory !== 'all' || showFavorites
                         ? 'No presets found matching your criteria'
                         : 'No presets created yet'}
                     </Title>
-                    <Text className="text-gray-400">
+                    <Text className='text-gray-400'>
                       {searchText || filterCategory !== 'all' || showFavorites
                         ? 'Try adjusting your search terms or filters'
                         : 'Create your first production preset to get started'}
                     </Text>
                     {!searchText && filterCategory === 'all' && !showFavorites && (
-                      <div className="mt-6">
+                      <div className='mt-6'>
                         <Button
-                          type="primary"
+                          type='primary'
                           icon={<PlusOutlined />}
-                          size="large"
+                          size='large'
                           onClick={() => setCreateDrawerVisible(true)}
-                          className="hover:scale-105 transition-transform"
+                          className='hover:scale-105 transition-transform'
                         >
                           Create Your First Preset
                         </Button>
@@ -1173,27 +1248,27 @@ const PresetManagement = () => {
               )}
 
               {viewMode === 'table' && (
-                <Card className="shadow-lg">
+                <Card className='shadow-lg'>
                   <Table
                     columns={columns}
                     dataSource={filteredAndSortedPresets}
-                    rowKey="presetName"
+                    rowKey='presetName'
                     pagination={{
                       pageSize: 10,
                       showSizeChanger: true,
                       showQuickJumper: true,
                       showTotal: (total, range) =>
                         `${range[0]}-${range[1]} of ${total} presets`,
-                      className: "pagination-styled"
+                      className: 'pagination-styled'
                     }}
                     scroll={{ x: 1200 }}
-                    className="preset-table"
+                    className='preset-table'
                   />
                 </Card>
               )}
 
               {viewMode === 'timeline' && (
-                <Card className="shadow-lg p-6">
+                <Card className='shadow-lg p-6'>
                   <TimelineView presets={filteredAndSortedPresets} />
                 </Card>
               )}
@@ -1204,23 +1279,25 @@ const PresetManagement = () => {
         {/* Enhanced Create/Edit Drawer */}
         <Drawer
           title={
-            <div className="flex items-center gap-3">
+            <div className='flex items-center gap-3'>
               <Avatar
                 icon={editDrawerVisible ? <EditOutlined /> : <PlusOutlined />}
                 style={{ backgroundColor: '#1890ff' }}
-                size="large"
+                size='large'
               />
               <div>
-                <Title level={4} className="mb-0">
-                  {editDrawerVisible ? `Edit Preset: ${selectedPreset?.presetName}` : 'Create New Preset'}
+                <Title level={4} className='mb-0'>
+                  {editDrawerVisible
+                    ? `Edit Preset: ${selectedPreset?.presetName}`
+                    : 'Create New Preset'}
                 </Title>
-                <Text type="secondary" className="text-sm">
+                <Text type='secondary' className='text-sm'>
                   Build your custom production workflow
                 </Text>
               </div>
             </div>
           }
-          placement="right"
+          placement='right'
           width={900}
           open={createDrawerVisible || editDrawerVisible}
           onClose={() => {
@@ -1246,7 +1323,7 @@ const PresetManagement = () => {
                 Cancel
               </Button>
               <Button
-                type="primary"
+                type='primary'
                 icon={<SaveOutlined />}
                 loading={isCreating || isUpdating}
                 onClick={() => {
@@ -1254,7 +1331,7 @@ const PresetManagement = () => {
                   form.submit()
                 }}
                 disabled={selectedSteps.length === 0}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 border-0"
+                className='bg-gradient-to-r from-blue-500 to-purple-500 border-0'
               >
                 {editDrawerVisible ? 'Update' : 'Create'} Preset
               </Button>
@@ -1263,75 +1340,84 @@ const PresetManagement = () => {
         >
           <Form
             form={editDrawerVisible ? editForm : createForm}
-            layout="vertical"
-            onFinish={editDrawerVisible ? handleUpdatePreset : handleCreatePreset}
+            layout='vertical'
+            onFinish={
+              editDrawerVisible ? handleUpdatePreset : handleCreatePreset
+            }
           >
             <Row gutter={16}>
               <Col span={editDrawerVisible ? 24 : 12}>
                 <Form.Item
-                  name="name"
+                  name='name'
                   label={
-                    <span className="flex items-center gap-2">
+                    <span className='flex items-center gap-2'>
                       <SettingOutlined />
                       Preset Name
                     </span>
                   }
                   rules={[
                     { required: true, message: 'Please enter preset name' },
-                    { min: 3, max: 50, message: 'Name must be 3-50 characters' },
+                    {
+                      min: 3,
+                      max: 50,
+                      message: 'Name must be 3-50 characters'
+                    },
                     {
                       pattern: /^[a-zA-Z0-9\s\-_]+$/,
-                      message: 'Only letters, numbers, spaces, hyphens, and underscores allowed'
+                      message:
+                        'Only letters, numbers, spaces, hyphens, and underscores allowed'
                     }
                   ]}
                 >
                   <Input
-                    placeholder="Enter preset name"
+                    placeholder='Enter preset name'
                     disabled={editDrawerVisible}
                     prefix={<SettingOutlined />}
-                    size="large"
+                    size='large'
                   />
                 </Form.Item>
               </Col>
               <Col span={editDrawerVisible ? 12 : 12}>
                 <Form.Item
-                  name="category"
+                  name='category'
                   label={
-                    <span className="flex items-center gap-2">
+                    <span className='flex items-center gap-2'>
                       <AppstoreOutlined />
                       Category
                     </span>
                   }
-                  rules={[{ required: true, message: 'Please select category' }]}
-                  initialValue="standard"
+                  rules={[
+                    { required: true, message: 'Please select category' }
+                  ]}
+                  initialValue='standard'
                 >
-                  <Select placeholder="Select category" size="large">
-                    <Option value="basic">Basic</Option>
-                    <Option value="standard">Standard</Option>
-                    <Option value="premium">Premium</Option>
-                    <Option value="chrome">Chrome</Option>
-                    <Option value="urgent">Urgent</Option>
-                    <Option value="custom">Custom</Option>
+                  <Select placeholder='Select category' size='large'>
+                    <Option value='basic'>Basic</Option>
+                    <Option value='standard'>Standard</Option>
+                    <Option value='premium'>Premium</Option>
+                    <Option value='chrome'>Chrome</Option>
+                    <Option value='urgent'>Urgent</Option>
+                    <Option value='custom'>Custom</Option>
                   </Select>
                 </Form.Item>
               </Col>
               {editDrawerVisible && (
                 <Col span={12}>
                   <Form.Item
-                    name="isActive"
+                    name='isActive'
                     label={
-                      <span className="flex items-center gap-2">
+                      <span className='flex items-center gap-2'>
                         <PoweroffOutlined />
                         Status
                       </span>
                     }
-                    valuePropName="checked"
+                    valuePropName='checked'
                     initialValue={true}
                   >
                     <Switch
-                      checkedChildren="Active"
-                      unCheckedChildren="Inactive"
-                      size="large"
+                      checkedChildren='Active'
+                      unCheckedChildren='Inactive'
+                      size='large'
                     />
                   </Form.Item>
                 </Col>
@@ -1339,9 +1425,9 @@ const PresetManagement = () => {
             </Row>
 
             <Form.Item
-              name="description"
+              name='description'
               label={
-                <span className="flex items-center gap-2">
+                <span className='flex items-center gap-2'>
                   <FileTextOutlined />
                   Description
                 </span>
@@ -1350,10 +1436,10 @@ const PresetManagement = () => {
             >
               <TextArea
                 rows={3}
-                placeholder="Enter preset description (optional)"
+                placeholder='Enter preset description (optional)'
                 showCount
                 maxLength={200}
-                size="large"
+                size='large'
               />
             </Form.Item>
           </Form>
@@ -1362,21 +1448,23 @@ const PresetManagement = () => {
 
           {/* Enhanced Step Builder Section */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <Title level={5} className="flex items-center gap-2 mb-0">
+            <div className='flex items-center justify-between mb-4'>
+              <Title level={5} className='flex items-center gap-2 mb-0'>
                 <BranchesOutlined />
                 Workflow Steps Builder
               </Title>
-              <div className="flex items-center gap-3">
-                <Tag color="blue" className="text-sm">
+              <div className='flex items-center gap-3'>
+                <Tag color='blue' className='text-sm'>
                   {selectedSteps.length} / 20 steps
                 </Tag>
                 {selectedSteps.length > 0 && (
                   <Alert
-                    message={`Total Duration: ${calculateTotalDuration(selectedSteps)}`}
-                    type="info"
+                    message={`Total Duration: ${calculateTotalDuration(
+                      selectedSteps
+                    )}`}
+                    type='info'
                     showIcon
-                    className="mb-0"
+                    className='mb-0'
                   />
                 )}
               </div>
@@ -1387,45 +1475,49 @@ const PresetManagement = () => {
               <Col span={10}>
                 <Card
                   title={
-                    <span className="flex items-center gap-2">
+                    <span className='flex items-center gap-2'>
                       <DashboardOutlined />
                       Available Steps
                     </span>
                   }
-                  size="small"
-                  className="h-96 overflow-hidden shadow-sm"
+                  size='small'
+                  className='h-96 overflow-hidden shadow-sm'
                 >
-                  <div className="overflow-y-auto h-80">
+                  <div className='overflow-y-auto h-80'>
                     <List
-                      dataSource={availableSteps.filter(step =>
-                        !selectedSteps.find(s => s.id === step.id?.toString())
+                      dataSource={availableSteps.filter(
+                        step =>
+                          !selectedSteps.find(s => s.id === step.id?.toString())
                       )}
                       renderItem={step => (
                         <List.Item
-                          className="hover:bg-blue-50 cursor-pointer transition-all duration-200 rounded-lg p-2"
+                          className='hover:bg-blue-50 cursor-pointer transition-all duration-200 rounded-lg p-2'
                           onClick={() => handleAddStep(step)}
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl" style={{ color: step.color }}>
+                          <div className='flex items-center justify-between w-full'>
+                            <div className='flex items-center gap-3'>
+                              <span
+                                className='text-xl'
+                                style={{ color: step.color }}
+                              >
                                 {step.icon}
                               </span>
                               <div>
                                 <Text strong>{step.stepName}</Text>
-                                <div className="text-xs text-gray-500">
+                                <div className='text-xs text-gray-500'>
                                   Click to add to workflow
                                 </div>
                               </div>
                             </div>
                             <Button
-                              type="text"
+                              type='text'
                               icon={<PlusCircleOutlined />}
-                              size="small"
-                              onClick={(e) => {
+                              size='small'
+                              onClick={e => {
                                 e.stopPropagation()
                                 handleAddStep(step)
                               }}
-                              className="hover:scale-110 transition-transform"
+                              className='hover:scale-110 transition-transform'
                             />
                           </div>
                         </List.Item>
@@ -1440,26 +1532,29 @@ const PresetManagement = () => {
               <Col span={14}>
                 <Card
                   title={
-                    <span className="flex items-center gap-2">
+                    <span className='flex items-center gap-2'>
                       <ThunderboltOutlined />
                       Selected Steps (Drag to reorder)
                     </span>
                   }
-                  size="small"
-                  className="h-96 overflow-hidden shadow-sm"
+                  size='small'
+                  className='h-96 overflow-hidden shadow-sm'
                 >
                   {selectedSteps.length === 0 ? (
                     <Empty
-                      description="No steps selected"
-                      className="mt-16"
+                      description='No steps selected'
+                      className='mt-16'
                       image={Empty.PRESENTED_IMAGE_SIMPLE}
                     />
                   ) : (
-                    <div className="overflow-y-auto h-80">
+                    <div className='overflow-y-auto h-80'>
                       <DragDropContext onDragEnd={handleDragEnd}>
-                        <Droppable droppableId="selected-steps">
-                          {(provided) => (
-                            <div {...provided.droppableProps} ref={provided.innerRef}>
+                        <Droppable droppableId='selected-steps'>
+                          {provided => (
+                            <div
+                              {...provided.droppableProps}
+                              ref={provided.innerRef}
+                            >
                               {selectedSteps.map((step, index) => (
                                 <Draggable
                                   key={step.id}
@@ -1474,17 +1569,21 @@ const PresetManagement = () => {
                                         snapshot.isDragging
                                           ? 'shadow-xl scale-105 rotate-2'
                                           : 'hover:shadow-lg'
-                                      } ${animatingCards.has(step.id) ? 'animate-pulse' : ''}`}
+                                      } ${
+                                        animatingCards.has(step.id)
+                                          ? 'animate-pulse'
+                                          : ''
+                                      }`}
                                       style={{
                                         ...provided.draggableProps.style,
                                         borderColor: step.color,
                                         borderStyle: 'solid'
                                       }}
                                     >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
+                                      <div className='flex items-center justify-between'>
+                                        <div className='flex items-center gap-3'>
                                           <div {...provided.dragHandleProps}>
-                                            <DragOutlined className="text-gray-400 cursor-move hover:text-gray-600 transition-colors" />
+                                            <DragOutlined className='text-gray-400 cursor-move hover:text-gray-600 transition-colors' />
                                           </div>
                                           <Badge
                                             count={index + 1}
@@ -1494,56 +1593,87 @@ const PresetManagement = () => {
                                               fontWeight: 'bold'
                                             }}
                                           />
-                                          <span className="text-2xl" style={{ color: step.color }}>
+                                          <span
+                                            className='text-2xl'
+                                            style={{ color: step.color }}
+                                          >
                                             {step.icon}
                                           </span>
-                                          <div className="flex-1">
-                                            <Text strong className="text-base">
+                                          <div className='flex-1'>
+                                            <Text strong className='text-base'>
                                               {step.stepName}
                                             </Text>
-                                            <div className="flex items-center gap-3 mt-2">
+                                            <div className='flex items-center gap-3 mt-2'>
                                               <InputNumber
-                                                size="small"
+                                                size='small'
                                                 min={1}
                                                 max={999}
-                                                value={step.estimatedDuration || 2}
-                                                onChange={(value) => handleUpdateStepDuration(step.id, value)}
+                                                value={
+                                                  step.estimatedDuration || 2
+                                                }
+                                                onChange={value =>
+                                                  handleUpdateStepDuration(
+                                                    step.id,
+                                                    value
+                                                  )
+                                                }
                                                 style={{ width: 70 }}
-                                                placeholder="Duration"
+                                                placeholder='Duration'
                                               />
                                               <Select
-                                                size="small"
-                                                value={step.estimatedDurationUnit || 'hours'}
-                                                onChange={(value) => {
-                                                  setSelectedSteps(selectedSteps.map(s =>
-                                                    s.id === step.id
-                                                      ? { ...s, estimatedDurationUnit: value }
-                                                      : s
-                                                  ))
+                                                size='small'
+                                                value={
+                                                  step.estimatedDurationUnit ||
+                                                  'hours'
+                                                }
+                                                onChange={value => {
+                                                  setSelectedSteps(
+                                                    selectedSteps.map(s =>
+                                                      s.id === step.id
+                                                        ? {
+                                                            ...s,
+                                                            estimatedDurationUnit:
+                                                              value
+                                                          }
+                                                        : s
+                                                    )
+                                                  )
                                                 }}
                                                 style={{ width: 85 }}
                                               >
-                                                <Option value="minutes">mins</Option>
-                                                <Option value="hours">hrs</Option>
-                                                <Option value="days">days</Option>
+                                                <Option value='minutes'>
+                                                  mins
+                                                </Option>
+                                                <Option value='hours'>
+                                                  hrs
+                                                </Option>
+                                                <Option value='days'>
+                                                  days
+                                                </Option>
                                               </Select>
                                               <Switch
-                                                size="small"
-                                                checked={step.isRequired !== false}
-                                                onChange={() => handleToggleRequired(step.id)}
-                                                checkedChildren="Required"
-                                                unCheckedChildren="Optional"
+                                                size='small'
+                                                checked={
+                                                  step.isRequired !== false
+                                                }
+                                                onChange={() =>
+                                                  handleToggleRequired(step.id)
+                                                }
+                                                checkedChildren='Required'
+                                                unCheckedChildren='Optional'
                                               />
                                             </div>
                                           </div>
                                         </div>
                                         <Button
-                                          type="text"
+                                          type='text'
                                           icon={<MinusCircleOutlined />}
-                                          size="small"
+                                          size='small'
                                           danger
-                                          onClick={() => handleRemoveStep(step.id)}
-                                          className="hover:scale-110 transition-transform"
+                                          onClick={() =>
+                                            handleRemoveStep(step.id)
+                                          }
+                                          className='hover:scale-110 transition-transform'
                                         />
                                       </div>
                                     </div>
@@ -1566,17 +1696,17 @@ const PresetManagement = () => {
         {/* Enhanced Preview Modal */}
         <Modal
           title={
-            <div className="flex items-center gap-3">
+            <div className='flex items-center gap-3'>
               <Avatar
                 icon={<EyeOutlined />}
                 style={{ backgroundColor: '#52c41a' }}
-                size="large"
+                size='large'
               />
               <div>
-                <Title level={4} className="mb-0">
+                <Title level={4} className='mb-0'>
                   Preview: {selectedPreset?.presetName}
                 </Title>
-                <Text type="secondary" className="text-sm">
+                <Text type='secondary' className='text-sm'>
                   Complete workflow visualization
                 </Text>
               </div>
@@ -1590,22 +1720,22 @@ const PresetManagement = () => {
           width={800}
           footer={[
             <Button
-              key="close"
+              key='close'
               onClick={() => setPreviewModalVisible(false)}
-              size="large"
+              size='large'
             >
               Close
             </Button>,
             <Button
-              key="edit"
-              type="primary"
+              key='edit'
+              type='primary'
               icon={<EditOutlined />}
               onClick={() => {
                 setPreviewModalVisible(false)
                 handleEditPreset(selectedPreset)
               }}
-              size="large"
-              className="bg-gradient-to-r from-blue-500 to-purple-500 border-0"
+              size='large'
+              className='bg-gradient-to-r from-blue-500 to-purple-500 border-0'
             >
               Edit Preset
             </Button>
@@ -1613,24 +1743,32 @@ const PresetManagement = () => {
         >
           {presetDetails && presetDetails.length > 0 && (
             <div>
-              <div className="mb-6">
-                <Descriptions column={2} bordered size="small" className="preview-descriptions">
-                  <Descriptions.Item label="Preset Name">
+              <div className='mb-6'>
+                <Descriptions
+                  column={2}
+                  bordered
+                  size='small'
+                  className='preview-descriptions'
+                >
+                  <Descriptions.Item label='Preset Name'>
                     <Text strong>{selectedPreset?.presetName}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Category">
-                    <Tag color="blue">
+                  <Descriptions.Item label='Category'>
+                    <Tag color='blue'>
                       {(selectedPreset?.category || 'standard').toUpperCase()}
                     </Tag>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Description" span={2}>
+                  <Descriptions.Item label='Description' span={2}>
                     {selectedPreset?.presetDescription || 'No description'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Total Steps">
-                    <Badge count={presetDetails.length} style={{ backgroundColor: '#52c41a' }} />
+                  <Descriptions.Item label='Total Steps'>
+                    <Badge
+                      count={presetDetails.length}
+                      style={{ backgroundColor: '#52c41a' }}
+                    />
                   </Descriptions.Item>
-                  <Descriptions.Item label="Est. Duration">
-                    <Text strong className="text-green-600">
+                  <Descriptions.Item label='Est. Duration'>
+                    <Text strong className='text-green-600'>
                       {calculateTotalDuration(presetDetails)}
                     </Text>
                   </Descriptions.Item>
@@ -1639,60 +1777,65 @@ const PresetManagement = () => {
 
               <Divider>Production Workflow Timeline</Divider>
 
-              <Timeline mode="left" className="preview-timeline">
+              <Timeline mode='left' className='preview-timeline'>
                 {presetDetails
                   .sort((a, b) => a.stepOrder - b.stepOrder)
                   .map((step, index) => {
-                    const stepIcon = STEP_ICONS[step.stepName] || { icon: '⚡', color: '#1890ff' }
+                    const stepIcon = STEP_ICONS[step.stepName] || {
+                      icon: '⚡',
+                      color: '#1890ff'
+                    }
                     return (
                       <Timeline.Item
                         key={step.id}
                         color={stepIcon.color}
                         dot={
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg"
+                            className='w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg'
                             style={{ backgroundColor: stepIcon.color }}
                           >
-                            <span className="text-sm font-bold">
+                            <span className='text-sm font-bold'>
                               {step.stepOrder}
                             </span>
                           </div>
                         }
                         label={
-                          <div className="text-sm text-gray-500">
+                          <div className='text-sm text-gray-500'>
                             Step {step.stepOrder}
                           </div>
                         }
                       >
-                        <div className="bg-white p-4 rounded-lg border-2 border-gray-100 hover:border-blue-200 transition-colors">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl">
-                              {stepIcon.icon}
-                            </span>
-                            <Text strong className="text-lg">
+                        <div className='bg-white p-4 rounded-lg border-2 border-gray-100 hover:border-blue-200 transition-colors'>
+                          <div className='flex items-center gap-3 mb-2'>
+                            <span className='text-2xl'>{stepIcon.icon}</span>
+                            <Text strong className='text-lg'>
                               {step.stepName}
                             </Text>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Tag color="cyan">
+                          <div className='flex items-center gap-3'>
+                            <Tag color='cyan'>
                               <ClockCircleOutlined />
-                              {step.estimatedDuration || 2} {step.estimatedDurationUnit || 'hours'}
+                              {step.estimatedDuration || 2}{' '}
+                              {step.estimatedDurationUnit || 'hours'}
                             </Tag>
                             {step.isRequired !== false ? (
-                              <Tag color="green">
+                              <Tag color='green'>
                                 <CheckCircleOutlined />
                                 Required
                               </Tag>
                             ) : (
-                              <Tag color="default">
+                              <Tag color='default'>
                                 <InfoCircleOutlined />
                                 Optional
                               </Tag>
                             )}
                           </div>
                           {step.notes && (
-                            <Text type="secondary" className="text-xs mt-2 block">
-                              <BookOutlined className="mr-1" />
+                            <Text
+                              type='secondary'
+                              className='text-xs mt-2 block'
+                            >
+                              <BookOutlined className='mr-1' />
                               {step.notes}
                             </Text>
                           )}
@@ -1717,19 +1860,19 @@ const PresetManagement = () => {
 
         {/* Floating Action Buttons */}
         <FloatButton.Group
-          trigger="hover"
-          type="primary"
+          trigger='hover'
+          type='primary'
           style={{ right: 24 }}
           icon={<QuestionCircleOutlined />}
         >
           <FloatButton
             icon={<BulbOutlined />}
-            tooltip="Show Tour"
+            tooltip='Show Tour'
             onClick={() => setShowTour(true)}
           />
           <FloatButton
             icon={<BookOutlined />}
-            tooltip="View Documentation"
+            tooltip='View Documentation'
             onClick={() => message.info('Documentation coming soon!')}
           />
           <FloatButton.BackTop visibilityHeight={300} />

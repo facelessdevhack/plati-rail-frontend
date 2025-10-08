@@ -49,7 +49,10 @@ import {
   MoreOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
-  SearchOutlined
+  SearchOutlined,
+  FieldTimeOutlined,
+  OrderedListOutlined,
+  FlagOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
@@ -147,6 +150,7 @@ const PresetManagement = () => {
   const [previewModalVisible, setPreviewModalVisible] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [searchText, setSearchText] = useState('')
+  // presetDetails is already available from Redux state (line 134)
 
   // Step builder states
   const [selectedSteps, setSelectedSteps] = useState([])
@@ -291,7 +295,7 @@ const PresetManagement = () => {
     try {
       const details = await dispatch(
         getPresetDetails({
-          presetName: preset.presetName
+          presetId: preset.id || preset.presetId
         })
       ).unwrap()
 
@@ -300,7 +304,8 @@ const PresetManagement = () => {
       // Always set basic form values first, even if details fail to load
       editForm.setFieldsValue({
         name: preset.presetName || preset.preset_name,
-        description: preset.presetDescription || preset.preset_description || '',
+        description:
+          preset.presetDescription || preset.preset_description || '',
         isActive: preset.isActive !== false && preset.is_active !== false
       })
 
@@ -323,7 +328,10 @@ const PresetManagement = () => {
         setSelectedSteps(steps)
       } else {
         // No details found, but still open the edit drawer
-        console.warn('No preset details found for:', preset.presetName || preset.preset_name)
+        console.warn(
+          'No preset details found for:',
+          preset.presetName || preset.preset_name
+        )
         setSelectedSteps([])
       }
 
@@ -410,15 +418,16 @@ const PresetManagement = () => {
     setSelectedPreset(preset)
     setPreviewModalVisible(true)
 
-    // Then try to fetch detailed steps
+    // Then try to fetch detailed steps - Redux state will be updated automatically
     try {
       console.log('Loading preset details for:', preset.presetName)
       const result = await dispatch(
         getPresetDetails({
-          presetName: preset.presetName
+          presetId: preset.id || preset.presetId
         })
       ).unwrap()
       console.log('Preset details loaded:', result)
+      // Redux state is automatically updated by the getPresetDetails thunk
     } catch (error) {
       console.error('Failed to load preset details:', error)
       // Don't show error notification since modal is already open
@@ -431,7 +440,7 @@ const PresetManagement = () => {
     try {
       const details = await dispatch(
         getPresetDetails({
-          presetName: preset.presetName
+          presetId: preset.id || preset.presetId
         })
       ).unwrap()
 
@@ -1448,10 +1457,17 @@ const PresetManagement = () => {
           onCancel={() => {
             setPreviewModalVisible(false)
             setSelectedPreset(null)
+            // Redux state will be cleared automatically when component unmounts or by other means
           }}
           width={800}
           footer={[
-            <Button key='close' onClick={() => setPreviewModalVisible(false)}>
+            <Button
+              key='close'
+              onClick={() => {
+                setPreviewModalVisible(false)
+                setSelectedPreset(null)
+              }}
+            >
               Close
             </Button>,
             <Button
@@ -1501,8 +1517,7 @@ const PresetManagement = () => {
                   <div className='text-2xl font-bold text-blue-600'>
                     {presetDetails && presetDetails.length > 0
                       ? calculateTotalDuration(presetDetails)
-                      : 'Not available'
-                    }
+                      : 'Not available'}
                   </div>
                   <div className='text-xs text-gray-500'>Total Duration</div>
                 </div>
@@ -1516,15 +1531,17 @@ const PresetManagement = () => {
                 </div>
               )}
 
-              {/* Debug information */}
+              {/* Debug information
               {process.env.NODE_ENV === 'development' && (
                 <div className='mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded'>
                   <Text className='text-xs text-yellow-700'>
                     Debug: presetDetails length = {presetDetails?.length || 0},
-                    stepCount = {selectedPreset?.stepCount || 0}
+                    stepCount = {selectedPreset?.stepCount || 0}, presetDetails
+                    type = {typeof presetDetails}, presetDetails sample ={' '}
+                    {JSON.stringify(presetDetails?.slice(0, 1))}
                   </Text>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Quick Stats */}
@@ -1538,8 +1555,7 @@ const PresetManagement = () => {
                     <div className='text-xl font-bold text-blue-700'>
                       {presetDetails && presetDetails.length > 0
                         ? presetDetails.length
-                        : selectedPreset?.stepCount || 0
-                      }
+                        : selectedPreset?.stepCount || 0}
                     </div>
                     <div className='text-xs text-blue-600'>Total Steps</div>
                   </div>
@@ -1557,15 +1573,14 @@ const PresetManagement = () => {
                         ? presetDetails.filter(
                             step => step.isRequired !== false
                           ).length
-                        : 'N/A'
-                      }
+                        : 'N/A'}
                     </div>
                     <div className='text-xs text-green-600'>Required Steps</div>
                   </div>
                 </div>
               </div>
 
-              <div className='bg-purple-50 p-4 rounded-lg border border-purple-200'>
+              {/* <div className='bg-purple-50 p-4 rounded-lg border border-purple-200'>
                 <div className='flex items-center gap-3'>
                   <div className='w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center'>
                     <span className='text-purple-600'>⏱️</span>
@@ -1605,7 +1620,7 @@ const PresetManagement = () => {
                     <div className='text-xs text-purple-600'>Est. Hours</div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Workflow Steps */}
@@ -1617,64 +1632,65 @@ const PresetManagement = () => {
                 </Title>
                 <Tag color='blue'>{presetDetails?.length || 0} steps</Tag>
               </div>
+              {/* Debug: console.log(presetDetails[0], 'PRESET DETAILS') */}
 
               {presetDetails && presetDetails.length > 0 ? (
                 <Timeline mode='left' className='mt-4'>
-                  {[...presetDetails]
-                    .sort((a, b) => a.stepOrder - b.stepOrder)
-                    .map((step, index) => (
+                  {presetDetails.map((step, index) => {
+                    const stepColor = STEP_COLORS[index % STEP_COLORS.length]
+                    const stepIcon = STEP_ICONS[step.stepName] || '📝'
+
+                    return (
                       <Timeline.Item
-                        key={step.id || index}
-                        color={STEP_COLORS[index % STEP_COLORS.length]}
-                        label={
-                          <div className='flex items-center gap-2'>
-                            <Tag
-                              color={STEP_COLORS[index % STEP_COLORS.length]}
-                            >
-                              Step {step.stepOrder}
-                            </Tag>
-                            {step.isRequired !== false ? (
-                              <Tag color='green' size='small'>
-                                Required
-                              </Tag>
-                            ) : (
-                              <Tag color='default' size='small'>
-                                Optional
-                              </Tag>
-                            )}
-                          </div>
-                        }
+                        key={step.stepId || index}
+                        color={stepColor}
+                        dot={stepIcon}
+                        className='p-3 mb-3'
                       >
-                        <div className='bg-white p-4 rounded-lg border border-gray-200 shadow-sm'>
-                          <div className='flex items-start gap-3'>
-                            <div className='w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-xl'>
-                              {STEP_ICONS[step.stepName] || '⚡'}
-                            </div>
-                            <div className='flex-1'>
-                              <div className='flex items-center justify-between'>
-                                <Text
-                                  strong
-                                  className='text-base text-gray-800'
-                                >
-                                  {step.stepName}
-                                </Text>
-                                <div className='flex items-center gap-2'>
-                                  <Tag color='cyan'>
-                                    {step.estimatedDuration || 2}{' '}
-                                    {step.estimatedDurationUnit || 'hours'}
-                                  </Tag>
-                                </div>
-                              </div>
-                              {step.notes && (
-                                <div className='mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600'>
-                                  <Text type='secondary'>{step.notes}</Text>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                        <div className='font-semibold text-gray-800 text-base'>
+                          {typeof step.stepName === 'string'
+                            ? step.stepName
+                            : `Step ${step.stepId || index}`}
                         </div>
+
+                        <div className='flex gap-4 mt-2 text-sm text-gray-600'>
+                          {step.estimatedDuration && (
+                            <span className='flex items-center'>
+                              <FieldTimeOutlined className='mr-1' />
+                              {typeof step.estimatedDuration === 'object'
+                                ? JSON.stringify(step.estimatedDuration)
+                                : step.estimatedDuration}{' '}
+                              {typeof step.estimatedDurationUnit === 'object'
+                                ? JSON.stringify(step.estimatedDurationUnit)
+                                : step.estimatedDurationUnit}
+                            </span>
+                          )}
+                          <span className='flex items-center'>
+                            <OrderedListOutlined className='mr-1' />
+                            Order:{' '}
+                            {typeof step.stepOrder === 'object'
+                              ? JSON.stringify(step.stepOrder)
+                              : step.stepOrder}
+                          </span>
+                        </div>
+
+                        {step.isRequired && (
+                          <div className='mt-2'>
+                            <Tag color='red'>Required</Tag>
+                          </div>
+                        )}
+
+                        {step.notes && (
+                          <div className='mt-2 text-sm text-gray-500 italic'>
+                            Notes:{' '}
+                            {typeof step.notes === 'object'
+                              ? JSON.stringify(step.notes)
+                              : step.notes}
+                          </div>
+                        )}
                       </Timeline.Item>
-                    ))}
+                    )
+                  })}
                 </Timeline>
               ) : (
                 <div className='text-center py-8 bg-gray-50 rounded-lg border border-gray-200'>

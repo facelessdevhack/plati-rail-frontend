@@ -450,7 +450,7 @@ const productionSlice = createSlice({
       })
       .addCase(getPresetDetails.fulfilled, (state, action) => {
         state.loading = false;
-        state.presetDetails = action.payload.data;
+        state.presetDetails = action.payload; // API returns data directly, not wrapped in .data
       })
       .addCase(getPresetDetails.rejected, (state, action) => {
         state.loading = false;

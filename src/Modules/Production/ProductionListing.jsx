@@ -362,7 +362,6 @@ const ProductionListing = () => {
               limit: pageSize,
               search: searchTerm,
               urgent: filters.urgent,
-              status: filters.status,
               dateRange: filters.dateRange
             })
           )
@@ -530,7 +529,6 @@ const ProductionListing = () => {
           limit: pageSize,
           search: searchTerm,
           urgent: filters.urgent,
-          status: filters.status,
           dateRange: filters.dateRange
         })
       )
@@ -557,7 +555,6 @@ const ProductionListing = () => {
           limit: pageSize,
           search: searchTerm,
           urgent: filters.urgent,
-          status: filters.status,
           dateRange: filters.dateRange
         })
       )
@@ -1354,7 +1351,7 @@ const ProductionListing = () => {
               >
                 Search
               </Button>
-              <Button
+                <Button
                 type={isTodayFilter ? 'primary' : 'default'}
                 onClick={handleTodayFilter}
                 size='middle'
@@ -1400,7 +1397,7 @@ const ProductionListing = () => {
                     size='small'
                   />
                 </Col>
-                <Col xs={24} sm={12} md={8}>
+                  <Col xs={24} sm={12} md={8}>
                   <div className='mb-2 text-xs md:text-sm font-medium text-gray-700 flex items-center gap-2'>
                     Date Range
                     {isTodayFilter && (

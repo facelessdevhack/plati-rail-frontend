@@ -10,13 +10,23 @@ import {
   Typography,
   notification,
   Empty,
-  Spin
+  Spin,
+  Tag,
+  Avatar,
+  Row,
+  Col,
+  Timeline,
+  Badge
 } from 'antd'
 import {
   SettingOutlined,
   SearchOutlined,
   CheckOutlined,
-  EyeOutlined
+  EyeOutlined,
+  ClockCircleOutlined,
+  NumberOutlined,
+  FlagOutlined,
+  PlayCircleOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { getStepPresets, getPresetDetails, assignPresetToPlan } from '../../redux/api/productionAPI'
@@ -32,6 +42,7 @@ const AssignPresetModal = ({
 }) => {
   const dispatch = useDispatch()
   const [loading, setLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [previewVisible, setPreviewVisible] = useState(false)
@@ -48,6 +59,32 @@ const AssignPresetModal = ({
     }
   }, [visible, dispatch])
 
+  // Get category color for tags
+  const getCategoryColor = (category) => {
+    const colors = {
+      basic: 'blue',
+      chrome: 'gold',
+      premium: 'purple',
+      standard: 'green',
+      urgent: 'red',
+      custom: 'orange'
+    }
+    return colors[category] || 'default'
+  }
+
+  // Get preset icon based on category
+  const getPresetIcon = (category) => {
+    const icons = {
+      basic: <SettingOutlined />,
+      chrome: <FlagOutlined />,
+      premium: <PlayCircleOutlined />,
+      standard: <ClockCircleOutlined />,
+      urgent: <FlagOutlined />,
+      custom: <SettingOutlined />
+    }
+    return icons[category] || <SettingOutlined />
+  }
+
   // Filter presets based on search term
   const filteredPresets = (stepPresets || []).filter(preset =>
     preset.presetName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,19 +92,19 @@ const AssignPresetModal = ({
   )
 
   // Handle preset preview
-  const handlePreviewPreset = async (presetName) => {
+  const handlePreviewPreset = async (preset) => {
     try {
-      setLoading(true)
-      await dispatch(getPresetDetails({ presetName })).unwrap()
-      setPreviewPreset(presetName)
+      setPreviewLoading(true)
+      await dispatch(getPresetDetails({ presetId: preset.id })).unwrap()
+      setPreviewPreset(preset)
       setPreviewVisible(true)
     } catch (error) {
       notification.error({
         message: 'Error',
-        description: 'Failed to load preset details'
+        description: 'Failed to load preset details: ' + (error?.message || 'Unknown error')
       })
     } finally {
-      setLoading(false)
+      setPreviewLoading(false)
     }
   }
 
@@ -85,14 +122,14 @@ const AssignPresetModal = ({
       setLoading(true)
       
       // Call the actual API to assign preset
-      await dispatch(assignPresetToPlan({ 
-        planId: planData.id, 
-        presetName: selectedPreset 
+      await dispatch(assignPresetToPlan({
+        planId: planData.id,
+        presetName: selectedPreset.presetName
       })).unwrap()
 
       notification.success({
         message: 'Success',
-        description: `Preset "${selectedPreset}" has been assigned to production plan #${planData?.id}!`
+        description: `Preset "${selectedPreset.presetName}" has been assigned to production plan #${planData?.id}!`
       })
 
       setSelectedPreset(null)
@@ -123,112 +160,215 @@ const AssignPresetModal = ({
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <SettingOutlined className="text-blue-600" />
-            <span>Assign Preset to Plan #{planData?.id}</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <SettingOutlined className="text-white" />
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-gray-800">Assign Production Preset</div>
+              <div className="text-sm text-gray-500">Plan #{planData?.id} • {planData?.quantity} units</div>
+            </div>
           </div>
         }
         open={visible}
         onCancel={handleClose}
-        width={700}
+        width={900}
         footer={[
-          <Button key="cancel" onClick={handleClose}>
+          <Button key="cancel" size="large" onClick={handleClose}>
             Cancel
           </Button>,
           <Button
             key="assign"
             type="primary"
+            size="large"
             loading={loading}
             onClick={handleAssignPreset}
             disabled={!selectedPreset}
             icon={<CheckOutlined />}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 border-0"
           >
             Assign Selected Preset
           </Button>
         ]}
       >
-        {/* Plan Information */}
-        <Card className="mb-4 bg-gray-50" size="small">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div>
-              <Text strong>Source Alloy: </Text>
-              <Text className="text-blue-600">
-                {planData?.alloyName || `Alloy ${planData?.alloyId}`}
-              </Text>
-            </div>
-            <div>
-              <Text strong>Target: </Text>
-              <Text className="text-green-600">
-                {planData?.convertName || `Convert ${planData?.convertToAlloyId}`}
-              </Text>
-            </div>
-            <div>
-              <Text strong>Quantity: </Text>
-              <Text>{planData?.quantity}</Text>
-            </div>
-          </div>
+        {/* Enhanced Plan Information */}
+        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border-0 shadow-sm">
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={8}>
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-full flex items-center justify-center">
+                  <SettingOutlined className="text-blue-600 text-lg" />
+                </div>
+                <Text type="secondary" className="text-xs block mb-1">Source Alloy</Text>
+                <Text strong className="text-sm text-blue-700">
+                  {planData?.alloyName || `Alloy ${planData?.alloyId}`}
+                </Text>
+                {planData?.sourceModelName && (
+                  <Text type="secondary" className="text-xs block mt-1">
+                    {planData.sourceModelName}
+                  </Text>
+                )}
+              </div>
+            </Col>
+            <Col xs={24} sm={8}>
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-full flex items-center justify-center">
+                  <FlagOutlined className="text-green-600 text-lg" />
+                </div>
+                <Text type="secondary" className="text-xs block mb-1">Target Alloy</Text>
+                <Text strong className="text-sm text-green-700">
+                  {planData?.convertName || `Convert ${planData?.convertToAlloyId}`}
+                </Text>
+                {planData?.targetModelName && (
+                  <Text type="secondary" className="text-xs block mt-1">
+                    {planData.targetModelName}
+                  </Text>
+                )}
+              </div>
+            </Col>
+            <Col xs={24} sm={8}>
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-full flex items-center justify-center">
+                  <NumberOutlined className="text-purple-600 text-lg" />
+                </div>
+                <Text type="secondary" className="text-xs block mb-1">Quantity</Text>
+                <Text strong className="text-sm text-purple-700">
+                  {planData?.quantity} units
+                </Text>
+                {planData?.inProductionQuantity > 0 && (
+                  <Badge
+                    count="In Production"
+                    size="small"
+                    className="mt-1"
+                    style={{ backgroundColor: '#faad14' }}
+                  />
+                )}
+              </div>
+            </Col>
+          </Row>
         </Card>
 
-        {/* Search */}
-        <div className="mb-4">
+        {/* Enhanced Search */}
+        <div className="mb-6">
           <Search
-            placeholder="Search presets by name or description..."
+            placeholder="Search presets by name, description, or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onSearch={setSearchTerm}
-            enterButton={<SearchOutlined />}
+            enterButton={
+              <Button type="primary" icon={<SearchOutlined />} className="bg-blue-500">
+                Search
+              </Button>
+            }
             size="large"
             allowClear
+            className="rounded-lg"
           />
+          {searchTerm && (
+            <div className="mt-2 text-sm text-gray-500">
+              Found {filteredPresets.length} preset{filteredPresets.length !== 1 ? 's' : ''} matching "{searchTerm}"
+            </div>
+          )}
         </div>
 
-        {/* Presets List */}
-        <div className="max-h-96 overflow-y-auto">
+        {/* Enhanced Presets Grid */}
+        <div className="max-h-96 overflow-y-auto px-1">
           {filteredPresets.length === 0 ? (
-            <Empty description="No presets found" />
+            <Empty
+              description={
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-3">🔧</div>
+                  <div className="text-lg font-medium text-gray-600 mb-1">No presets found</div>
+                  <div className="text-sm text-gray-400">
+                    {searchTerm ? 'Try adjusting your search terms' : 'No presets are available yet'}
+                  </div>
+                </div>
+              }
+              image={null}
+            />
           ) : (
-            <List
-              dataSource={filteredPresets}
-              renderItem={(preset) => (
-                <List.Item
-                  className={`cursor-pointer transition-all hover:bg-blue-50 rounded-lg p-3 ${
-                    selectedPreset === preset.presetName ? 'bg-blue-50 border-blue-200 border' : ''
-                  }`}
-                  onClick={() => setSelectedPreset(preset.presetName)}
-                  actions={[
-                    <Button
-                      type="text"
-                      icon={<EyeOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handlePreviewPreset(preset.presetName)
-                      }}
-                      title="Preview Preset"
-                    />
-                  ]}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Text strong className="text-base">
-                          {preset.presetName}
+            <Row gutter={[16, 16]}>
+              {filteredPresets.map((preset) => (
+                <Col xs={24} sm={12} lg={8} key={preset.id}>
+                  <Card
+                    hoverable
+                    className={`transition-all duration-200 cursor-pointer ${
+                      selectedPreset?.id === preset.id
+                        ? 'border-blue-500 shadow-lg transform -translate-y-1'
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+                    }`}
+                    onClick={() => setSelectedPreset(preset)}
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        loading={previewLoading && previewPreset?.id === preset.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePreviewPreset(preset)
+                        }}
+                        title="Preview Preset"
+                        key="preview"
+                      />
+                    ]}
+                  >
+                    <div className="relative">
+                      {selectedPreset?.id === preset.id && (
+                        <div className="absolute -top-2 -right-2 z-10">
+                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                            <CheckOutlined className="text-white text-xs" />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar
+                          size="large"
+                          className="bg-gradient-to-br from-blue-400 to-purple-500"
+                          icon={getPresetIcon(preset.presetCategory)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-gray-800 truncate">
+                            {preset.presetName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {preset.presetCategory?.toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <Text
+                          type="secondary"
+                          className="text-sm line-clamp-2"
+                          ellipsis={{ tooltip: preset.presetDescription }}
+                        >
+                          {preset.presetDescription || 'No description available'}
                         </Text>
-                        {selectedPreset === preset.presetName && (
-                          <CheckOutlined className="text-blue-600" />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Space size="small">
+                          <Tag
+                            color={getCategoryColor(preset.presetCategory)}
+                            className="text-xs"
+                          >
+                            {preset.presetCategory?.toUpperCase()}
+                          </Tag>
+                          <Badge
+                            count={`${preset.stepCount || 0} steps`}
+                            size="small"
+                            className="bg-gray-100 text-gray-600"
+                          />
+                        </Space>
+                        {preset.isActive === false && (
+                          <Tag color="red" size="small">Inactive</Tag>
                         )}
                       </div>
                     </div>
-                    <Text type="secondary" className="text-sm">
-                      {preset.presetDescription || 'No description available'}
-                    </Text>
-                    <div className="mt-1">
-                      <Text type="secondary" className="text-xs">
-                        {preset.stepCount || 0} steps
-                      </Text>
-                    </div>
-                  </div>
-                </List.Item>
-              )}
-            />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           )}
         </div>
       </Modal>
@@ -280,7 +420,7 @@ const AssignPresetModal = ({
             <Divider>Production Steps ({presetDetails.length})</Divider>
 
             <div className="space-y-3 max-h-300 overflow-y-auto">
-              {presetDetails
+              {[...presetDetails]
                 .sort((a, b) => a.stepOrder - b.stepOrder)
                 .map((step) => (
                   <div
