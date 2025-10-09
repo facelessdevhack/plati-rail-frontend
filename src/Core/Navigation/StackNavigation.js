@@ -52,6 +52,8 @@ import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
+import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
+import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
 
 
 const StackNavigation = () => {
@@ -553,6 +555,29 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       /> */}
+
+      {/* Purchase System Routes */}
+      <Route
+        path='/purchase-orders'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Purchase Orders'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<PurchaseDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase-orders/smart-purchasing'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <SmartPurchasing />
+          </PrivateRoute>
+        }
+      />
+
       {/* ...other routes wrapped with PrivateRoute */}
     </Routes>
   )

@@ -77,6 +77,10 @@ export const adminSiderRoutes = [
       '6c'
     ),
     getItemLayout(
+      <Link to='/purchase-orders'><ShopOutlined style={{ marginRight: '8px' }} />Purchase Orders</Link>,
+      '6d'
+    ),
+    getItemLayout(
       <Link to='/production-presets'>Preset Management</Link>,
       '7a'
     )

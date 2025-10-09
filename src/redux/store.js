@@ -8,6 +8,7 @@ import entrySlice from './slices/entry.slice';
 import dashboardSlice from './slices/dashboard.slice';
 import productionSlice from './slices/production.slice';
 import internalInventorySlice from './slices/internal-inventory.slice';
+import purchaseSystemSlice from './slices/purchaseSystem.slice';
 
 const rootReducer = combineReducers({
   userDetails: userSlice,
@@ -16,7 +17,8 @@ const rootReducer = combineReducers({
   entryDetails: entrySlice,
   metrics: dashboardSlice,
   productionDetails: productionSlice,
-  internalInventory: internalInventorySlice
+  internalInventory: internalInventorySlice,
+  purchaseSystem: purchaseSystemSlice
 });
 
 console.log('🔍 Root reducer created:', Object.keys(rootReducer));
