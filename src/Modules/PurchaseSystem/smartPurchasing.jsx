@@ -37,7 +37,6 @@ import { useNavigate } from 'react-router-dom'
 import { VariableSizeList as List } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import SalesChart from '../../Components/SalesChart'
-import SelectedItemsPanel from '../Production/SelectedItemsPanel'
 import {
   getSuppliers,
   getPurchaseOrders,
@@ -52,7 +51,7 @@ import {
   getAllFinishes,
   getEntriesByProductId
 } from '../../redux/api/stockAPI'
-
+import PurchaseItemsPanel from './PurchaseItemsPanel'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -67,7 +66,9 @@ const SmartOrdering = () => {
   const { stockManagementData, loading, allSizes, allPcd, allFinishes } =
     useSelector(state => state.stockDetails)
   const { user } = useSelector(state => state.userDetails)
-  const { suppliers, purchaseOrders, currentOrder } = useSelector(state => state.purchaseSystem)
+  const { suppliers, purchaseOrders, currentOrder } = useSelector(
+    state => state.purchaseSystem
+  )
 
   // console.log('🔍 Destructured production state:', {
   //   finishSalesMetrics,
@@ -91,10 +92,10 @@ const SmartOrdering = () => {
   const [planCounter, setPlanCounter] = useState(0) // Counter for unique plan IDs
   const [infoModalVisible, setInfoModalVisible] = useState(false)
   const [selectedProductInfo, setSelectedProductInfo] = useState(null)
-    const [expandedRows, setExpandedRows] = useState(new Set())
+  const [expandedRows, setExpandedRows] = useState(new Set())
   const [entriesData, setEntriesData] = useState({}) // Store entries by alloyId
   const [loadingEntries, setLoadingEntries] = useState({})
-  
+
   // Reset virtual list when entries data changes (affects row heights)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -128,7 +129,10 @@ const SmartOrdering = () => {
         showWithoutPaint: showWithoutPaint,
         timestamp: Date.now()
       }
-      localStorage.setItem('smartPurchaseOrderingState', JSON.stringify(stateToSave))
+      localStorage.setItem(
+        'smartPurchaseOrderingState',
+        JSON.stringify(stateToSave)
+      )
     }
   }, [
     selectedRows,
@@ -454,17 +458,11 @@ const SmartOrdering = () => {
   }, [])
 
   // Handle showing product info modal
-  const handleShowInfo = useCallback(
-    alloy => {
-      setSelectedProductInfo(alloy)
-      setInfoModalVisible(true)
-    },
-    []
-  )
+  const handleShowInfo = useCallback(alloy => {
+    setSelectedProductInfo(alloy)
+    setInfoModalVisible(true)
+  }, [])
 
-  
-  
-  
   // Get combined monthly average and stock for "without paint/lacquer" finishes
   const getCombinedWithoutPaintData = useCallback(
     baseAlloy => {
@@ -580,7 +578,7 @@ const SmartOrdering = () => {
   const handleCreatePurchaseOrders = useCallback(async () => {
     const validOrders = Array.from(selectedRows)
       .map(planId => conversionPlans[planId])
-      .filter(plan => plan && plan.targetFinish && plan.quantity > 0)
+      .filter(plan => plan && plan.quantity > 0)
 
     if (validOrders.length === 0) {
       notification.warning({
@@ -604,15 +602,15 @@ const SmartOrdering = () => {
       const orderPromises = validOrders.map(async plan => {
         // Find the target alloy ID based on the selected target finish
         const availableFinishes = getAvailableTargetFinishes(plan.sourceAlloy)
-        const targetFinishOption = availableFinishes.find(
-          f => f.value === plan.targetFinish
-        )
+        // const targetFinishOption = availableFinishes.find(
+        //   f => f.value === plan.targetFinish
+        // )
 
-        if (!targetFinishOption) {
-          throw new Error(
-            `Target finish "${plan.targetFinish}" not found for alloy ${plan.sourceAlloy.productName}`
-          )
-        }
+        // if (!targetFinishOption) {
+        //   throw new Error(
+        //     `Target finish "${plan.targetFinish}" not found for alloy ${plan.sourceAlloy.productName}`
+        //   )
+        // }
 
         // Create purchase order item
         const orderItemData = {
@@ -634,7 +632,9 @@ const SmartOrdering = () => {
           supplierId: suppliers[0].id, // Use first available supplier
           orderNumber: `PO-${Date.now()}`, // Generate order number
           orderDate: new Date().toISOString().split('T')[0],
-          expectedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+          expectedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0], // 30 days from now
           status: 'pending',
           notes: 'Created via Smart Ordering',
           items: [orderItemData]
@@ -1139,7 +1139,6 @@ const SmartOrdering = () => {
                       </Button>
                     </div>
 
-  
                     {/* Entry History */}
                     {(() => {
                       const finishEntries = entriesData[finish.alloyId] || []
@@ -1398,71 +1397,71 @@ const SmartOrdering = () => {
 
   return (
     <div className='h-screen flex bg-gray-50'>
-        {/* Main Content */}
-        <div className='flex-1 flex flex-col'>
-          {/* Compact Header */}
-          <div className='bg-white border-b px-6 py-3'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-4'>
-                <Title level={3} className='mb-0'>
-                  <ShopOutlined className='mr-2' />
-                  Smart Vendor Ordering
-                </Title>
-                <Badge count={selectedRows.size} showZero>
-                  <Tag
-                    className='cursor-pointer'
-                    onClick={() => setShowSelectedPanel(!showSelectedPanel)}
-                  >
-                    {showSelectedPanel ? 'Hide' : 'Show'} Selected
-                  </Tag>
-                </Badge>
-              </div>
-
-              <Space>
-                <Text type='secondary' className='text-xs'>
-                  Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
-                </Text>
-                <Button
-                  icon={<ArrowRightOutlined />}
-                  onClick={() => navigate('/purchase-orders')}
+      {/* Main Content */}
+      <div className='flex-1 flex flex-col'>
+        {/* Compact Header */}
+        <div className='bg-white border-b px-6 py-3'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-4'>
+              <Title level={3} className='mb-0'>
+                <ShopOutlined className='mr-2' />
+                Smart Vendor Ordering
+              </Title>
+              <Badge count={selectedRows.size} showZero>
+                <Tag
+                  className='cursor-pointer'
+                  onClick={() => setShowSelectedPanel(!showSelectedPanel)}
                 >
-                  Purchase Orders
-                </Button>
-              </Space>
+                  {showSelectedPanel ? 'Hide' : 'Show'} Selected
+                </Tag>
+              </Badge>
             </div>
+
+            <Space>
+              <Text type='secondary' className='text-xs'>
+                Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
+              </Text>
+              <Button
+                icon={<ArrowRightOutlined />}
+                onClick={() => navigate('/purchase-orders')}
+              >
+                Purchase Orders
+              </Button>
+            </Space>
           </div>
+        </div>
 
-          {/* Search and Actions Bar */}
-          <div className='bg-white border-b px-6 py-3'>
-            <div className='flex items-center gap-3'>
-              <Search
-                id='search-input'
-                placeholder='Search by product, model, size, PCD...'
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                onPressEnter={() => listRef.current?.scrollToItem(0)}
-                allowClear
-                prefix={<SearchOutlined />}
-                className='flex-1 max-w-md'
-              />
+        {/* Search and Actions Bar */}
+        <div className='bg-white border-b px-6 py-3'>
+          <div className='flex items-center gap-3'>
+            <Search
+              id='search-input'
+              placeholder='Search by product, model, size, PCD...'
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onPressEnter={() => listRef.current?.scrollToItem(0)}
+              allowClear
+              prefix={<SearchOutlined />}
+              className='flex-1 max-w-md'
+            />
 
-              <Checkbox
-                checked={showOnlyWithStock}
-                onChange={e => setShowOnlyWithStock(e.target.checked)}
-              >
-                Only with stock
-              </Checkbox>
+            <Checkbox
+              checked={showOnlyWithStock}
+              onChange={e => setShowOnlyWithStock(e.target.checked)}
+            >
+              Only with stock
+            </Checkbox>
 
-              <Checkbox
-                checked={showWithoutPaint}
-                onChange={e => setShowWithoutPaint(e.target.checked)}
-              >
-                Without paint
-              </Checkbox>
+            <Checkbox
+              checked={showWithoutPaint}
+              onChange={e => setShowWithoutPaint(e.target.checked)}
+            >
+              Without paint
+            </Checkbox>
 
-              <Divider type='vertical' className='h-8' />
+            <Divider type='vertical' className='h-8' />
 
-              {/* <Button
+            {/* <Button
                 icon={<PlusCircleOutlined />}
                 onClick={() => {
                   // Add one plan for each alloy with stock that doesn't have any plans yet
@@ -1489,398 +1488,388 @@ const SmartOrdering = () => {
                 with stock)
               </Button> */}
 
-              <Button
-                icon={<ClearOutlined />}
-                onClick={() => {
-                  setSelectedRows(new Set())
-                  setConversionPlans({})
-                  setPlanCounter(0)
-                  // Clear saved state
-                  localStorage.removeItem('smartPurchaseOrderingState')
-                }}
-                disabled={selectedRows.size === 0}
+            <Button
+              icon={<ClearOutlined />}
+              onClick={() => {
+                setSelectedRows(new Set())
+                setConversionPlans({})
+                setPlanCounter(0)
+                // Clear saved state
+                localStorage.removeItem('smartPurchaseOrderingState')
+              }}
+              disabled={selectedRows.size === 0}
+            >
+              Clear
+            </Button>
+
+            <Button
+              type='primary'
+              icon={<ShoppingCartOutlined />}
+              onClick={handleCreatePurchaseOrders}
+              disabled={selectedRows.size === 0}
+              loading={isCreatingPlans}
+              className='bg-green-600 border-green-600 hover:bg-green-700'
+            >
+              Create {selectedRows.size} Orders
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className='mt-3 pt-3 border-t flex gap-3 flex-wrap items-end'>
+            <div className='flex flex-col'>
+              <label className='text-xs text-gray-600 mb-1 font-medium'>
+                Size
+              </label>
+              <Select
+                placeholder='Filter by Size'
+                value={filterSize}
+                onChange={setFilterSize}
+                allowClear
+                className='w-32'
               >
-                Clear
-              </Button>
-
-              <Button
-                type='primary'
-                icon={<ShoppingCartOutlined />}
-                onClick={handleCreatePurchaseOrders}
-                disabled={selectedRows.size === 0}
-                loading={isCreatingPlans}
-                className='bg-green-600 border-green-600 hover:bg-green-700'
-              >
-                Create {selectedRows.size} Orders
-              </Button>
-            </div>
-
-            {/* Filters */}
-            <div className='mt-3 pt-3 border-t flex gap-3 flex-wrap items-end'>
-              <div className='flex flex-col'>
-                <label className='text-xs text-gray-600 mb-1 font-medium'>
-                  Size
-                </label>
-                <Select
-                  placeholder='Filter by Size'
-                  value={filterSize}
-                  onChange={setFilterSize}
-                  allowClear
-                  className='w-32'
-                >
-                  {(allSizes || [])
-                    .slice()
-                    .sort((a, b) => parseFloat(a.label) - parseFloat(b.label))
-                    .map(size => (
-                      <Option key={size.value} value={size.label}>
-                        {size.label}"
-                      </Option>
-                    ))}
-                </Select>
-              </div>
-
-              <div className='flex flex-col'>
-                <label className='text-xs text-gray-600 mb-1 font-medium'>
-                  PCD
-                </label>
-                <Select
-                  placeholder='Filter by PCD'
-                  value={filterPcd}
-                  onChange={setFilterPcd}
-                  allowClear
-                  className='w-40'
-                >
-                  {(allPcd || [])
-                    .slice()
-                    .reverse()
-                    .map(pcd => (
-                      <Option key={pcd.value} value={pcd.label}>
-                        {pcd.label}
-                      </Option>
-                    ))}
-                </Select>
-              </div>
-
-              <div className='flex flex-col'>
-                <label className='text-xs text-gray-600 mb-1 font-medium'>
-                  Finish
-                </label>
-                <Select
-                  placeholder='Filter by Finish'
-                  value={filterFinish}
-                  onChange={setFilterFinish}
-                  allowClear
-                  className='w-40'
-                >
-                  {(allFinishes?.data || []).map(finish => (
-                    <Option key={finish.id} value={finish.finish}>
-                      {finish.finish}
+                {(allSizes || [])
+                  .slice()
+                  .sort((a, b) => parseFloat(a.label) - parseFloat(b.label))
+                  .map(size => (
+                    <Option key={size.value} value={size.label}>
+                      {size.label}"
                     </Option>
                   ))}
-                </Select>
-              </div>
+              </Select>
+            </div>
 
-              <Button
-                size='small'
-                onClick={() => {
-                  setFilterSize(null)
-                  setFilterPcd(null)
-                  setFilterFinish(null)
-                }}
+            <div className='flex flex-col'>
+              <label className='text-xs text-gray-600 mb-1 font-medium'>
+                PCD
+              </label>
+              <Select
+                placeholder='Filter by PCD'
+                value={filterPcd}
+                onChange={setFilterPcd}
+                allowClear
+                className='w-40'
               >
-                Clear Filters
-              </Button>
+                {(allPcd || [])
+                  .slice()
+                  .reverse()
+                  .map(pcd => (
+                    <Option key={pcd.value} value={pcd.label}>
+                      {pcd.label}
+                    </Option>
+                  ))}
+              </Select>
             </div>
-          </div>
 
-          {/* Table Header */}
-          <div
-            className='bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm'
-            style={{
-              paddingRight:
-                (showSelectedPanel ? (isPanelCollapsed ? 60 : 416) : 24) +
-                'px'
-            }}
-          >
-            <div className='w-10 flex-shrink-0'>Add</div>
-            <div className='w-[100px] flex-shrink-0 px-2'>Size/PCD</div>
-            <div className='flex-1 px-2'>Product Details</div>
-            <div className='w-[120px] flex-shrink-0 px-2 text-center'>
-              Stock
-            </div>
-            <div className='w-[280px] flex-shrink-0 px-2'>Plan Status</div>
-            <div className='w-[50px] flex-shrink-0 px-2 text-center'>Info</div>
-          </div>
-
-          {/* Virtual Table */}
-          <div
-            className='flex-1 bg-white'
-            style={{
-              marginRight:
-                (showSelectedPanel && selectedRows.size > 0
-                  ? isPanelCollapsed
-                    ? 48
-                    : 400
-                  : 0) +
-                'px'
-            }}
-          >
-            {loading ? (
-              <div className='flex items-center justify-center h-full'>
-                <Spin size='large' />
-              </div>
-            ) : filteredStockData.length === 0 ? (
-              <div className='flex flex-col items-center justify-center h-full text-gray-500'>
-                <div className='text-6xl mb-4'>📦</div>
-                <div className='text-xl'>No alloys found</div>
-                <div className='text-sm mt-2'>
-                  Try adjusting your search or filters
-                </div>
-              </div>
-            ) : (
-              <AutoSizer>
-                {({ height, width }) => (
-                  <List
-                    ref={listRef}
-                    height={height}
-                    itemCount={filteredStockData.length}
-                    itemSize={getItemSize}
-                    width={width}
-                  >
-                    {Row}
-                  </List>
-                )}
-              </AutoSizer>
-            )}
-          </div>
-
-          {/* Status Bar */}
-          {selectedRows.size > 0 && (
-            <div className='bg-blue-50 border-t px-6 py-2 flex items-center justify-between'>
-              <div className='text-sm'>
-                <Text strong>{selectedRows.size}</Text> items selected •{' '}
-                <Text strong>
-                  {
-                    Array.from(selectedRows)
-                      .map(id => conversionPlans[id])
-                      .filter(p => p?.targetFinish).length
-                  }
-                </Text>{' '}
-                configured •{' '}
-                <Text type='warning'>
-                  {selectedRows.size -
-                    Array.from(selectedRows)
-                      .map(id => conversionPlans[id])
-                      .filter(p => p?.targetFinish).length}
-                </Text>{' '}
-                need target finish
-              </div>
-              <Button
-                type='primary'
-                size='small'
-                onClick={() => {
-                  // Auto-fill with first available finish for each product
-                  selectedRows.forEach(id => {
-                    if (!conversionPlans[id]?.targetFinish) {
-                      const sourceAlloy = filteredStockData.find(
-                        a => a.id === id
-                      )
-                      if (sourceAlloy) {
-                        const availableFinishes =
-                          getAvailableTargetFinishes(sourceAlloy)
-                        if (availableFinishes.length > 0) {
-                          updateConversionPlan(
-                            id,
-                            'targetFinish',
-                            availableFinishes[0].value
-                          )
-                        }
-                      }
-                    }
-                  })
-                }}
+            <div className='flex flex-col'>
+              <label className='text-xs text-gray-600 mb-1 font-medium'>
+                Finish
+              </label>
+              <Select
+                placeholder='Filter by Finish'
+                value={filterFinish}
+                onChange={setFilterFinish}
+                allowClear
+                className='w-40'
               >
-                Auto-fill First Available
-              </Button>
+                {(allFinishes?.data || []).map(finish => (
+                  <Option key={finish.id} value={finish.finish}>
+                    {finish.finish}
+                  </Option>
+                ))}
+              </Select>
             </div>
+
+            <Button
+              size='small'
+              onClick={() => {
+                setFilterSize(null)
+                setFilterPcd(null)
+                setFilterFinish(null)
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        </div>
+
+        {/* Table Header */}
+        <div
+          className='bg-gray-100 border-b px-6 py-2 flex items-center font-semibold text-sm'
+          style={{
+            paddingRight:
+              (showSelectedPanel ? (isPanelCollapsed ? 60 : 416) : 24) + 'px'
+          }}
+        >
+          <div className='w-10 flex-shrink-0'>Add</div>
+          <div className='w-[100px] flex-shrink-0 px-2'>Size/PCD</div>
+          <div className='flex-1 px-2'>Product Details</div>
+          <div className='w-[120px] flex-shrink-0 px-2 text-center'>Stock</div>
+          <div className='w-[280px] flex-shrink-0 px-2'>Plan Status</div>
+          <div className='w-[50px] flex-shrink-0 px-2 text-center'>Info</div>
+        </div>
+
+        {/* Virtual Table */}
+        <div
+          className='flex-1 bg-white'
+          style={{
+            marginRight:
+              (showSelectedPanel && selectedRows.size > 0
+                ? isPanelCollapsed
+                  ? 48
+                  : 400
+                : 0) + 'px'
+          }}
+        >
+          {loading ? (
+            <div className='flex items-center justify-center h-full'>
+              <Spin size='large' />
+            </div>
+          ) : filteredStockData.length === 0 ? (
+            <div className='flex flex-col items-center justify-center h-full text-gray-500'>
+              <div className='text-6xl mb-4'>📦</div>
+              <div className='text-xl'>No alloys found</div>
+              <div className='text-sm mt-2'>
+                Try adjusting your search or filters
+              </div>
+            </div>
+          ) : (
+            <AutoSizer>
+              {({ height, width }) => (
+                <List
+                  ref={listRef}
+                  height={height}
+                  itemCount={filteredStockData.length}
+                  itemSize={getItemSize}
+                  width={width}
+                >
+                  {Row}
+                </List>
+              )}
+            </AutoSizer>
           )}
         </div>
 
-  
-        {/* Selected Items Panel */}
-        {showSelectedPanel && selectedRows.size > 0 && (
-          <SelectedItemsPanel
-            selectedRows={selectedRows}
-            conversionPlans={conversionPlans}
-            filteredStockData={filteredStockData}
-            isCollapsed={isPanelCollapsed}
-            onToggleCollapse={handleTogglePanel}
-            onUpdatePlan={updateConversionPlan}
-            onRemoveItem={id => handleRowSelect(id, false)}
-            onRemoveAll={() => {
-              setSelectedRows(new Set())
-              setConversionPlans({})
-              // Clear saved state
-              localStorage.removeItem('smartPurchaseOrderingState')
-            }}
-            getAvailableTargetFinishes={getAvailableTargetFinishes}
-          />
-        )}
-
-        {/* Product Info Modal */}
-        <Modal
-          title={
-            <div className='flex items-center gap-2'>
-              <InfoCircleOutlined className='text-blue-600' />
-              <span>Product Information</span>
+        {/* Status Bar */}
+        {selectedRows.size > 0 && (
+          <div className='bg-blue-50 border-t px-6 py-2 flex items-center justify-between'>
+            <div className='text-sm'>
+              <Text strong>{selectedRows.size}</Text> items selected •{' '}
+              <Text strong>
+                {
+                  Array.from(selectedRows)
+                    .map(id => conversionPlans[id])
+                    .filter(p => p?.targetFinish).length
+                }
+              </Text>{' '}
+              configured •{' '}
+              <Text type='warning'>
+                {selectedRows.size -
+                  Array.from(selectedRows)
+                    .map(id => conversionPlans[id])
+                    .filter(p => p?.targetFinish).length}
+              </Text>{' '}
+              need target finish
             </div>
-          }
-          open={infoModalVisible}
-          onCancel={() => {
-            setInfoModalVisible(false)
-            setSelectedProductInfo(null)
-          }}
-          footer={[
-            <Button key='close' onClick={() => setInfoModalVisible(false)}>
-              Close
-            </Button>
-          ]}
-          width={600}
-        >
-          {selectedProductInfo && (
-            <div className='space-y-4'>
-              {/* Basic Product Info */}
-              <div className='bg-blue-50 p-4 rounded-lg'>
-                <h3 className='font-semibold text-lg text-blue-800 mb-2'>
-                  {selectedProductInfo.productName}
-                </h3>
-                <div className='grid grid-cols-2 gap-3 text-sm'>
-                  <div>
-                    <strong>Model:</strong> {selectedProductInfo.modelName}
-                  </div>
-                  <div>
-                    <strong>Size:</strong> {selectedProductInfo.inches}"
-                  </div>
-                  <div>
-                    <strong>PCD:</strong> {selectedProductInfo.pcd}
-                  </div>
-                  <div>
-                    <strong>Holes:</strong> {selectedProductInfo.holes}H
-                  </div>
-                  <div>
-                    <strong>Width:</strong> {selectedProductInfo.width}W
-                  </div>
-                  <div>
-                    <strong>Finish:</strong> {selectedProductInfo.finish}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stock Information */}
-              <div className='bg-green-50 p-4 rounded-lg'>
-                <h4 className='font-semibold text-green-800 mb-2'>
-                  Stock Information
-                </h4>
-                <div className='grid grid-cols-2 gap-3 text-sm'>
-                  <div>
-                    <strong>In-House Stock:</strong>{' '}
-                    {selectedProductInfo.inHouseStock || 0} units
-                  </div>
-                  <div>
-                    <strong>Stock Status:</strong>
-                    <Tag
-                      color={
-                        selectedProductInfo.inHouseStock > 0 ? 'green' : 'red'
+            <Button
+              type='primary'
+              size='small'
+              onClick={() => {
+                // Auto-fill with first available finish for each product
+                selectedRows.forEach(id => {
+                  if (!conversionPlans[id]?.targetFinish) {
+                    const sourceAlloy = filteredStockData.find(a => a.id === id)
+                    if (sourceAlloy) {
+                      const availableFinishes =
+                        getAvailableTargetFinishes(sourceAlloy)
+                      if (availableFinishes.length > 0) {
+                        updateConversionPlan(
+                          id,
+                          'targetFinish',
+                          availableFinishes[0].value
+                        )
                       }
-                      className='ml-2'
-                    >
-                      {selectedProductInfo.inHouseStock > 0
-                        ? 'Available'
-                        : 'Out of Stock'}
-                    </Tag>
-                  </div>
+                    }
+                  }
+                })
+              }}
+            >
+              Auto-fill First Available
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Selected Items Panel */}
+      {showSelectedPanel && selectedRows.size > 0 && (
+        <PurchaseItemsPanel
+          selectedRows={selectedRows}
+          conversionPlans={conversionPlans}
+          filteredStockData={filteredStockData}
+          isCollapsed={isPanelCollapsed}
+          onToggleCollapse={handleTogglePanel}
+          onUpdatePlan={updateConversionPlan}
+          onRemoveItem={id => handleRowSelect(id, false)}
+          onRemoveAll={() => {
+            setSelectedRows(new Set())
+            setConversionPlans({})
+            // Clear saved state
+            localStorage.removeItem('smartPurchaseOrderingState')
+          }}
+          getAvailableTargetFinishes={getAvailableTargetFinishes}
+        />
+      )}
+
+      {/* Product Info Modal */}
+      <Modal
+        title={
+          <div className='flex items-center gap-2'>
+            <InfoCircleOutlined className='text-blue-600' />
+            <span>Product Information</span>
+          </div>
+        }
+        open={infoModalVisible}
+        onCancel={() => {
+          setInfoModalVisible(false)
+          setSelectedProductInfo(null)
+        }}
+        footer={[
+          <Button key='close' onClick={() => setInfoModalVisible(false)}>
+            Close
+          </Button>
+        ]}
+        width={600}
+      >
+        {selectedProductInfo && (
+          <div className='space-y-4'>
+            {/* Basic Product Info */}
+            <div className='bg-blue-50 p-4 rounded-lg'>
+              <h3 className='font-semibold text-lg text-blue-800 mb-2'>
+                {selectedProductInfo.productName}
+              </h3>
+              <div className='grid grid-cols-2 gap-3 text-sm'>
+                <div>
+                  <strong>Model:</strong> {selectedProductInfo.modelName}
+                </div>
+                <div>
+                  <strong>Size:</strong> {selectedProductInfo.inches}"
+                </div>
+                <div>
+                  <strong>PCD:</strong> {selectedProductInfo.pcd}
+                </div>
+                <div>
+                  <strong>Holes:</strong> {selectedProductInfo.holes}H
+                </div>
+                <div>
+                  <strong>Width:</strong> {selectedProductInfo.width}W
+                </div>
+                <div>
+                  <strong>Finish:</strong> {selectedProductInfo.finish}
                 </div>
               </div>
+            </div>
 
-              {/* Available Finishes */}
-              <div className='bg-purple-50 p-4 rounded-lg'>
-                <h4 className='font-semibold text-purple-800 mb-3'>
-                  Available Finishes
-                </h4>
-                {(() => {
-                  const availableFinishes =
-                    getAvailableTargetFinishes(selectedProductInfo)
+            {/* Stock Information */}
+            <div className='bg-green-50 p-4 rounded-lg'>
+              <h4 className='font-semibold text-green-800 mb-2'>
+                Stock Information
+              </h4>
+              <div className='grid grid-cols-2 gap-3 text-sm'>
+                <div>
+                  <strong>In-House Stock:</strong>{' '}
+                  {selectedProductInfo.inHouseStock || 0} units
+                </div>
+                <div>
+                  <strong>Stock Status:</strong>
+                  <Tag
+                    color={
+                      selectedProductInfo.inHouseStock > 0 ? 'green' : 'red'
+                    }
+                    className='ml-2'
+                  >
+                    {selectedProductInfo.inHouseStock > 0
+                      ? 'Available'
+                      : 'Out of Stock'}
+                  </Tag>
+                </div>
+              </div>
+            </div>
 
-                  if (availableFinishes.length === 0) {
-                    return (
-                      <div className='text-sm text-gray-500 text-center py-2'>
-                        No other finishes available for this product
-                        specification
-                      </div>
-                    )
-                  }
+            {/* Available Finishes */}
+            <div className='bg-purple-50 p-4 rounded-lg'>
+              <h4 className='font-semibold text-purple-800 mb-3'>
+                Available Finishes
+              </h4>
+              {(() => {
+                const availableFinishes =
+                  getAvailableTargetFinishes(selectedProductInfo)
 
+                if (availableFinishes.length === 0) {
                   return (
-                    <div className='space-y-2'>
-                      {availableFinishes.map((finish, index) => (
-                        <div
-                          key={finish.value}
-                          className='flex items-center justify-between p-2 bg-white rounded border border-purple-200'
-                        >
-                          <div className='flex items-center gap-2'>
-                            <span className='text-sm font-medium text-gray-800'>
-                              {finish.label}
-                            </span>
-                          </div>
-                          <Tag
-                            color={
-                              finish.stock > 10
-                                ? 'green'
-                                : finish.stock > 0
-                                ? 'orange'
-                                : 'red'
-                            }
-                          >
-                            {finish.stock} units
-                          </Tag>
-                        </div>
-                      ))}
+                    <div className='text-sm text-gray-500 text-center py-2'>
+                      No other finishes available for this product specification
                     </div>
                   )
-                })()}
-              </div>
+                }
 
-              
-              {/* Technical Details - Product Information */}
-              {(selectedProductInfo.id || selectedProductInfo.alloyId) && (
-                <div className='bg-gray-50 p-4 rounded-lg'>
-                  <h4 className='font-semibold text-gray-800 mb-2'>
-                    Technical Details
-                  </h4>
-                  <div className='text-sm space-y-1'>
-                    {selectedProductInfo.id && (
-                      <div>
-                        <strong>Product ID:</strong> {selectedProductInfo.id}
+                return (
+                  <div className='space-y-2'>
+                    {availableFinishes.map((finish, index) => (
+                      <div
+                        key={finish.value}
+                        className='flex items-center justify-between p-2 bg-white rounded border border-purple-200'
+                      >
+                        <div className='flex items-center gap-2'>
+                          <span className='text-sm font-medium text-gray-800'>
+                            {finish.label}
+                          </span>
+                        </div>
+                        <Tag
+                          color={
+                            finish.stock > 10
+                              ? 'green'
+                              : finish.stock > 0
+                              ? 'orange'
+                              : 'red'
+                          }
+                        >
+                          {finish.stock} units
+                        </Tag>
                       </div>
-                    )}
-                    {selectedProductInfo.alloyId && (
-                      <div>
-                        <strong>Alloy ID:</strong> {selectedProductInfo.alloyId}
-                      </div>
-                    )}
-                    {selectedProductInfo.finishId && (
-                      <div>
-                        <strong>Finish ID:</strong>{' '}
-                        {selectedProductInfo.finishId}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </div>
-              )}
+                )
+              })()}
             </div>
-          )}
-        </Modal>
-      </div>
+
+            {/* Technical Details - Product Information */}
+            {(selectedProductInfo.id || selectedProductInfo.alloyId) && (
+              <div className='bg-gray-50 p-4 rounded-lg'>
+                <h4 className='font-semibold text-gray-800 mb-2'>
+                  Technical Details
+                </h4>
+                <div className='text-sm space-y-1'>
+                  {selectedProductInfo.id && (
+                    <div>
+                      <strong>Product ID:</strong> {selectedProductInfo.id}
+                    </div>
+                  )}
+                  {selectedProductInfo.alloyId && (
+                    <div>
+                      <strong>Alloy ID:</strong> {selectedProductInfo.alloyId}
+                    </div>
+                  )}
+                  {selectedProductInfo.finishId && (
+                    <div>
+                      <strong>Finish ID:</strong> {selectedProductInfo.finishId}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
   )
 }
 

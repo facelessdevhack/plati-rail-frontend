@@ -73,7 +73,6 @@ const PurchaseOrderDetails = ({ visible, onClose, order }) => {
       key: 'product',
       render: (_, record) => (
         <div>
-          {console.log(record, 'RECORDING')}
           <div className='font-semibold text-base'>{record.productName}</div>
           <div className='text-sm text-gray-600'>{record.modelName}</div>
           <Tag color='blue' className='mt-1'>
@@ -91,10 +90,8 @@ const PurchaseOrderDetails = ({ visible, onClose, order }) => {
       render: (_, record) => (
         <div className='space-y-1'>
           {record.width && getSpecificationTag('Width', record.width)}
-          {record.sourceFinish &&
-            getSpecificationTag('Source Finish', record.sourceFinish)}
-          {record.targetFinish &&
-            getSpecificationTag('Target Finish', record.targetFinish)}
+          {(record.targetFinish || record.sourceFinish) &&
+            getSpecificationTag('Finish', record.targetFinish || record.sourceFinish)}
         </div>
       )
     },

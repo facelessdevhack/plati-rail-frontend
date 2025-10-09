@@ -30,7 +30,7 @@ const QuantityInput = ({ planId, quantity, onUpdate }) => {
   const [localValue, setLocalValue] = React.useState(quantity || '')
   const inputRef = React.useRef(null)
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     const value = e.target.value
     setLocalValue(value)
   }
@@ -69,7 +69,7 @@ const QuantityInput = ({ planId, quantity, onUpdate }) => {
   )
 }
 
-const SelectedItemsPanel = ({
+const PurchaseItemsPanel = ({
   selectedRows,
   conversionPlans,
   filteredStockData,
@@ -165,30 +165,6 @@ const SelectedItemsPanel = ({
 
           {/* Configuration */}
           <div className='space-y-2'>
-            <Select
-              size='small'
-              placeholder='Select target finish'
-              value={plan?.targetFinish}
-              onChange={value =>
-                onUpdatePlan(item.planId, 'targetFinish', value)
-              }
-              className='w-full'
-              status={!plan?.targetFinish ? 'warning' : ''}
-              notFoundContent='No other finishes available for this product'
-            >
-              {getAvailableTargetFinishes &&
-                getAvailableTargetFinishes(alloy).map(finish => (
-                  <Option key={finish.value} value={finish.value}>
-                    <div className='flex justify-between items-center'>
-                      <span>{finish.label}</span>
-                      <span className='text-xs text-gray-500 ml-1'>
-                        ({finish.stock} stock)
-                      </span>
-                    </div>
-                  </Option>
-                ))}
-            </Select>
-
             <div className='flex gap-2'>
               <QuantityInput
                 planId={item.planId}
@@ -347,4 +323,4 @@ const SelectedItemsPanel = ({
   )
 }
 
-export default SelectedItemsPanel
+export default PurchaseItemsPanel

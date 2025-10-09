@@ -113,6 +113,8 @@ const PurchaseOrderCreation = ({
       return
     }
 
+    console.log('Selected alloy data:', selectedAlloy)
+
     // Check if item already exists
     const existingItemIndex = orderItems.findIndex(
       item => item.productId === selectedAlloy.id
@@ -124,7 +126,7 @@ const PurchaseOrderCreation = ({
       updatedItems[existingItemIndex].quantity += quantity
       setOrderItems(updatedItems)
     } else {
-      // Add new item
+      // Add new item - use correct field names from stock data
       const newItem = {
         productId: selectedAlloy.id,
         productName: selectedAlloy.product_name,
@@ -134,10 +136,10 @@ const PurchaseOrderCreation = ({
         pcd: selectedAlloy.pcd || '',
         holes: selectedAlloy.holes || '',
         width: selectedAlloy.width || '',
-        sourceFinish: selectedAlloy.source_finish || '',
-        targetFinish: selectedAlloy.target_finish || '',
+        finish: selectedAlloy.finish || selectedAlloy.finish_name || '',  // Use actual finish field from stock data
         quantity: quantity
       }
+      console.log('New item being added:', newItem)
       setOrderItems([...orderItems, newItem])
     }
 
@@ -226,6 +228,14 @@ const PurchaseOrderCreation = ({
             </Tag>
           )}
         </div>
+      )
+    },
+    {
+      title: 'Finish',
+      dataIndex: 'finish',
+      key: 'finish',
+      render: (text) => (
+        <Tag color='orange'>{text || 'N/A'}</Tag>
       )
     },
     {

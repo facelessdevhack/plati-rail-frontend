@@ -265,8 +265,7 @@ const PurchaseDashboard = () => {
                 'PCD': item.pcd || '',
                 'Holes': item.holes || '',
                 'Width': item.width || '',
-                'Source Finish': item.sourceFinish || '',
-                'Target Finish': item.targetFinish || '',
+                'Finish': item.targetFinish || item.sourceFinish || '',
                 'Quantity': item.quantity || 0
               })
             })
@@ -281,8 +280,7 @@ const PurchaseDashboard = () => {
               'PCD': '',
               'Holes': '',
               'Width': '',
-              'Source Finish': '',
-              'Target Finish': '',
+              'Finish': '',
               'Quantity': detailedOrder.totalQuantity || 0
             })
           }
@@ -298,8 +296,7 @@ const PurchaseDashboard = () => {
             'PCD': '',
             'Holes': '',
             'Width': '',
-            'Source Finish': '',
-            'Target Finish': '',
+            'Finish': '',
             'Quantity': order.totalQuantity || 0
           })
         }
