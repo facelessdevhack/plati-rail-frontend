@@ -6,7 +6,7 @@ export const getSuppliers = createAsyncThunk(
   'purchaseSystem/getSuppliers',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await client.get('/suppliers')
+      const response = await client.get('purchase/suppliers')
       return response.data
     } catch (error) {
       return rejectWithValue(getError(error))
@@ -271,7 +271,7 @@ export const clearError = () => ({
 
 // Simple API calls for direct use (not thunks)
 export const supplierAPI = {
-  getAll: () => client.get('/v2/suppliers'),
+  getAll: () => client.get('/v2/purchase/suppliers'),
   getById: id => client.get(`/v2/suppliers/${id}`),
   create: data => client.post('/v2/suppliers', data),
   update: (id, data) => client.put(`/v2/suppliers/${id}`, data),
