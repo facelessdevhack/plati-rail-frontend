@@ -8,7 +8,9 @@ import {
   SafetyCertificateOutlined,
   DatabaseOutlined,
   SettingOutlined,
-  TeamOutlined
+  TeamOutlined,
+  SyncOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -64,7 +66,19 @@ export const entrySiderRoutes = [
     '5',
     <TeamOutlined style={{ fontSize: '16px' }} />
   ),
-  
+
+  // Sales Coordination
+  getItemLayout('Sales Coordination', 'sales-coordination-menu', <SyncOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/sales-pending-entries'>⏳ Pending Entries</Link>,
+      'sales-pending'
+    ),
+    getItemLayout(
+      <Link to='/sales-inprod-entries'>🔄 In Production</Link>,
+      'sales-inprod'
+    )
+  ]),
+
   // Inventory Management
   getItemLayout(
     <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inventory</span>,

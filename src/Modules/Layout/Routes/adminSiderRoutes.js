@@ -12,7 +12,9 @@ import {
   RocketOutlined,
   LineChartOutlined,
   ShopOutlined,
-  BankOutlined
+  BankOutlined,
+  SyncOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -57,6 +59,18 @@ export const adminSiderRoutes = [
     'daily-entries',
     <FileTextOutlined style={{ fontSize: '16px' }} />
   ),
+
+  // Sales Coordination System
+  getItemLayout('Sales Coordination', 'sales-coordination-menu', <SyncOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/sales-pending-entries'>⏳ Pending Entries</Link>,
+      'sales-pending'
+    ),
+    getItemLayout(
+      <Link to='/sales-inprod-entries'>🔄 In Production</Link>,
+      'sales-inprod'
+    )
+  ]),
   
   // Production System with all nested routes
   getItemLayout('Production System', 'production-menu', <ToolOutlined style={{ fontSize: '16px' }} />, [

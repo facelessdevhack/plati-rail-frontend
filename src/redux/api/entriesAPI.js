@@ -533,3 +533,112 @@ export const checkMultipleEntriesAPI = async ({ entryIds, entryType }) => {
     throw error
   }
 }
+
+// ============================================
+// SALES COORDINATION SYSTEM - API FUNCTIONS
+// ============================================
+
+/**
+ * Add entry with sales coordination logic
+ * Routes entry to appropriate table based on stock and production status
+ */
+export const addCoordinatedEntryAPI = async ({
+  dealerId,
+  dealerName,
+  productId,
+  productName,
+  productType,
+  quantity,
+  price,
+  isClaim,
+  transportationType,
+  transportationCharges,
+  isRepair,
+  date,
+  uniqueProductId
+}) => {
+  try {
+    const response = await client.post('entries/add-coordinated-entry', {
+      dealerId,
+      dealerName,
+      productId,
+      productName,
+      productType,
+      quantity,
+      price,
+      isClaim,
+      transportationType,
+      transportationCharges,
+      date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
+      isRepair,
+      uniqueProductId
+    })
+    console.log(response, 'ADD COORDINATED ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('ADD COORDINATED ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
+ * Get all pending entries awaiting stock
+ */
+export const getPendingEntriesAPI = createAsyncThunk(
+  'entries/getPendingEntries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-pending-entries')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
+/**
+ * Get all entries currently in production
+ */
+export const getInProductionEntriesAPI = createAsyncThunk(
+  'entries/getInProductionEntries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-inprod-entries')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
+/**
+ * Move pending entry to entry_master when stock becomes available
+ */
+export const movePendingToMasterAPI = async ({ pendingEntryId }) => {
+  try {
+    const response = await client.post('entries/move-pending-to-master', {
+      pendingEntryId
+    })
+    console.log(response, 'MOVE PENDING TO MASTER RESPONSE')
+    return response
+  } catch (e) {
+    console.log('MOVE PENDING TO MASTER ERROR: ' + e)
+    return e
+  }
+}
+
+/**
+ * Move in-production entry to entry_master when production completes
+ */
+export const moveInProdToMasterAPI = async ({ inProdEntryId }) => {
+  try {
+    const response = await client.post('entries/move-inprod-to-master', {
+      inProdEntryId
+    })
+    console.log(response, 'MOVE INPROD TO MASTER RESPONSE')
+    return response
+  } catch (e) {
+    console.log('MOVE INPROD TO MASTER ERROR: ' + e)
+    return e
+  }
+}

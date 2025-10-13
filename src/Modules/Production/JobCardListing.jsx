@@ -275,9 +275,10 @@ const JobCardListing = () => {
       let filteredJobCards = enhancedJobCards
 
       if (selectedStep !== 'all') {
-        filteredJobCards = filteredJobCards.filter(
-          jc => jc.prodStep?.toString() === selectedStep
-        )
+        filteredJobCards = filteredJobCards.filter(jc => {
+          const stepInfo = getStepInfo(jc, jc.prodStep)
+          return stepInfo?.name === selectedStep
+        })
       }
 
       if (selectedPriority !== 'all') {
@@ -454,6 +455,18 @@ const JobCardListing = () => {
     return PRODUCTION_STEPS.length
   }
 
+  // Get unique step names from all job cards
+  const uniqueStepNames = useMemo(() => {
+    const stepNames = new Set()
+    jobCards.forEach(jc => {
+      const stepInfo = getStepInfo(jc, jc.prodStep)
+      if (stepInfo?.name) {
+        stepNames.add(stepInfo.name)
+      }
+    })
+    return Array.from(stepNames).sort()
+  }, [jobCards, jobCardPresets])
+
   // Calculate statistics
   const statistics = useMemo(() => {
     const total = jobCards.length
@@ -595,6 +608,7 @@ const JobCardListing = () => {
                 <Text className='font-semibold text-base'>
                   Job Card #{record.jobCardId}
                 </Text>
+                <Tag color='geekblue'>Plan #{record.prodPlanId}</Tag>
                 {record.isUrgent && (
                   <Tag color='red' icon={<FireOutlined />}>
                     URGENT
@@ -1190,11 +1204,9 @@ const JobCardListing = () => {
                   size='large'
                 >
                   <Option value='all'>All Steps</Option>
-                  {PRODUCTION_STEPS.map(step => (
-                    <Option key={step.id} value={step.id}>
-                      <span>
-                        {step.icon} {step.name}
-                      </span>
+                  {uniqueStepNames.map(stepName => (
+                    <Option key={stepName} value={stepName}>
+                      {stepName}
                     </Option>
                   ))}
                 </Select>

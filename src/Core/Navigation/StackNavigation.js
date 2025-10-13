@@ -54,6 +54,8 @@ import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
 import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
 import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
+import PendingEntriesView from '../../Modules/SalesCoordination/PendingEntriesView';
+import InProductionEntriesView from '../../Modules/SalesCoordination/InProductionEntriesView';
 
 
 const StackNavigation = () => {
@@ -574,6 +576,32 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[4, 5, 6]}>
             <SmartPurchasing />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Sales Coordination System Routes */}
+      <Route
+        path='/sales-pending-entries'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='⏳ Pending Entries - Sales Coordination'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<PendingEntriesView />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/sales-inprod-entries'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='🔄 In-Production Entries - Sales Coordination'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<InProductionEntriesView />}
+            />
           </PrivateRoute>
         }
       />

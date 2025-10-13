@@ -12,7 +12,7 @@ import {
   deleteEntryById,
   setEditing,
 } from '../../redux/slices/entry.slice';
-import { addEntryAPI, editEntryAPI, getDailyEntry, getTodayDataEntry, removeEntryAPI } from '../../redux/api/entriesAPI';
+import { addEntryAPI, editEntryAPI, getDailyEntry, getTodayDataEntry, removeEntryAPI, addCoordinatedEntryAPI } from '../../redux/api/entriesAPI';
 import moment from 'moment';
 
 const AddDailyEntryALLOYS = () => {
@@ -106,14 +106,27 @@ const AddDailyEntryALLOYS = () => {
       }
     } else {
       try {
-        const addEntryResponse = await addEntryAPI({ ...entry })
+        // Use new coordinated entry API for sales coordination
+        const addEntryResponse = await addCoordinatedEntryAPI({ ...entry })
         if (addEntryResponse.status === 200) {
           console.log(addEntryResponse, 'addEntryResponse');
-          const entryWithEntryId = { ...entry, entryId: addEntryResponse.data?.[0] };
+          const responseData = addEntryResponse.data;
+          const entryWithEntryId = { ...entry, entryId: responseData?.entryId };
           dispatch(addEntry({ ...entryWithEntryId, id: generateUniqueId() }));
+
+          // Show routing information to user
+          if (responseData.routedTo) {
+            const messages = {
+              'entry_master': `✅ Entry added successfully! Stock available.`,
+              'currently_inprod_master': `🔄 Entry added to production queue. Product is currently being manufactured.`,
+              'pending_entry_master': `⏳ Entry pending. Product is out of stock and not in production.`
+            };
+            alert(messages[responseData.routedTo] || 'Entry added successfully!');
+          }
         }
       } catch (error) {
         console.log(error, 'error');
+        alert('Error adding entry. Please try again.');
       }
     }
     getAndSetYesterdayOrSaturdayDate()
