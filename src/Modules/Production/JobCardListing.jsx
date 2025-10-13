@@ -22,7 +22,8 @@ import {
   Segmented,
   Avatar,
   Empty,
-  Skeleton
+  Skeleton,
+  message
 } from 'antd'
 import {
   PlusOutlined,
@@ -51,7 +52,9 @@ import {
   BarsOutlined,
   AppstoreOutlined,
   InfoCircleOutlined,
-  SyncOutlined
+  SyncOutlined,
+  DownloadOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -493,6 +496,100 @@ const JobCardListing = () => {
       completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
     }
   }, [jobCards, jobCardPresets])
+
+  // Handle export to Excel/CSV
+  const handleExport = format => {
+    try {
+      // Prepare data for export
+      const exportData = jobCards.map(jc => {
+        const stepInfo = getStepInfo(jc, jc.prodStep)
+        const totalSteps = getTotalSteps(jc)
+        const progress = Math.round((jc.prodStep / totalSteps) * 100)
+
+        return {
+          'Job Card ID': jc.jobCardId || jc.id,
+          'Plan ID': jc.prodPlanId,
+          'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD') : '',
+          'Source Product': jc.sourceProductName || jc.alloyName || '',
+          'Target Product': jc.targetProductName || jc.convertName || '',
+          'Quantity': jc.quantity || 0,
+          'Current Step': stepInfo?.name || 'Unknown'
+        }
+      })
+
+      if (format === 'csv') {
+        // CSV Export
+        const headers = Object.keys(exportData[0])
+        const csvContent = [
+          headers.join(','),
+          ...exportData.map(row => 
+            headers.map(header => {
+              const value = row[header]
+              // Escape commas and quotes in values
+              return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+                ? `"${value.replace(/"/g, '""')}"`
+                : value
+            }).join(',')
+          )
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `job_cards_${moment().format('YYYY-MM-DD')}.csv`
+        link.click()
+        message.success('CSV file downloaded successfully')
+      } else {
+        // Excel Export - using simple HTML table method
+        const tableHTML = `
+          <table>
+            <thead>
+              <tr>
+                ${Object.keys(exportData[0]).map(header => `<th>${header}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${exportData.map(row => `
+                <tr>
+                  ${Object.values(row).map(value => `<td>${value}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `
+        
+        const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `job_cards_${moment().format('YYYY-MM-DD')}.xls`
+        link.click()
+        message.success('Excel file downloaded successfully')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      message.error('Failed to export data')
+    }
+  }
+
+  // Export menu items
+  const exportMenu = (
+    <Menu
+      items={[
+        {
+          key: 'excel',
+          icon: <FileExcelOutlined />,
+          label: 'Export to Excel',
+          onClick: () => handleExport('excel')
+        },
+        {
+          key: 'csv',
+          icon: <DownloadOutlined />,
+          label: 'Export to CSV',
+          onClick: () => handleExport('csv')
+        }
+      ]}
+    />
+  )
 
   // Handle search
   const handleSearch = value => {
@@ -1068,6 +1165,18 @@ const JobCardListing = () => {
                 >
                   Refresh
                 </Button>
+                <Dropdown 
+                  overlay={exportMenu} 
+                  trigger={['click']} 
+                  disabled={jobCards.length === 0}
+                >
+                  <Button
+                    icon={<DownloadOutlined />}
+                    disabled={jobCards.length === 0}
+                  >
+                    Export
+                  </Button>
+                </Dropdown>
                 <Button
                   icon={<PlusOutlined />}
                   type='primary'
