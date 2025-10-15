@@ -502,6 +502,76 @@ export const getSmartProductionSuggestions = createAsyncThunk(
 )
 
 // Get sales performance metrics
+// Process step progress with quality data
+export const processStepProgress = createAsyncThunk(
+  'production/processStepProgress',
+  async ({ stepProgressId, acceptedQuantity, rejectedQuantity, pendingQuantity, reworkQuantity, rejectionReason }, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/production/step-progress/${stepProgressId}/process`, {
+        acceptedQuantity,
+        rejectedQuantity,
+        pendingQuantity,
+        reworkQuantity,
+        rejectionReason
+      })
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+// Get job card step progress details
+export const getJobCardStepProgress = createAsyncThunk(
+  'production/getJobCardStepProgress',
+  async (jobCardId, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/production/job-card/${jobCardId}/step-progress`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+// Get pending quantities summary for job card
+export const getPendingSummary = createAsyncThunk(
+  'production/getPendingSummary',
+  async (jobCardId, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/production/job-card/${jobCardId}/pending-summary`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+// Initialize job card steps
+export const initializeJobCardSteps = createAsyncThunk(
+  'production/initializeJobCardSteps',
+  async (jobCardId, { rejectWithValue }) => {
+    try {
+      const response = await client.post(`/production/job-card/${jobCardId}/initialize-steps`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+export const deleteJobCard = createAsyncThunk(
+  'production/deleteJobCard',
+  async (jobCardId, { rejectWithValue }) => {
+    try {
+      const response = await client.delete(`/production/job-card/${jobCardId}`)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
 export const getSalesPerformanceMetrics = createAsyncThunk(
   'production/getSalesPerformanceMetrics',
   async ({

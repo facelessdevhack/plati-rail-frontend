@@ -25,7 +25,12 @@ import {
   // AI suggestions
   getAIProductionSuggestions,
   // Sales metrics
-  getSalesPerformanceMetrics
+  getSalesPerformanceMetrics,
+  // Step-wise quantity tracking
+  processStepProgress,
+  getJobCardStepProgress,
+  getPendingSummary,
+  initializeJobCardSteps
 } from "../api/productionAPI";
 
 const initialState = {
@@ -67,6 +72,11 @@ const initialState = {
   totalJobCardsCount: 0,
   selectedJobCard: null,
   jobCardProgress: [],
+  
+  // Step-wise quantity tracking
+  stepProgressData: [],
+  pendingSummary: null,
+  stepProgressLoading: false,
   
   // Step Presets
   stepPresets: [],
@@ -529,7 +539,65 @@ const productionSlice = createSlice({
         state.salesMetricsLoading = false;
         state.error = action.payload;
       })
-
+      
+      // Process step progress
+      .addCase(processStepProgress.pending, (state) => {
+        state.stepProgressLoading = true;
+      })
+      .addCase(processStepProgress.fulfilled, (state, action) => {
+        state.stepProgressLoading = false;
+        state.success = true;
+        // Update the specific step in stepProgressData
+        if (state.stepProgressData && action.payload.stepProgress) {
+          const index = state.stepProgressData.findIndex(s => s.id === action.payload.stepProgress.id);
+          if (index !== -1) {
+            state.stepProgressData[index] = action.payload.stepProgress;
+          }
+        }
+      })
+      .addCase(processStepProgress.rejected, (state, action) => {
+        state.stepProgressLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Get job card step progress
+      .addCase(getJobCardStepProgress.pending, (state) => {
+        state.stepProgressLoading = true;
+      })
+      .addCase(getJobCardStepProgress.fulfilled, (state, action) => {
+        state.stepProgressLoading = false;
+        state.stepProgressData = action.payload.stepProgress || [];
+      })
+      .addCase(getJobCardStepProgress.rejected, (state, action) => {
+        state.stepProgressLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Get pending summary
+      .addCase(getPendingSummary.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(getPendingSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        state.pendingSummary = action.payload.summary || null;
+      })
+      .addCase(getPendingSummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Initialize job card steps
+      .addCase(initializeJobCardSteps.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(initializeJobCardSteps.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+      })
+      .addCase(initializeJobCardSteps.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
   },
 });

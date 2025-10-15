@@ -397,15 +397,25 @@ const ProductionListing = () => {
     try {
       // Prepare data for export
       const exportData = productionPlans.map(plan => {
-        const sourceProduct = plan.alloyName || plan.sourceProduct || plan.sourceproductname || `Alloy ${plan.alloyId}`
-        const targetProduct = plan.convertName || plan.targetProduct || plan.targetproductname || `Convert ${plan.convertToAlloyId}`
-        
+        const sourceProduct =
+          plan.alloyName ||
+          plan.sourceProduct ||
+          plan.sourceproductname ||
+          `Alloy ${plan.alloyId}`
+        const targetProduct =
+          plan.convertName ||
+          plan.targetProduct ||
+          plan.targetproductname ||
+          `Convert ${plan.convertToAlloyId}`
+
         return {
           'Production Plan ID': plan.id,
-          'Date': plan.createdAt ? moment(plan.createdAt).format('YYYY-MM-DD') : '',
+          Date: plan.createdAt
+            ? moment(plan.createdAt).format('YYYY-MM-DD')
+            : '',
           'From Alloy': sourceProduct,
           'To Alloy': targetProduct,
-          'Quantity': plan.quantity
+          Quantity: plan.quantity
         }
       })
 
@@ -414,14 +424,17 @@ const ProductionListing = () => {
         const headers = Object.keys(exportData[0])
         const csvContent = [
           headers.join(','),
-          ...exportData.map(row => 
-            headers.map(header => {
-              const value = row[header]
-              // Escape commas and quotes in values
-              return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-                ? `"${value.replace(/"/g, '""')}"`
-                : value
-            }).join(',')
+          ...exportData.map(row =>
+            headers
+              .map(header => {
+                const value = row[header]
+                // Escape commas and quotes in values
+                return typeof value === 'string' &&
+                  (value.includes(',') || value.includes('"'))
+                  ? `"${value.replace(/"/g, '""')}"`
+                  : value
+              })
+              .join(',')
           )
         ].join('\n')
 
@@ -437,19 +450,27 @@ const ProductionListing = () => {
           <table>
             <thead>
               <tr>
-                ${Object.keys(exportData[0]).map(header => `<th>${header}</th>`).join('')}
+                ${Object.keys(exportData[0])
+                  .map(header => `<th>${header}</th>`)
+                  .join('')}
               </tr>
             </thead>
             <tbody>
-              ${exportData.map(row => `
+              ${exportData
+                .map(
+                  row => `
                 <tr>
-                  ${Object.values(row).map(value => `<td>${value}</td>`).join('')}
+                  ${Object.values(row)
+                    .map(value => `<td>${value}</td>`)
+                    .join('')}
                 </tr>
-              `).join('')}
+              `
+                )
+                .join('')}
             </tbody>
           </table>
         `
-        
+
         const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
@@ -690,8 +711,8 @@ const ProductionListing = () => {
     const jobCardColumns = [
       {
         title: 'Job Card ID',
-        dataIndex: 'id',
-        key: 'id',
+        dataIndex: 'jobCardId',
+        key: 'jobCardId',
         width: 100,
         render: id => <span className='font-semibold text-blue-600'>#{id}</span>
       },
@@ -1294,7 +1315,11 @@ const ProductionListing = () => {
             </p>
           </div>
           <div className='flex flex-col sm:flex-row gap-2'>
-            <Dropdown overlay={exportMenu} trigger={['click']} disabled={productionPlans.length === 0}>
+            <Dropdown
+              overlay={exportMenu}
+              trigger={['click']}
+              disabled={productionPlans.length === 0}
+            >
               <CustomButton
                 type='default'
                 icon={<DownloadOutlined />}
@@ -1351,7 +1376,7 @@ const ProductionListing = () => {
               >
                 Search
               </Button>
-                <Button
+              <Button
                 type={isTodayFilter ? 'primary' : 'default'}
                 onClick={handleTodayFilter}
                 size='middle'
@@ -1368,7 +1393,10 @@ const ProductionListing = () => {
               >
                 Filters
               </Button>
-              {(searchTerm || filters.urgent || filters.dateRange || isTodayFilter) && (
+              {(searchTerm ||
+                filters.urgent ||
+                filters.dateRange ||
+                isTodayFilter) && (
                 <Button
                   onClick={handleClearFilters}
                   size='middle'
@@ -1397,7 +1425,7 @@ const ProductionListing = () => {
                     size='small'
                   />
                 </Col>
-                  <Col xs={24} sm={12} md={8}>
+                <Col xs={24} sm={12} md={8}>
                   <div className='mb-2 text-xs md:text-sm font-medium text-gray-700 flex items-center gap-2'>
                     Date Range
                     {isTodayFilter && (
@@ -1470,10 +1498,12 @@ const ProductionListing = () => {
           </div>
           <div className='bg-purple-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
             <div className='text-lg sm:text-xl md:text-2xl font-bold text-purple-600'>
-              {productionPlans.filter(p => {
-                const stepStatus = p.currentStepStatus
-                return ['pending', 'in_progress'].includes(stepStatus)
-              }).length}
+              {
+                productionPlans.filter(p => {
+                  const stepStatus = p.currentStepStatus
+                  return ['pending', 'in_progress'].includes(stepStatus)
+                }).length
+              }
             </div>
             <div className='text-xs sm:text-sm text-gray-600 mt-1'>
               Active Plans

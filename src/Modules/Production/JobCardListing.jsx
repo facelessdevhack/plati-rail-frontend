@@ -63,12 +63,17 @@ import moment from 'moment'
 import Layout from '../Layout/layout'
 import JobCardCreationModal from './JobCardCreationModal'
 import JobCardDetailsModal from './JobCardDetailsModal'
+import StepProgressModal from './StepProgressModal'
 import {
   getJobCardsWithDetails,
   getProductionPlansWithQuantities,
   updateJobCardProgress,
   getPresetDetails,
-  getProductionSteps
+  getProductionSteps,
+  processStepProgress,
+  getJobCardStepProgress,
+  initializeJobCardSteps,
+  deleteJobCard
 } from '../../redux/api/productionAPI'
 
 const { Title, Text } = Typography
@@ -164,6 +169,12 @@ const JobCardListing = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false)
   const [selectedJobCard, setSelectedJobCard] = useState(null)
+  
+  // Step progress modal state
+  const [stepProgressModalVisible, setStepProgressModalVisible] = useState(false)
+  const [selectedStepProgress, setSelectedStepProgress] = useState(null)
+  const [stepProgressData, setStepProgressData] = useState([])
+  const [stepProgressLoading, setStepProgressLoading] = useState(false)
 
   // Load job cards and production plans with allocation details
   const loadJobCards = async () => {
@@ -613,61 +624,85 @@ const JobCardListing = () => {
     setDetailsModalVisible(true)
   }
 
-  const handleMoveToNextStep = jobCard => {
-    const totalSteps = getTotalSteps(jobCard)
-    const currentStepInfo = getStepInfo(jobCard, jobCard.prodStep)
-    const nextStepInfo = getStepInfo(jobCard, jobCard.prodStep + 1)
-    const nextStepName =
-      jobCard.prodStep + 1 >= totalSteps
-        ? 'Complete'
-        : nextStepInfo?.name || 'Unknown'
-
-    confirm({
-      title: 'Move Job Card to Next Step',
-      content: (
-        <div>
-          <p>
-            Move job card #{jobCard.id} to <strong>{nextStepName}</strong>?
-          </p>
-          <div className='text-sm text-gray-600 mt-2'>
-            <div>Current: {currentStepInfo?.name}</div>
-            <div>Quantity: {jobCard.quantity?.toLocaleString()} units</div>
-          </div>
-        </div>
-      ),
-      okText: 'Move Forward',
-      okType: 'primary',
-      onOk: async () => {
+  const handleMoveToNextStep = async (jobCard) => {
+    try {
+      // Load step progress data for this job card
+      setStepProgressLoading(true)
+      const jobCardId = jobCard.id || jobCard.jobCardId
+      let result = await dispatch(getJobCardStepProgress(jobCardId)).unwrap()
+      let stepProgress = result.data || result.stepProgress || []
+      
+      // If no step progress exists, initialize it
+      if (!stepProgress || stepProgress.length === 0) {
         try {
-          if (!jobCard.jobCardId) {
-            notification.error({
-              message: 'Error',
-              description:
-                'Job card ID not found. Please refresh the page and try again.'
-            })
-            return
-          }
-
-          await dispatch(
-            updateJobCardProgress({
-              jobCardId: jobCard.jobCardId,
-              prodStep: jobCard.prodStep + 1
-            })
-          ).unwrap()
-
-          notification.success({
-            message: 'Step Updated',
-            description: `Job card moved to ${nextStepName}`
-          })
-          loadJobCards()
-        } catch (error) {
+          await dispatch(initializeJobCardSteps(jobCardId)).unwrap()
+          // Reload step progress after initialization
+          result = await dispatch(getJobCardStepProgress(jobCardId)).unwrap()
+          stepProgress = result.data || result.stepProgress || []
+        } catch (initError) {
           notification.error({
-            message: 'Update Failed',
-            description: error.message
+            message: 'Initialization Failed',
+            description: initError.message || 'Failed to initialize step tracking for this job card'
           })
+          return
         }
       }
-    })
+      
+      // Find current step progress
+      const currentStepProgress = stepProgress.find(
+        s => s.stepOrder === jobCard.prodStep && s.status !== 'completed'
+      )
+      
+      if (!currentStepProgress) {
+        notification.warning({
+          message: 'No Step Progress Data',
+          description: 'Unable to find current step progress. Please view job card details for more information.'
+        })
+        return
+      }
+      
+      // Set step progress data and open modal
+      setStepProgressData(stepProgress)
+      setSelectedStepProgress(currentStepProgress)
+      setSelectedJobCard(jobCard)
+      setStepProgressModalVisible(true)
+      
+    } catch (error) {
+      notification.error({
+        message: 'Failed to Load Step Data',
+        description: error.message || 'Could not load step progress information'
+      })
+    } finally {
+      setStepProgressLoading(false)
+    }
+  }
+  
+  // Handle step progress submission
+  const handleSubmitStepProgress = async (progressData) => {
+    try {
+      setStepProgressLoading(true)
+      await dispatch(processStepProgress(progressData)).unwrap()
+      
+      notification.success({
+        message: 'Step Processed',
+        description: 'Quality data recorded successfully'
+      })
+      
+      setStepProgressModalVisible(false)
+      setSelectedStepProgress(null)
+      setSelectedJobCard(null)
+      
+      // Reload job cards
+      loadJobCards()
+      
+    } catch (error) {
+      notification.error({
+        message: 'Processing Failed',
+        description: error.message || 'Failed to process step'
+      })
+    } finally {
+      setStepProgressLoading(false)
+    }
   }
 
   // Enhanced table columns with modern design
@@ -963,7 +998,34 @@ const JobCardListing = () => {
                     label: 'Delete',
                     danger: true
                   }
-                ]
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'delete') {
+                    confirm({
+                      title: 'Delete Job Card',
+                      icon: <DeleteOutlined />,
+                      content: `Are you sure you want to delete Job Card #${record.jobCardId}?`,
+                      okText: 'Yes, Delete',
+                      okType: 'danger',
+                      cancelText: 'Cancel',
+                      onOk: async () => {
+                        try {
+                          await dispatch(deleteJobCard(record.id)).unwrap()
+                          notification.success({
+                            message: 'Job Card Deleted',
+                            description: `Job Card #${record.jobCardId} has been deleted successfully`
+                          })
+                          loadJobCards()
+                        } catch (error) {
+                          notification.error({
+                            message: 'Delete Failed',
+                            description: error.message || 'Failed to delete job card'
+                          })
+                        }
+                      }
+                    })
+                  }
+                }
               }}
               trigger={['click']}
             >
@@ -1035,7 +1097,38 @@ const JobCardListing = () => {
                     label: 'Delete',
                     danger: true
                   }
-                ]
+                ],
+                onClick: ({ key }) => {
+                  if (key === '1') {
+                    handleViewDetails(record)
+                  } else if (key === '2' && !isCompleted) {
+                    handleMoveToNextStep(record)
+                  } else if (key === '3') {
+                    confirm({
+                      title: 'Delete Job Card',
+                      icon: <DeleteOutlined />,
+                      content: `Are you sure you want to delete Job Card #${record.jobCardId}?`,
+                      okText: 'Yes, Delete',
+                      okType: 'danger',
+                      cancelText: 'Cancel',
+                      onOk: async () => {
+                        try {
+                          await dispatch(deleteJobCard(record.id)).unwrap()
+                          notification.success({
+                            message: 'Job Card Deleted',
+                            description: `Job Card #${record.jobCardId} has been deleted successfully`
+                          })
+                          loadJobCards()
+                        } catch (error) {
+                          notification.error({
+                            message: 'Delete Failed',
+                            description: error.message || 'Failed to delete job card'
+                          })
+                        }
+                      }
+                    })
+                  }
+                }
               }}
             >
               <Button icon={<MoreOutlined />} type='text' />
@@ -1461,6 +1554,30 @@ const JobCardListing = () => {
             }}
             jobCard={selectedJobCard}
             onRefresh={loadJobCards}
+          />
+        )}
+        
+        {/* Step Progress Modal for Quality Data Entry */}
+        {selectedStepProgress && selectedJobCard && (
+          <StepProgressModal
+            visible={stepProgressModalVisible}
+            onCancel={() => {
+              setStepProgressModalVisible(false)
+              setSelectedStepProgress(null)
+              setSelectedJobCard(null)
+            }}
+            onSubmit={handleSubmitStepProgress}
+            stepProgress={selectedStepProgress}
+            currentStepInfo={{
+              name: selectedStepProgress?.stepName || 'Unknown Step',
+              order: selectedStepProgress?.stepOrder || 0
+            }}
+            nextStepInfo={(() => {
+              const nextStep = stepProgressData.find(s => s.stepOrder === (selectedStepProgress?.stepOrder || 0) + 1)
+              return nextStep ? { name: nextStep.stepName || 'Unknown Step' } : null
+            })()}
+            jobCard={selectedJobCard}
+            loading={stepProgressLoading}
           />
         )}
       </div>
