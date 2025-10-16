@@ -642,3 +642,34 @@ export const moveInProdToMasterAPI = async ({ inProdEntryId }) => {
     return e
   }
 }
+
+/**
+ * Get all dispatch entries awaiting coordinator approval
+ */
+export const getDispatchEntriesAPI = createAsyncThunk(
+  'entries/getDispatchEntries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-dispatch-entries')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
+/**
+ * Process dispatch entry - move to entry_master when approved
+ */
+export const processDispatchEntryAPI = async ({ dispatchEntryId }) => {
+  try {
+    const response = await client.post('entries/process-dispatch-entry', {
+      dispatchEntryId
+    })
+    console.log(response, 'PROCESS DISPATCH ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('PROCESS DISPATCH ENTRY ERROR: ' + e)
+    return e
+  }
+}

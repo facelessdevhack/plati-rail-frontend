@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Tag, message, Space } from 'antd';
-import { ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { getPendingEntriesAPI, movePendingToMasterAPI } from '../../redux/api/entriesAPI';
+import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { getDispatchEntriesAPI, processDispatchEntryAPI } from '../../redux/api/entriesAPI';
 import { useDispatch } from 'react-redux';
 import moment from 'moment';
 
-const PendingEntriesView = () => {
+const DispatchEntriesView = () => {
   const dispatch = useDispatch();
-  const [pendingEntries, setPendingEntries] = useState([]);
+  const [dispatchEntries, setDispatchEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    fetchPendingEntries();
+    fetchDispatchEntries();
   }, []);
 
-  const fetchPendingEntries = async () => {
+  const fetchDispatchEntries = async () => {
     setLoading(true);
     try {
-      const response = await dispatch(getPendingEntriesAPI()).unwrap();
-      setPendingEntries(response.pendingEntries || []);
+      const response = await dispatch(getDispatchEntriesAPI()).unwrap();
+      setDispatchEntries(response.dispatchEntries || []);
     } catch (error) {
-      console.error('Error fetching pending entries:', error);
-      message.error('Failed to load pending entries');
+      console.error('Error fetching dispatch entries:', error);
+      message.error('Failed to load dispatch entries');
     } finally {
       setLoading(false);
     }
@@ -31,16 +31,16 @@ const PendingEntriesView = () => {
   const handleProcessEntry = async (entryId) => {
     setProcessingId(entryId);
     try {
-      const response = await movePendingToMasterAPI({ pendingEntryId: entryId });
+      const response = await processDispatchEntryAPI({ dispatchEntryId: entryId });
       if (response.status === 200) {
-        message.success('Entry processed successfully! Stock is now available.');
-        fetchPendingEntries(); // Refresh the list
+        message.success('Entry dispatched successfully!');
+        fetchDispatchEntries(); // Refresh the list
       } else {
         message.error(response.data?.message || 'Failed to process entry');
       }
     } catch (error) {
-      console.error('Error processing entry:', error);
-      message.error('Insufficient stock or error processing entry');
+      console.error('Error processing dispatch entry:', error);
+      message.error('Error processing dispatch entry');
     } finally {
       setProcessingId(null);
     }
@@ -89,7 +89,7 @@ const PendingEntriesView = () => {
       render: (stock) => {
         const stockNum = stock || 0;
         return (
-          <Tag color={stockNum > 0 ? 'green' : 'red'}>
+          <Tag color={stockNum >= 0 ? 'green' : 'red'}>
             {stockNum} units
           </Tag>
         );
@@ -106,19 +106,19 @@ const PendingEntriesView = () => {
     },
     {
       title: 'Status',
-      dataIndex: 'pendingStatus',
-      key: 'pendingStatus',
+      dataIndex: 'dispatchStatus',
+      key: 'dispatchStatus',
       width: 150,
       render: (status) => (
-        <Tag icon={<ClockCircleOutlined />} color="warning">
-          {status || 'Awaiting Stock'}
+        <Tag icon={<ClockCircleOutlined />} color="processing">
+          {status === 'awaiting_approval' ? 'Awaiting Approval' : status}
         </Tag>
       ),
     },
     {
-      title: 'Checked At',
-      dataIndex: 'checkedAt',
-      key: 'checkedAt',
+      title: 'Created At',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       width: 150,
       render: (date) => date ? moment(date).format('DD MMM HH:mm') : '-',
     },
@@ -135,7 +135,7 @@ const PendingEntriesView = () => {
           loading={processingId === record.id}
           onClick={() => handleProcessEntry(record.id)}
         >
-          Process
+          Dispatch
         </Button>
       ),
     },
@@ -145,24 +145,24 @@ const PendingEntriesView = () => {
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">⏳ Pending Entries</h2>
+          <h2 className="text-2xl font-bold">📦 Dispatch Entries</h2>
           <p className="text-gray-600 mt-1">
-            Entries awaiting stock availability (not in production)
+            Entries with stock available, awaiting sales coordinator approval
           </p>
         </div>
         <Space>
-          <Button onClick={fetchPendingEntries} loading={loading}>
+          <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh
           </Button>
-          <Tag color="orange" style={{ fontSize: '14px', padding: '4px 12px' }}>
-            {pendingEntries.length} Pending
+          <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>
+            {dispatchEntries.length} Awaiting
           </Tag>
         </Space>
       </div>
 
       <Table
         columns={columns}
-        dataSource={pendingEntries}
+        dataSource={dispatchEntries}
         rowKey="id"
         loading={loading}
         scroll={{ x: 1400 }}
@@ -176,14 +176,14 @@ const PendingEntriesView = () => {
       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
         <h3 className="font-semibold mb-2">📌 Information</h3>
         <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-          <li>These entries are waiting for stock to become available</li>
-          <li>No production plans exist for these products currently</li>
-          <li>Click "Process" when stock is available to move to entry_master</li>
-          <li>System will automatically check stock availability before processing</li>
+          <li>These entries have stock available and are awaiting your approval</li>
+          <li>Stock has already been reserved for these entries</li>
+          <li>Click "Dispatch" to approve and move the entry to entry_master</li>
+          <li>Once dispatched, the entry will be finalized in the system</li>
         </ul>
       </div>
     </div>
   );
 };
 
-export default PendingEntriesView;
+export default DispatchEntriesView;

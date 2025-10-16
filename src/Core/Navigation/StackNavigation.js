@@ -56,6 +56,7 @@ import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
 import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
 import PendingEntriesView from '../../Modules/SalesCoordination/PendingEntriesView';
 import InProductionEntriesView from '../../Modules/SalesCoordination/InProductionEntriesView';
+import DispatchEntriesView from '../../Modules/SalesCoordination/DispatchEntriesView';
 
 
 const StackNavigation = () => {
@@ -601,6 +602,18 @@ const StackNavigation = () => {
               title='🔄 In-Production Entries - Sales Coordination'
               items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
               content={<InProductionEntriesView />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/sales-dispatch-entries'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='📦 Dispatch Entries - Sales Coordination'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<DispatchEntriesView />}
             />
           </PrivateRoute>
         }

@@ -70,6 +70,10 @@ export const entrySiderRoutes = [
   // Sales Coordination
   getItemLayout('Sales Coordination', 'sales-coordination-menu', <SyncOutlined style={{ fontSize: '16px' }} />, [
     getItemLayout(
+      <Link to='/sales-dispatch-entries'>📦 Dispatch Entries</Link>,
+      'sales-dispatch'
+    ),
+    getItemLayout(
       <Link to='/sales-pending-entries'>⏳ Pending Entries</Link>,
       'sales-pending'
     ),
