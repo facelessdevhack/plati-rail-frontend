@@ -57,6 +57,10 @@ import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
 import PendingEntriesView from '../../Modules/SalesCoordination/PendingEntriesView';
 import InProductionEntriesView from '../../Modules/SalesCoordination/InProductionEntriesView';
 import DispatchEntriesView from '../../Modules/SalesCoordination/DispatchEntriesView';
+import PricingEntriesView from '../../Modules/DataEntry/PricingEntriesView';
+import CreateOrderView from '../../Modules/SalesCoordination/CreateOrderView';
+import CreateOrderAlloys from '../../Modules/SalesCoordination/CreateOrderAlloys';
+import SalesCoordinatorDashboard from '../../Modules/SalesCoordination/SalesCoordinatorDashboard';
 
 
 const StackNavigation = () => {
@@ -70,8 +74,10 @@ const StackNavigation = () => {
 
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
-        if ([4, 5].includes(roleId)) {
+        if (roleId === 5) {
           navigate('/admin-dashboard')
+        } else if (roleId === 4) {
+          navigate('/sales-coordinator-dashboard')
         } else if (roleId === 3) {
           navigate('/entry-dashboard')
         } else if (roleId === 6) {
@@ -396,6 +402,18 @@ const StackNavigation = () => {
         }
       />
       <Route
+        path='/sales-coordinator-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[1, 2, 3, 4, 5, 6]}>
+            <AdminLayout
+              title='📊 Sales Coordinator Dashboard'
+              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 1 ? dataUserSiderRoutes : adminSiderRoutes)}
+              content={<SalesCoordinatorDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path='/dealer-warranty'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5]}>
@@ -614,6 +632,42 @@ const StackNavigation = () => {
               title='📦 Dispatch Entries - Sales Coordination'
               items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
               content={<DispatchEntriesView />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/data-entry-pricing'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='💰 Pricing Entries - Data Entry'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<PricingEntriesView />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/sales-create-order'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='📋 Create Order - Sales Coordination'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<CreateOrderView />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/sales-create-order-alloys'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='🔩 Create Alloys Order - Sales Coordination'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<CreateOrderAlloys />}
             />
           </PrivateRoute>
         }

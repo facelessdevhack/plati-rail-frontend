@@ -4,7 +4,8 @@ import {
   ToolOutlined,
   FileSearchOutlined,
   AppstoreOutlined,
-  RocketOutlined
+  RocketOutlined,
+  ControlOutlined
 } from '@ant-design/icons';
 
 function getItemLayout(label, key, icon, children) {
@@ -32,6 +33,14 @@ function getItemLayout(label, key, icon, children) {
 }
 
 export const dataUserSiderRoutes = [
+  // Sales Coordination Dashboard - Top Level
+  getItemLayout(
+    <Link to='/sales-coordinator-dashboard'>
+      <span style={{ fontWeight: 600 }}>📊 Sales Coordination</span>
+    </Link>,
+    'sales-coordination-dashboard',
+    <ControlOutlined style={{ fontSize: '16px' }} />
+  ),
   getItemLayout(
     <Link to='/production-dashboard'>
       <span style={{ fontWeight: 600 }}>Production Dashboard</span>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, message, Space } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import { getDispatchEntriesAPI, processDispatchEntryAPI } from '../../redux/api/entriesAPI';
+import { Table, Button, Tag, message, Space, Popconfirm } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getDispatchEntriesAPI, processDispatchEntryAPI, deleteDispatchEntryAPI } from '../../redux/api/entriesAPI';
 import { useDispatch } from 'react-redux';
 import moment from 'moment';
 
@@ -10,6 +10,7 @@ const DispatchEntriesView = () => {
   const [dispatchEntries, setDispatchEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchDispatchEntries();
@@ -43,6 +44,24 @@ const DispatchEntriesView = () => {
       message.error('Error processing dispatch entry');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    setDeletingId(entryId);
+    try {
+      const response = await deleteDispatchEntryAPI({ dispatchEntryId: entryId });
+      if (response.status === 200) {
+        message.success('Entry deleted and stock restored!');
+        fetchDispatchEntries(); // Refresh the list
+      } else {
+        message.error(response.data?.message || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Error deleting dispatch entry:', error);
+      message.error('Error deleting dispatch entry');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -81,30 +100,6 @@ const DispatchEntriesView = () => {
       align: 'center',
     },
     {
-      title: 'In-House Stock',
-      dataIndex: 'inHouseStock',
-      key: 'inHouseStock',
-      width: 130,
-      align: 'center',
-      render: (stock) => {
-        const stockNum = stock || 0;
-        return (
-          <Tag color={stockNum >= 0 ? 'green' : 'red'}>
-            {stockNum} units
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
-      width: 120,
-      render: (price, record) => (
-        record.isClaim ? <Tag color="orange">Claim</Tag> : `₹${price}`
-      ),
-    },
-    {
       title: 'Status',
       dataIndex: 'dispatchStatus',
       key: 'dispatchStatus',
@@ -116,27 +111,39 @@ const DispatchEntriesView = () => {
       ),
     },
     {
-      title: 'Created At',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 150,
-      render: (date) => date ? moment(date).format('DD MMM HH:mm') : '-',
-    },
-    {
       title: 'Action',
       key: 'action',
-      width: 150,
+      width: 200,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<CheckCircleOutlined />}
-          loading={processingId === record.id}
-          onClick={() => handleProcessEntry(record.id)}
-        >
-          Dispatch
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            loading={processingId === record.id}
+            onClick={() => handleProcessEntry(record.id)}
+          >
+            Dispatch
+          </Button>
+          <Popconfirm
+            title="Delete this entry?"
+            description="Stock will be restored. This action cannot be undone."
+            onConfirm={() => handleDeleteEntry(record.id)}
+            okText="Yes, Delete"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+            >
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -165,7 +172,7 @@ const DispatchEntriesView = () => {
         dataSource={dispatchEntries}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1100 }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,

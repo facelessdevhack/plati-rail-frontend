@@ -10,7 +10,9 @@ import {
   SettingOutlined,
   TeamOutlined,
   SyncOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  DollarOutlined,
+  ControlOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -38,6 +40,15 @@ function getItemLayout (label, key, icon, children) {
 }
 
 export const entrySiderRoutes = [
+  // Sales Coordination Dashboard - Top Level
+  getItemLayout(
+    <Link to='/sales-coordinator-dashboard'>
+      <span style={{ fontWeight: 600 }}>📊 Sales Coordination</span>
+    </Link>,
+    'sales-coordination-dashboard',
+    <ControlOutlined style={{ fontSize: '16px' }} />
+  ),
+
   // Data Entry Operations
   getItemLayout(
     <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Entry</span>,
@@ -66,9 +77,18 @@ export const entrySiderRoutes = [
     '5',
     <TeamOutlined style={{ fontSize: '16px' }} />
   ),
+  getItemLayout(
+    <Link to='/data-entry-pricing'>💰 Pricing Entries</Link>,
+    '6',
+    <DollarOutlined style={{ fontSize: '16px' }} />
+  ),
 
   // Sales Coordination
   getItemLayout('Sales Coordination', 'sales-coordination-menu', <SyncOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/sales-create-order'>📋 Create Order</Link>,
+      'sales-create-order'
+    ),
     getItemLayout(
       <Link to='/sales-dispatch-entries'>📦 Dispatch Entries</Link>,
       'sales-dispatch'

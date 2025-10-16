@@ -659,7 +659,7 @@ export const getDispatchEntriesAPI = createAsyncThunk(
 )
 
 /**
- * Process dispatch entry - move to entry_master when approved
+ * Process dispatch entry - move to pricing_pending when approved
  */
 export const processDispatchEntryAPI = async ({ dispatchEntryId }) => {
   try {
@@ -673,3 +673,92 @@ export const processDispatchEntryAPI = async ({ dispatchEntryId }) => {
     return e
   }
 }
+
+/**
+ * Delete dispatch entry and restore stock
+ */
+export const deleteDispatchEntryAPI = async ({ dispatchEntryId }) => {
+  try {
+    const response = await client.post('entries/delete-dispatch-entry', {
+      dispatchEntryId
+    })
+    console.log(response, 'DELETE DISPATCH ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('DELETE DISPATCH ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
+ * Get all pricing pending entries awaiting price entry
+ */
+export const getPricingPendingEntriesAPI = createAsyncThunk(
+  'entries/getPricingPendingEntries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-pricing-pending-entries')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
+/**
+ * Add pricing to pending entry and move to entry_master
+ */
+export const addPricingToEntryAPI = async ({
+  pricingEntryId,
+  price,
+  transportationCharges = 0,
+  transportationType = 0,
+  isClaim = 0,
+  isRepair = 0
+}) => {
+  try {
+    const response = await client.post('entries/add-pricing-to-entry', {
+      pricingEntryId,
+      price,
+      transportationCharges,
+      transportationType,
+      isClaim,
+      isRepair
+    })
+    console.log(response, 'ADD PRICING TO ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('ADD PRICING TO ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
+ * Get all coordination entries (dispatch, pending, in-production) for today
+ */
+export const getAllCoordinationEntriesAPI = createAsyncThunk(
+  'entries/getAllCoordinationEntries',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-all-coordination-entries')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
+
+/**
+ * Get pending entries comparison data for month-over-month analysis
+ */
+export const getPendingEntriesComparisonAPI = createAsyncThunk(
+  'entries/getPendingEntriesComparison',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await client.get('/entries/get-pending-entries-comparison')
+      return response.data
+    } catch (e) {
+      return rejectWithValue(getError(e))
+    }
+  }
+)
