@@ -88,7 +88,11 @@ const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading 
       key: 'inputQuantity',
       width: 100,
       align: 'center',
-      render: qty => <Text>{qty || 0}</Text>
+      render: (qty, record) => {
+        // For first step with 0 input, show job card quantity
+        const displayQty = (qty === 0 && record.stepOrder === 1) ? (jobCard?.quantity || 0) : (qty || 0)
+        return <Text>{displayQty}</Text>
+      }
     },
     {
       title: 'Accepted',
@@ -128,7 +132,10 @@ const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading 
       width: 150,
       render: (_, record) => {
         const processed = (record.acceptedQuantity || 0) + (record.rejectedQuantity || 0)
-        const total = record.inputQuantity || 0
+        // For first step with 0 input, use job card quantity
+        const total = (record.inputQuantity === 0 && record.stepOrder === 1)
+          ? (jobCard?.quantity || 0)
+          : (record.inputQuantity || 0)
         const percent = total > 0 ? Math.round((processed / total) * 100) : 0
         return (
           <Progress
@@ -174,7 +181,11 @@ const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading 
       fixed: 'right',
       render: (_, record) => {
         const status = getStepStatus(record)
-        const canProcess = record.pendingQuantity > 0 || record.inputQuantity > 0
+        // For first step with 0 input quantity, allow processing using job card quantity
+        const isFirstStep = record.stepOrder === 1
+        const hasInput = record.inputQuantity > 0
+        const hasPending = record.pendingQuantity > 0
+        const canProcess = hasPending || hasInput || (isFirstStep && jobCard?.quantity > 0)
 
         return canProcess ? (
           <Button

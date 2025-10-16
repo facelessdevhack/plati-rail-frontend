@@ -36,11 +36,19 @@ const StepProgressModal = ({
   const [reworkQty, setReworkQty] = useState(0)
 
   // Fallback to job card quantity for backwards compatibility
-  const inputQuantity =
-    stepProgress?.inputQuantity ||
-    stepProgress?.pendingQuantity ||
-    jobCard?.quantity ||
-    0
+  // For first step with 0 input quantity, use job card quantity
+  const inputQuantity = (() => {
+    const stepInput = stepProgress?.inputQuantity || 0
+    const stepPending = stepProgress?.pendingQuantity || 0
+    const jobQuantity = jobCard?.quantity || 0
+
+    // If input quantity is 0 and this is first step (stepOrder === 1), use job card quantity
+    if (stepInput === 0 && stepProgress?.stepOrder === 1) {
+      return jobQuantity
+    }
+
+    return stepInput || stepPending || jobQuantity
+  })()
 
   // Calculate remaining quantity
   const processedTotal = acceptedQty + rejectedQty + pendingQty + reworkQty
