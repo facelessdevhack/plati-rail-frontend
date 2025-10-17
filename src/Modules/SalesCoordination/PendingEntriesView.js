@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Tag, message, Space } from 'antd';
-import { ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { getPendingEntriesAPI, movePendingToMasterAPI } from '../../redux/api/entriesAPI';
+import { ClockCircleOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getPendingEntriesAPI, movePendingToMasterAPI, deletePendingEntryAPI } from '../../redux/api/entriesAPI';
 import { useDispatch } from 'react-redux';
 import moment from 'moment';
 
@@ -10,6 +10,7 @@ const PendingEntriesView = () => {
   const [pendingEntries, setPendingEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchPendingEntries();
@@ -43,6 +44,31 @@ const PendingEntriesView = () => {
       message.error('Insufficient stock or error processing entry');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    setDeletingId(entryId);
+    try {
+      // Show confirmation dialog
+      const confirmed = window.confirm('Are you sure you want to delete this pending entry?');
+
+      if (confirmed) {
+        // Call the real API
+        const response = await deletePendingEntryAPI({ pendingEntryId: entryId });
+
+        if (response.status === 200) {
+          message.success('Pending entry deleted successfully!');
+          fetchPendingEntries(); // Refresh the list to get updated data
+        } else {
+          message.error(response.data?.message || 'Failed to delete entry');
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      message.error(error.response?.data?.message || 'Failed to delete entry');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -80,63 +106,33 @@ const PendingEntriesView = () => {
       width: 100,
       align: 'center',
     },
-    {
-      title: 'In-House Stock',
-      dataIndex: 'inHouseStock',
-      key: 'inHouseStock',
-      width: 130,
-      align: 'center',
-      render: (stock) => {
-        const stockNum = stock || 0;
-        return (
-          <Tag color={stockNum > 0 ? 'green' : 'red'}>
-            {stockNum} units
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
-      width: 120,
-      render: (price, record) => (
-        record.isClaim ? <Tag color="orange">Claim</Tag> : `₹${price}`
-      ),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'pendingStatus',
-      key: 'pendingStatus',
-      width: 150,
-      render: (status) => (
-        <Tag icon={<ClockCircleOutlined />} color="warning">
-          {status || 'Awaiting Stock'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Checked At',
-      dataIndex: 'checkedAt',
-      key: 'checkedAt',
-      width: 150,
-      render: (date) => date ? moment(date).format('DD MMM HH:mm') : '-',
-    },
-    {
+                {
       title: 'Action',
       key: 'action',
-      width: 150,
+      width: 200,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<CheckCircleOutlined />}
-          loading={processingId === record.id}
-          onClick={() => handleProcessEntry(record.id)}
-        >
-          Process
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            loading={processingId === record.id}
+            onClick={() => handleProcessEntry(record.id)}
+          >
+            Process
+          </Button>
+          <Button
+            type="primary"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            loading={deletingId === record.id}
+            onClick={() => handleDeleteEntry(record.id)}
+          >
+            Delete
+          </Button>
+        </Space>
       ),
     },
   ];

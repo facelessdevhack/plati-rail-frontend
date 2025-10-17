@@ -628,6 +628,22 @@ export const movePendingToMasterAPI = async ({ pendingEntryId }) => {
 }
 
 /**
+ * Delete a pending entry
+ */
+export const deletePendingEntryAPI = async ({ pendingEntryId }) => {
+  try {
+    const response = await client.post('entries/delete-pending-entry', {
+      pendingEntryId
+    })
+    console.log(response, 'DELETE PENDING ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('DELETE PENDING ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
  * Move in-production entry to entry_master when production completes
  */
 export const moveInProdToMasterAPI = async ({ inProdEntryId }) => {

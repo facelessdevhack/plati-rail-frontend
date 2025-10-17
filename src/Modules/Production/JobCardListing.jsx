@@ -509,10 +509,75 @@ const JobCardListing = () => {
   }, [jobCards, jobCardPresets])
 
   // Handle export to Excel/CSV
-  const handleExport = format => {
+  const handleExport = async (format, excludeDispatched = false) => {
     try {
+      // Show loading message
+      const loadingMessage = message.loading('Fetching all job cards for export...')
+
+      // Fetch ALL job cards (without pagination)
+      const allJobCardsResult = await dispatch(
+        getJobCardsWithDetails({
+          page: 1,
+          limit: 10000, // Large number to get all job cards
+          search: searchTerm,
+          status: selectedStatus === 'all' ? null : selectedStatus
+        })
+      ).unwrap()
+
+      // Get production plans with quantity tracking to enhance job cards
+      const plansResult = await dispatch(
+        getProductionPlansWithQuantities({
+          page: 1,
+          limit: 10000
+        })
+      ).unwrap()
+
+      // Create a map of production plans for quick lookup
+      const plansMap = {}
+      if (plansResult?.productionPlans) {
+        plansResult.productionPlans.forEach(plan => {
+          plansMap[plan.id] = plan
+        })
+      }
+
+      // Enhance all job cards with proper field mapping
+      let allJobCards = (allJobCardsResult.jobCards || []).map((jc, index) => {
+        const plan = plansMap[jc.prodplanid || jc.prodPlanId] || {}
+        const tracking = plan.quantityTracking || {}
+
+        return {
+          ...jc,
+          // Fix field name mapping
+          id: jc.jobcardid || jc.id,
+          prodPlanId: jc.prodplanid || jc.prodPlanId,
+          alloyName: jc.sourceproductname || jc.alloyName || plan.alloyName || 'Unknown Alloy',
+          convertName: jc.targetproductname || jc.convertName || plan.convertName || 'Unknown Conversion',
+          isUrgent: Boolean(jc.urgent) || jc.isUrgent || Boolean(plan.urgent),
+          createdBy: jc.createdbyfirstname && jc.createdbylastname
+            ? `${jc.createdbyfirstname} ${jc.createdbylastname}`
+            : jc.createdBy || 'Unknown',
+          planTotalQuantity: plan.quantity || 0,
+          planAllocatedQuantity: tracking.totalJobCardQuantity || 0,
+          planRemainingQuantity: tracking.remainingQuantity || 0,
+          planCompletedQuantity: tracking.completedQuantity || 0,
+          allocationPercentage: plan.quantity > 0 ? Math.round((jc.quantity / plan.quantity) * 100) : 0
+        }
+      })
+
+      // Filter out dispatched job cards if requested
+      if (excludeDispatched) {
+        allJobCards = allJobCards.filter(jc => {
+          const stepInfo = getStepInfo(jc, jc.prodStep)
+          const totalSteps = getTotalSteps(jc)
+          const isDispatched = jc.prodStep >= totalSteps && stepInfo?.name?.toLowerCase().includes('dispatch')
+          return !isDispatched
+        })
+      }
+
+      loadingMessage()
+
       // Prepare data for export
-      const exportData = jobCards.map(jc => {
+      const exportData = allJobCards.map(jc => {
         const stepInfo = getStepInfo(jc, jc.prodStep)
         const totalSteps = getTotalSteps(jc)
         const progress = Math.round((jc.prodStep / totalSteps) * 100)
@@ -520,11 +585,17 @@ const JobCardListing = () => {
         return {
           'Job Card ID': jc.jobCardId || jc.id,
           'Plan ID': jc.prodPlanId,
-          'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD') : '',
+          'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm') : '',
           'Source Product': jc.sourceProductName || jc.alloyName || '',
           'Target Product': jc.targetProductName || jc.convertName || '',
           'Quantity': jc.quantity || 0,
-          'Current Step': stepInfo?.name || 'Unknown'
+          'Current Step': stepInfo?.name || 'Unknown',
+          'Step Progress': `${jc.prodStep}/${totalSteps}`,
+          'Progress %': `${progress}%`,
+          'Priority': jc.isUrgent ? 'Urgent' : 'Normal',
+          'Created By': jc.createdBy || 'Unknown',
+          'Preset': jc.presetName || 'Standard',
+          'Status': jc.prodStep >= totalSteps ? 'Completed' : 'In Progress'
         }
       })
 
@@ -533,7 +604,7 @@ const JobCardListing = () => {
         const headers = Object.keys(exportData[0])
         const csvContent = [
           headers.join(','),
-          ...exportData.map(row => 
+          ...exportData.map(row =>
             headers.map(header => {
               const value = row[header]
               // Escape commas and quotes in values
@@ -547,9 +618,9 @@ const JobCardListing = () => {
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `job_cards_${moment().format('YYYY-MM-DD')}.csv`
+        link.download = `job_cards_${excludeDispatched ? 'non_dispatched_' : ''}${moment().format('YYYY-MM-DD')}.csv`
         link.click()
-        message.success('CSV file downloaded successfully')
+        message.success(`${allJobCards.length} job cards exported to CSV successfully`)
       } else {
         // Excel Export - using simple HTML table method
         const tableHTML = `
@@ -568,13 +639,13 @@ const JobCardListing = () => {
             </tbody>
           </table>
         `
-        
+
         const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `job_cards_${moment().format('YYYY-MM-DD')}.xls`
+        link.download = `job_cards_${excludeDispatched ? 'non_dispatched_' : ''}${moment().format('YYYY-MM-DD')}.xls`
         link.click()
-        message.success('Excel file downloaded successfully')
+        message.success(`${allJobCards.length} job cards exported to Excel successfully`)
       }
     } catch (error) {
       console.error('Export error:', error)
@@ -583,24 +654,33 @@ const JobCardListing = () => {
   }
 
   // Export menu items
-  const exportMenu = (
-    <Menu
-      items={[
-        {
-          key: 'excel',
-          icon: <FileExcelOutlined />,
-          label: 'Export to Excel',
-          onClick: () => handleExport('excel')
-        },
-        {
-          key: 'csv',
-          icon: <DownloadOutlined />,
-          label: 'Export to CSV',
-          onClick: () => handleExport('csv')
-        }
-      ]}
-    />
-  )
+  const exportMenuItems = [
+    {
+      key: 'excel',
+      icon: <FileExcelOutlined />,
+      label: 'Export All Job Cards to Excel',
+      onClick: () => handleExport('excel', false)
+    },
+    {
+      key: 'csv',
+      icon: <DownloadOutlined />,
+      label: 'Export All Job Cards to CSV',
+      onClick: () => handleExport('csv', false)
+    },
+    { type: 'divider' },
+    {
+      key: 'excel_non_dispatched',
+      icon: <FileExcelOutlined />,
+      label: 'Export Non-Dispatched Job Cards to Excel',
+      onClick: () => handleExport('excel', true)
+    },
+    {
+      key: 'csv_non_dispatched',
+      icon: <DownloadOutlined />,
+      label: 'Export Non-Dispatched Job Cards to CSV',
+      onClick: () => handleExport('csv', true)
+    }
+  ]
 
   // Handle search
   const handleSearch = value => {
@@ -1258,16 +1338,14 @@ const JobCardListing = () => {
                 >
                   Refresh
                 </Button>
-                <Dropdown 
-                  overlay={exportMenu} 
-                  trigger={['click']} 
-                  disabled={jobCards.length === 0}
+                <Dropdown
+                  menu={{ items: exportMenuItems }}
+                  trigger={['click']}
                 >
                   <Button
                     icon={<DownloadOutlined />}
-                    disabled={jobCards.length === 0}
                   >
-                    Export
+                    Export All
                   </Button>
                 </Dropdown>
                 <Button

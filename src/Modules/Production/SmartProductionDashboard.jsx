@@ -644,6 +644,12 @@ const SmartProductionDashboard = () => {
           plan.quantityTracking?.remainingQuantity ||
           plan.quantity - (plan.completedQuantity || 0)
 
+        // Check if this plan is in DISPATCH step
+        const currentStepName = plan.currentStepName || plan.current_step_name || ''
+        const currentStepId = plan.currentStepId || 0
+        const isDispatched = currentStepId === 11 ||
+                           currentStepName.toLowerCase().includes('dispatch')
+
         if (remainingQuantity > 0) {
           if (!finishQuantities[targetFinish]) {
             finishQuantities[targetFinish] = {
@@ -656,8 +662,12 @@ const SmartProductionDashboard = () => {
 
           finishQuantities[targetFinish].pendingQuantity += remainingQuantity
           finishQuantities[targetFinish].totalPlans += 1
-          finishQuantities[targetFinish].inProductionQuantity +=
-            plan.inProductionQuantity || 0
+
+          // Only add to inProduction if NOT dispatched
+          if (!isDispatched) {
+            finishQuantities[targetFinish].inProductionQuantity +=
+              plan.inProductionQuantity || 0
+          }
         }
       })
 
@@ -766,10 +776,21 @@ const SmartProductionDashboard = () => {
         const inProduction = plan.inProductionQuantity || 0
         const completed = planQuantity - remaining
 
+        // Check if this plan is in DISPATCH step
+        const currentStepName = plan.currentStepName || plan.current_step_name || ''
+        const currentStepId = plan.currentStepId || 0
+        const isDispatched = currentStepId === 11 ||
+                           currentStepName.toLowerCase().includes('dispatch')
+
+        // Add to totals
         totalQuantity += planQuantity
         pendingQuantity += remaining
-        inProductionQuantity += inProduction
         completedQuantity += completed
+
+        // Only add to inProduction if NOT dispatched
+        if (!isDispatched) {
+          inProductionQuantity += inProduction
+        }
       })
 
       const result = {

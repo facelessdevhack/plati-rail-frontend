@@ -2,23 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
-  Row,
-  Col,
-  Tag,
-  Space,
   Button,
-  Modal,
   message,
   Input,
   Select,
   DatePicker,
   Dropdown,
   Menu,
-  Tooltip,
   Badge,
+  Table,
   Card,
-  Divider,
-  Table
+  Space,
+  Modal,
+  Tag
 } from 'antd'
 import {
   EyeOutlined,
@@ -26,13 +22,13 @@ import {
   DeleteOutlined,
   PlusOutlined,
   SearchOutlined,
-  FilterOutlined,
   SettingOutlined,
   ArrowRightOutlined,
   MoreOutlined,
   PlayCircleOutlined,
   DownloadOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  FilterOutlined
 } from '@ant-design/icons'
 import moment from 'moment'
 
@@ -71,13 +67,11 @@ const ProductionListing = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [localSearch, setLocalSearch] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false)
   const [selectedPlanForDetails, setSelectedPlanForDetails] = useState(null)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [selectedPlanForEdit, setSelectedPlanForEdit] = useState(null)
-  const [assignPresetModalVisible, setAssignPresetModalVisible] =
-    useState(false)
+  const [assignPresetModalVisible, setAssignPresetModalVisible] = useState(false)
   const [selectedPlanForPreset, setSelectedPlanForPreset] = useState(null)
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
   const [selectedPlanForJobCard, setSelectedPlanForJobCard] = useState(null)
@@ -393,10 +387,28 @@ const ProductionListing = () => {
   }
 
   // Handle export to Excel/CSV
-  const handleExport = format => {
+  const handleExport = async format => {
     try {
+      // Show loading message
+      const loadingMessage = message.loading('Fetching all production plans for export...')
+
+      // Fetch ALL production plans (without pagination)
+      const allPlansResponse = await dispatch(
+        getProductionPlansWithQuantities({
+          page: 1,
+          limit: 10000, // Large number to get all plans
+          search: searchTerm,
+          urgent: filters.urgent,
+          dateRange: filters.dateRange
+        })
+      ).unwrap()
+
+      const allPlans = allPlansResponse.productionPlans || []
+
+      loadingMessage()
+
       // Prepare data for export
-      const exportData = productionPlans.map(plan => {
+      const exportData = allPlans.map(plan => {
         const sourceProduct =
           plan.alloyName ||
           plan.sourceProduct ||
@@ -443,7 +455,7 @@ const ProductionListing = () => {
         link.href = URL.createObjectURL(blob)
         link.download = `production_plans_${moment().format('YYYY-MM-DD')}.csv`
         link.click()
-        message.success('CSV file downloaded successfully')
+        message.success(`${allPlans.length} production plans exported to CSV successfully`)
       } else {
         // Excel Export - using simple HTML table method
         const tableHTML = `
@@ -476,7 +488,7 @@ const ProductionListing = () => {
         link.href = URL.createObjectURL(blob)
         link.download = `production_plans_${moment().format('YYYY-MM-DD')}.xls`
         link.click()
-        message.success('Excel file downloaded successfully')
+        message.success(`${allPlans.length} production plans exported to Excel successfully`)
       }
     } catch (error) {
       console.error('Export error:', error)
@@ -485,24 +497,20 @@ const ProductionListing = () => {
   }
 
   // Export menu items
-  const exportMenu = (
-    <Menu
-      items={[
-        {
-          key: 'excel',
-          icon: <FileExcelOutlined />,
-          label: 'Export to Excel',
-          onClick: () => handleExport('excel')
-        },
-        {
-          key: 'csv',
-          icon: <DownloadOutlined />,
-          label: 'Export to CSV',
-          onClick: () => handleExport('csv')
-        }
-      ]}
-    />
-  )
+  const exportMenuItems = [
+    {
+      key: 'excel',
+      icon: <FileExcelOutlined />,
+      label: 'Export All Plans to Excel',
+      onClick: () => handleExport('excel')
+    },
+    {
+      key: 'csv',
+      icon: <DownloadOutlined />,
+      label: 'Export All Plans to CSV',
+      onClick: () => handleExport('csv')
+    }
+  ]
 
   // Handle details modal close
   const handleDetailsModalClose = () => {
@@ -922,12 +930,33 @@ const ProductionListing = () => {
     return { items: menuItems }
   }
 
-  // Clean, modern table columns with better UX
+  
+  // Filter options
+  const urgentOptions = [
+    { value: '', label: 'All Priorities' },
+    { value: 'true', label: 'Urgent' },
+    { value: 'false', label: 'Normal' }
+  ]
+
+  // Simplified table columns with inline filters
   const columns = [
     {
-      title: 'Production Plan',
+      title: (
+        <div className="space-y-2">
+          <div className="font-semibold">Production Plan</div>
+          <Input
+            placeholder="Search plans..."
+            value={localSearch}
+            onChange={e => setLocalSearch(e.target.value)}
+            onPressEnter={handleSearch}
+            prefix={<SearchOutlined className="text-gray-400" />}
+            size="small"
+            allowClear
+          />
+        </div>
+      ),
       key: 'planDetails',
-      width: 280,
+      width: 300,
       fixed: 'left',
       render: (_, record) => {
         const sourceProduct =
@@ -941,35 +970,23 @@ const ProductionListing = () => {
           record.targetproductname ||
           `Convert ${record.convertToAlloyId}`
 
-        console.log(record.alloyName, 'SOURCE PRODUCT')
-
         return (
           <div className='py-2'>
-            {/* Header with ID and Priority */}
             <div className='flex items-center justify-between mb-2'>
-              <div className='flex items-center gap-2'>
-                <span className='font-semibold text-blue-600 text-sm'>
-                  #{record.id}
-                </span>
-                {record.urgent && (
-                  <Tag color='red' size='small' className='text-xs font-medium'>
-                    🔥 URGENT
-                  </Tag>
-                )}
-              </div>
-              <div className='text-xs text-gray-500'>
-                {moment(record.createdAt).format('MMM DD')}
-              </div>
+              <span className='font-semibold text-blue-600 text-sm'>
+                #{record.id}
+              </span>
+              {record.urgent && (
+                <Tag color='red' size='small' className='text-xs font-medium'>
+                  🔥 URGENT
+                </Tag>
+              )}
             </div>
 
-            {/* Product Flow */}
             <div className='bg-gray-50 rounded-lg p-3 space-y-2'>
               <div>
                 <div className='text-xs text-gray-600 mb-1'>From:</div>
-                <div
-                  className='font-medium text-sm text-gray-900 truncate'
-                  title={sourceProduct}
-                >
+                <div className='font-medium text-sm text-gray-900 truncate' title={sourceProduct}>
                   {sourceProduct}
                 </div>
               </div>
@@ -982,10 +999,7 @@ const ProductionListing = () => {
 
               <div>
                 <div className='text-xs text-gray-600 mb-1'>To:</div>
-                <div
-                  className='font-medium text-sm text-blue-700 truncate'
-                  title={targetProduct}
-                >
+                <div className='font-medium text-sm text-blue-700 truncate' title={targetProduct}>
                   {targetProduct}
                 </div>
               </div>
@@ -995,35 +1009,65 @@ const ProductionListing = () => {
       }
     },
     {
-      title: 'Quantity & Progress',
-      key: 'quantityProgress',
-      width: 220,
+      title: (
+        <div className="space-y-2">
+          <div className="font-semibold">Date & Priority</div>
+          <Select
+            value={filters.urgent}
+            onChange={value => handleFilterChange('urgent', value)}
+            options={urgentOptions}
+            className="w-full"
+            placeholder="Priority"
+            size="small"
+            allowClear
+          />
+        </div>
+      ),
+      key: 'datePriority',
+      width: 150,
+      render: (_, record) => (
+        <div className='py-2 space-y-1'>
+          <div className='text-sm font-medium'>
+            {moment(record.createdAt).format('MMM DD, YYYY')}
+          </div>
+          <div className='text-xs text-gray-500'>
+            {moment(record.createdAt).format('HH:mm')}
+          </div>
+          {record.urgent && (
+            <Tag color='red' size='small' className='mt-1'>
+              URGENT
+            </Tag>
+          )}
+        </div>
+      )
+    },
+    {
+      title: (
+        <div className="space-y-2">
+          <div className="font-semibold">Quantity</div>
+          <div className="text-xs text-gray-500">Total & Progress</div>
+        </div>
+      ),
+      key: 'quantity',
+      width: 150,
       render: (_, record) => {
         const total = record.quantity || 0
         const allocated = record.quantityTracking?.allocatedQuantity || 0
         const remaining = record.quantityTracking?.remainingQuantity || 0
-        const jobCards =
-          record.jobCardsCount || record.quantityTracking?.totalJobCards || 0
-        const acceptedQty = record.quantityTracking?.acceptedQuantity || 0
-        const rejectedQty = record.quantityTracking?.rejectedQuantity || 0
-        const completedCards = record.quantityTracking?.completedJobCards || 0
-        const avgProgress = record.quantityTracking?.avgProgressPercentage || 0
         const percentage = total > 0 ? Math.round((allocated / total) * 100) : 0
 
         return (
-          <div className='py-2 space-y-3'>
-            {/* Total Quantity */}
+          <div className='py-2 space-y-2'>
             <div className='text-center'>
-              <div className='text-2xl font-bold text-gray-900'>
+              <div className='text-lg font-bold text-gray-900'>
                 {total.toLocaleString()}
               </div>
-              <div className='text-xs text-gray-500'>Total Units</div>
+              <div className='text-xs text-gray-500'>units</div>
             </div>
 
-            {/* Allocation Progress Bar */}
             <div className='space-y-1'>
               <div className='flex justify-between text-xs'>
-                <span className='text-gray-600'>Allocation</span>
+                <span className='text-gray-600'>Allocated</span>
                 <span className='font-medium'>{percentage}%</span>
               </div>
               <div className='w-full bg-gray-200 rounded-full h-2'>
@@ -1041,102 +1085,22 @@ const ProductionListing = () => {
                 />
               </div>
             </div>
-
-            {/* Job Cards Progress */}
-            {jobCards > 0 && (
-              <div className='space-y-1'>
-                <div className='flex justify-between text-xs'>
-                  <span className='text-gray-600'>Job Cards Progress</span>
-                  <span className='font-medium'>
-                    {Math.round(avgProgress)}%
-                  </span>
-                </div>
-                <div className='w-full bg-gray-200 rounded-full h-1.5'>
-                  <div
-                    className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
-                    style={{ width: `${Math.max(avgProgress, 2)}%` }}
-                  />
-                </div>
-                <div className='flex justify-between text-xs text-gray-500'>
-                  <span>
-                    {completedCards}/{jobCards} completed
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Stats Row */}
-            <div className='grid grid-cols-2 gap-2 text-xs'>
-              <div className='text-center bg-blue-50 rounded p-2'>
-                <div className='font-semibold text-blue-700'>
-                  {allocated.toLocaleString()}
-                </div>
-                <div className='text-blue-600'>Allocated</div>
-              </div>
-              <div className='text-center bg-green-50 rounded p-2'>
-                <div
-                  className={`font-semibold ${
-                    remaining > 0 ? 'text-green-700' : 'text-gray-500'
-                  }`}
-                >
-                  {remaining.toLocaleString()}
-                </div>
-                <div className='text-green-600'>Remaining</div>
-              </div>
-            </div>
-
-            {/* Accepted/Rejected Stats */}
-            {(acceptedQty > 0 || rejectedQty > 0) && (
-              <div className='grid grid-cols-2 gap-2 text-xs'>
-                <div className='text-center'>
-                  <div className='font-semibold text-green-600'>
-                    {acceptedQty.toLocaleString()}
-                  </div>
-                  <div className='text-gray-500'>Accepted</div>
-                </div>
-                <div className='text-center'>
-                  <div className='font-semibold text-red-600'>
-                    {rejectedQty.toLocaleString()}
-                  </div>
-                  <div className='text-gray-500'>Rejected</div>
-                </div>
-              </div>
-            )}
-
-            {/* Job Cards Badge */}
-            {jobCards > 0 && (
-              <div className='flex justify-center'>
-                <Badge
-                  count={jobCards}
-                  style={{ backgroundColor: '#52c41a' }}
-                  className='text-xs'
-                >
-                  <Button
-                    type='text'
-                    size='small'
-                    className='text-xs text-gray-600 p-0'
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleExpand(!expandedRowKeys.includes(record.id), record)
-                    }}
-                  >
-                    View Job Cards
-                  </Button>
-                </Badge>
-              </div>
-            )}
           </div>
         )
       }
     },
     {
-      title: 'Workflow Status',
-      key: 'workflowStatus',
+      title: (
+        <div className="space-y-2">
+          <div className="font-semibold">Status</div>
+          <div className="text-xs text-gray-500">Current Step</div>
+        </div>
+      ),
+      key: 'status',
       width: 180,
       render: (_, record) => {
         const stepName = record.currentStepName || 'Not Started'
         const status = record.currentStepStatus || 'waiting'
-        const workflowInfo = record.workflowInfo || {}
 
         const getStatusColor = status => {
           switch (status) {
@@ -1172,39 +1136,16 @@ const ProductionListing = () => {
 
         return (
           <div className='py-2 space-y-2'>
-            {/* Current Step */}
-            <div
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                status
-              )}`}
-            >
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
               <span>{getStatusIcon(status)}</span>
               <span className='truncate max-w-[120px]' title={stepName}>
                 {stepName}
               </span>
             </div>
 
-            {/* Workflow Progress */}
-            {workflowInfo.hasCustomWorkflow && workflowInfo.totalSteps > 0 && (
-              <div className='space-y-1'>
-                <div className='flex justify-between text-xs text-gray-600'>
-                  <span>Overall Progress</span>
-                  <span>
-                    {workflowInfo.completedSteps}/{workflowInfo.totalSteps}
-                  </span>
-                </div>
-                <div className='w-full bg-gray-200 rounded-full h-1.5'>
-                  <div
-                    className='bg-purple-500 h-1.5 rounded-full transition-all duration-300'
-                    style={{
-                      width: `${
-                        (workflowInfo.completedSteps /
-                          workflowInfo.totalSteps) *
-                        100
-                      }%`
-                    }}
-                  />
-                </div>
+            {record.jobCardsCount > 0 && (
+              <div className='text-xs text-gray-500'>
+                {record.jobCardsCount} job cards
               </div>
             )}
           </div>
@@ -1212,39 +1153,43 @@ const ProductionListing = () => {
       }
     },
     {
-      title: 'Actions',
+      title: (
+        <div className="space-y-2">
+          <div className="font-semibold">Actions</div>
+          <div className="text-xs text-gray-500">Manage Plan</div>
+        </div>
+      ),
       key: 'actions',
       width: 160,
       fixed: 'right',
-      render: (_, record) => (
-        <div className='flex items-center justify-center'>
-          <div className='flex gap-2'>
-            {/* Primary Action - Create Job Card */}
-            <Tooltip title={getCreateJobCardTooltip(record)}>
-              <Button
-                type={canCreateJobCard(record) ? 'primary' : 'default'}
-                icon={<PlayCircleOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleCreateJobCard(record)
-                }}
-                size='small'
-                disabled={!canCreateJobCard(record)}
-                className='min-w-[90px]'
-              >
-                Job Card
-              </Button>
-            </Tooltip>
+      render: (_, record) => {
+        const hasWorkflowOrPreset =
+          record.workflowInfo?.hasCustomWorkflow ||
+          record.hasWorkflowSteps ||
+          record.workflowInfo?.presetName ||
+          record.presetName ||
+          record.preset_name
 
-            {/* Assign Preset - visible when no workflow/preset on plan */}
-            {!(
-              record.workflowInfo?.hasCustomWorkflow ||
-              record.hasWorkflowSteps ||
-              record.workflowInfo?.presetName ||
-              record.presetName ||
-              record.preset_name
-            ) && (
-              <Tooltip title='Assign a preset/workflow to this plan'>
+        return (
+          <div className='flex items-center justify-center'>
+            <div className='flex gap-1'>
+              {hasWorkflowOrPreset ? (
+                // Show Job Card button when preset/workflow is assigned
+                <Button
+                  type='primary'
+                  icon={<PlayCircleOutlined />}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleCreateJobCard(record)
+                  }}
+                  size='small'
+                  disabled={!canCreateJobCard(record)}
+                  title={getCreateJobCardTooltip(record)}
+                >
+                  Job Card
+                </Button>
+              ) : (
+                // Show Preset button when no preset/workflow is assigned
                 <Button
                   type='default'
                   icon={<SettingOutlined />}
@@ -1253,328 +1198,164 @@ const ProductionListing = () => {
                     handleAssignPreset(record)
                   }}
                   size='small'
+                  title='Assign a preset/workflow to this production plan'
                 >
                   Preset
                 </Button>
-              </Tooltip>
-            )}
+              )}
 
-            {/* Secondary Action - Move to Next Step */}
-            <Tooltip title={getMoveTooltip(record)}>
-              <Button
-                type='default'
-                icon={<ArrowRightOutlined />}
-                onClick={e => {
-                  e.stopPropagation()
-                  handleMoveToNextStep(record)
-                }}
-                size='small'
-                disabled={!canMoveToNextStep(record)}
+              <Dropdown
+                menu={getActionMenu(record)}
+                trigger={['click']}
+                placement='bottomRight'
               >
-                Next
-              </Button>
-            </Tooltip>
-
-            {/* More Actions Dropdown */}
-            <Dropdown
-              menu={getActionMenu(record)}
-              trigger={['click']}
-              placement='bottomRight'
-            >
-              <Button
-                type='text'
-                icon={<MoreOutlined />}
-                size='small'
-                onClick={e => e.stopPropagation()}
-              />
-            </Dropdown>
+                <Button
+                  type='text'
+                  icon={<MoreOutlined />}
+                  size='small'
+                  onClick={e => e.stopPropagation()}
+                />
+              </Dropdown>
+            </div>
           </div>
-        </div>
-      )
+        )
+      }
     }
   ]
 
-  // Filter options
-  const urgentOptions = [
-    { value: '', label: 'All Priorities' },
-    { value: 'true', label: 'Urgent' },
-    { value: 'false', label: 'Normal' }
-  ]
-
   return (
-    <div className='sm:p-4 md:p-2 bg-gray-50 min-h-screen w-full overflow-hidden'>
-      {/* Header */}
-      <div className='bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6 mb-3 md:mb-6 w-full'>
-        <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4'>
-          <div>
-            <h1 className='text-xl md:text-2xl font-bold text-gray-900'>
-              Production Plans
+    <div className='min-h-screen bg-gray-50'>
+      {/* Top Action Bar */}
+      <div className='bg-white border-b border-gray-200 px-4 py-3'>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            <h1 className='text-xl font-bold text-gray-900'>
+              Production Plans ({totalPlansCount})
             </h1>
-            <p className='text-gray-600 mt-1 text-sm md:text-base'>
-              Manage and track your production planning
-            </p>
-          </div>
-          <div className='flex flex-col sm:flex-row gap-2'>
-            <Dropdown
-              overlay={exportMenu}
-              trigger={['click']}
-              disabled={productionPlans.length === 0}
-            >
-              <CustomButton
-                type='default'
-                icon={<DownloadOutlined />}
-                size='middle'
-                className='w-full sm:w-auto px-5 py-3'
-                disabled={productionPlans.length === 0}
-              >
-                Export
-              </CustomButton>
-            </Dropdown>
-            <CustomButton
-              type='primary'
-              icon={<PlusOutlined />}
-              size='middle'
-              onClick={handleCreatePlan}
-              className='w-full sm:w-auto px-5 py-3'
-            >
-              Create Plan
-            </CustomButton>
-            <CustomButton
-              type='primary'
-              icon={<ArrowRightOutlined />}
-              size='middle'
-              onClick={() => navigate('/smart-production')}
-              className='w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0'
-            >
-              🚀 Smart Bulk Planner
-            </CustomButton>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <div className='space-y-3'>
-          {/* Search Bar */}
-          <div className='flex flex-col md:flex-row gap-2 md:gap-3 items-stretch md:items-center'>
-            <div className='flex-1 max-w-full md:max-w-md'>
-              <Input
-                placeholder='Search plans...'
-                value={localSearch}
-                onChange={e => setLocalSearch(e.target.value)}
-                onPressEnter={handleSearch}
-                prefix={<SearchOutlined className='text-gray-400' />}
-                allowClear
-                size='middle'
-              />
-            </div>
-            <div className='flex gap-2 flex-wrap'>
-              <Button
-                type='primary'
-                onClick={handleSearch}
-                icon={<SearchOutlined />}
-                size='middle'
-                className='flex-shrink-0'
-              >
-                Search
-              </Button>
+            <div className='flex gap-2'>
               <Button
                 type={isTodayFilter ? 'primary' : 'default'}
                 onClick={handleTodayFilter}
-                size='middle'
-                className='flex-shrink-0'
+                size='small'
               >
                 📅 Today
               </Button>
-              <Button
-                type='default'
-                icon={<FilterOutlined />}
-                onClick={() => setShowFilters(!showFilters)}
-                size='middle'
-                className='flex-shrink-0'
-              >
-                Filters
-              </Button>
-              {(searchTerm ||
-                filters.urgent ||
-                filters.dateRange ||
-                isTodayFilter) && (
-                <Button
-                  onClick={handleClearFilters}
-                  size='middle'
-                  className='flex-shrink-0'
-                >
-                  Clear
+              <DatePicker.RangePicker
+                value={
+                  filters.dateRange
+                    ? [moment(filters.dateRange[0]), moment(filters.dateRange[1])]
+                    : null
+                }
+                onChange={handleDateRangeChange}
+                placeholder={['Start Date', 'End Date']}
+                size='small'
+                disabled={isTodayFilter}
+              />
+              {(searchTerm || filters.urgent || filters.dateRange || isTodayFilter) && (
+                <Button onClick={handleClearFilters} size='small'>
+                  Clear Filters
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Filter Row */}
-          {showFilters && (
-            <div className='bg-gray-50 p-3 md:p-4 rounded-lg'>
-              <Row gutter={[8, 12]} className='max-w-full'>
-                <Col xs={24} sm={12} md={6}>
-                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700'>
-                    Priority
-                  </div>
-                  <Select
-                    value={filters.urgent}
-                    onChange={value => handleFilterChange('urgent', value)}
-                    options={urgentOptions}
-                    className='w-full'
-                    placeholder='Priority'
-                    size='small'
-                  />
-                </Col>
-                <Col xs={24} sm={12} md={8}>
-                  <div className='mb-2 text-xs md:text-sm font-medium text-gray-700 flex items-center gap-2'>
-                    Date Range
-                    {isTodayFilter && (
-                      <Tag color='blue' size='small'>
-                        Today Active
-                      </Tag>
-                    )}
-                  </div>
-                  <RangePicker
-                    value={
-                      filters.dateRange
-                        ? [
-                            moment(filters.dateRange[0]),
-                            moment(filters.dateRange[1])
-                          ]
-                        : null
-                    }
-                    onChange={handleDateRangeChange}
-                    className='w-full'
-                    placeholder={['Start', 'End']}
-                    size='small'
-                    disabled={isTodayFilter}
-                  />
-                  {isTodayFilter && (
-                    <div className='text-xs text-blue-600 mt-1'>
-                      Today filter is active - use Today button to disable
-                    </div>
-                  )}
-                </Col>
-                <Col xs={24} sm={12} md={4}>
-                  <div className='mb-2 hidden md:block'>&nbsp;</div>
-                  <Button
-                    onClick={handleClearFilters}
-                    className='w-full'
-                    size='small'
-                  >
-                    Clear Filters
-                  </Button>
-                </Col>
-              </Row>
-            </div>
-          )}
+          <div className='flex gap-2'>
+            <Dropdown menu={{ items: exportMenuItems }} trigger={['click']} disabled={productionPlans.length === 0}>
+              <Button icon={<DownloadOutlined />} disabled={productionPlans.length === 0}>
+                Export All
+              </Button>
+            </Dropdown>
+            <Button type='primary' icon={<PlusOutlined />} onClick={handleCreatePlan}>
+              Create Plan
+            </Button>
+            <Button
+              type='primary'
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate('/smart-production')}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0"
+            >
+              🚀 Smart Planner
+            </Button>
+          </div>
         </div>
+      </div>
 
-        {/* Summary Stats */}
-        <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 md:mt-6 pt-4 border-t border-gray-200'>
-          <div className='bg-blue-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-            <div className='text-lg sm:text-xl md:text-2xl font-bold text-blue-600'>
-              {totalPlansCount}
-            </div>
-            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-              Total Plans
-            </div>
-          </div>
-          <div className='bg-green-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-            <div className='text-lg sm:text-xl md:text-2xl font-bold text-green-600'>
+      {/* Quick Stats Bar */}
+      <div className='bg-white px-4 py-2 border-b border-gray-200'>
+        <div className='flex gap-6 text-sm'>
+          <div>
+            <span className='text-gray-500'>Total Quantity:</span>
+            <span className='ml-2 font-semibold text-green-600'>
               {getTotalQuantity().toLocaleString()}
-            </div>
-            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-              Total Quantity
-            </div>
+            </span>
           </div>
-          <div className='bg-orange-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-            <div className='text-lg sm:text-xl md:text-2xl font-bold text-orange-600'>
+          <div>
+            <span className='text-gray-500'>Urgent Plans:</span>
+            <span className='ml-2 font-semibold text-orange-600'>
               {productionPlans.filter(p => p.urgent).length}
-            </div>
-            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-              Urgent Plans
-            </div>
+            </span>
           </div>
-          <div className='bg-purple-50 p-2 sm:p-3 md:p-4 rounded-lg text-center hover:shadow-sm transition-shadow'>
-            <div className='text-lg sm:text-xl md:text-2xl font-bold text-purple-600'>
+          <div>
+            <span className='text-gray-500'>Active Plans:</span>
+            <span className='ml-2 font-semibold text-blue-600'>
               {
                 productionPlans.filter(p => {
                   const stepStatus = p.currentStepStatus
                   return ['pending', 'in_progress'].includes(stepStatus)
                 }).length
               }
-            </div>
-            <div className='text-xs sm:text-sm text-gray-600 mt-1'>
-              Active Plans
-            </div>
+            </span>
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className='bg-white rounded-lg shadow-sm overflow-hidden'>
-        <div className='p-3 md:p-4 border-b border-gray-200'>
-          <h2 className='text-base md:text-lg font-semibold text-gray-900'>
-            Production Plans List
-          </h2>
-          <p className='text-xs md:text-sm text-gray-500 mt-1'>
-            {totalPlansCount > 0
-              ? `Showing ${productionPlans.length} of ${totalPlansCount} plans`
-              : 'No plans found'}
-          </p>
-        </div>
-        <div className='overflow-x-auto'>
-          <CustomTable
-            title=''
-            data={productionPlans}
-            totalCount={totalPlansCount}
-            columns={columns}
-            currentPage={currentPage}
-            currentPageSize={pageSize}
-            handlePageChange={handlePageChange}
-            loading={loading}
-            scroll={{ x: 900, y: 600 }}
-            onRowClick={handleView}
-            showSort={true}
-            size='middle'
-            rowClassName={() => 'hover:bg-gray-50'}
-            className='production-plans-table'
-            expandable={{
-              expandedRowKeys,
-              onExpand: handleExpand,
-              expandedRowRender,
-              expandRowByClick: false,
-              expandIcon: ({ expanded, onExpand, record }) => (
-                <Button
-                  type='text'
-                  size='small'
-                  icon={
-                    expanded ? (
-                      <ArrowRightOutlined
-                        style={{ transform: 'rotate(90deg)' }}
-                      />
-                    ) : (
-                      <ArrowRightOutlined />
-                    )
-                  }
-                  onClick={e => {
-                    e.stopPropagation()
-                    onExpand(record, e)
-                  }}
-                />
-              )
-            }}
-            pagination={{
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} plans`,
-              size: 'default',
-              pageSizeOptions: ['5', '10', '20', '50']
-            }}
-          />
-        </div>
+      <div className='p-4'>
+        <Table
+          columns={columns}
+          dataSource={productionPlans}
+          rowKey='id'
+          loading={loading}
+          scroll={{ x: 1200 }}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: totalPlansCount,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} plans`,
+            onChange: handlePageChange,
+            onShowSizeChange: handlePageChange
+          }}
+          size='middle'
+          onRow={(record) => ({
+            onClick: () => handleView(record),
+            className: 'cursor-pointer hover:bg-gray-50'
+          })}
+          expandable={{
+            expandedRowKeys,
+            onExpand: handleExpand,
+            expandedRowRender,
+            expandRowByClick: false,
+            expandIcon: ({ expanded, onExpand, record }) => (
+              <Button
+                type='text'
+                size='small'
+                icon={
+                  expanded ? (
+                    <ArrowRightOutlined style={{ transform: 'rotate(90deg)' }} />
+                  ) : (
+                    <ArrowRightOutlined />
+                  )
+                }
+                onClick={e => {
+                  e.stopPropagation()
+                  onExpand(record, e)
+                }}
+              />
+            )
+          }}
+        />
       </div>
 
       {/* Production Plan Details Modal */}
