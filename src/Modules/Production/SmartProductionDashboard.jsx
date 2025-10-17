@@ -645,10 +645,12 @@ const SmartProductionDashboard = () => {
           plan.quantity - (plan.completedQuantity || 0)
 
         // Check if this plan is in DISPATCH step
-        const currentStepName = plan.currentStepName || plan.current_step_name || ''
+        const currentStepName =
+          plan.currentStepName || plan.current_step_name || ''
         const currentStepId = plan.currentStepId || 0
-        const isDispatched = currentStepId === 11 ||
-                           currentStepName.toLowerCase().includes('dispatch')
+        const isDispatched =
+          currentStepId === 11 ||
+          currentStepName.toLowerCase().includes('dispatch')
 
         if (remainingQuantity > 0) {
           if (!finishQuantities[targetFinish]) {
@@ -777,10 +779,12 @@ const SmartProductionDashboard = () => {
         const completed = planQuantity - remaining
 
         // Check if this plan is in DISPATCH step
-        const currentStepName = plan.currentStepName || plan.current_step_name || ''
+        const currentStepName =
+          plan.currentStepName || plan.current_step_name || ''
         const currentStepId = plan.currentStepId || 0
-        const isDispatched = currentStepId === 11 ||
-                           currentStepName.toLowerCase().includes('dispatch')
+        const isDispatched =
+          currentStepId === 11 ||
+          currentStepName.toLowerCase().includes('dispatch')
 
         // Add to totals
         totalQuantity += planQuantity
@@ -1115,8 +1119,11 @@ const SmartProductionDashboard = () => {
 
       // Check if this is a without paint/lacquer alloy that will show monthly average
       const alloyFinish = alloy.finish ? alloy.finish.toLowerCase() : ''
-      const isWithoutPaint = alloyFinish.includes('without paint') || alloyFinish.includes('without lacquer')
-      const hasMonthlyAvg = isWithoutPaint && entriesData[alloy.id]?.monthlyAverageSales > 0
+      const isWithoutPaint =
+        alloyFinish.includes('without paint') ||
+        alloyFinish.includes('without lacquer')
+      const hasMonthlyAvg =
+        isWithoutPaint && entriesData[alloy.id]?.monthlyAverageSales > 0
 
       if (!isExpanded) {
         // Base height is 100px, add 20px if monthly average badge is present
@@ -1520,13 +1527,13 @@ const SmartProductionDashboard = () => {
                             >
                               {finishProductionData.pendingQuantity} pending
                             </Tag>
-                            <Tag
+                            {/* <Tag
                               color='green'
                               className='text-xs m-0 px-1 py-0'
                             >
                               {finishProductionData.inProductionQuantity} in
                               prod
-                            </Tag>
+                            </Tag> */}
                           </Space>
                         </div>
                       )}
