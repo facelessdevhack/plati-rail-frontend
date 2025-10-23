@@ -5,7 +5,10 @@ import {
   FileSearchOutlined,
   AppstoreOutlined,
   RocketOutlined,
-  ControlOutlined
+  ControlOutlined,
+  DatabaseOutlined,
+  HistoryOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 
 function getItemLayout(label, key, icon, children) {
@@ -75,5 +78,40 @@ export const dataUserSiderRoutes = [
     </Link>,
     'production-presets',
     <AppstoreOutlined style={{ fontSize: '16px' }} />
+  ),
+  getItemLayout(
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inventory</span>,
+    'inventory-divider',
+    null,
+    []
+  ),
+  getItemLayout(
+    <Link to='/inventory-management-v2'>
+      <span style={{ fontWeight: 600 }}>Inventory Management</span>
+    </Link>,
+    'inventory-management',
+    <DatabaseOutlined style={{ fontSize: '16px' }} />
+  ),
+
+  // Stock Logging System
+  getItemLayout(
+    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stock Tracking</span>,
+    'stock-tracking-divider',
+    null,
+    []
+  ),
+  getItemLayout(
+    <Link to='/stock-logs'>
+      <span style={{ fontWeight: 600 }}>Stock Logs</span>
+    </Link>,
+    'stock-logs',
+    <HistoryOutlined style={{ fontSize: '16px' }} />
+  ),
+  getItemLayout(
+    <Link to='/stock-reconciliation'>
+      <span style={{ fontWeight: 600 }}>Stock Reconciliation</span>
+    </Link>,
+    'stock-reconciliation',
+    <AuditOutlined style={{ fontSize: '16px' }} />
   ),
 ];

@@ -51,6 +51,8 @@ import ProductionListing from '../../Modules/Production/ProductionListing';
 import AlloySelection from '../../Modules/Production/AlloySelection';
 import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
+import TurboProductionDashboard from '../../Modules/Production/TurboProductionDashboard';
+import TurboProductionPlanner from '../../Modules/Production/TurboProductionPlanner';
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
 import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
@@ -62,6 +64,8 @@ import PricingEntriesView from '../../Modules/DataEntry/PricingEntriesView';
 import CreateOrderView from '../../Modules/SalesCoordination/CreateOrderView';
 import CreateOrderAlloys from '../../Modules/SalesCoordination/CreateOrderAlloys';
 import SalesCoordinatorDashboard from '../../Modules/SalesCoordination/SalesCoordinatorDashboard';
+import StockLogViewer from '../../Components/StockLogViewer';
+import StockReconciliation from '../../Components/StockReconciliation';
 
 
 const StackNavigation = () => {
@@ -485,11 +489,37 @@ const StackNavigation = () => {
       <Route
         path='/inventory-management-v2'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Inventory Management'
-              items={adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<InventoryManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Stock Logging System */}
+      <Route
+        path='/stock-logs'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Stock Logs'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<StockLogViewer />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/stock-reconciliation'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Stock Reconciliation'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<StockReconciliation />}
             />
           </PrivateRoute>
         }
@@ -552,6 +582,30 @@ const StackNavigation = () => {
               title='Smart Production Dashboard'
               items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<SmartProductionDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/turbo-production'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Turbo Production Dashboard'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<TurboProductionDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/turbo-production-planner'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Turbo Production Planner'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<TurboProductionPlanner />}
             />
           </PrivateRoute>
         }

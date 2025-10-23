@@ -19,6 +19,7 @@ import {
 } from 'antd'
 import {
   EditOutlined,
+  PlusOutlined,
   SaveOutlined,
   CloseOutlined,
   InfoCircleOutlined,
@@ -29,6 +30,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux'
 import {
   updateProductionPlan,
+  createProductionPlan,
   getStepPresets,
   getPresetDetails
 } from '../../redux/api/productionAPI'
@@ -83,25 +85,48 @@ const EditProductionPlanModal = ({
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
-      const updateData = {
-        planId: planData.id,
-        quantity: values.quantity,
-        urgent: values.urgent || false,
-        convertToAlloyId: values.convertId,
-        note: values.note || null,
-        presetName: selectedPreset || null,
-        updatedBy: user?.id || user?.userId
+      if (planData?.id) {
+        // Update existing plan
+        const updateData = {
+          planId: planData.id,
+          quantity: values.quantity,
+          urgent: values.urgent || false,
+          convertToAlloyId: values.convertId,
+          note: values.note || null,
+          presetName: selectedPreset || null,
+          updatedBy: user?.id || user?.userId
+        }
+
+        console.log('Update data being sent:', updateData)
+        console.log('Form values:', values)
+
+        await dispatch(updateProductionPlan(updateData)).unwrap()
+
+        notification.success({
+          message: 'Success',
+          description: 'Production plan updated successfully!'
+        })
+      } else {
+        // Create new plan
+        const createData = {
+          quantity: values.quantity,
+          urgent: values.urgent || false,
+          convertToAlloyId: values.convertId,
+          note: values.note || null,
+          presetName: selectedPreset || null,
+          createdBy: user?.id || user?.userId
+        }
+
+        console.log('Create data being sent:', createData)
+        console.log('Form values:', values)
+
+        await dispatch(createProductionPlan(createData)).unwrap()
+
+        notification.success({
+          message: 'Success',
+          description: 'Production plan created successfully!'
+        })
       }
-
-      console.log('Update data being sent:', updateData)
-      console.log('Form values:', values)
-
-      await dispatch(updateProductionPlan(updateData)).unwrap()
-
-      notification.success({
-        message: 'Success',
-        description: 'Production plan updated successfully!'
-      })
 
       form.resetFields()
       setSelectedPreset(null)
@@ -110,7 +135,7 @@ const EditProductionPlanModal = ({
     } catch (error) {
       notification.error({
         message: 'Error',
-        description: error?.message || 'Failed to update production plan'
+        description: error?.message || `Failed to ${planData?.id ? 'update' : 'create'} production plan`
       })
     } finally {
       setLoading(false)
@@ -155,8 +180,14 @@ const EditProductionPlanModal = ({
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <EditOutlined className="text-blue-600" />
-            <span>Edit Production Plan #{planData?.id}</span>
+            {planData?.id ? (
+              <EditOutlined className="text-blue-600" />
+            ) : (
+              <PlusOutlined className="text-green-600" />
+            )}
+            <span>
+              {planData?.id ? `Edit Production Plan #${planData.id}` : 'Create New Production Plan'}
+            </span>
             {planData?.urgent && (
               <Tag icon={<FireOutlined />} color="red">
                 URGENT

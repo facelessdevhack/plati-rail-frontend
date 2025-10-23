@@ -13,7 +13,25 @@ export const useInventory = () => {
 
     try {
       const data = await InventoryApiService.getAllInventory()
-      setInventory(data.data || [])
+      // Handle different response structures and convert snake_case to camelCase
+      const inventoryData = data.result || data.data || []
+      const transformedData = inventoryData.map(item => ({
+        ...item,
+        productName: item.product_name || item.productName,
+        inHouseStock: item.in_house_stock || item.inHouseStock,
+        showroomStock: item.showroom_stock || item.showroomStock,
+        uniqueId: item.unique_id || item.uniqueId || item.id,
+        // Keep both size and inches fields for compatibility
+        size: item.size || item.inches,
+        inches: item.inches || item.size,
+        // Keep existing PCD or derive from other fields if available
+        pcd: item.pcd || item.bolt_pattern || item.boltPattern || '',
+        // Ensure numeric fields are properly converted
+        price: parseFloat(item.price || 0),
+        id: item.id
+      }))
+      setInventory(transformedData)
+      console.log('Transformed inventory data:', transformedData) // Debug log
     } catch (err) {
       setError(err.message)
       message.error(`Failed to fetch inventory: ${err.message}`)

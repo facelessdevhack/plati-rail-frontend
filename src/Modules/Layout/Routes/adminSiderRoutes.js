@@ -10,13 +10,16 @@ import {
   FileTextOutlined,
   SettingOutlined,
   RocketOutlined,
+  ThunderboltOutlined,
   LineChartOutlined,
   ShopOutlined,
   BankOutlined,
   SyncOutlined,
   ClockCircleOutlined,
   DollarOutlined,
-  ControlOutlined
+  ControlOutlined,
+  HistoryOutlined,
+  AuditOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -115,6 +118,10 @@ export const adminSiderRoutes = [
       '6a'
     ),
     getItemLayout(
+      <Link to='/turbo-production'><ThunderboltOutlined style={{ marginRight: '8px' }} />Turbo Dashboard</Link>,
+      '6b'
+    ),
+    getItemLayout(
       <Link to='/job-cards'>Job Card Management</Link>,
       '6c'
     ),
@@ -137,7 +144,19 @@ export const adminSiderRoutes = [
     <Link to='/inventory-management-v2'>Inventory Management</Link>,
     'inventory-v2'
   ),
-  
+
+  // Stock Logging System
+  getItemLayout('Stock Tracking', 'stock-logging-menu', <HistoryOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/stock-logs'><HistoryOutlined style={{ marginRight: '8px' }} />Stock Logs</Link>,
+      'stock-logs'
+    ),
+    getItemLayout(
+      <Link to='/stock-reconciliation'><AuditOutlined style={{ marginRight: '8px' }} />Stock Reconciliation</Link>,
+      'stock-reconciliation'
+    )
+  ]),
+
   // Warranty Management
   getItemLayout(
     <Link to='/dealer-warranty'>

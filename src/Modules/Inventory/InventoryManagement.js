@@ -98,38 +98,29 @@ const InventoryManagement = () => {
       // Search text filter - safely convert all values to strings before comparison
       const matchesSearch =
         !searchText ||
-        String(item.productName || '')
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        String(item.model || '')
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        String(item.brand || '')
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        String(item.color || '')
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        String(item.uniqueId || '')
-          .toLowerCase()
-          .includes(searchText.toLowerCase())
+        String(item.productName || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.model || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.brand || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.color || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.uniqueId || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.size || item.inches || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        String(item.pcd || '').toLowerCase().includes(searchText.toLowerCase())
 
       // Product type filter
       const matchesProductType =
         !selectedProductType || item.productType === selectedProductType
 
-      // Size filter
+      // Size filter - handle various size formats consistently
       const matchesInches =
         !selectedInches ||
         item.size === selectedInches ||
         item.inches === selectedInches ||
-        item.size?.toString() === selectedInches?.toString()
+        String(item.size || item.inches || '') === String(selectedInches || '')
 
-      // PCD filter
+      // PCD filter - handle various PCD formats consistently
       const matchesPcd =
         !selectedPcd ||
-        item.pcd === selectedPcd ||
-        item.pcd?.toString() === selectedPcd?.toString()
+        String(item.pcd || '') === String(selectedPcd || '')
 
       return matchesSearch && matchesProductType && matchesInches && matchesPcd
     })
@@ -140,21 +131,30 @@ const InventoryManagement = () => {
     if (inventory.length > 0) {
       setMasterDataLoading(true)
 
-      // Generate unique sizes for filter
+      console.log('Generating filter options from inventory:', inventory.slice(0, 3)) // Debug log
+
+      // Generate unique sizes for filter - handle both size and inches fields
       const uniqueSizes = [
         ...new Set(
-          inventory.map(item => item.size || item.inches).filter(Boolean)
+          inventory
+            .map(item => {
+              const size = String(item.size || item.inches || '').trim()
+              return size
+            })
+            .filter(size => size && size !== '' && size !== 'null' && size !== 'undefined' && size !== 'N/A')
         )
       ]
+      console.log('Unique sizes found:', uniqueSizes) // Debug log
+
       const sizeOptions = uniqueSizes
         .sort((a, b) => {
           // Try to sort numerically if possible, otherwise alphabetically
-          const numA = parseFloat(a)
-          const numB = parseFloat(b)
+          const numA = parseFloat(a.replace(/[^\d.]/g, ''))
+          const numB = parseFloat(b.replace(/[^\d.]/g, ''))
           if (!isNaN(numA) && !isNaN(numB)) {
             return numA - numB
           }
-          return a.toString().localeCompare(b.toString())
+          return a.localeCompare(b)
         })
         .map(size => ({ label: size, value: size }))
 
@@ -162,23 +162,35 @@ const InventoryManagement = () => {
 
       // Generate unique PCD values for filter
       const uniquePcds = [
-        ...new Set(inventory.map(item => item.pcd).filter(Boolean))
+        ...new Set(
+          inventory
+            .map(item => {
+              const pcd = String(item.pcd || item.bolt_pattern || item.boltPattern || '').trim()
+              return pcd
+            })
+            .filter(pcd => pcd && pcd !== '' && pcd !== 'null' && pcd !== 'undefined' && pcd !== 'N/A')
+        )
       ]
+      console.log('Unique PCDs found:', uniquePcds) // Debug log
+
       const pcdOptions = uniquePcds
         .sort((a, b) => {
           // Try to sort numerically if possible, otherwise alphabetically
-          const numA = parseFloat(a)
-          const numB = parseFloat(b)
+          const numA = parseFloat(a.replace(/[^\d.]/g, ''))
+          const numB = parseFloat(b.replace(/[^\d.]/g, ''))
           if (!isNaN(numA) && !isNaN(numB)) {
             return numA - numB
           }
-          return a.toString().localeCompare(b.toString())
+          return a.localeCompare(b)
         })
         .map(pcd => ({ label: pcd, value: pcd }))
 
       setPcdOptions(pcdOptions)
 
+      console.log('Setting filter options:', { sizeOptions, pcdOptions }) // Debug log
       setMasterDataLoading(false)
+    } else {
+      console.log('No inventory data available for filter generation')
     }
   }, [inventory])
 
@@ -209,6 +221,12 @@ const InventoryManagement = () => {
     setSelectedProductType(null)
     setSelectedInches(null)
     setSelectedPcd(null)
+    // Also clear any active filter states in forms
+    updateForm.resetFields()
+    addForm.resetFields()
+    analysisForm.resetFields()
+    batchForm.resetFields()
+    productionRequestForm.resetFields()
   }
 
   const handleUpdateStock = record => {
@@ -378,15 +396,22 @@ const InventoryManagement = () => {
       dataIndex: 'productName',
       key: 'productName',
       width: 250,
-      render: (text, record) => (
-        <div>
-          <Text strong>{text || 'N/A'}</Text>
-          <br />
-          <Text type='secondary' style={{ fontSize: '12px' }}>
-            {record.brand || record.model || 'N/A'} | {record.pcd || 'N/A'} PCD
-          </Text>
-        </div>
-      )
+      render: (text, record) => {
+        const productName = text || record.product_name || 'N/A'
+        const brand = record.brand || 'N/A'
+        const model = record.model || 'N/A'
+        const pcd = record.pcd || record.bolt_pattern || record.boltPattern || 'N/A'
+
+        return (
+          <div>
+            <Text strong>{productName}</Text>
+            <br />
+            <Text type='secondary' style={{ fontSize: '12px' }}>
+              {brand} {model !== 'N/A' ? `| ${model}` : ''} {pcd !== 'N/A' ? `| ${pcd} PCD` : ''}
+            </Text>
+          </div>
+        )
+      }
     },
     {
       title: 'Type',
@@ -416,11 +441,14 @@ const InventoryManagement = () => {
       width: 80,
       sorter: (a, b) => {
         // Extract numeric value from size (e.g., "18"" -> 18)
-        const aSize = parseInt(a.size) || 0
-        const bSize = parseInt(b.size) || 0
+        const aSize = parseFloat(String(a.size || a.inches || '').replace(/[^\d.]/g, '')) || 0
+        const bSize = parseFloat(String(b.size || b.inches || '').replace(/[^\d.]/g, '')) || 0
         return aSize - bSize
       },
-      render: text => <Tag color='blue'>{text || 'N/A'}</Tag>
+      render: (text, record) => {
+        const size = text || record.size || record.inches || 'N/A'
+        return <Tag color='blue'>{size}</Tag>
+      }
     },
     {
       title: 'In-House Stock',
@@ -625,6 +653,10 @@ const InventoryManagement = () => {
               loading={masterDataLoading}
               style={{ width: '100%' }}
               options={inchesOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
             />
           </Col>
           <Col xs={12} sm={6} md={3}>
@@ -636,6 +668,10 @@ const InventoryManagement = () => {
               loading={masterDataLoading}
               style={{ width: '100%' }}
               options={pcdOptions}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
