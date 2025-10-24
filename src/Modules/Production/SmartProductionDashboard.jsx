@@ -640,9 +640,24 @@ const SmartProductionDashboard = () => {
       relevantPlans.forEach(plan => {
         const targetFinish =
           plan.targetFinish || plan.convertName || 'Unknown Finish'
-        const dispatchAccepted = plan.quantityTracking?.dispatchAcceptedQuantity || 0
+        const dispatchAccepted =
+          plan.quantityTracking?.dispatchAcceptedQuantity || 0
         const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
-        const pendingProd = plan.quantityTracking?.pendingProductionQuantity || (allocatedQty - dispatchAccepted)
+        const planQuantity = plan.quantity || 0
+        const planStatus =
+          plan.quantityTracking?.completionStatus || plan.status || 'pending'
+
+        // Fix: Calculate pending production based on plan status
+        let pendingProd
+        if (planStatus === 'not_started' || planStatus === 'pending') {
+          // For not started plans, full quantity is pending
+          pendingProd = planQuantity
+        } else {
+          // For in-progress or completed plans, use existing logic
+          pendingProd =
+            plan.quantityTracking?.pendingProductionQuantity ||
+            allocatedQty - dispatchAccepted
+        }
 
         if (pendingProd > 0 || dispatchAccepted > 0) {
           if (!finishQuantities[targetFinish]) {
@@ -760,9 +775,25 @@ const SmartProductionDashboard = () => {
 
       relevantPlans.forEach(plan => {
         const planQuantity = plan.quantity || 0
-        const dispatchAccepted = plan.quantityTracking?.dispatchAcceptedQuantity || 0
+        console.log(plan, 'PLANNN')
+        const dispatchAccepted =
+          plan.quantityTracking?.dispatchAcceptedQuantity || 0
         const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
-        const pendingProd = plan.quantityTracking?.pendingProductionQuantity || (allocatedQty - dispatchAccepted)
+        const planStatus =
+          plan.quantityTracking?.completionStatus || plan.status || 'pending'
+
+        // Fix: Calculate pending production based on plan status
+        let pendingProd
+        if (planStatus === 'not_started' || planStatus === 'pending') {
+          // For not started plans, full quantity is pending
+          pendingProd = planQuantity
+        } else {
+          // For in-progress or completed plans, use existing logic
+          pendingProd =
+            plan.quantityTracking?.pendingProductionQuantity ||
+            allocatedQty - dispatchAccepted
+        }
+
         const completed = dispatchAccepted
 
         // Add to totals
@@ -787,7 +818,8 @@ const SmartProductionDashboard = () => {
           remaining:
             plan.quantityTracking?.remainingQuantity || plan.quantity || 0,
           inProduction: plan.inProductionQuantity || 0,
-          status: plan.quantityTracking?.completionStatus || 'pending'
+          status:
+            plan.quantityTracking?.completionStatus || plan.status || 'pending'
         }))
       }
 

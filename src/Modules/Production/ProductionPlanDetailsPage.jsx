@@ -27,6 +27,7 @@ import {
   getProductionPlanById,
   getJobCardsWithDetails
 } from '../../redux/api/productionAPI'
+import JobCardDetailsModal from './JobCardDetailsModal'
 
 const ProductionPlanDetailsPage = () => {
   const { planId } = useParams()
@@ -37,6 +38,8 @@ const ProductionPlanDetailsPage = () => {
   const [planDetails, setPlanDetails] = useState(null)
   const [jobCards, setJobCards] = useState([])
   const [jobCardsLoading, setJobCardsLoading] = useState(false)
+  const [selectedJobCard, setSelectedJobCard] = useState(null)
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false)
 
   // Get selected plan from Redux if available
   const { selectedPlan, productionPlans } = useSelector(state => state.productionDetails)
@@ -122,6 +125,11 @@ const ProductionPlanDetailsPage = () => {
       cancelled: <AlertCircle className="h-4 w-4" />
     }
     return icons[status] || icons.pending
+  }
+
+  const handleViewDetails = (jobCard) => {
+    setSelectedJobCard(jobCard)
+    setDetailsModalVisible(true)
   }
 
   if (loading) {
