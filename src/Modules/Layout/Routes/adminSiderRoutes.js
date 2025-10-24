@@ -126,6 +126,10 @@ export const adminSiderRoutes = [
       '6c'
     ),
     getItemLayout(
+      <Link to='/simplified-production'><ToolOutlined style={{ marginRight: '8px' }} />Simplified Production</Link>,
+      '6d'
+    ),
+    getItemLayout(
       <Link to='/production-presets'>Preset Management</Link>,
       '7a'
     )

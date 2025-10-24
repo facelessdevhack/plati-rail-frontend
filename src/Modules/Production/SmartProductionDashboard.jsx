@@ -640,19 +640,11 @@ const SmartProductionDashboard = () => {
       relevantPlans.forEach(plan => {
         const targetFinish =
           plan.targetFinish || plan.convertName || 'Unknown Finish'
-        const remainingQuantity =
-          plan.quantityTracking?.remainingQuantity ||
-          plan.quantity - (plan.completedQuantity || 0)
+        const dispatchAccepted = plan.quantityTracking?.dispatchAcceptedQuantity || 0
+        const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
+        const pendingProd = plan.quantityTracking?.pendingProductionQuantity || (allocatedQty - dispatchAccepted)
 
-        // Check if this plan is in DISPATCH step
-        const currentStepName =
-          plan.currentStepName || plan.current_step_name || ''
-        const currentStepId = plan.currentStepId || 0
-        const isDispatched =
-          currentStepId === 11 ||
-          currentStepName.toLowerCase().includes('dispatch')
-
-        if (remainingQuantity > 0) {
+        if (pendingProd > 0 || dispatchAccepted > 0) {
           if (!finishQuantities[targetFinish]) {
             finishQuantities[targetFinish] = {
               finish: targetFinish,
@@ -662,14 +654,9 @@ const SmartProductionDashboard = () => {
             }
           }
 
-          finishQuantities[targetFinish].pendingQuantity += remainingQuantity
+          finishQuantities[targetFinish].pendingQuantity += pendingProd
           finishQuantities[targetFinish].totalPlans += 1
-
-          // Only add to inProduction if NOT dispatched
-          if (!isDispatched) {
-            finishQuantities[targetFinish].inProductionQuantity +=
-              plan.inProductionQuantity || 0
-          }
+          finishQuantities[targetFinish].inProductionQuantity += pendingProd
         }
       })
 
@@ -773,28 +760,16 @@ const SmartProductionDashboard = () => {
 
       relevantPlans.forEach(plan => {
         const planQuantity = plan.quantity || 0
-        const remaining =
-          plan.quantityTracking?.remainingQuantity || planQuantity
-        const inProduction = plan.inProductionQuantity || 0
-        const completed = planQuantity - remaining
-
-        // Check if this plan is in DISPATCH step
-        const currentStepName =
-          plan.currentStepName || plan.current_step_name || ''
-        const currentStepId = plan.currentStepId || 0
-        const isDispatched =
-          currentStepId === 11 ||
-          currentStepName.toLowerCase().includes('dispatch')
+        const dispatchAccepted = plan.quantityTracking?.dispatchAcceptedQuantity || 0
+        const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
+        const pendingProd = plan.quantityTracking?.pendingProductionQuantity || (allocatedQty - dispatchAccepted)
+        const completed = dispatchAccepted
 
         // Add to totals
         totalQuantity += planQuantity
-        pendingQuantity += remaining
+        pendingQuantity += pendingProd
         completedQuantity += completed
-
-        // Only add to inProduction if NOT dispatched
-        if (!isDispatched) {
-          inProductionQuantity += inProduction
-        }
+        inProductionQuantity += pendingProd
       })
 
       const result = {

@@ -10,9 +10,9 @@ import {
   addEntry,
   setEditing,
 } from '../../redux/slices/entry.slice';
-import { addCoordinatedEntryAPI, getAllCoordinationEntriesAPI } from '../../redux/api/entriesAPI';
+import { addCoordinatedEntryAPI, getAllCoordinationEntriesAPI, deletePendingEntryAPI, deleteDispatchEntryAPI } from '../../redux/api/entriesAPI';
 import moment from 'moment';
-import { Table, Tag, Space, message } from 'antd';
+import { Table, Tag, Space, message, Popconfirm } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const CreateOrderAlloys = () => {
@@ -20,6 +20,7 @@ const CreateOrderAlloys = () => {
   const { entry } = useSelector((state) => state.entryDetails);
   const [reloadAPI, setReloadAPI] = React.useState(false);
   const [coordinationEntries, setCoordinationEntries] = React.useState([]);
+  const [deletingId, setDeletingId] = React.useState(null);
   const { dealersDropdown, allProducts } = useSelector((state) => state.stockDetails);
 
   const getAndSetTodayDate = () => {
@@ -93,6 +94,43 @@ const CreateOrderAlloys = () => {
     }
   };
 
+  const handleDeleteEntry = async (record) => {
+    setDeletingId(record.id);
+
+    try {
+      let response;
+
+      // Determine entry type and call appropriate delete API
+      if (record.entryStatus === 'pending') {
+        response = await deletePendingEntryAPI({ pendingEntryId: record.id });
+      } else if (record.entryStatus === 'dispatch') {
+        response = await deleteDispatchEntryAPI({ dispatchEntryId: record.id });
+      } else if (record.entryStatus === 'in_production') {
+        // For in-production entries, we need to check if there's a delete endpoint
+        // For now, let's show an appropriate message
+        message.warning('Cannot delete entries that are in production. Please contact the production team.');
+        setDeletingId(null);
+        return;
+      } else {
+        message.error('Unknown entry type. Cannot delete.');
+        setDeletingId(null);
+        return;
+      }
+
+      if (response.status === 200) {
+        message.success('Entry deleted successfully!');
+        setReloadAPI(!reloadAPI); // Refresh the list
+      } else {
+        message.error(response.data?.message || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      message.error(error.response?.data?.message || 'Failed to delete entry');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const columns = [
     {
       title: 'Date',
@@ -134,6 +172,34 @@ const CreateOrderAlloys = () => {
         const config = statusConfig[status] || { color: 'default', label: 'Unknown' };
         return <Tag color={config.color}>{config.label}</Tag>;
       },
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      align: 'center',
+      render: (_, record) => (
+        <Space size="small">
+          <Popconfirm
+            title="Delete this entry?"
+            description="Are you sure you want to delete this entry? This action cannot be undone."
+            onConfirm={() => handleDeleteEntry(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              type="primary"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+            >
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 

@@ -48,6 +48,8 @@ import DealersList from '../../Modules/DataEntry/DealersList';
 import AddDealer from '../../Modules/DataEntry/AddDealer';
 import EditDealer from '../../Modules/DataEntry/EditDealer';
 import ProductionListing from '../../Modules/Production/ProductionListing';
+import ProductionListingModern from '../../Modules/Production/ProductionListingModern';
+import ProductionPlanDetailsPage from '../../Modules/Production/ProductionPlanDetailsPage';
 import AlloySelection from '../../Modules/Production/AlloySelection';
 import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
@@ -55,6 +57,7 @@ import TurboProductionDashboard from '../../Modules/Production/TurboProductionDa
 import TurboProductionPlanner from '../../Modules/Production/TurboProductionPlanner';
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
+import SimplifiedProductionSystem from '../../Modules/Production/SimplifiedProductionSystem';
 import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
 import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
 import PendingEntriesView from '../../Modules/SalesCoordination/PendingEntriesView';
@@ -551,6 +554,22 @@ const StackNavigation = () => {
         }
       />
       <Route
+        path='/production-plans-modern'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <ProductionListingModern />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-plan/:planId'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <ProductionPlanDetailsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path='/production-alloys'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6]}>
@@ -618,6 +637,18 @@ const StackNavigation = () => {
               title='Job Cards'
               items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<JobCardListing />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/simplified-production'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Simplified Production System'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<SimplifiedProductionSystem />}
             />
           </PrivateRoute>
         }
