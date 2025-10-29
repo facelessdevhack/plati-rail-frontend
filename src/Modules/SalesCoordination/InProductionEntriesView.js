@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, message, Space, Progress, Tooltip } from 'antd';
-import { SyncOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { getInProductionEntriesAPI, moveInProdToMasterAPI } from '../../redux/api/entriesAPI';
+import { Table, Button, Tag, message, Space, Progress, Tooltip, Popconfirm } from 'antd';
+import { SyncOutlined, CheckCircleOutlined, InfoCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getInProductionEntriesAPI, moveInProdToMasterAPI, deleteInProductionEntryAPI } from '../../redux/api/entriesAPI';
 import { useDispatch } from 'react-redux';
 import moment from 'moment';
 
@@ -10,6 +10,7 @@ const InProductionEntriesView = () => {
   const [inProdEntries, setInProdEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchInProdEntries();
@@ -43,6 +44,24 @@ const InProductionEntriesView = () => {
       message.error('Production not completed or insufficient stock');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    setDeletingId(entryId);
+    try {
+      const response = await deleteInProductionEntryAPI({ inProdEntryId: entryId });
+      if (response.status === 200) {
+        message.success('Entry deleted successfully! Production plan quantity restored.');
+        fetchInProdEntries(); // Refresh the list
+      } else {
+        message.error(response.data?.message || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      message.error('Failed to delete entry');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -149,21 +168,41 @@ const InProductionEntriesView = () => {
     {
       title: 'Action',
       key: 'action',
-      width: 150,
+      width: 200,
       fixed: 'right',
       render: (_, record) => (
-        <Tooltip title={record.planCompleted ? 'Process this entry' : 'Production plan not yet completed'}>
-          <Button
-            type="primary"
-            size="small"
-            icon={<CheckCircleOutlined />}
-            loading={processingId === record.id}
-            onClick={() => handleProcessEntry(record.id)}
-            disabled={!record.planCompleted}
+        <Space>
+          <Tooltip title={record.planCompleted ? 'Process this entry' : 'Production plan not yet completed'}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<CheckCircleOutlined />}
+              loading={processingId === record.id}
+              onClick={() => handleProcessEntry(record.id)}
+              disabled={!record.planCompleted}
+            >
+              Process
+            </Button>
+          </Tooltip>
+          <Popconfirm
+            title="Are you sure you want to delete this entry?"
+            description="This will restore the production plan quantity and remove the entry."
+            onConfirm={() => handleDeleteEntry(record.id)}
+            okText="Yes"
+            cancelText="No"
           >
-            Process
-          </Button>
-        </Tooltip>
+            <Tooltip title="Delete this entry">
+              <Button
+                type="danger"
+                size="small"
+                icon={<DeleteOutlined />}
+                loading={deletingId === record.id}
+              >
+                Delete
+              </Button>
+            </Tooltip>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

@@ -660,6 +660,22 @@ export const moveInProdToMasterAPI = async ({ inProdEntryId }) => {
 }
 
 /**
+ * Delete an in-production entry and restore production plan quantity
+ */
+export const deleteInProductionEntryAPI = async ({ inProdEntryId }) => {
+  try {
+    const response = await client.post('entries/delete-in-production-entry', {
+      inProdEntryId
+    })
+    console.log(response, 'DELETE IN-PRODUCTION ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('DELETE IN-PRODUCTION ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
  * Get all dispatch entries awaiting coordinator approval
  */
 export const getDispatchEntriesAPI = createAsyncThunk(
