@@ -161,13 +161,16 @@ const EditPriceListPage = () => {
         const uniqueFinishes = [...new Set(items.map(item => item.finish).filter(Boolean))]
         const uniqueModels = [...new Set(items.map(item => item.modelName).filter(Boolean))]
 
-        // Get PCD values (need to fetch from alloy_master since it's not in the join)
-        const pcdValues = items.map(item => item.alloyId).filter(Boolean)
+        // PCD data may not be available in the database
+        const hasPcdData = items.some(item => item.pcd !== undefined && item.pcd !== null)
+        const uniquePcds = hasPcdData
+          ? [...new Set(items.map(item => item.pcd).filter(Boolean))]
+          : []
 
         setAvailableFilters({
           inches: uniqueInches.sort(),
           finishes: uniqueFinishes.sort(),
-          pcd: [], // Will be populated if needed
+          pcd: uniquePcds.sort(),
           modelName: uniqueModels.sort()
         })
       }
@@ -267,8 +270,8 @@ const EditPriceListPage = () => {
     // Filter by model name
     const matchesModel = filters.modelName.length === 0 || filters.modelName.includes(item.modelName)
 
-    // Filter by PCD (if implemented)
-    const matchesPCD = filters.pcd.length === 0 || true // PCD filter not implemented yet
+    // Filter by PCD (only if PCD data exists)
+    const matchesPCD = availableFilters.pcd.length === 0 || filters.pcd.length === 0 || filters.pcd.includes(item.pcd)
 
     return matchesSearch && matchesInches && matchesFinishes && matchesModel && matchesPCD
   })
@@ -316,8 +319,9 @@ const EditPriceListPage = () => {
           <div style={{ fontWeight: 'bold' }}>{text}</div>
           <div style={{ fontSize: '12px', color: '#666' }}>
             {record.inches && `${record.inches}" | `}
-            {record.finishes && `${record.finishes} | `}
-            {record.model_name && record.model_name}
+            {record.pcd && `${record.pcd} | `}
+            {record.finish && `${record.finish} | `}
+            {record.modelName && record.modelName}
           </div>
         </div>
       )
@@ -445,7 +449,7 @@ const EditPriceListPage = () => {
 
       {/* Filters */}
       <Row gutter={16} className='mb-4'>
-        <Col span={6}>
+        <Col span={availableFilters.pcd.length > 0 ? 5 : 6}>
           <Select
             mode='multiple'
             placeholder='Filter by Inches'
@@ -460,7 +464,7 @@ const EditPriceListPage = () => {
             }))}
           />
         </Col>
-        <Col span={6}>
+        <Col span={availableFilters.pcd.length > 0 ? 5 : 6}>
           <Select
             mode='multiple'
             placeholder='Filter by Finishes'
@@ -475,7 +479,7 @@ const EditPriceListPage = () => {
             }))}
           />
         </Col>
-        <Col span={6}>
+        <Col span={availableFilters.pcd.length > 0 ? 5 : 6}>
           <Select
             mode='multiple'
             placeholder='Filter by Model'
@@ -490,13 +494,30 @@ const EditPriceListPage = () => {
             }))}
           />
         </Col>
-        <Col span={6}>
+        {availableFilters.pcd.length > 0 && (
+          <Col span={5}>
+            <Select
+              mode='multiple'
+              placeholder='Filter by PCD'
+              style={{ width: '100%' }}
+              value={filters.pcd}
+              onChange={(value) => handleFilterChange('pcd', value)}
+              allowClear
+              onClear={() => handleFilterChange('pcd', [])}
+              options={availableFilters.pcd.map(pcd => ({
+                label: pcd,
+                value: pcd
+              }))}
+            />
+          </Col>
+        )}
+        <Col span={availableFilters.pcd.length > 0 ? 4 : 6}>
           <Space>
             <Button
               type='default'
               icon={<FilterOutlined />}
               onClick={clearFilters}
-              disabled={filters.inches.length === 0 && filters.finishes.length === 0 && filters.modelName.length === 0}
+              disabled={filters.inches.length === 0 && filters.finishes.length === 0 && filters.modelName.length === 0 && filters.pcd.length === 0}
             >
               Clear Filters
             </Button>
