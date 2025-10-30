@@ -385,3 +385,47 @@ export const getEntriesByProductId = createAsyncThunk(
     }
   }
 )
+
+// Simple API functions for direct usage (not Redux thunks)
+export const getAllAlloysAPI = async (token, filters = {}) => {
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: filters
+    }
+
+    const response = await client.get('/alloys/stock/management', config)
+    return {
+      success: true,
+      data: response.data.data || []
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to fetch alloys'
+    }
+  }
+}
+
+export const getAlloyFiltersAPI = async (token) => {
+  try {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+
+    const response = await client.get('/alloys/filters', config)
+    return {
+      success: true,
+      data: response.data
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to fetch filters'
+    }
+  }
+}

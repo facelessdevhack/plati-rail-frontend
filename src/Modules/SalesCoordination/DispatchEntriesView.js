@@ -107,9 +107,9 @@ const DispatchEntriesView = () => {
               }
               body {
                 font-family: Arial, sans-serif;
-                font-size: 24px;
+                font-size: 26px;
                 margin: 0;
-                padding: 15px;
+                padding: 8px;
                 color: #000;
                 width: 148mm;
                 height: 105mm;
@@ -117,41 +117,41 @@ const DispatchEntriesView = () => {
               }
               h1 {
                 text-align: center;
-                margin-bottom: 25px;
-                font-size: 24px;
+                margin-bottom: 12px;
+                font-size: 26px;
                 color: #333;
                 font-weight: bold;
               }
               .dealer-section {
-                margin-bottom: 30px;
+                margin-bottom: 15px;
                 page-break-inside: avoid;
               }
               .dealer-title {
                 font-weight: bold;
-                font-size: 20px;
-                margin-bottom: 15px;
+                font-size: 22px;
+                margin-bottom: 8px;
                 text-align: center;
                 background-color: #f5f5f5;
-                padding: 10px;
+                padding: 6px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
               }
               table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 25px;
-                font-size: 16px;
+                margin-bottom: 12px;
+                font-size: 18px;
               }
               th, td {
                 border: 1px solid #ddd;
-                padding: 8px 10px;
+                padding: 4px 6px;
                 text-align: left;
               }
               th {
                 background-color: #f8f9fa;
                 font-weight: bold;
                 color: #333;
-                font-size: 14px;
+                font-size: 16px;
               }
               tr:nth-child(even) {
                 background-color: #f9f9f9;
@@ -171,7 +171,7 @@ const DispatchEntriesView = () => {
                 text-align: center;
                 font-style: italic;
                 color: #666;
-                padding: 10px;
+                padding: 5px;
               }
               @media print {
                 * {
@@ -180,38 +180,37 @@ const DispatchEntriesView = () => {
                 }
 
                 body {
-                  font-size: 14px !important;
+                  font-size: 16px !important;
                   line-height: 1.4 !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 h1 {
-                  font-size: 19px !important;
-                  margin-bottom: 20px !important;
+                  font-size: 21px !important;
+                  margin-bottom: 10px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
-                }
                 .dealer-title {
-                  font-size: 16px !important;
-                  padding: 15px !important;
-                  margin-bottom: 15px !important;
+                  font-size: 18px !important;
+                  padding: 8px !important;
+                  margin-bottom: 8px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 th, td {
-                  padding: 12px 15px !important;
-                  font-size: 11px !important;
+                  padding: 6px 8px !important;
+                  font-size: 13px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 th {
-                  font-size: 11px !important;
+                  font-size: 13px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 .dealer-section {
-                  margin-bottom: 30px !important;
+                  margin-bottom: 12px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
