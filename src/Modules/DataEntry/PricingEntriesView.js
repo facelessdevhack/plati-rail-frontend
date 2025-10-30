@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, message, Space, Modal, Form, InputNumber, Radio, Checkbox } from 'antd';
-import { DollarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { getPricingPendingEntriesAPI, addPricingToEntryAPI } from '../../redux/api/entriesAPI';
+import { Table, Button, Tag, message, Space, Modal, Form, InputNumber, Radio, Checkbox, Popconfirm } from 'antd';
+import { DollarOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getPricingPendingEntriesAPI, addPricingToEntryAPI, deletePricingPendingEntryAPI } from '../../redux/api/entriesAPI';
 import { useDispatch } from 'react-redux';
 import moment from 'moment';
 
@@ -72,6 +72,24 @@ const PricingEntriesView = () => {
     }
   };
 
+  const handleDeleteEntry = async (entry) => {
+    try {
+      const response = await deletePricingPendingEntryAPI(entry.id);
+
+      if (response.status === 200) {
+        message.success(
+          `Entry deleted successfully! Stock restored: ${response.data.restoredQuantity} units`
+        );
+        fetchPricingEntries(); // Refresh the list
+      } else {
+        message.error(response.data?.message || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Error deleting pricing entry:', error);
+      message.error('Error deleting pricing entry');
+    }
+  };
+
   const columns = [
     {
       title: 'Entry ID',
@@ -134,17 +152,34 @@ const PricingEntriesView = () => {
     {
       title: 'Action',
       key: 'action',
-      width: 150,
+      width: 200,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<DollarOutlined />}
-          onClick={() => handleOpenPricingModal(record)}
-        >
-          Add Pricing
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            size="small"
+            icon={<DollarOutlined />}
+            onClick={() => handleOpenPricingModal(record)}
+          >
+            Add Pricing
+          </Button>
+          <Popconfirm
+            title="Delete Entry"
+            description="Are you sure you want to delete this entry? Stock will be restored."
+            onConfirm={() => handleDeleteEntry(record)}
+            okText="Yes, Delete"
+            cancelText="Cancel"
+          >
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+            >
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

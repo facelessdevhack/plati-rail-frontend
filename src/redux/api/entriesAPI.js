@@ -766,6 +766,22 @@ export const addPricingToEntryAPI = async ({
 }
 
 /**
+ * Delete pricing pending entry and restore stock
+ */
+export const deletePricingPendingEntryAPI = async (pricingEntryId) => {
+  try {
+    const response = await client.post('entries/delete-pricing-pending-entry', {
+      pricingEntryId
+    })
+    console.log(response, 'DELETE PRICING PENDING ENTRY RESPONSE')
+    return response
+  } catch (e) {
+    console.log('DELETE PRICING PENDING ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
  * Get all coordination entries (dispatch, pending, in-production) for today
  */
 export const getAllCoordinationEntriesAPI = createAsyncThunk(
