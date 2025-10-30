@@ -109,7 +109,7 @@ const DispatchEntriesView = () => {
                 font-family: Arial, sans-serif;
                 font-size: 24px;
                 margin: 0;
-                padding: 20px;
+                padding: 15px;
                 color: #000;
                 width: 148mm;
                 height: 105mm;
@@ -132,7 +132,7 @@ const DispatchEntriesView = () => {
                 margin-bottom: 15px;
                 text-align: center;
                 background-color: #f5f5f5;
-                padding: 12px;
+                padding: 10px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
               }
@@ -144,7 +144,7 @@ const DispatchEntriesView = () => {
               }
               th, td {
                 border: 1px solid #ddd;
-                padding: 12px 15px;
+                padding: 8px 10px;
                 text-align: left;
               }
               th {
@@ -180,20 +180,20 @@ const DispatchEntriesView = () => {
                 }
 
                 body {
-                  font-size: 10px !important;
+                  font-size: 14px !important;
                   line-height: 1.4 !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 h1 {
-                  font-size: 14px !important;
+                  font-size: 19px !important;
                   margin-bottom: 20px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 }
                 .dealer-title {
-                  font-size: 12px !important;
+                  font-size: 16px !important;
                   padding: 15px !important;
                   margin-bottom: 15px !important;
                   -webkit-print-color-adjust: exact !important;
@@ -201,12 +201,12 @@ const DispatchEntriesView = () => {
                 }
                 th, td {
                   padding: 12px 15px !important;
-                  font-size: 8px !important;
+                  font-size: 11px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
                 th {
-                  font-size: 8px !important;
+                  font-size: 11px !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
