@@ -69,6 +69,8 @@ import CreateOrderAlloys from '../../Modules/SalesCoordination/CreateOrderAlloys
 import SalesCoordinatorDashboard from '../../Modules/SalesCoordination/SalesCoordinatorDashboard';
 import StockLogViewer from '../../Components/StockLogViewer';
 import StockReconciliation from '../../Components/StockReconciliation';
+import PriceListPage from '../../Modules/Admin/PriceListPage';
+import EditPriceListPage from '../../Modules/Admin/EditPriceListPage';
 
 
 const StackNavigation = () => {
@@ -754,6 +756,34 @@ const StackNavigation = () => {
               title='🔩 Create Alloys Order - Sales Coordination'
               items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
               content={<CreateOrderAlloys />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Price List Management Route */}
+      <Route
+        path='/price-lists'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='💰 Price Lists Management'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<PriceListPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Edit Price List Route */}
+      <Route
+        path='/price-lists/edit/:id'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
+            <AdminLayout
+              title='⚙️ Edit Price List'
+              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              content={<EditPriceListPage />}
             />
           </PrivateRoute>
         }

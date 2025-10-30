@@ -107,9 +107,9 @@ const DispatchEntriesView = () => {
               }
               body {
                 font-family: Arial, sans-serif;
-                font-size: 10px;
+                font-size: 24px;
                 margin: 0;
-                padding: 10px;
+                padding: 20px;
                 color: #000;
                 width: 148mm;
                 height: 105mm;
@@ -117,40 +117,41 @@ const DispatchEntriesView = () => {
               }
               h1 {
                 text-align: center;
-                margin-bottom: 15px;
-                font-size: 12px;
+                margin-bottom: 25px;
+                font-size: 24px;
                 color: #333;
+                font-weight: bold;
               }
               .dealer-section {
-                margin-bottom: 20px;
+                margin-bottom: 30px;
                 page-break-inside: avoid;
               }
               .dealer-title {
                 font-weight: bold;
-                font-size: 11px;
-                margin-bottom: 8px;
+                font-size: 20px;
+                margin-bottom: 15px;
                 text-align: center;
                 background-color: #f5f5f5;
-                padding: 6px;
+                padding: 12px;
                 border: 1px solid #ddd;
-                border-radius: 3px;
+                border-radius: 6px;
               }
               table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 15px;
-                font-size: 9px;
+                margin-bottom: 25px;
+                font-size: 16px;
               }
               th, td {
                 border: 1px solid #ddd;
-                padding: 4px 6px;
+                padding: 12px 15px;
                 text-align: left;
               }
               th {
                 background-color: #f8f9fa;
                 font-weight: bold;
                 color: #333;
-                font-size: 8px;
+                font-size: 14px;
               }
               tr:nth-child(even) {
                 background-color: #f9f9f9;
@@ -173,25 +174,46 @@ const DispatchEntriesView = () => {
                 padding: 10px;
               }
               @media print {
+                * {
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+
                 body {
-                  font-size: 8px;
-                  line-height: 1.2;
+                  font-size: 10px !important;
+                  line-height: 1.4 !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 h1 {
-                  font-size: 10px;
-                  margin-bottom: 12px;
+                  font-size: 14px !important;
+                  margin-bottom: 20px !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
                 }
                 .dealer-title {
-                  font-size: 9px;
-                  padding: 4px;
-                  margin-bottom: 6px;
+                  font-size: 12px !important;
+                  padding: 15px !important;
+                  margin-bottom: 15px !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 th, td {
-                  padding: 2px 4px;
-                  font-size: 7px;
+                  padding: 12px 15px !important;
+                  font-size: 8px !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                th {
+                  font-size: 8px !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 .dealer-section {
-                  margin-bottom: 15px;
+                  margin-bottom: 30px !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
               }
             </style>
@@ -252,7 +274,9 @@ const DispatchEntriesView = () => {
       // Create a temporary iframe to print the content
       const printWindow = window.open('', '_blank', 'width=800,height=600')
       printWindow.document.write(htmlContent)
-      printWindow.document.title = `Dispatch Entries - ${moment().format('DD MMM YYYY')}`
+      printWindow.document.title = `Dispatch Entries - ${moment().format(
+        'DD MMM YYYY'
+      )}`
       printWindow.document.close()
 
       // Wait for the content to load, then trigger print
@@ -260,7 +284,9 @@ const DispatchEntriesView = () => {
         printWindow.print()
       }
 
-      message.success('PDF export dialog opened. Please choose "Save as PDF" in the print dialog.')
+      message.success(
+        'PDF export dialog opened. Please choose "Save as PDF" in the print dialog.'
+      )
     } catch (error) {
       console.error('Error exporting dispatch entries to PDF:', error)
       message.error('Failed to export dispatch entries to PDF')
