@@ -940,7 +940,7 @@ const SmartProductionDashboard = () => {
     }))
   }, [])
 
-  // Handle bulk plan creation
+  // Handle bulk plan creation with enhanced error reporting
   const handleCreateBulkPlans = useCallback(async () => {
     const validPlans = Array.from(selectedRows)
       .map(planId => conversionPlans[planId])
@@ -955,50 +955,194 @@ const SmartProductionDashboard = () => {
     }
 
     setIsCreatingPlans(true)
+    
+    // Track results for detailed reporting
+    const results = {
+      successful: [],
+      failed: []
+    }
+    
     try {
-      const planPromises = validPlans.map(async plan => {
-        // Find the target alloy ID based on the selected target finish
-        const availableFinishes = getAvailableTargetFinishes(plan.sourceAlloy)
-        const targetFinishOption = availableFinishes.find(
-          f => f.value === plan.targetFinish
-        )
-
-        if (!targetFinishOption) {
-          throw new Error(
-            `Target finish "${plan.targetFinish}" not found for alloy ${plan.sourceAlloy.productName}`
+      // Process plans sequentially with proper error tracking
+      for (let i = 0; i < validPlans.length; i++) {
+        const plan = validPlans[i]
+        
+        try {
+          // Find the target alloy ID based on the selected target finish
+          const availableFinishes = getAvailableTargetFinishes(plan.sourceAlloy)
+          const targetFinishOption = availableFinishes.find(
+            f => f.value === plan.targetFinish
           )
+
+          if (!targetFinishOption) {
+            throw new Error(
+              `Target finish "${plan.targetFinish}" not found for alloy ${plan.sourceAlloy.productName}`
+            )
+          }
+
+          const planData = {
+            alloyId: plan.sourceAlloy.id,
+            convertId: targetFinishOption.alloyId,
+            quantity: plan.quantity,
+            urgent: false,
+            userId: user?.id || 1,
+            presetName: null
+          }
+          
+          // Create individual production plan
+          await dispatch(createProductionPlan(planData)).unwrap()
+          
+          results.successful.push({
+            index: i,
+            plan: plan,
+            productName: plan.sourceAlloy.productName,
+            targetFinish: plan.targetFinish,
+            quantity: plan.quantity
+          })
+          
+        } catch (error) {
+          results.failed.push({
+            index: i,
+            plan: plan,
+            productName: plan.sourceAlloy.productName,
+            targetFinish: plan.targetFinish,
+            quantity: plan.quantity,
+            error: error.message || 'Failed to create plan'
+          })
         }
+      }
+      
+      // Show detailed notifications based on results
+      const successCount = results.successful.length
+      const failCount = results.failed.length
+      const totalCount = validPlans.length
 
-        const planData = {
-          alloyId: plan.sourceAlloy.id,
-          convertId: targetFinishOption.alloyId, // Use the correct target alloy ID
-          quantity: plan.quantity,
-          urgent: false,
-          userId: user?.id || 1,
-          presetName: null
-        }
-        return dispatch(createProductionPlan(planData)).unwrap()
-      })
+      if (failCount === 0) {
+        // All plans succeeded
+        notification.success({
+          message: `✅ Created ${successCount} Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2">All production plans created successfully!</div>
+              <div className="text-xs text-gray-600">
+                {results.successful.slice(0, 3).map((item, idx) => (
+                  <div key={idx}>
+                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                  </div>
+                ))}
+                {successCount > 3 && <div>...and {successCount - 3} more</div>}
+              </div>
+            </div>
+          ),
+          duration: 5
+        })
 
-      await Promise.all(planPromises)
+        // Reset and navigate
+        setSelectedRows(new Set())
+        setConversionPlans({})
+        setPlanCounter(0)
+        localStorage.removeItem('smartProductionState')
+        navigate('/production-plans')
+        
+      } else if (successCount > 0) {
+        // Partial success - some succeeded, some failed
+        notification.warning({
+          message: `⚠️ Created ${successCount} of ${totalCount} Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2 font-semibold text-green-700">✅ Successful ({successCount}):</div>
+              <div className="text-xs mb-3 text-gray-700">
+                {results.successful.slice(0, 2).map((item, idx) => (
+                  <div key={idx}>
+                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                  </div>
+                ))}
+                {successCount > 2 && <div>...and {successCount - 2} more</div>}
+              </div>
+              
+              <div className="mb-2 font-semibold text-red-700">❌ Failed ({failCount}):</div>
+              <div className="text-xs text-gray-700">
+                {results.failed.slice(0, 2).map((item, idx) => (
+                  <div key={idx} className="mb-1">
+                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  </div>
+                ))}
+                {failCount > 2 && <div>...and {failCount - 2} more failures</div>}
+              </div>
+            </div>
+          ),
+          duration: 10,
+          style: { width: 500 }
+        })
 
-      notification.success({
-        message: 'Plans Created!',
-        description: `Successfully created ${validPlans.length} production plans`,
-        duration: 3
-      })
+        // Remove successful plans from selection, keep failed ones for retry
+        const failedPlanIds = results.failed.map(item => {
+          const planId = Array.from(selectedRows)[item.index]
+          return planId
+        }).filter(Boolean)
+        
+        const newSelectedRows = new Set(failedPlanIds)
+        const newConversionPlans = {}
+        
+        failedPlanIds.forEach(planId => {
+          if (conversionPlans[planId]) {
+            newConversionPlans[planId] = conversionPlans[planId]
+          }
+        })
 
-      // Reset
-      setSelectedRows(new Set())
-      setConversionPlans({})
-      setPlanCounter(0)
-      // Clear saved state after successful creation
-      localStorage.removeItem('smartProductionState')
-      navigate('/production-plans')
+        setSelectedRows(newSelectedRows)
+        setConversionPlans(newConversionPlans)
+        
+        // Show retry option
+        Modal.confirm({
+          title: 'Retry Failed Plans?',
+          content: `${failCount} production plans failed. The failed plans remain selected for you to adjust and retry.`,
+          okText: 'Review & Retry',
+          cancelText: 'Discard Failed',
+          onOk: () => {
+            // User can review and retry - plans remain selected
+          },
+          onCancel: () => {
+            // Clear everything
+            setSelectedRows(new Set())
+            setConversionPlans({})
+            setPlanCounter(0)
+            localStorage.removeItem('smartProductionState')
+          }
+        })
+        
+      } else {
+        // All plans failed
+        notification.error({
+          message: `❌ Failed to Create Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2 font-semibold">All {totalCount} production plans failed:</div>
+              <div className="text-xs text-gray-700">
+                {results.failed.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="mb-1">
+                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  </div>
+                ))}
+                {failCount > 3 && <div>...and {failCount - 3} more failures</div>}
+              </div>
+              <div className="mt-2 text-xs text-gray-600">
+                Please check stock availability or adjust quantities and try again.
+              </div>
+            </div>
+          ),
+          duration: 10,
+          style: { width: 500 }
+        })
+      }
+
     } catch (error) {
+      console.error('Plan creation error:', error)
       notification.error({
         message: 'Failed to Create Plans',
-        description: error?.message || 'Some plans could not be created'
+        description: error?.message || 'An unexpected error occurred while creating production plans'
       })
     } finally {
       setIsCreatingPlans(false)

@@ -268,38 +268,172 @@ const TurboProductionPlanner = () => {
     }
 
     setLoading(true)
+    
+    // Track results for detailed reporting
+    const results = {
+      successful: [],
+      failed: []
+    }
+    
     try {
-      const plans = selectedItems.map(item => ({
-        quantity: quantities[item.id] || 1,
-        urgent: urgentItems.has(item.id),
-        convertToAlloyId: item.id,
-        note: notes,
-        presetName: selectedPreset,
-        createdBy: user?.id || user?.userId
-      }))
+      // Get full item details for selected items
+      const selectedItemDetails = selectedItems
+        .map(itemId => stockData.find(item => item.id === itemId))
+        .filter(Boolean)
 
-      if (plans.length === 1) {
-        await dispatch(createProductionPlan(plans[0])).unwrap()
-        message.success('Production plan created successfully!')
+      // Process plans sequentially with proper error tracking
+      for (let i = 0; i < selectedItemDetails.length; i++) {
+        const item = selectedItemDetails[i]
+        
+        try {
+          const planData = {
+            alloyId: item.id,
+            convertId: item.id, // For turbo planner, converting within same finish
+            quantity: quantities[item.id] || 1,
+            urgent: urgentItems.has(item.id),
+            userId: user?.id || user?.userId || 1,
+            presetName: selectedPreset,
+            notes: notes || ''
+          }
+          
+          // Create individual production plan
+          await dispatch(createProductionPlan(planData)).unwrap()
+          
+          results.successful.push({
+            index: i,
+            item: item,
+            productName: item.alloyName,
+            quantity: quantities[item.id] || 1,
+            urgent: urgentItems.has(item.id)
+          })
+          
+        } catch (error) {
+          results.failed.push({
+            index: i,
+            item: item,
+            productName: item.alloyName,
+            quantity: quantities[item.id] || 1,
+            error: error.message || 'Failed to create plan'
+          })
+        }
+      }
+      
+      // Show detailed notifications based on results
+      const successCount = results.successful.length
+      const failCount = results.failed.length
+      const totalCount = selectedItemDetails.length
+
+      if (failCount === 0) {
+        // All plans succeeded
+        notification.success({
+          message: `✅ Created ${successCount} Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2">All production plans created successfully!</div>
+              <div className="text-xs text-gray-600">
+                {results.successful.slice(0, 3).map((item, idx) => (
+                  <div key={idx}>
+                    • {item.productName} ({item.quantity} units){item.urgent ? ' 🔥 Urgent' : ''}
+                  </div>
+                ))}
+                {successCount > 3 && <div>...and {successCount - 3} more</div>}
+              </div>
+            </div>
+          ),
+          duration: 5
+        })
+
+        // Reset and navigate
+        handleClearSelection()
+        navigate('/turbo-production')
+        
+      } else if (successCount > 0) {
+        // Partial success - some succeeded, some failed
+        notification.warning({
+          message: `⚠️ Created ${successCount} of ${totalCount} Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2 font-semibold text-green-700">✅ Successful ({successCount}):</div>
+              <div className="text-xs mb-3 text-gray-700">
+                {results.successful.slice(0, 2).map((item, idx) => (
+                  <div key={idx}>
+                    • {item.productName} ({item.quantity} units)
+                  </div>
+                ))}
+                {successCount > 2 && <div>...and {successCount - 2} more</div>}
+              </div>
+              
+              <div className="mb-2 font-semibold text-red-700">❌ Failed ({failCount}):</div>
+              <div className="text-xs text-gray-700">
+                {results.failed.slice(0, 2).map((item, idx) => (
+                  <div key={idx} className="mb-1">
+                    • {item.productName} ({item.quantity} units)
+                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  </div>
+                ))}
+                {failCount > 2 && <div>...and {failCount - 2} more failures</div>}
+              </div>
+            </div>
+          ),
+          duration: 10,
+          style: { width: 500 }
+        })
+
+        // Remove successful items, keep failed ones for retry
+        const failedItemIds = results.failed.map(item => item.item.id)
+        setSelectedItems(failedItemIds)
+        
+        // Show retry option
+        Modal.confirm({
+          title: 'Retry Failed Plans?',
+          content: `${failCount} production plans failed. The failed items remain selected for you to adjust and retry.`,
+          okText: 'Review & Retry',
+          cancelText: 'Discard Failed',
+          onOk: () => {
+            // User can review and retry - items remain selected
+          },
+          onCancel: () => {
+            // Clear everything
+            handleClearSelection()
+          }
+        })
+        
       } else {
-        // Create plans individually since bulk API doesn't exist
-        const promises = plans.map(plan =>
-          dispatch(createProductionPlan(plan)).unwrap()
-        )
-        await Promise.all(promises)
-        message.success(`${plans.length} production plans created successfully!`)
+        // All plans failed
+        notification.error({
+          message: `❌ Failed to Create Production Plans`,
+          description: (
+            <div>
+              <div className="mb-2 font-semibold">All {totalCount} production plans failed:</div>
+              <div className="text-xs text-gray-700">
+                {results.failed.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="mb-1">
+                    • {item.productName} ({item.quantity} units)
+                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  </div>
+                ))}
+                {failCount > 3 && <div>...and {failCount - 3} more failures</div>}
+              </div>
+              <div className="mt-2 text-xs text-gray-600">
+                Please check stock availability or adjust quantities and try again.
+              </div>
+            </div>
+          ),
+          duration: 10,
+          style: { width: 500 }
+        })
       }
 
-      // Reset and go back to dashboard
-      handleClearSelection()
-      navigate('/turbo-production')
-
     } catch (error) {
-      message.error('Failed to create production plans')
+      console.error('Plan creation error:', error)
+      notification.error({
+        message: 'Failed to Create Plans',
+        description: error?.message || 'An unexpected error occurred while creating production plans'
+      })
     } finally {
       setLoading(false)
     }
-  }, [selectedItems, quantities, urgentItems, notes, selectedPreset, user, dispatch, navigate])
+  }, [selectedItems, quantities, urgentItems, notes, selectedPreset, user, dispatch, navigate, stockData, handleClearSelection])
 
   const handleQuickAdd = useCallback(() => {
     // Quick add logic - add first available item with default quantity

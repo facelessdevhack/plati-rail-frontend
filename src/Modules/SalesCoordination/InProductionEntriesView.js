@@ -166,44 +166,71 @@ const InProductionEntriesView = () => {
       ),
     },
     {
+      title: 'Stock Status',
+      key: 'stockStatus',
+      width: 150,
+      render: (_, record) => {
+        const inHouseStock = Number(record.inHouseStock) || 0;
+        const requiredQty = Number(record.quantity) || 0;
+        const hasStock = inHouseStock >= requiredQty;
+
+        return (
+          <div>
+            <Tag color={hasStock ? 'success' : 'warning'}>
+              {hasStock ? '✓ Stock Available' : '⚠ Insufficient'}
+            </Tag>
+            <div className="text-xs text-gray-600 mt-1">
+              Available: {inHouseStock}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       title: 'Action',
       key: 'action',
       width: 200,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Tooltip title={record.planCompleted ? 'Process this entry' : 'Production plan not yet completed'}>
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              loading={processingId === record.id}
-              onClick={() => handleProcessEntry(record.id)}
-              disabled={!record.planCompleted}
-            >
-              Process
-            </Button>
-          </Tooltip>
-          <Popconfirm
-            title="Are you sure you want to delete this entry?"
-            description="This will restore the production plan quantity and remove the entry."
-            onConfirm={() => handleDeleteEntry(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete this entry">
+      render: (_, record) => {
+        const inHouseStock = Number(record.inHouseStock) || 0;
+        const requiredQty = Number(record.quantity) || 0;
+        const hasStock = inHouseStock >= requiredQty;
+
+        return (
+          <Space>
+            <Tooltip title={hasStock ? 'Process this entry' : `Insufficient stock. Available: ${inHouseStock}, Required: ${requiredQty}`}>
               <Button
-                type="danger"
+                type="primary"
                 size="small"
-                icon={<DeleteOutlined />}
-                loading={deletingId === record.id}
+                icon={<CheckCircleOutlined />}
+                loading={processingId === record.id}
+                onClick={() => handleProcessEntry(record.id)}
+                disabled={!hasStock}
               >
-                Delete
+                Process
               </Button>
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+            <Popconfirm
+              title="Are you sure you want to delete this entry?"
+              description="This will restore the production plan quantity and remove the entry."
+              onConfirm={() => handleDeleteEntry(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Tooltip title="Delete this entry">
+                <Button
+                  type="danger"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  loading={deletingId === record.id}
+                >
+                  Delete
+                </Button>
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -231,7 +258,7 @@ const InProductionEntriesView = () => {
         dataSource={inProdEntries}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 1800 }}
+        scroll={{ x: 1950 }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
@@ -244,7 +271,8 @@ const InProductionEntriesView = () => {
         <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
           <li>These entries are linked to active production plans</li>
           <li>Production status shows total allocated quantity vs available quantity</li>
-          <li>Process button becomes active when production plan is completed</li>
+          <li>Process button becomes active when in-house stock is sufficient</li>
+          <li>Stock Status column shows real-time in-house stock availability</li>
           <li>System verifies stock availability before processing</li>
           <li>Multiple entries may be linked to the same production plan</li>
         </ul>
