@@ -51,7 +51,7 @@ import {
 import {
   createProductionPlan,
   getStepPresets,
-  getProductionPlansWithQuantities,
+  getProductionPlansForSmartPlanner,
   getSmartProductionSuggestions
 } from '../../redux/api/productionAPI'
 
@@ -170,6 +170,44 @@ const SmartProductionDashboard = () => {
         return '➡️ '
     }
   }
+  const fetchProductionData = async (alloyId = null) => {
+    try {
+      const params = {
+        page: 1,
+        limit: 1000
+      }
+
+      if (alloyId) {
+        params.alloyId = alloyId
+        console.log(
+          '🔍 Fetching production data for specific alloy ID:',
+          alloyId
+        )
+      } else {
+        console.log('🔍 Fetching production data for all alloys')
+      }
+
+      const result = await dispatch(
+        getProductionPlansForSmartPlanner(params)
+      ).unwrap()
+
+      console.log('📦 Frontend - API Result:', {
+        resultLength: result.productionPlans?.length || 0,
+        productionPlans: result.productionPlans,
+        summary: result.summary
+      })
+
+      setProductionData(result.productionPlans || [])
+
+      console.log(
+        '📋 Frontend - After setProductionData, length:',
+        result.productionPlans?.length || 0
+      )
+    } catch (error) {
+      console.error('Failed to fetch production data:', error)
+      setProductionData([])
+    }
+  }
 
   // Load initial data and restore state
   useEffect(() => {
@@ -179,22 +217,33 @@ const SmartProductionDashboard = () => {
     dispatch(getAllFinishes())
     dispatch(getStepPresets())
 
-    // Also fetch production data for expanded rows
-    const fetchProductionData = async () => {
+    // Example function to fetch production data for a specific alloy
+    const fetchProductionDataForAlloy = async alloyId => {
       try {
+        console.log('🔍 Fetching production data for alloy ID:', alloyId)
         const result = await dispatch(
-          getProductionPlansWithQuantities({
+          getProductionPlansForSmartPlanner({
             page: 1,
-            limit: 1000
+            limit: 1000,
+            alloyId: alloyId // Send alloyId parameter to backend
           })
         ).unwrap()
-        setProductionData(result.productionPlans || [])
+        console.log(
+          '📊 Production data for alloy',
+          alloyId,
+          ':',
+          result.productionPlans || []
+        )
+        return result.productionPlans || []
       } catch (error) {
-        console.error('Failed to fetch production data:', error)
-        setProductionData([])
+        console.error(
+          'Failed to fetch production data for alloy:',
+          alloyId,
+          error
+        )
+        return []
       }
     }
-    fetchProductionData()
 
     // Load panel state from localStorage
     const savedPanelState = localStorage.getItem('selectedPanelCollapsed')
@@ -496,7 +545,7 @@ const SmartProductionDashboard = () => {
       setLoadingProductionData(true)
       try {
         const result = await dispatch(
-          getProductionPlansWithQuantities({
+          getProductionPlansForSmartPlanner({
             page: 1,
             limit: 1000
           })
@@ -640,24 +689,10 @@ const SmartProductionDashboard = () => {
       relevantPlans.forEach(plan => {
         const targetFinish =
           plan.targetFinish || plan.convertName || 'Unknown Finish'
-        const dispatchAccepted =
-          plan.quantityTracking?.dispatchAcceptedQuantity || 0
-        const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
+        // Use backend-calculated values instead of recalculating
+        const dispatchAccepted = plan.totalDispatchAcceptedQuantity || 0
+        const pendingProd = plan.pendingQuantity || 0
         const planQuantity = plan.quantity || 0
-        const planStatus =
-          plan.quantityTracking?.completionStatus || plan.status || 'pending'
-
-        // Fix: Calculate pending production based on plan status
-        let pendingProd
-        if (planStatus === 'not_started' || planStatus === 'pending') {
-          // For not started plans, full quantity is pending
-          pendingProd = planQuantity
-        } else {
-          // For in-progress or completed plans, use existing logic
-          pendingProd =
-            plan.quantityTracking?.pendingProductionQuantity ||
-            allocatedQty - dispatchAccepted
-        }
 
         if (pendingProd > 0 || dispatchAccepted > 0) {
           if (!finishQuantities[targetFinish]) {
@@ -727,6 +762,7 @@ const SmartProductionDashboard = () => {
           plan.convertName === selectedAlloy.finish ||
           // Product name without finish matching
           plan.productName === selectedAlloy.productName
+        console.log(plan, 'PLANNNIGN')
 
         console.log('🔍 Checking plan:', {
           planId: plan.id,
@@ -774,25 +810,10 @@ const SmartProductionDashboard = () => {
       let completedQuantity = 0
 
       relevantPlans.forEach(plan => {
+        // Use backend-calculated values instead of recalculating
+        const dispatchAccepted = plan.totalDispatchAcceptedQuantity || 0
+        const pendingProd = plan.pendingQuantity || 0
         const planQuantity = plan.quantity || 0
-        console.log(plan, 'PLANNN')
-        const dispatchAccepted =
-          plan.quantityTracking?.dispatchAcceptedQuantity || 0
-        const allocatedQty = plan.quantityTracking?.allocatedQuantity || 0
-        const planStatus =
-          plan.quantityTracking?.completionStatus || plan.status || 'pending'
-
-        // Fix: Calculate pending production based on plan status
-        let pendingProd
-        if (planStatus === 'not_started' || planStatus === 'pending') {
-          // For not started plans, full quantity is pending
-          pendingProd = planQuantity
-        } else {
-          // For in-progress or completed plans, use existing logic
-          pendingProd =
-            plan.quantityTracking?.pendingProductionQuantity ||
-            allocatedQty - dispatchAccepted
-        }
 
         const completed = dispatchAccepted
 
@@ -955,18 +976,18 @@ const SmartProductionDashboard = () => {
     }
 
     setIsCreatingPlans(true)
-    
+
     // Track results for detailed reporting
     const results = {
       successful: [],
       failed: []
     }
-    
+
     try {
       // Process plans sequentially with proper error tracking
       for (let i = 0; i < validPlans.length; i++) {
         const plan = validPlans[i]
-        
+
         try {
           // Find the target alloy ID based on the selected target finish
           const availableFinishes = getAvailableTargetFinishes(plan.sourceAlloy)
@@ -988,10 +1009,10 @@ const SmartProductionDashboard = () => {
             userId: user?.id || 1,
             presetName: null
           }
-          
+
           // Create individual production plan
           await dispatch(createProductionPlan(planData)).unwrap()
-          
+
           results.successful.push({
             index: i,
             plan: plan,
@@ -999,7 +1020,6 @@ const SmartProductionDashboard = () => {
             targetFinish: plan.targetFinish,
             quantity: plan.quantity
           })
-          
         } catch (error) {
           results.failed.push({
             index: i,
@@ -1011,7 +1031,7 @@ const SmartProductionDashboard = () => {
           })
         }
       }
-      
+
       // Show detailed notifications based on results
       const successCount = results.successful.length
       const failCount = results.failed.length
@@ -1023,11 +1043,14 @@ const SmartProductionDashboard = () => {
           message: `✅ Created ${successCount} Production Plans`,
           description: (
             <div>
-              <div className="mb-2">All production plans created successfully!</div>
-              <div className="text-xs text-gray-600">
+              <div className='mb-2'>
+                All production plans created successfully!
+              </div>
+              <div className='text-xs text-gray-600'>
                 {results.successful.slice(0, 3).map((item, idx) => (
                   <div key={idx}>
-                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                    • {item.productName} → {item.targetFinish} ({item.quantity}{' '}
+                    units)
                   </div>
                 ))}
                 {successCount > 3 && <div>...and {successCount - 3} more</div>}
@@ -1043,32 +1066,41 @@ const SmartProductionDashboard = () => {
         setPlanCounter(0)
         localStorage.removeItem('smartProductionState')
         navigate('/production-plans')
-        
       } else if (successCount > 0) {
         // Partial success - some succeeded, some failed
         notification.warning({
           message: `⚠️ Created ${successCount} of ${totalCount} Production Plans`,
           description: (
             <div>
-              <div className="mb-2 font-semibold text-green-700">✅ Successful ({successCount}):</div>
-              <div className="text-xs mb-3 text-gray-700">
+              <div className='mb-2 font-semibold text-green-700'>
+                ✅ Successful ({successCount}):
+              </div>
+              <div className='text-xs mb-3 text-gray-700'>
                 {results.successful.slice(0, 2).map((item, idx) => (
                   <div key={idx}>
-                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
+                    • {item.productName} → {item.targetFinish} ({item.quantity}{' '}
+                    units)
                   </div>
                 ))}
                 {successCount > 2 && <div>...and {successCount - 2} more</div>}
               </div>
-              
-              <div className="mb-2 font-semibold text-red-700">❌ Failed ({failCount}):</div>
-              <div className="text-xs text-gray-700">
+
+              <div className='mb-2 font-semibold text-red-700'>
+                ❌ Failed ({failCount}):
+              </div>
+              <div className='text-xs text-gray-700'>
                 {results.failed.slice(0, 2).map((item, idx) => (
-                  <div key={idx} className="mb-1">
-                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
-                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  <div key={idx} className='mb-1'>
+                    • {item.productName} → {item.targetFinish} ({item.quantity}{' '}
+                    units)
+                    <div className='text-red-600 ml-3'>
+                      Reason: {item.error}
+                    </div>
                   </div>
                 ))}
-                {failCount > 2 && <div>...and {failCount - 2} more failures</div>}
+                {failCount > 2 && (
+                  <div>...and {failCount - 2} more failures</div>
+                )}
               </div>
             </div>
           ),
@@ -1077,14 +1109,16 @@ const SmartProductionDashboard = () => {
         })
 
         // Remove successful plans from selection, keep failed ones for retry
-        const failedPlanIds = results.failed.map(item => {
-          const planId = Array.from(selectedRows)[item.index]
-          return planId
-        }).filter(Boolean)
-        
+        const failedPlanIds = results.failed
+          .map(item => {
+            const planId = Array.from(selectedRows)[item.index]
+            return planId
+          })
+          .filter(Boolean)
+
         const newSelectedRows = new Set(failedPlanIds)
         const newConversionPlans = {}
-        
+
         failedPlanIds.forEach(planId => {
           if (conversionPlans[planId]) {
             newConversionPlans[planId] = conversionPlans[planId]
@@ -1093,7 +1127,7 @@ const SmartProductionDashboard = () => {
 
         setSelectedRows(newSelectedRows)
         setConversionPlans(newConversionPlans)
-        
+
         // Show retry option
         Modal.confirm({
           title: 'Retry Failed Plans?',
@@ -1111,25 +1145,32 @@ const SmartProductionDashboard = () => {
             localStorage.removeItem('smartProductionState')
           }
         })
-        
       } else {
         // All plans failed
         notification.error({
           message: `❌ Failed to Create Production Plans`,
           description: (
             <div>
-              <div className="mb-2 font-semibold">All {totalCount} production plans failed:</div>
-              <div className="text-xs text-gray-700">
+              <div className='mb-2 font-semibold'>
+                All {totalCount} production plans failed:
+              </div>
+              <div className='text-xs text-gray-700'>
                 {results.failed.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="mb-1">
-                    • {item.productName} → {item.targetFinish} ({item.quantity} units)
-                    <div className="text-red-600 ml-3">Reason: {item.error}</div>
+                  <div key={idx} className='mb-1'>
+                    • {item.productName} → {item.targetFinish} ({item.quantity}{' '}
+                    units)
+                    <div className='text-red-600 ml-3'>
+                      Reason: {item.error}
+                    </div>
                   </div>
                 ))}
-                {failCount > 3 && <div>...and {failCount - 3} more failures</div>}
+                {failCount > 3 && (
+                  <div>...and {failCount - 3} more failures</div>
+                )}
               </div>
-              <div className="mt-2 text-xs text-gray-600">
-                Please check stock availability or adjust quantities and try again.
+              <div className='mt-2 text-xs text-gray-600'>
+                Please check stock availability or adjust quantities and try
+                again.
               </div>
             </div>
           ),
@@ -1137,12 +1178,13 @@ const SmartProductionDashboard = () => {
           style: { width: 500 }
         })
       }
-
     } catch (error) {
       console.error('Plan creation error:', error)
       notification.error({
         message: 'Failed to Create Plans',
-        description: error?.message || 'An unexpected error occurred while creating production plans'
+        description:
+          error?.message ||
+          'An unexpected error occurred while creating production plans'
       })
     } finally {
       setIsCreatingPlans(false)
@@ -1212,32 +1254,37 @@ const SmartProductionDashboard = () => {
   )
 
   // Toggle row expansion
-  const toggleRowExpansion = useCallback(alloyId => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(alloyId)) {
-        newSet.delete(alloyId)
-      } else {
-        newSet.add(alloyId)
-      }
-
-      // Reset the virtual list after expansion state changes to prevent overlapping
-      setTimeout(() => {
-        if (
-          listRef.current &&
-          typeof listRef.current.resetAfterIndex === 'function'
-        ) {
-          try {
-            listRef.current.resetAfterIndex(0)
-          } catch (error) {
-            console.warn('Failed to reset list after row expansion:', error)
-          }
+  const toggleRowExpansion = useCallback(
+    async alloyId => {
+      setExpandedRows(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(alloyId)) {
+          newSet.delete(alloyId)
+        } else {
+          newSet.add(alloyId)
+          // Fetch production data for this specific alloy when expanding
+          fetchProductionData(alloyId)
         }
-      }, 0)
 
-      return newSet
-    })
-  }, [])
+        // Reset the virtual list after expansion state changes to prevent overlapping
+        setTimeout(() => {
+          if (
+            listRef.current &&
+            typeof listRef.current.resetAfterIndex === 'function'
+          ) {
+            try {
+              listRef.current.resetAfterIndex(0)
+            } catch (error) {
+              console.warn('Failed to reset list after row expansion:', error)
+            }
+          }
+        }, 0)
+
+        return newSet
+      })
+    },
+    [fetchProductionData]
+  )
 
   // Add finish directly from expanded row
   const handleAddFinishFromExpanded = useCallback(
@@ -1565,6 +1612,7 @@ const SmartProductionDashboard = () => {
                     ? getAllProductionDataForAlloy(finishAlloy, productionData)
                     : null
 
+                console.log(finishProductionData, 'finishePd')
                 const isAlreadyAdded = selectedFinishes.includes(finish.value)
 
                 return (

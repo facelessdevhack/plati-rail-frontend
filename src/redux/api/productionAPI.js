@@ -9,7 +9,7 @@ const USE_MOCK_DATA = false
 export const getProductionPlansWithQuantities = createAsyncThunk(
   'production/getProductionPlansWithQuantities',
   async (
-    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null },
+    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null, alloyId = null },
     { rejectWithValue }
   ) => {
     try {
@@ -21,6 +21,7 @@ export const getProductionPlansWithQuantities = createAsyncThunk(
       if (search) params.append('search', search)
       if (urgent !== '') params.append('urgent', urgent)
       if (status) params.append('status', status)
+      if (alloyId) params.append('alloyId', alloyId.toString())
       if (dateRange && dateRange.length === 2) {
         params.append('startDate', dateRange[0])
         params.append('endDate', dateRange[1])
@@ -35,7 +36,51 @@ export const getProductionPlansWithQuantities = createAsyncThunk(
           }
         }
       )
-      
+
+      return {
+        productionPlans: response.data.productionPlans || [],
+        pagination: response.data.pagination || {},
+        summary: response.data.summary || {},
+        totalCount: response.data.pagination?.totalCount || 0,
+        currentPage: response.data.pagination?.currentPage || page,
+        pageSize: response.data.pagination?.pageSize || limit
+      }
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+// Get production plans for smart planner (optimized for smart production dashboard)
+export const getProductionPlansForSmartPlanner = createAsyncThunk(
+  'production/getProductionPlansForSmartPlanner',
+  async (
+    { page = 1, limit = 10, search = '', urgent = '', status = '', startDate = '', endDate = '', alloyId = null },
+    { rejectWithValue }
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      })
+
+      if (search) params.append('search', search)
+      if (urgent !== '') params.append('urgent', urgent)
+      if (status) params.append('status', status)
+      if (alloyId) params.append('alloyId', alloyId.toString())
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+
+      const response = await client.get(
+        `/production/plans-for-smart-planner?${params}&_t=${Date.now()}`,
+        {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
+      )
+
       return {
         productionPlans: response.data.productionPlans || [],
         pagination: response.data.pagination || {},
