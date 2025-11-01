@@ -93,9 +93,7 @@ const DispatchEntriesView = () => {
     // Filter entries for today (using IST)
     const todayEntries = dispatchEntries.filter(entry => {
       // Use IST date from backend if available, otherwise convert to IST
-      const entryDate = entry.date
-        ? moment(entry.date)
-        : moment.utc(entry.date).utcOffset('+05:30')
+      const entryDate = moment(entry.date)
       return entryDate.format('YYYY-MM-DD') === today
     })
 
@@ -284,10 +282,7 @@ const DispatchEntriesView = () => {
           groupedByDealer[dealerName].forEach(entry => {
             // Use IST date from backend if available, otherwise convert to IST
             const formattedDate = entry.date
-              ? moment
-                  .utc(entry.date)
-                  .utcOffset('+05:30')
-                  .format('DD MMM YYYY HH:mm')
+              ? moment.utc(entry.date).format('DD MMM YYYY HH:mm')
               : 'N/A'
             const product = entry.productName || 'N/A'
             const quantity = entry.quantity || 0
@@ -356,8 +351,8 @@ const DispatchEntriesView = () => {
       render: (date, record) => {
         if (!date) return 'N/A'
         // Use IST date from backend if available, otherwise convert to IST
-        const istDate = moment.utc(date).utcOffset('+05:30')
-        return istDate.format('DD MMM YYYY HH:mm')
+        const istDate = moment(date).format('DD MMM YYYY HH:mm')
+        return istDate
       }
     },
     {
