@@ -84,9 +84,32 @@ const DispatchEntriesView = () => {
       return
     }
 
+    exportToPDF(dispatchEntries, 'Dispatch Entries Report')
+  }
+
+  const handleExportTodayEntries = () => {
+    const today = moment().format('YYYY-MM-DD')
+
+    // Filter entries for today (using IST)
+    const todayEntries = dispatchEntries.filter(entry => {
+      const entryDate = moment
+        .utc(entry.date || entry.created_at)
+        .utcOffset('+05:30')
+      return entryDate.format('YYYY-MM-DD') === today
+    })
+
+    if (todayEntries.length === 0) {
+      message.warning('No dispatch entries found for today')
+      return
+    }
+
+    exportToPDF(todayEntries, `Today's Dispatch Entries`)
+  }
+
+  const exportToPDF = (entries, reportTitle) => {
     try {
       // Group entries by dealer
-      const groupedByDealer = dispatchEntries.reduce((groups, entry) => {
+      const groupedByDealer = entries.reduce((groups, entry) => {
         const dealerName = entry.dealerName || 'Unknown Dealer'
         if (!groups[dealerName]) {
           groups[dealerName] = []
@@ -99,11 +122,12 @@ const DispatchEntriesView = () => {
       let htmlContent = `
         <html>
           <head>
-            <title>Dispatch Entries - ${moment().format('DD MMM YYYY')}</title>
+            <title>${reportTitle} - ${moment().format('DD MMM YYYY')}</title>
             <style>
               @page {
-                size: A6;
+                size: A4;
                 margin: 10mm;
+                orientation: portrait;
               }
               body {
                 font-family: Arial, sans-serif;
@@ -111,8 +135,8 @@ const DispatchEntriesView = () => {
                 margin: 0;
                 padding: 8px;
                 color: #000;
-                width: 148mm;
-                height: 105mm;
+                width: 100%;
+                max-width: 100%;
                 box-sizing: border-box;
               }
               h1 {
@@ -123,7 +147,7 @@ const DispatchEntriesView = () => {
                 font-weight: bold;
               }
               .dealer-section {
-                margin-bottom: 15px;
+                margin-bottom: 20px;
                 page-break-inside: avoid;
               }
               .dealer-title {
@@ -141,11 +165,13 @@ const DispatchEntriesView = () => {
                 border-collapse: collapse;
                 margin-bottom: 12px;
                 font-size: 18px;
+                table-layout: fixed;
               }
               th, td {
                 border: 1px solid #ddd;
                 padding: 4px 6px;
                 text-align: left;
+                word-wrap: break-word;
               }
               th {
                 background-color: #f8f9fa;
@@ -157,13 +183,23 @@ const DispatchEntriesView = () => {
                 background-color: #f9f9f9;
               }
               .date-col {
-                width: 30%;
+                width: 20%;
               }
               .product-col {
-                width: 50%;
+                width: 45%;
               }
               .quantity-col {
-                width: 20%;
+                width: 15%;
+                text-align: center;
+                font-weight: bold;
+              }
+              .stock-col {
+                width: 15%;
+                text-align: center;
+                font-weight: bold;
+              }
+              .transport-col {
+                width: 5%;
                 text-align: center;
                 font-weight: bold;
               }
@@ -218,7 +254,7 @@ const DispatchEntriesView = () => {
             </style>
           </head>
           <body>
-            <h1>Dispatch Entries Report - ${moment().format('DD MMM YYYY')}</h1>
+            <h1>${reportTitle} - ${moment().format('DD MMM YYYY')}</h1>
       `
 
       Object.keys(groupedByDealer).forEach(dealerName => {
@@ -231,6 +267,7 @@ const DispatchEntriesView = () => {
                       <th class="date-col">Date</th>
                       <th class="product-col">Product</th>
                       <th class="quantity-col">Quantity</th>
+                      <th class="transport-col"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -239,20 +276,29 @@ const DispatchEntriesView = () => {
         if (groupedByDealer[dealerName].length === 0) {
           htmlContent += `
                     <tr>
-                      <td colspan="3" class="no-entries">No entries found</td>
+                      <td colspan="6" class="no-entries">No entries found</td>
                     </tr>
           `
         } else {
           groupedByDealer[dealerName].forEach(entry => {
-            const formattedDate = entry.date ? moment.utc(entry.date).local().format('DD MMM YYYY HH:mm') : 'N/A'
+            const formattedDate = entry.date
+              ? moment
+                  .utc(entry.date)
+                  .utcOffset('+05:30')
+                  .format('DD MMM YYYY HH:mm')
+              : 'N/A'
             const product = entry.productName || 'N/A'
             const quantity = entry.quantity || 0
+            const transportPaid = entry.isTransportPaid ? 'Paid' : 'To Pay'
 
             htmlContent += `
                       <tr>
                         <td>${formattedDate}</td>
                         <td>${product}</td>
                         <td>${quantity}</td>
+                        <td style="color: ${
+                          entry.isTransportPaid ? '#52c41a' : '#ff4d4f'
+                        }; font-weight: bold;">${transportPaid}</td>
                       </tr>
             `
           })
@@ -273,7 +319,7 @@ const DispatchEntriesView = () => {
       // Create a temporary iframe to print the content
       const printWindow = window.open('', '_blank', 'width=800,height=600')
       printWindow.document.write(htmlContent)
-      printWindow.document.title = `Dispatch Entries - ${moment().format(
+      printWindow.document.title = `${reportTitle} - ${moment().format(
         'DD MMM YYYY'
       )}`
       printWindow.document.close()
@@ -307,9 +353,9 @@ const DispatchEntriesView = () => {
       width: 150,
       render: date => {
         if (!date) return 'N/A'
-        // Handle different date formats and ensure proper local time display
-        const localDate = moment.utc(date).local()
-        return localDate.format('DD MMM YYYY HH:mm')
+        // Convert to Indian Standard Time (UTC+5:30)
+        const istDate = moment.utc(date).utcOffset('+05:30')
+        return istDate.format('DD MMM YYYY HH:mm')
       }
     },
     {
@@ -330,6 +376,25 @@ const DispatchEntriesView = () => {
       key: 'quantity',
       width: 100,
       align: 'center'
+    },
+    {
+      title: 'Transport Paid',
+      dataIndex: 'isTransportPaid',
+      key: 'isTransportPaid',
+      width: 120,
+      align: 'center',
+      render: isTransportPaid => {
+        return (
+          <span
+            style={{
+              color: isTransportPaid ? '#52c41a' : '#ff4d4f',
+              fontWeight: 'bold'
+            }}
+          >
+            {isTransportPaid ? 'Paid' : 'To Pay'}
+          </span>
+        )
+      }
     },
     {
       title: 'Status',
@@ -396,7 +461,14 @@ const DispatchEntriesView = () => {
             onClick={handleExportDispatchEntries}
             disabled={dispatchEntries.length === 0}
           >
-            Export
+            Export All
+          </Button>
+          <Button
+            type='default'
+            icon={<ExportOutlined />}
+            onClick={handleExportTodayEntries}
+          >
+            Export Today
           </Button>
           <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh
@@ -412,7 +484,7 @@ const DispatchEntriesView = () => {
         dataSource={dispatchEntries}
         rowKey='id'
         loading={loading}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1400 }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,

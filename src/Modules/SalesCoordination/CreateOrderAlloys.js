@@ -12,7 +12,7 @@ import {
 } from '../../redux/slices/entry.slice';
 import { addCoordinatedEntryAPI, getAllCoordinationEntriesAPI, deletePendingEntryAPI, deleteDispatchEntryAPI } from '../../redux/api/entriesAPI';
 import moment from 'moment';
-import { Table, Tag, Space, message, Popconfirm } from 'antd';
+import { Table, Tag, Space, message, Popconfirm, Checkbox } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const CreateOrderAlloys = () => {
@@ -159,6 +159,20 @@ const CreateOrderAlloys = () => {
       align: 'center',
     },
     {
+      title: 'Transport Paid',
+      dataIndex: 'isTransportPaid',
+      key: 'isTransportPaid',
+      width: 120,
+      align: 'center',
+      render: (isTransportPaid) => {
+        return (
+          <Tag color={isTransportPaid ? 'green' : 'red'}>
+            {isTransportPaid ? 'Yes' : 'No'}
+          </Tag>
+        );
+      },
+    },
+    {
       title: 'Status',
       dataIndex: 'entryStatus',
       key: 'entryStatus',
@@ -276,6 +290,21 @@ const CreateOrderAlloys = () => {
               }
               placeholder="Enter quantity"
             />
+          </div>
+          <div>
+            <div className="mb-2 font-medium">Transport Paid</div>
+            <Checkbox
+              checked={entry.isTransportPaid || false}
+              onChange={(e) =>
+                dispatch(
+                  setEntry({
+                    isTransportPaid: e.target.checked,
+                  })
+                )
+              }
+            >
+              Transport charges are paid
+            </Checkbox>
           </div>
           <div className="flex gap-3 mt-5">
             <Button

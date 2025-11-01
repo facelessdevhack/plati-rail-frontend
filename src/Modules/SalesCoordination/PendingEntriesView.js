@@ -20,7 +20,30 @@ const PendingEntriesView = () => {
     setLoading(true);
     try {
       const response = await dispatch(getPendingEntriesAPI()).unwrap();
-      setPendingEntries(response.pendingEntries || []);
+      const entries = response.pendingEntries || [];
+
+      // Sort entries: processable entries first, then by date (newest first)
+      const sortedEntries = [...entries].sort((a, b) => {
+        const aStock = a.inHouseStock || 0;
+        const aQuantity = a.quantity || 0;
+        const bStock = b.inHouseStock || 0;
+        const bQuantity = b.quantity || 0;
+
+        const aCanProcess = aStock >= aQuantity;
+        const bCanProcess = bStock >= bQuantity;
+
+        // If one can be processed and the other can't, prioritize the processable one
+        if (aCanProcess !== bCanProcess) {
+          return bCanProcess ? 1 : -1; // bCanProcess true means b should come first
+        }
+
+        // If both can be processed or both can't, sort by date (newest first, using IST)
+        const aDate = moment.utc(a.date || a.created_at || 0).utcOffset('+05:30');
+        const bDate = moment.utc(b.date || b.created_at || 0).utcOffset('+05:30');
+        return bDate - aDate; // Newest first
+      });
+
+      setPendingEntries(sortedEntries);
     } catch (error) {
       console.error('Error fetching pending entries:', error);
       message.error('Failed to load pending entries');
@@ -85,7 +108,12 @@ const PendingEntriesView = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: (date) => moment(date).format('DD MMM YYYY HH:mm'),
+      render: date => {
+        if (!date) return 'N/A'
+        // Convert to Indian Standard Time (UTC+5:30)
+        const istDate = moment.utc(date).utcOffset('+05:30')
+        return istDate.format('DD MMM YYYY HH:mm')
+      }
     },
     {
       title: 'Dealer',
@@ -106,34 +134,71 @@ const PendingEntriesView = () => {
       width: 100,
       align: 'center',
     },
+    {
+      title: 'Current Stock',
+      dataIndex: 'inHouseStock',
+      key: 'inHouseStock',
+      width: 120,
+      align: 'center',
+      render: (stock) => {
+        const stockValue = stock || 0
+        return (
+          <span style={{
+            color: stockValue > 0 ? '#52c41a' : '#ff4d4f',
+            fontWeight: 'bold'
+          }}>
+            {stockValue}
+          </span>
+        )
+      }
+    },
+    {
+      title: 'Status',
+      dataIndex: 'pendingStatus',
+      key: 'pendingStatus',
+      width: 150,
+      render: status => (
+        <Tag icon={<ClockCircleOutlined />} color='processing'>
+          {status === 'awaiting_stock' ? 'Awaiting Stock' : status}
+        </Tag>
+      )
+    },
                 {
       title: 'Action',
       key: 'action',
       width: 200,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<CheckCircleOutlined />}
-            loading={processingId === record.id}
-            onClick={() => handleProcessEntry(record.id)}
-          >
-            Process
-          </Button>
-          <Button
-            type="primary"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            loading={deletingId === record.id}
-            onClick={() => handleDeleteEntry(record.id)}
-          >
-            Delete
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {
+        const currentStock = record.inHouseStock || 0
+        const requiredQuantity = record.quantity || 0
+        const hasEnoughStock = currentStock >= requiredQuantity
+
+        return (
+          <Space>
+            <Button
+              type="primary"
+              size="small"
+              icon={<CheckCircleOutlined />}
+              loading={processingId === record.id}
+              disabled={!hasEnoughStock}
+              onClick={() => handleProcessEntry(record.id)}
+              title={hasEnoughStock ? 'Process this entry' : `Insufficient stock: need ${requiredQuantity}, have ${currentStock}`}
+            >
+              Process
+            </Button>
+            <Button
+              type="primary"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+              onClick={() => handleDeleteEntry(record.id)}
+            >
+              Delete
+            </Button>
+          </Space>
+        )
+      },
     },
   ];
 
@@ -161,7 +226,7 @@ const PendingEntriesView = () => {
         dataSource={pendingEntries}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1600 }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
