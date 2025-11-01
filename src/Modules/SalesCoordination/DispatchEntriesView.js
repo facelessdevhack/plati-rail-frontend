@@ -345,8 +345,8 @@ const DispatchEntriesView = () => {
     },
     {
       title: 'Date',
-      dataIndex: 'date',
-      key: 'date',
+      dataIndex: 'dateIST',
+      key: 'dateIST',
       width: 150,
       render: (date, record) => {
         if (!date) return 'N/A'
