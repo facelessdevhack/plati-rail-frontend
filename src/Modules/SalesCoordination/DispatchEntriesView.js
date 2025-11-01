@@ -244,7 +244,7 @@ const DispatchEntriesView = () => {
           `
         } else {
           groupedByDealer[dealerName].forEach(entry => {
-            const formattedDate = moment(entry.date).format('DD MMM YYYY HH:mm')
+            const formattedDate = entry.date ? moment.utc(entry.date).local().format('DD MMM YYYY HH:mm') : 'N/A'
             const product = entry.productName || 'N/A'
             const quantity = entry.quantity || 0
 
@@ -305,7 +305,12 @@ const DispatchEntriesView = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: date => moment(date).format('DD MMM YYYY HH:mm')
+      render: date => {
+        if (!date) return 'N/A'
+        // Handle different date formats and ensure proper local time display
+        const localDate = moment.utc(date).local()
+        return localDate.format('DD MMM YYYY HH:mm')
+      }
     },
     {
       title: 'Dealer',
