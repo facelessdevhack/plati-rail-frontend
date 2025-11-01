@@ -38,8 +38,8 @@ const PendingEntriesView = () => {
         }
 
         // If both can be processed or both can't, sort by date (newest first, using IST)
-        const aDate = moment.utc(a.date || a.created_at || 0).utcOffset('+05:30');
-        const bDate = moment.utc(b.date || b.created_at || 0).utcOffset('+05:30');
+        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at || 0).utcOffset('+05:30');
+        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at || 0).utcOffset('+05:30');
         return bDate - aDate; // Newest first
       });
 
@@ -108,10 +108,10 @@ const PendingEntriesView = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: date => {
+      render: (date, record) => {
         if (!date) return 'N/A'
-        // Convert to Indian Standard Time (UTC+5:30)
-        const istDate = moment.utc(date).utcOffset('+05:30')
+        // Use IST date from backend if available, otherwise convert to IST
+        const istDate = record.dateIST ? moment(record.dateIST) : moment.utc(date).utcOffset('+05:30')
         return istDate.format('DD MMM YYYY HH:mm')
       }
     },

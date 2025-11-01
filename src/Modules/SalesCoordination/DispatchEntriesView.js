@@ -92,7 +92,8 @@ const DispatchEntriesView = () => {
 
     // Filter entries for today (using IST)
     const todayEntries = dispatchEntries.filter(entry => {
-      const entryDate = moment
+      // Use IST date from backend if available, otherwise convert to IST
+      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment
         .utc(entry.date || entry.created_at)
         .utcOffset('+05:30')
       return entryDate.format('YYYY-MM-DD') === today
@@ -281,11 +282,14 @@ const DispatchEntriesView = () => {
           `
         } else {
           groupedByDealer[dealerName].forEach(entry => {
+            // Use IST date from backend if available, otherwise convert to IST
             const formattedDate = entry.date
-              ? moment
-                  .utc(entry.date)
-                  .utcOffset('+05:30')
-                  .format('DD MMM YYYY HH:mm')
+              ? entry.dateIST
+                ? moment(entry.dateIST).format('DD MMM YYYY HH:mm')
+                : moment
+                    .utc(entry.date)
+                    .utcOffset('+05:30')
+                    .format('DD MMM YYYY HH:mm')
               : 'N/A'
             const product = entry.productName || 'N/A'
             const quantity = entry.quantity || 0
@@ -351,10 +355,10 @@ const DispatchEntriesView = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: date => {
+      render: (date, record) => {
         if (!date) return 'N/A'
-        // Convert to Indian Standard Time (UTC+5:30)
-        const istDate = moment.utc(date).utcOffset('+05:30')
+        // Use IST date from backend if available, otherwise convert to IST
+        const istDate = record.dateIST ? moment(record.dateIST) : moment.utc(date).utcOffset('+05:30')
         return istDate.format('DD MMM YYYY HH:mm')
       }
     },
