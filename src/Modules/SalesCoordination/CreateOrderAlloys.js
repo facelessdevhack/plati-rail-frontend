@@ -311,7 +311,7 @@ const CreateOrderAlloys = () => {
       } else {
         sortedEntries.forEach(entry => {
           const formattedDate = entry.date
-            ? moment(entry.date).format('DD MMM YYYY HH:mm')
+            ? moment(entry.date).format('DD MMM YYYY hh:mm A')
             : 'N/A';
           const dealer = entry.dealerName || 'N/A';
           const product = entry.productName || 'N/A';
@@ -374,7 +374,7 @@ const CreateOrderAlloys = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: (date) => moment(date).format('DD MMM YYYY HH:mm'),
+      render: (date) => moment(date).format('DD MMM YYYY hh:mm A'),
     },
     {
       title: 'Dealer',
