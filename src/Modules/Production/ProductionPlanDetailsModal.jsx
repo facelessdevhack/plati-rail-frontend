@@ -15,7 +15,8 @@ import {
   Typography,
   Space,
   Spin,
-  Alert
+  Alert,
+  Tabs
 } from 'antd'
 import {
   ClockCircleOutlined,
@@ -32,11 +33,13 @@ import {
 } from '@ant-design/icons'
 import moment from 'moment'
 import { useDispatch, useSelector } from 'react-redux'
-import { getProductionPlanDetails } from '../../redux/api/productionAPI'
+import { getProductionPlanDetails, getJobCardStepProgress } from '../../redux/api/productionAPI'
 import JobCardCreationModal from './JobCardCreationModal'
+import StepManagementView from './StepManagementView'
 
 const { Title, Text } = Typography
 const { Step } = Steps
+const { TabPane } = Tabs
 
 const ProductionPlanDetailsModal = ({ 
   visible, 
@@ -49,21 +52,26 @@ const ProductionPlanDetailsModal = ({
   const [planDetails, setPlanDetails] = useState(null)
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
   const [selectedPlanForJobCard, setSelectedPlanForJobCard] = useState(null)
+  const [qualityTrackingData, setQualityTrackingData] = useState([])
+  const [qualityLoading, setQualityLoading] = useState(false)
 
   // Load plan details when modal opens
   useEffect(() => {
     if (visible && planId) {
-      fetchPlanDetails()
+      loadPlanData()
     }
   }, [visible, planId])
 
-  const fetchPlanDetails = async () => {
+  const loadPlanData = async () => {
     setLoading(true)
     try {
       // Try to fetch detailed plan data from API
       if (planId) {
         const response = await dispatch(getProductionPlanDetails(planId)).unwrap()
         setPlanDetails(response.planDetails)
+
+        // Fetch quality tracking with the job cards from response
+        await fetchQualityTrackingWithJobCards(response.planDetails?.jobCards || [])
       } else {
         // Fallback to planData passed from listing
         setPlanDetails(planData)
@@ -74,6 +82,81 @@ const ProductionPlanDetailsModal = ({
       setPlanDetails(planData)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchQualityTrackingWithJobCards = async (jobCards) => {
+    setQualityLoading(true)
+    try {
+      console.log('📊 Quality Tracking Debug:', {
+        planId,
+        totalJobCards: jobCards.length,
+        jobCards: jobCards.map(jc => ({
+          id: jc.id,
+          jobCardId: jc.jobCardId,
+          quantity: jc.quantity,
+          completedSteps: jc.completedStepsCount
+        }))
+      })
+
+      // If no job cards, set empty data
+      if (jobCards.length === 0) {
+        console.log('⚠️ No job cards found for this production plan')
+        setQualityTrackingData([])
+        return
+      }
+
+      // Fetch quality data for all job cards and aggregate
+      const allStepProgress = []
+
+      for (const jobCard of jobCards) {
+        try {
+          // Use jobCardId or id, whichever is available
+          const cardId = jobCard.jobCardId || jobCard.id
+          console.log(`🔄 Fetching step progress for job card ${cardId}...`)
+          const stepResponse = await dispatch(getJobCardStepProgress(cardId)).unwrap()
+          const steps = stepResponse.data || []
+          console.log(`✅ Job card ${cardId}: ${steps.length} steps found`, steps)
+          allStepProgress.push(...steps)
+        } catch (error) {
+          const cardId = jobCard.jobCardId || jobCard.id
+          console.error(`❌ Error fetching step progress for job card ${cardId}:`, error)
+        }
+      }
+
+      console.log('📈 Total step progress entries:', allStepProgress.length)
+
+      // Aggregate by step
+      const aggregatedSteps = allStepProgress.reduce((acc, step) => {
+        const key = `${step.stepOrder}-${step.stepName}`
+        if (!acc[key]) {
+          acc[key] = {
+            ...step,
+            id: `aggregated-${step.stepOrder}`,
+            inputQuantity: 0,
+            acceptedQuantity: 0,
+            rejectedQuantity: 0,
+            pendingQuantity: 0,
+            reworkQuantity: 0
+          }
+        }
+
+        acc[key].inputQuantity += step.inputQuantity || 0
+        acc[key].acceptedQuantity += step.acceptedQuantity || 0
+        acc[key].rejectedQuantity += step.rejectedQuantity || 0
+        acc[key].pendingQuantity += step.pendingQuantity || 0
+        acc[key].reworkQuantity += step.reworkQuantity || 0
+
+        return acc
+      }, {})
+
+      const aggregatedData = Object.values(aggregatedSteps).sort((a, b) => a.stepOrder - b.stepOrder)
+      console.log('📊 Aggregated quality data:', aggregatedData)
+      setQualityTrackingData(aggregatedData)
+    } catch (error) {
+      console.error('❌ Error fetching quality tracking data:', error)
+    } finally {
+      setQualityLoading(false)
     }
   }
 
@@ -148,8 +231,8 @@ const ProductionPlanDetailsModal = ({
   // Handle job card creation success
   const handleJobCardSuccess = () => {
     setJobCardModalVisible(false)
-    // Optionally reload plan details to show updated information
-    fetchPlanDetails()
+    // Reload plan details and quality tracking to show updated information
+    loadPlanData()
   }
 
   // Get production steps with status (real data from API)
@@ -225,9 +308,11 @@ const ProductionPlanDetailsModal = ({
       ]}
       className="production-details-modal"
     >
-      <div className="space-y-6">
-        {/* Status and Progress Overview */}
-        <Card className="border-l-4 border-l-blue-500">
+      <Tabs defaultActiveKey="overview" type="card">
+        <TabPane tab="Overview" key="overview">
+          <div className="space-y-6">
+            {/* Status and Progress Overview */}
+            <Card className="border-l-4 border-l-blue-500">
           <Row gutter={[24, 16]}>
             <Col xs={24} sm={12} md={8}>
               <div className="text-center">
@@ -471,15 +556,56 @@ const ProductionPlanDetailsModal = ({
           </Row>
         </Card>
 
-        {/* Additional Notes */}
-        {planDetails.note && (
-          <Card title="Notes" size="small">
-            <div className="bg-gray-50 p-3 rounded">
-              <Text>{planDetails.note}</Text>
+            {/* Additional Notes */}
+            {planDetails.note && (
+              <Card title="Notes" size="small">
+                <div className="bg-gray-50 p-3 rounded">
+                  <Text>{planDetails.note}</Text>
+                </div>
+              </Card>
+            )}
+          </div>
+        </TabPane>
+
+        <TabPane tab="Quality Tracking" key="quality">
+          {qualityLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Spin tip="Loading quality tracking data..." />
             </div>
-          </Card>
-        )}
-      </div>
+          ) : qualityTrackingData.length > 0 ? (
+            <StepManagementView
+              jobCard={{ quantity: planDetails.quantity }}
+              stepProgressData={qualityTrackingData}
+              onProcessStep={() => {}}
+              loading={false}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <Alert
+                message="No Quality Tracking Data Available"
+                description={
+                  <div>
+                    <p>Quality tracking data will appear here once:</p>
+                    <ol className="list-decimal list-inside mt-2 text-left">
+                      <li>Job cards are created for this production plan</li>
+                      <li>Job cards are processed through the quality tracking workflow</li>
+                      <li>Steps are completed with accepted/rejected quantities</li>
+                    </ol>
+                    <p className="mt-3">
+                      {planDetails?.jobCards?.length > 0
+                        ? `This plan has ${planDetails.jobCards.length} job card(s), but no quality data has been recorded yet.`
+                        : 'This plan has no job cards yet. Create a job card to begin tracking quality data.'
+                      }
+                    </p>
+                  </div>
+                }
+                type="info"
+                showIcon
+              />
+            </div>
+          )}
+        </TabPane>
+      </Tabs>
 
       {/* Job Card Creation Modal */}
       <JobCardCreationModal

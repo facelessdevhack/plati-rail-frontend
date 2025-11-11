@@ -9,7 +9,7 @@ const USE_MOCK_DATA = false
 export const getProductionPlansWithQuantities = createAsyncThunk(
   'production/getProductionPlansWithQuantities',
   async (
-    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null, alloyId = null },
+    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null, alloyId = null, sortField = null, sortOrder = null },
     { rejectWithValue }
   ) => {
     try {
@@ -22,6 +22,8 @@ export const getProductionPlansWithQuantities = createAsyncThunk(
       if (urgent !== '') params.append('urgent', urgent)
       if (status) params.append('status', status)
       if (alloyId) params.append('alloyId', alloyId.toString())
+      if (sortField) params.append('sortField', sortField)
+      if (sortOrder) params.append('sortOrder', sortOrder)
       if (dateRange && dateRange.length === 2) {
         params.append('startDate', dateRange[0])
         params.append('endDate', dateRange[1])
@@ -368,7 +370,7 @@ export const getJobCardProgress = createAsyncThunk(
       const response = await client.get(
         `/production/job-card-progress/${jobCardId}`
       )
-      return response.data.progress || []
+      return response.data.data || []
     } catch (error) {
       return rejectWithValue(getError(error))
     }
@@ -642,6 +644,38 @@ export const getSalesPerformanceMetrics = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getError(error))
     }
+  }
+)
+
+// Get total KPI data for all production plans (not paginated)
+export const getProductionKPIData = createAsyncThunk(
+  'production/getProductionKPIData',
+  async ({
+    search = '',
+    urgent = '',
+    status = '',
+    dateRange = null,
+    alloyId = null
+  }, { rejectWithValue }) => {
+    const params = new URLSearchParams({
+      getKPIs: 'true'
+    })
+
+    if (search) params.append('search', search)
+    if (urgent) params.append('urgent', urgent)
+    if (status) params.append('status', status)
+    if (dateRange && dateRange.length === 2) {
+      params.append('startDate', dateRange[0].format('YYYY-MM-DD'))
+      params.append('endDate', dateRange[1].format('YYYY-MM-DD'))
+    }
+    if (alloyId) params.append('alloyId', alloyId)
+
+    // Fetch total KPI data from entire database
+    const response = await client.get(
+      `/production/plans-kpis?${params}&_t=${Date.now()}`
+    )
+
+    return response.data
   }
 )
 

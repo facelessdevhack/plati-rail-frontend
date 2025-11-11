@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   getProductionPlans,
   getProductionPlansWithQuantities,
+  getProductionKPIData,
   getProductionPlanById,
   createProductionPlan,
   updateProductionPlan,
@@ -119,7 +120,26 @@ const initialState = {
     status: "",
     dateRange: null
   },
-  
+
+  // Sorting
+  sortField: null,
+  sortOrder: null,
+
+  // Total KPIs (from entire dataset, not paginated)
+  totalKPIs: {
+    todayQuantity: 0,
+    totalUnallocated: 0,
+    totalAllocated: 0,
+    urgentPlans: 0,
+    totalPlans: 0,
+    totalQuantity: 0,
+    todayPlansCount: 0,
+    completionRate: 0
+  },
+  kpisLoading: false,
+  kpisError: null,
+  lastKPIUpdate: null,
+
   // UI States
   isCreating: false,
   isUpdating: false,
@@ -152,6 +172,14 @@ const productionSlice = createSlice({
     },
     setPageSize: (state, action) => {
       state.pageSize = action.payload;
+    },
+    setSorting: (state, action) => {
+      state.sortField = action.payload.field;
+      state.sortOrder = action.payload.order;
+    },
+    clearSorting: (state) => {
+      state.sortField = null;
+      state.sortOrder = null;
     },
     setSelectedPlan: (state, action) => {
       state.selectedPlan = action.payload;
@@ -219,6 +247,26 @@ const productionSlice = createSlice({
       .addCase(getProductionPlansWithQuantities.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || { message: "Failed to fetch production plans with quantities" };
+      })
+      // Get Production KPIs (total dataset)
+      .addCase(getProductionKPIData.pending, (state) => {
+        console.log('🔥🔥🔥 Frontend KPI - Starting fetch...');
+        state.kpisLoading = true;
+        state.kpisError = null;
+      })
+      .addCase(getProductionKPIData.fulfilled, (state, action) => {
+        console.log('🔥🔥🔥 Frontend KPI - Data received:', action.payload);
+        console.log('🔥🔥🔥 Frontend KPI - KPIs:', action.payload.data?.kpis);
+        console.log('🔥🔥🔥 Frontend KPI - Note:', action.payload.data?.note);
+        state.kpisLoading = false;
+        state.totalKPIs = action.payload.data?.kpis || state.totalKPIs;
+        state.lastKPIUpdate = action.payload.data?.calculatedAt || new Date().toISOString();
+        state.success = true;
+      })
+      .addCase(getProductionKPIData.rejected, (state, action) => {
+        console.log('🔍 Frontend KPI Debug - KPI fetch failed:', action.payload);
+        state.kpisLoading = false;
+        state.kpisError = action.payload || { message: "Failed to fetch production KPIs" };
       })
 
       // Get Production Plan by ID
@@ -608,6 +656,8 @@ export const {
   clearFilters,
   setCurrentPage,
   setPageSize,
+  setSorting,
+  clearSorting,
   setSelectedPlan,
   setSelectedJobCard,
   toggleDetailsModal,

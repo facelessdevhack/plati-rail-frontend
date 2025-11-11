@@ -114,6 +114,10 @@ export const adminSiderRoutes = [
       '6'
     ),
     getItemLayout(
+      <Link to='/production-plans-v2'>Production Plans V2</Link>,
+      '6-v2'
+    ),
+    getItemLayout(
       <Link to='/smart-production'><RocketOutlined style={{ marginRight: '8px' }} />Smart Planner</Link>,
       '6a'
     ),

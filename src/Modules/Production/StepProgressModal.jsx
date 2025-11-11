@@ -152,10 +152,10 @@ const StepProgressModal = ({
   return (
     <Modal
       title={
-        <Space>
-          <ToolOutlined />
-          <span>Process Step: {currentStepInfo?.name || 'Unknown Step'}</span>
-        </Space>
+        <div className="flex items-center gap-2">
+          <ToolOutlined className="text-blue-600" />
+          <span className="font-semibold">Process Step: {currentStepInfo?.name || stepProgress?.stepName || 'Unknown Step'}</span>
+        </div>
       }
       open={visible}
       onCancel={onCancel}
@@ -163,30 +163,40 @@ const StepProgressModal = ({
       okText='Process Step'
       okButtonProps={{
         disabled: !isBalanced || !isValid,
-        loading
+        loading,
+        className: 'bg-blue-600 hover:bg-blue-700'
       }}
-      width={700}
+      width="90%"
+      style={{ maxWidth: '700px' }}
       destroyOnClose
+      centered
     >
-      <Space direction='vertical' style={{ width: '100%' }} size='large'>
+      <div className="space-y-4">
         {/* Step Information */}
-        <Descriptions bordered size='small' column={2}>
-          <Descriptions.Item label='Current Step' span={2}>
-            <Text strong>{currentStepInfo?.name || 'Unknown'}</Text>
-          </Descriptions.Item>
-          <Descriptions.Item label='Next Step' span={2}>
-            <Text type='secondary'>
-              {nextStepInfo?.name || 'Final Step - Completion'}
-            </Text>
-          </Descriptions.Item>
-          <Descriptions.Item label='Input Quantity' span={2}>
-            <Text strong style={{ fontSize: '16px' }}>
-              {inputQuantity} units
-            </Text>
-          </Descriptions.Item>
-        </Descriptions>
-
-        <Divider style={{ margin: '12px 0' }} />
+        <div className="bg-gradient-to-r from-blue-50 to-slate-50 rounded-lg p-4 border border-blue-200">
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <p className="text-xs text-slate-600 mb-1">Current Step</p>
+              <p className="text-base font-semibold text-slate-800">
+                {currentStepInfo?.name || stepProgress?.stepName || 'Unknown'}
+              </p>
+            </div>
+            {jobCard && (
+              <div>
+                <p className="text-xs text-slate-600 mb-1">Job Card</p>
+                <p className="text-base font-semibold text-slate-800">
+                  #{jobCard.jobCardId || jobCard.id}
+                </p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-slate-600 mb-1">Input Quantity</p>
+              <p className="text-lg font-bold text-blue-600">
+                {inputQuantity.toLocaleString()} units
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Quantity Balance Alert */}
         {!isBalanced && processedTotal > 0 && (
@@ -225,87 +235,92 @@ const StepProgressModal = ({
             reworkQuantity: 0
           }}
         >
-          <Form.Item
-            label='Accepted Quantity'
-            name='acceptedQuantity'
-            rules={[
-              { required: true, message: 'Please enter accepted quantity' },
-              { type: 'number', min: 0, message: 'Must be non-negative' }
-            ]}
-            tooltip='Units that passed quality check and will move to next step'
-          >
-            <InputNumber
-              min={0}
-              max={inputQuantity}
-              style={{ width: '100%' }}
-              placeholder='Enter accepted quantity'
-              addonAfter='units'
-            />
-          </Form.Item>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              label={<span className="text-sm font-medium text-green-700">✓ Accepted Quantity</span>}
+              name='acceptedQuantity'
+              rules={[
+                { required: true, message: 'Please enter accepted quantity' },
+                { type: 'number', min: 0, message: 'Must be non-negative' }
+              ]}
+              tooltip='Units that passed quality check'
+            >
+              <InputNumber
+                min={0}
+                max={inputQuantity}
+                className="w-full"
+                placeholder='Enter accepted quantity'
+                addonAfter='units'
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="text-sm font-medium text-red-700">✗ Rejected Quantity</span>}
+              name='rejectedQuantity'
+              rules={[
+                { required: true, message: 'Please enter rejected quantity' },
+                { type: 'number', min: 0, message: 'Must be non-negative' }
+              ]}
+              tooltip='Units that failed quality check'
+            >
+              <InputNumber
+                min={0}
+                max={inputQuantity}
+                className="w-full"
+                placeholder='Enter rejected quantity'
+                addonAfter='units'
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="text-sm font-medium text-amber-700">⏳ Pending Quantity</span>}
+              name='pendingQuantity'
+              rules={[
+                { required: true, message: 'Please enter pending quantity' },
+                { type: 'number', min: 0, message: 'Must be non-negative' }
+              ]}
+              tooltip='Auto-calculated based on other quantities'
+            >
+              <InputNumber
+                min={0}
+                max={inputQuantity}
+                className="w-full"
+                placeholder='Auto-calculated'
+                addonAfter='units'
+                disabled
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="text-sm font-medium text-purple-700">↻ Rework Quantity</span>}
+              name='reworkQuantity'
+              rules={[
+                { required: true, message: 'Please enter rework quantity' },
+                { type: 'number', min: 0, message: 'Must be non-negative' }
+              ]}
+              tooltip='Units requiring rework'
+            >
+              <InputNumber
+                min={0}
+                max={inputQuantity}
+                className="w-full"
+                placeholder='Enter rework quantity'
+                addonAfter='units'
+                size="large"
+              />
+            </Form.Item>
+          </div>
 
           <Form.Item
-            label='Rejected Quantity'
-            name='rejectedQuantity'
-            rules={[
-              { required: true, message: 'Please enter rejected quantity' },
-              { type: 'number', min: 0, message: 'Must be non-negative' }
-            ]}
-            tooltip='Units that failed quality check and will be scrapped'
-          >
-            <InputNumber
-              min={0}
-              max={inputQuantity}
-              style={{ width: '100%' }}
-              placeholder='Enter rejected quantity'
-              addonAfter='units'
-            />
-          </Form.Item>
-
-          <Form.Item
-            label='Pending Quantity'
-            name='pendingQuantity'
-            rules={[
-              { required: true, message: 'Please enter pending quantity' },
-              { type: 'number', min: 0, message: 'Must be non-negative' }
-            ]}
-            tooltip='Units not yet processed at this step (auto-calculated)'
-          >
-            <InputNumber
-              min={0}
-              max={inputQuantity}
-              style={{ width: '100%' }}
-              placeholder='Auto-calculated'
-              addonAfter='units'
-              disabled
-            />
-          </Form.Item>
-
-          <Form.Item
-            label='Rework Quantity'
-            name='reworkQuantity'
-            rules={[
-              { required: true, message: 'Please enter rework quantity' },
-              { type: 'number', min: 0, message: 'Must be non-negative' }
-            ]}
-            tooltip='Units requiring rework at this step'
-          >
-            <InputNumber
-              min={0}
-              max={inputQuantity}
-              style={{ width: '100%' }}
-              placeholder='Enter rework quantity'
-              addonAfter='units'
-            />
-          </Form.Item>
-
-          <Form.Item
-            label='Rejection Reason'
+            label={<span className="text-sm font-medium text-slate-700">Rejection Reason</span>}
             name='rejectionReason'
             rules={[
               {
                 required: rejectedQty > 0,
-                message:
-                  'Rejection reason is required when rejected quantity > 0'
+                message: 'Rejection reason is required when rejected quantity > 0'
               }
             ]}
             tooltip='Required if any units were rejected'
@@ -315,22 +330,27 @@ const StepProgressModal = ({
               placeholder='Enter reason for rejection (required if rejected quantity > 0)'
               maxLength={500}
               showCount
+              className="w-full"
             />
           </Form.Item>
         </Form>
 
         {/* Summary */}
-        <Descriptions bordered size='small' column={2}>
-          <Descriptions.Item label='Total Processed'>
-            <Text strong>{processedTotal}</Text>
-          </Descriptions.Item>
-          <Descriptions.Item label='Remaining'>
-            <Text strong type={remainingQty === 0 ? 'success' : 'warning'}>
-              {remainingQty}
-            </Text>
-          </Descriptions.Item>
-        </Descriptions>
-      </Space>
+        <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-slate-600 mb-1">Total Processed</p>
+              <p className="text-2xl font-bold text-slate-800">{processedTotal.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-600 mb-1">Remaining</p>
+              <p className={`text-2xl font-bold ${remainingQty === 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                {remainingQty.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </Modal>
   )
 }

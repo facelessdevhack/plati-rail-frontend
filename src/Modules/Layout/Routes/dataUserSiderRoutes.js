@@ -59,6 +59,13 @@ export const dataUserSiderRoutes = [
     <FileSearchOutlined style={{ fontSize: '16px' }} />
   ),
   getItemLayout(
+    <Link to='/production-plans-v2'>
+      <span style={{ fontWeight: 600 }}>Production Plans V2</span>
+    </Link>,
+    'production-plans-v2',
+    <FileSearchOutlined style={{ fontSize: '16px' }} />
+  ),
+  getItemLayout(
     <Link to='/smart-production'>
       <span style={{ fontWeight: 600 }}>Smart Production Planner</span>
     </Link>,

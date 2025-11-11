@@ -48,11 +48,13 @@ import DealersList from '../../Modules/DataEntry/DealersList';
 import AddDealer from '../../Modules/DataEntry/AddDealer';
 import EditDealer from '../../Modules/DataEntry/EditDealer';
 import ProductionListing from '../../Modules/Production/ProductionListing';
+import ProductionListingV2 from '../../Modules/Production/ProductionListingV2';
 import ProductionListingModern from '../../Modules/Production/ProductionListingModern';
 import ProductionPlanDetailsPage from '../../Modules/Production/ProductionPlanDetailsPage';
 import AlloySelection from '../../Modules/Production/AlloySelection';
 import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
+import ProductionPlannerV2 from '../../Modules/Production/ProductionPlannerV2';
 import TurboProductionDashboard from '../../Modules/Production/TurboProductionDashboard';
 import TurboProductionPlanner from '../../Modules/Production/TurboProductionPlanner';
 import JobCardListing from '../../Modules/Production/JobCardListing';
@@ -556,6 +558,18 @@ const StackNavigation = () => {
         }
       />
       <Route
+        path='/production-plans-v2'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Production Plans V2'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<ProductionListingV2 />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path='/production-plans-modern'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6]}>
@@ -603,6 +617,18 @@ const StackNavigation = () => {
               title='Smart Production Dashboard'
               items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<SmartProductionDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/production-planner-v2'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Production Planner V2'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<ProductionPlannerV2 />}
             />
           </PrivateRoute>
         }

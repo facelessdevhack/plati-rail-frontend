@@ -1,18 +1,216 @@
 /** @type {import('tailwindcss').Config} */
+
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   darkMode: 'class',
   theme: {
     extend: {
+      // Design System Colors
       colors: {
-        // Modern Professional Color System
+        // Brand Colors - Primary (Blue)
+        'brand-primary': {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
+        },
+        // Brand Colors - Secondary (Purple)
+        'brand-secondary': {
+          50: '#faf5ff',
+          100: '#f3e8ff',
+          200: '#e9d5ff',
+          300: '#d8b4fe',
+          400: '#c084fc',
+          500: '#a855f7',
+          600: '#9333ea',
+          700: '#7e22ce',
+          800: '#6b21a8',
+          900: '#581c87',
+          950: '#3b0764',
+        },
+
+        // Semantic Colors
+        'semantic-success': {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+        },
+        'semantic-warning': {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+        },
+        'semantic-error': {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+        },
+        'semantic-info': {
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+        },
+
+        // Domain Colors
+        'domain-production': {
+          50: '#fef3c7',
+          100: '#fde68a',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+        },
+        'domain-inventory': {
+          50: '#dbeafe',
+          100: '#bfdbfe',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+        },
+        'domain-sales': {
+          50: '#dcfce7',
+          100: '#bbf7d0',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+        },
+        'domain-finance': {
+          50: '#e0f2fe',
+          100: '#bae6fd',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+        },
+        'domain-quality': {
+          50: '#f3e8ff',
+          100: '#e9d5ff',
+          500: '#a855f7',
+          600: '#9333ea',
+          700: '#7e22ce',
+        },
+        'domain-dealers': {
+          50: '#fce7f3',
+          100: '#fbcfe8',
+          500: '#ec4899',
+          600: '#db2777',
+          700: '#be185d',
+        },
+
+        // Status Colors
+        'status-pending': {
+          bg: '#fef3c7',
+          text: '#92400e',
+          border: '#fbbf24',
+        },
+        'status-inProgress': {
+          bg: '#dbeafe',
+          text: '#1e40af',
+          border: '#3b82f6',
+        },
+        'status-completed': {
+          bg: '#dcfce7',
+          text: '#14532d',
+          border: '#22c55e',
+        },
+        'status-cancelled': {
+          bg: '#fee2e2',
+          text: '#991b1b',
+          border: '#ef4444',
+        },
+        'status-paused': {
+          bg: '#fef3c7',
+          text: '#92400e',
+          border: '#f59e0b',
+        },
+        'status-urgent': {
+          bg: '#fee2e2',
+          text: '#7f1d1d',
+          border: '#dc2626',
+        },
+
+        // Neutral/Gray
+        neutral: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0a0a0a',
+        },
+
+        // Text Colors
+        'text-primary': '#111827',
+        'text-secondary': '#6b7280',
+        'text-tertiary': '#9ca3af',
+        'text-inverse': '#ffffff',
+        'text-link': '#2563eb',
+        'text-linkHover': '#1d4ed8',
+        'text-disabled': '#d1d5db',
+
+        // Background Colors
+        'background-primary': '#ffffff',
+        'background-secondary': '#f9fafb',
+        'background-tertiary': '#f3f4f6',
+        'background-dark': '#111827',
+        'background-sidebar': '#1f2937',
+        'background-card': '#ffffff',
+        'background-hover': '#f3f4f6',
+        'background-selected': '#eff6ff',
+
+        // Border Colors
+        'border-light': '#e5e7eb',
+        'border-default': '#d1d5db',
+        'border-dark': '#9ca3af',
+        'border-focus': '#3b82f6',
+        'border-error': '#ef4444',
+        'border-success': '#22c55e',
+
+        // Existing colors for backward compatibility
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        
-        // Primary - Professional Blue (Trust & Efficiency)
+
         primary: {
           DEFAULT: "#0066CC",
           50: "#EBF4FF",
@@ -29,7 +227,7 @@ module.exports = {
           hover: "#0052A3",
           foreground: "#FFFFFF",
         },
-        // Secondary - Clean Neutrals (Content Hierarchy)
+
         secondary: {
           DEFAULT: "#6C757D",
           50: "#F8F9FA",
@@ -45,6 +243,7 @@ module.exports = {
           950: "#0A0C0E",
           foreground: "#FFFFFF",
         },
+
         destructive: {
           DEFAULT: "#DC3545",
           50: "#FCF2F3",
@@ -60,6 +259,7 @@ module.exports = {
           950: "#160507",
           foreground: "#FFFFFF",
         },
+
         muted: {
           DEFAULT: "#F3F5F8",
           50: "#FAFBFC",
@@ -74,7 +274,7 @@ module.exports = {
           900: "#93A5B8",
           foreground: "hsl(var(--muted-foreground))",
         },
-        // Accent - Modern Teal (Interactive Elements)
+
         accent: {
           DEFAULT: "#17A2B8",
           50: "#E8F8FA",
@@ -90,14 +290,17 @@ module.exports = {
           950: "#021013",
           foreground: "#FFFFFF",
         },
+
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
+
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
         success: {
           DEFAULT: "#28A745",
           50: "#EAF7ED",
@@ -112,6 +315,7 @@ module.exports = {
           900: "#08210F",
           950: "#041108",
         },
+
         warning: {
           DEFAULT: "#FFC107",
           50: "#FFFCF0",
@@ -126,6 +330,7 @@ module.exports = {
           900: "#332701",
           950: "#1A1301",
         },
+
         info: {
           DEFAULT: "#3b82f6",
           50: "#eff6ff",
@@ -140,7 +345,8 @@ module.exports = {
           900: "#1e3a8a",
           950: "#172554",
         },
-        // Legacy colors for backward compatibility
+
+        // Legacy colors
         "primary-green": "#4C9A58",
         "primary-green-hover": "#57A166",
         "light-primary-green": "#EDF5EE",
@@ -169,6 +375,7 @@ module.exports = {
         lightPrimary: "#F4F7FE",
         blueSecondary: "#4318FF",
         brandLinear: "#868CFF",
+
         gray: {
           50: "#f8f9fa",
           100: "#edf2f7",
@@ -181,6 +388,7 @@ module.exports = {
           800: "#252f40",
           900: "#1b2559",
         },
+
         navy: {
           50: "#d0dcfb",
           100: "#aac0fe",
@@ -193,6 +401,7 @@ module.exports = {
           800: "#111c44",
           900: "#0b1437",
         },
+
         red: {
           50: "#ee5d501a",
           100: "#fee2e2",
@@ -205,6 +414,7 @@ module.exports = {
           800: "#991b1b",
           900: "#7f1d1d",
         },
+
         orange: {
           50: "#fff7ed",
           100: "#ffedd5",
@@ -217,6 +427,7 @@ module.exports = {
           800: "#9a3412",
           900: "#7c2d12",
         },
+
         amber: {
           50: "#fffbeb",
           100: "#fef3c7",
@@ -229,6 +440,7 @@ module.exports = {
           800: "#92400e",
           900: "#78350f",
         },
+
         yellow: {
           50: "#fefce8",
           100: "#fef9c3",
@@ -241,6 +453,7 @@ module.exports = {
           800: "#854d0e",
           900: "#713f12",
         },
+
         lime: {
           50: "#f7fee7",
           100: "#ecfccb",
@@ -253,6 +466,7 @@ module.exports = {
           800: "#3f6212",
           900: "#365314",
         },
+
         green: {
           50: "#05cd991a",
           100: "#dcfce7",
@@ -265,6 +479,7 @@ module.exports = {
           800: "#166534",
           900: "#14532d",
         },
+
         teal: {
           50: "#f0fdfa",
           100: "#ccfbf1",
@@ -277,6 +492,7 @@ module.exports = {
           800: "#115e59",
           900: "#134e4a",
         },
+
         cyan: {
           50: "#ecfeff",
           100: "#cffafe",
@@ -289,6 +505,7 @@ module.exports = {
           800: "#155e75",
           900: "#164e63",
         },
+
         blue: {
           50: "#eff6ff",
           100: "#dbeafe",
@@ -301,6 +518,7 @@ module.exports = {
           800: "#344e86",
           900: "#00007d",
         },
+
         indigo: {
           50: "#eef2ff",
           100: "#e0e7ff",
@@ -313,6 +531,7 @@ module.exports = {
           800: "#3730a3",
           900: "#312e81",
         },
+
         purple: {
           50: "#faf5ff",
           100: "#f3e8ff",
@@ -325,6 +544,7 @@ module.exports = {
           800: "#6b21a8",
           900: "#581c87",
         },
+
         pink: {
           50: "#fdf2f8",
           100: "#fce7f3",
@@ -337,6 +557,7 @@ module.exports = {
           800: "#9d174d",
           900: "#831843",
         },
+
         brand: {
           50: "#E9E3FF",
           100: "#C0B8FE",
@@ -349,10 +570,12 @@ module.exports = {
           800: "#190793",
           900: "#11047A",
         },
+
         shadow: {
           500: "rgba(112, 144, 176, 0.08)",
         },
       },
+
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1rem' }],
         sm: ['0.875rem', { lineHeight: '1.25rem' }],
@@ -369,15 +592,16 @@ module.exports = {
         '9xl': ['8rem', { lineHeight: '1' }],
         10: "0.625rem",
       },
+
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
         display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace'],
         body: ['Inter', 'system-ui', 'sans-serif'],
-        // Legacy support
         poppins: ['Inter', 'sans-serif'],
         dm: ['Inter', 'sans-serif'],
       },
+
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
@@ -395,51 +619,76 @@ module.exports = {
           '0%': { opacity: '1' },
           '100%': { opacity: '0' },
         },
-        slideInFromLeft: {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        slideInFromRight: {
+        slideInRight: {
           '0%': { transform: 'translateX(100%)' },
           '100%': { transform: 'translateX(0)' },
         },
-        slideInFromTop: {
-          '0%': { transform: 'translateY(-100%)' },
+        slideInLeft: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
+        slideInUp: {
+          '0%': { transform: 'translateY(100%)' },
           '100%': { transform: 'translateY(0)' },
         },
-        slideInFromBottom: {
-          '0%': { transform: 'translateY(100%)' },
+        slideInDown: {
+          '0%': { transform: 'translateY(-100%)' },
           '100%': { transform: 'translateY(0)' },
         },
         scaleIn: {
           '0%': { transform: 'scale(0.9)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+        scaleOut: {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '100%': { transform: 'scale(0.9)', opacity: '0' },
+        },
+        bounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10%)' },
+        },
+        spin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
         pulse: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
         },
-        bounce: {
-          '0%, 100%': { transform: 'translateY(-25%)', animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)' },
-          '50%': { transform: 'translateY(0)', animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)' },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+        progress: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       },
+
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        fadeIn: 'fadeIn 0.5s ease-in-out',
-        fadeOut: 'fadeOut 0.5s ease-in-out',
-        slideInFromLeft: 'slideInFromLeft 0.3s ease-out',
-        slideInFromRight: 'slideInFromRight 0.3s ease-out',
-        slideInFromTop: 'slideInFromTop 0.3s ease-out',
-        slideInFromBottom: 'slideInFromBottom 0.3s ease-out',
-        scaleIn: 'scaleIn 0.2s ease-out',
-        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        fadeIn: 'fadeIn 200ms ease-out',
+        fadeOut: 'fadeOut 200ms ease-in',
+        slideInRight: 'slideInRight 300ms ease-out',
+        slideInLeft: 'slideInLeft 300ms ease-out',
+        slideInUp: 'slideInUp 300ms ease-out',
+        slideInDown: 'slideInDown 300ms ease-out',
+        scaleIn: 'scaleIn 200ms ease-out',
+        scaleOut: 'scaleOut 200ms ease-in',
         bounce: 'bounce 1s infinite',
+        spin: 'spin 1s linear infinite',
+        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        shimmer: 'shimmer 2s linear infinite',
+        progress: 'progress 1s ease-in-out infinite',
       },
+
       spacing: {
+        0.5: '0.125rem',
+        1.5: '0.375rem',
         1.75: "0.4375rem",
         2.25: "0.5625rem",
+        2.5: '0.625rem',
         2.75: "0.6875rem",
         3.5: "0.875rem",
         4.5: "1.125rem",
@@ -462,16 +711,18 @@ module.exports = {
         106: "26.5rem",
         115: "28.75rem",
       },
+
       lineHeight: {
         3.75: "0.9375rem",
         4.5: "18px",
         9: "2.25rem",
       },
+
       borderRadius: {
         4: "0.25rem",
         primary: "20px",
       },
-      // Modern typography scale
+
       fontWeight: {
         thin: '100',
         extralight: '200',
@@ -483,14 +734,17 @@ module.exports = {
         extrabold: '800',
         black: '900',
       },
+
       boxShadow: {
         xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
         sm: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        DEFAULT: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
         md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
         lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
         xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
         '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
         inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+        none: 'none',
         button: "2px 2px 8px 0px #0000001A",
         addBattery: "2px 2px 8px rgba(0, 0, 0, 0.1)",
         moreFilters: "0px -2px 10px -3px rgba(0, 0, 0, 1)",
@@ -504,7 +758,27 @@ module.exports = {
         "soft-lg": "0 8px 30px 0 rgba(0, 0, 0, 0.12)",
         "glow": "0 0 20px rgba(76, 154, 88, 0.3)",
         "glow-lg": "0 0 40px rgba(76, 154, 88, 0.4)",
+        primarySm: '0 1px 2px 0 rgb(59 130 246 / 0.1)',
+        primary: '0 4px 12px 0 rgb(59 130 246 / 0.15)',
+        primaryLg: '0 8px 20px 0 rgb(59 130 246 / 0.2)',
+        successSm: '0 1px 2px 0 rgb(34 197 94 / 0.1)',
+        success: '0 4px 12px 0 rgb(34 197 94 / 0.15)',
+        successLg: '0 8px 20px 0 rgb(34 197 94 / 0.2)',
+        warningSm: '0 1px 2px 0 rgb(245 158 11 / 0.1)',
+        warning: '0 4px 12px 0 rgb(245 158 11 / 0.15)',
+        warningLg: '0 8px 20px 0 rgb(245 158 11 / 0.2)',
+        errorSm: '0 1px 2px 0 rgb(239 68 68 / 0.1)',
+        error: '0 4px 12px 0 rgb(239 68 68 / 0.15)',
+        errorLg: '0 8px 20px 0 rgb(239 68 68 / 0.2)',
+        elevation1: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        elevation2: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        elevation3: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        elevation4: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        elevation5: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+        glow: '0 0 20px rgb(59 130 246 / 0.3)',
+        glowStrong: '0 0 30px rgb(59 130 246 / 0.5)',
       },
+
       screens: {
         sm: "576px",
         "sm-max": { max: "576px" },
@@ -521,106 +795,47 @@ module.exports = {
         "4xl": "1850px",
         "4xl-max": { max: "1850px" },
       },
+
       width: {
-        "1p": "1%",
-        "2p": "2%",
-        "3p": "3%",
-        "4p": "4%",
-        "5p": "5%",
-        "6p": "6%",
-        "7p": "7%",
-        "8p": "8%",
-        "9p": "9%",
-        "10p": "10%",
-        "11p": "11%",
-        "12p": "12%",
-        "13p": "13%",
-        "14p": "14%",
-        "15p": "15%",
-        "16p": "16%",
-        "17p": "17%",
-        "18p": "18%",
-        "19p": "19%",
-        "20p": "20%",
-        "21p": "21%",
-        "22p": "22%",
-        "23p": "23%",
-        "24p": "24%",
-        "25p": "25%",
-        "26p": "26%",
-        "27p": "27%",
-        "28p": "28%",
-        "29p": "29%",
-        "30p": "30%",
-        "31p": "31%",
-        "32p": "32%",
-        "33p": "33%",
-        "34p": "34%",
-        "35p": "35%",
-        "36p": "36%",
-        "37p": "37%",
-        "38p": "38%",
-        "39p": "39%",
-        "40p": "40%",
-        "41p": "41%",
-        "42p": "42%",
-        "43p": "43%",
-        "44p": "44%",
-        "45p": "45%",
-        "46p": "46%",
-        "47p": "47%",
-        "48p": "48%",
-        "49p": "49%",
-        "50p": "50%",
-        "51p": "51%",
-        "52p": "52%",
-        "53p": "53%",
-        "54p": "54%",
-        "55p": "55%",
-        "56p": "56%",
-        "57p": "57%",
-        "58p": "58%",
-        "59p": "59%",
-        "60p": "60%",
-        "61p": "61%",
-        "62p": "62%",
-        "63p": "63%",
-        "64p": "64%",
-        "65p": "65%",
-        "66p": "66%",
-        "67p": "67%",
-        "68p": "68%",
-        "69p": "69%",
-        "70p": "70%",
-        "71p": "71%",
-        "72p": "72%",
-        "73p": "73%",
-        "74p": "74%",
-        "75p": "75%",
-        "76p": "76%",
-        "77p": "77%",
-        "78p": "78%",
-        "79p": "79%",
-        "80p": "80%",
-        "81p": "81%",
-        "82p": "82%",
-        "83p": "83%",
-        "84p": "84%",
-        "85p": "85%",
-        "86p": "86%",
-        "87p": "87%",
-        "88p": "88%",
-        "89p": "89%",
-        "90p": "90%",
-        "91p": "91%",
-        "92p": "92%",
-        "93p": "93%",
-        "94p": "94%",
-        "95p": "95%",
-        "96p": "96%",
-        "97p": "97%",
-        "98p": "98%",
-        "99p": "99%",
+        "1p": "1%", "2p": "2%", "3p": "3%", "4p": "4%", "5p": "5%",
+        "6p": "6%", "7p": "7%", "8p": "8%", "9p": "9%", "10p": "10%",
+        "11p": "11%", "12p": "12%", "13p": "13%", "14p": "14%", "15p": "15%",
+        "16p": "16%", "17p": "17%", "18p": "18%", "19p": "19%", "20p": "20%",
+        "21p": "21%", "22p": "22%", "23p": "23%", "24p": "24%", "25p": "25%",
+        "26p": "26%", "27p": "27%", "28p": "28%", "29p": "29%", "30p": "30%",
+        "31p": "31%", "32p": "32%", "33p": "33%", "34p": "34%", "35p": "35%",
+        "36p": "36%", "37p": "37%", "38p": "38%", "39p": "39%", "40p": "40%",
+        "41p": "41%", "42p": "42%", "43p": "43%", "44p": "44%", "45p": "45%",
+        "46p": "46%", "47p": "47%", "48p": "48%", "49p": "49%", "50p": "50%",
+        "51p": "51%", "52p": "52%", "53p": "53%", "54p": "54%", "55p": "55%",
+        "56p": "56%", "57p": "57%", "58p": "58%", "59p": "59%", "60p": "60%",
+        "61p": "61%", "62p": "62%", "63p": "63%", "64p": "64%", "65p": "65%",
+        "66p": "66%", "67p": "67%", "68p": "68%", "69p": "69%", "70p": "70%",
+        "71p": "71%", "72p": "72%", "73p": "73%", "74p": "74%", "75p": "75%",
+        "76p": "76%", "77p": "77%", "78p": "78%", "79p": "79%", "80p": "80%",
+        "81p": "81%", "82p": "82%", "83p": "83%", "84p": "84%", "85p": "85%",
+        "86p": "86%", "87p": "87%", "88p": "88%", "89p": "89%", "90p": "90%",
+        "91p": "91%", "92p": "92%", "93p": "93%", "94p": "94%", "95p": "95%",
+        "96p": "96%", "97p": "97%", "98p": "98%", "99p": "99%",
+      },
+      animation: {
+        'shimmer': 'shimmer 2s infinite',
+        'bounce-slow': 'bounce-slow 3s ease-in-out infinite',
+        'spin-slow': 'spin-slow 3s linear infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'bounce-slow': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10%)' },
+        },
+        'spin-slow': {
+          'from': { transform: 'rotate(0deg)' },
+          'to': { transform: 'rotate(360deg)' },
+        },
       },
     },
   },
