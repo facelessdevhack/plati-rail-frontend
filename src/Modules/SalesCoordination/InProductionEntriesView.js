@@ -85,7 +85,10 @@ const InProductionEntriesView = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: (date) => moment(date).format('DD MMM YYYY HH:mm'),
+      render: (date, record) => {
+        const istDate = record.dateIST ? moment(record.dateIST) : moment.utc(date || record.created_at)
+        return istDate.format('DD MMM YYYY HH:mm')
+      },
     },
     {
       title: 'Dealer',

@@ -31,7 +31,7 @@ const CreateOrderAlloys = () => {
 
     // Filter for today's entries only
     return combined.filter(entry => {
-      const entryDate = moment(entry.date);
+      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at);
       return entryDate.format('YYYY-MM-DD') === today;
     });
   }, [coordinationEntries, pendingEntries]);
@@ -310,9 +310,9 @@ const CreateOrderAlloys = () => {
         `;
       } else {
         sortedEntries.forEach(entry => {
-          const formattedDate = entry.date
-            ? moment(entry.date).format('DD MMM YYYY hh:mm A')
-            : 'N/A';
+          const formattedDate = entry.dateIST
+            ? moment(entry.dateIST).format('DD MMM YYYY hh:mm A')
+            : (entry.date ? moment.utc(entry.date).format('DD MMM YYYY hh:mm A') : 'N/A');
           const dealer = entry.dealerName || 'N/A';
           const product = entry.productName || 'N/A';
           const quantity = entry.quantity || 0;
@@ -374,7 +374,10 @@ const CreateOrderAlloys = () => {
       dataIndex: 'date',
       key: 'date',
       width: 150,
-      render: (date) => moment(date).format('DD MMM YYYY hh:mm A'),
+      render: (date, record) => {
+        const istDate = record.dateIST ? moment(record.dateIST) : moment.utc(date || record.created_at)
+        return istDate.format('DD MMM YYYY hh:mm A')
+      },
     },
     {
       title: 'Dealer',
