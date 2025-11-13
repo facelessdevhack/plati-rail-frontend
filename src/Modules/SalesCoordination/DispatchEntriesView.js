@@ -4,7 +4,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
-  ExportOutlined
+  ExportOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
@@ -13,6 +14,7 @@ import {
 } from '../../redux/api/entriesAPI'
 import { useDispatch } from 'react-redux'
 import moment from 'moment'
+import * as XLSX from 'xlsx'
 
 const DispatchEntriesView = () => {
   const dispatch = useDispatch()
@@ -103,6 +105,33 @@ const DispatchEntriesView = () => {
     }
 
     exportToPDF(todayEntries, `Today's Dispatch Entries`)
+  }
+
+  const handleExportExcelDispatchEntries = () => {
+    if (dispatchEntries.length === 0) {
+      message.warning('No dispatch entries to export')
+      return
+    }
+
+    exportToExcel(dispatchEntries, 'Dispatch Entries Report')
+  }
+
+  const handleExportExcelTodayEntries = () => {
+    const today = moment().format('YYYY-MM-DD')
+
+    // Filter entries for today (using IST)
+    const todayEntries = dispatchEntries.filter(entry => {
+      // Use IST date from backend if available, otherwise convert to IST
+      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+      return entryDate.format('YYYY-MM-DD') === today
+    })
+
+    if (todayEntries.length === 0) {
+      message.warning('No dispatch entries found for today')
+      return
+    }
+
+    exportToExcel(todayEntries, `Today's Dispatch Entries`)
   }
 
   const exportToPDF = (entries, reportTitle) => {
@@ -335,6 +364,72 @@ const DispatchEntriesView = () => {
     }
   }
 
+  const exportToExcel = (entries, reportTitle) => {
+    try {
+      // Sort entries by date (newest first)
+      const sortedEntries = [...entries].sort((a, b) => {
+        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at)
+        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at)
+        return bDate.valueOf() - aDate.valueOf()
+      })
+
+      // Prepare data for Excel
+      const excelData = sortedEntries.map((entry, index) => {
+        const entryDate = entry.dateIST
+          ? moment(entry.dateIST).format('DD MMM YYYY hh:mm A')
+          : (entry.date ? moment.utc(entry.date).format('DD MMM YYYY hh:mm A') : 'N/A')
+
+        return {
+          'S.No': index + 1,
+          'Entry ID': entry.id,
+          'Date': entryDate,
+          'Dealer': entry.dealerName || 'N/A',
+          'Product': entry.productName || 'N/A',
+          'Quantity': entry.quantity || 0,
+          'Price': `₹${(entry.price || 0).toFixed(2)}`,
+          'Total Price': `₹${((entry.price || 0) * (entry.quantity || 0)).toFixed(2)}`,
+          'Transport': entry.isTransportPaid ? 'Paid' : 'To Pay',
+          'Claim': entry.isClaim ? 'Yes' : 'No',
+          'Status': 'Awaiting Approval'
+        }
+      })
+
+      // Create workbook and worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData)
+
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },   // S.No
+        { wch: 12 },  // Entry ID
+        { wch: 20 },  // Date
+        { wch: 25 },  // Dealer
+        { wch: 30 },  // Product
+        { wch: 10 },  // Quantity
+        { wch: 12 },  // Price
+        { wch: 15 },  // Total Price
+        { wch: 12 },  // Transport
+        { wch: 8 },   // Claim
+        { wch: 15 }   // Status
+      ]
+      ws['!cols'] = colWidths
+
+      // Create workbook
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Entries')
+
+      // Generate filename with date
+      const fileName = `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY_HH-mm')}.xlsx`
+
+      // Download the file
+      XLSX.writeFile(wb, fileName)
+
+      message.success(`Excel exported successfully: ${fileName}`)
+    } catch (error) {
+      console.error('Error exporting dispatch entries to Excel:', error)
+      message.error('Failed to export dispatch entries to Excel')
+    }
+  }
+
   const columns = [
     {
       title: 'Entry ID',
@@ -466,6 +561,23 @@ const DispatchEntriesView = () => {
             onClick={handleExportTodayEntries}
           >
             Export Today
+          </Button>
+          <Button
+            type='default'
+            icon={<FileExcelOutlined />}
+            onClick={handleExportExcelDispatchEntries}
+            disabled={dispatchEntries.length === 0}
+            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+          >
+            Export All (Excel)
+          </Button>
+          <Button
+            type='default'
+            icon={<FileExcelOutlined />}
+            onClick={handleExportExcelTodayEntries}
+            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+          >
+            Export Today (Excel)
           </Button>
           <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh
