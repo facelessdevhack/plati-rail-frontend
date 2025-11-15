@@ -38,9 +38,9 @@ export class AdminDashboardApiService {
    */
   static async getDashboardData (filters = {}) {
     const defaultParams = {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      startDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000)
         .toISOString()
-        .split('T')[0], // 30 days ago
+        .split('T')[0], // 25 days ago
       endDate: new Date().toISOString().split('T')[0], // Today
       chartPeriod: 'daily',
       ...filters

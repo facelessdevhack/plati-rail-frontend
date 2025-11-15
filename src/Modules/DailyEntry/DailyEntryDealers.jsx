@@ -321,7 +321,7 @@ const AdminDailyEntryDealersPage = () => {
                             >
                                 ₹{overdueAmt.toLocaleString('en-IN')}
                             </Tag>
-                            <span className='text-xs text-red-600'>(&gt;30 days)</span>
+                            <span className='text-xs text-red-600'>(&gt;25 days)</span>
                         </div>
                     );
                 }

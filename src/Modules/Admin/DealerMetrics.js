@@ -524,7 +524,7 @@ const DealerMetrics = () => {
         dataIndex: 'paymentDays',
         key: 'paymentDays',
         render: days => (
-          <Tag color={days <= 30 ? 'green' : days <= 45 ? 'orange' : 'red'}>
+          <Tag color={days <= 25 ? 'green' : days <= 40 ? 'orange' : 'red'}>
             {days} days
           </Tag>
         ),

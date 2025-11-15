@@ -83,7 +83,7 @@ const MetricsDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [dateRange, setDateRange] = useState([
-    moment().subtract(30, 'days'),
+    moment().subtract(25, 'days'),
     moment()
   ])
   const [selectedMetric, setSelectedMetric] = useState('overview')

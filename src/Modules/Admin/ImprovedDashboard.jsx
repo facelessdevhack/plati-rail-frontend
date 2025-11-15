@@ -19,7 +19,7 @@ const ImprovedAdminDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState(null)
   const [dateRange, setDateRange] = useState([
-    moment().subtract(30, 'days'),
+    moment().subtract(25, 'days'),
     moment()
   ])
   const [refreshing, setRefreshing] = useState(false)
@@ -322,7 +322,7 @@ const ImprovedAdminDashboard = () => {
           <InfoCircleOutlined style={{ color: '#1890ff', fontSize: '16px', marginRight: '8px' }} />
           <span style={{ fontSize: '13px', color: '#262626' }}>
             <strong>Sales Amount</strong> is calculated as the sum of all entry prices (SUM of price field from entry_master).
-            <strong> Default range:</strong> Last 30 days. Use quick select buttons or date picker to change the period.
+            <strong> Default range:</strong> Last 25 days. Use quick select buttons or date picker to change the period.
           </span>
         </div>
       </div>
