@@ -204,6 +204,194 @@ const JobCardListing = () => {
     return jobCard.stepProgress.some(step => (step.pendingQuantity || 0) > 0)
   }
 
+  // Apply custom export filters to job cards
+  const applyExportFilters = (jobCards) => {
+    let filtered = [...jobCards]
+
+    // Filter by dispatched status
+    if (exportFilters.excludeDispatched) {
+      filtered = filtered.filter(jc => {
+        const isDispatched = jc.status === 'Completed' &&
+          jc.stepProgress?.some(sp => sp.stepName?.toLowerCase().includes('dispatch'))
+        return !isDispatched
+      })
+    }
+
+    // Filter by completed status
+    if (exportFilters.excludeCompleted) {
+      filtered = filtered.filter(jc => jc.status !== 'Completed')
+    }
+
+    // Include ONLY with rejected quantities
+    if (exportFilters.includeOnlyWithRejected) {
+      filtered = filtered.filter(jc => hasRejectedQuantities(jc))
+    }
+
+    // Include ONLY with pending quantities
+    if (exportFilters.includeOnlyWithPending) {
+      filtered = filtered.filter(jc => hasPendingQuantities(jc))
+    }
+
+    return filtered
+  }
+
+  // Export functions with custom filters
+  const handleExportWithFilters = async (format) => {
+    try {
+      setExportLoading(true)
+
+      const loadingMessage = message.loading({
+        content: '🔍 Fetching job cards for export...',
+        duration: 0
+      })
+
+      const batchResult = await dispatch(
+        getJobCardsWithStepProgressBatch({
+          page: 1,
+          limit: 1000,
+          search: searchTerm,
+          status: selectedStatus === 'all' ? null : selectedStatus,
+          excludeDispatched: false // We'll filter manually
+        })
+      ).unwrap()
+
+      if (!batchResult.jobCards || batchResult.jobCards.length === 0) {
+        message.warning('No job cards found for export')
+        loadingMessage()
+        return
+      }
+
+      // Apply custom filters
+      const filteredJobCards = applyExportFilters(batchResult.jobCards)
+
+      if (filteredJobCards.length === 0) {
+        message.warning('No job cards match the selected filters')
+        loadingMessage()
+        return
+      }
+
+      loadingMessage()
+
+      // Prepare export data
+      const exportData = filteredJobCards.map(jc => ({
+        'Job Card ID': jc.id,
+        'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm') : '',
+        'Source Product': jc.alloyName || '',
+        'Target Product': jc.convertName || '',
+        'Quantity': jc.quantity || 0,
+        'Progress %': `${jc.progressPercentage || 0}%`,
+        'Status': jc.status,
+        'Priority': jc.isUrgent ? 'Urgent' : 'Normal',
+        'Created By': jc.createdBy || 'Unknown',
+        'Has Rejected': hasRejectedQuantities(jc) ? 'Yes' : 'No',
+        'Has Pending': hasPendingQuantities(jc) ? 'Yes' : 'No'
+      }))
+
+      // CSV Export
+      const headers = Object.keys(exportData[0])
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map(row =>
+          headers.map(header => {
+            const value = row[header]
+            return typeof value === 'string' && (value.includes(',') || value.includes('"'))
+              ? `"${value.replace(/"/g, '""')}"`
+              : value
+          }).join(',')
+        )
+      ].join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `job-cards-custom-export-${moment().format('YYYY-MM-DD')}.csv`
+      link.click()
+
+      message.success(`✅ Exported ${filteredJobCards.length} job cards to Excel`)
+      setExportLoading(false)
+    } catch (error) {
+      console.error('Export error:', error)
+      message.error('Failed to export job cards')
+      setExportLoading(false)
+    }
+  }
+
+  const handleExportPDFWithFilters = async () => {
+    try {
+      setExportLoading(true)
+
+      const loadingMessage = message.loading({
+        content: '🔍 Fetching job cards for PDF export...',
+        duration: 0
+      })
+
+      const batchResult = await dispatch(
+        getJobCardsWithStepProgressBatch({
+          page: 1,
+          limit: 1000,
+          search: searchTerm,
+          status: selectedStatus === 'all' ? null : selectedStatus,
+          excludeDispatched: false
+        })
+      ).unwrap()
+
+      const filteredJobCards = applyExportFilters(batchResult.jobCards || [])
+
+      if (filteredJobCards.length === 0) {
+        message.warning('No job cards match the selected filters')
+        loadingMessage()
+        return
+      }
+
+      loadingMessage()
+
+      // Use existing handleExportPDF logic but with filtered data
+      await handleExportPDF(false, filteredJobCards)
+    } catch (error) {
+      console.error('PDF export error:', error)
+      message.error('Failed to export PDF')
+      setExportLoading(false)
+    }
+  }
+
+  const handleExportDetailedPDFWithFilters = async () => {
+    try {
+      setDetailedExportLoading(true)
+
+      const loadingMessage = message.loading({
+        content: '🔍 Fetching job cards for detailed PDF export...',
+        duration: 0
+      })
+
+      const batchResult = await dispatch(
+        getJobCardsWithStepProgressBatch({
+          page: 1,
+          limit: 1000,
+          search: searchTerm,
+          status: selectedStatus === 'all' ? null : selectedStatus,
+          excludeDispatched: false
+        })
+      ).unwrap()
+
+      const filteredJobCards = applyExportFilters(batchResult.jobCards || [])
+
+      if (filteredJobCards.length === 0) {
+        message.warning('No job cards match the selected filters')
+        loadingMessage()
+        return
+      }
+
+      loadingMessage()
+
+      // Use existing handleExportDetailedPDF logic but with filtered data
+      await handleExportDetailedPDF(false, filteredJobCards)
+    } catch (error) {
+      console.error('Detailed PDF export error:', error)
+      message.error('Failed to export detailed PDF')
+      setDetailedExportLoading(false)
+    }
+  }
+
   // Load job cards and production plans with allocation details
   const loadJobCards = async () => {
     try {
@@ -1516,6 +1704,14 @@ const JobCardListing = () => {
       label: detailedExportLoading ? 'Creating Non-Dispatched Detailed PDF...' : 'Export Non-Dispatched Job Cards to Detailed PDF',
       onClick: () => handleExportDetailedPDF(true),
       disabled: exportLoading || detailedExportLoading
+    },
+    { type: 'divider' },
+    {
+      key: 'custom_export',
+      icon: <FilterOutlined />,
+      label: '🎯 Custom Export (Filter Options)',
+      onClick: () => setExportFilterModalVisible(true),
+      disabled: exportLoading || detailedExportLoading
     }
   ]
 
@@ -2496,6 +2692,101 @@ const JobCardListing = () => {
             loading={stepProgressLoading}
           />
         )}
+
+        {/* Export Filter Modal */}
+        <Modal
+          title="📊 Custom Export Options"
+          open={exportFilterModalVisible}
+          onCancel={() => setExportFilterModalVisible(false)}
+          onOk={() => {
+            setExportFilterModalVisible(false)
+            // Execute export based on format and filters
+            if (exportFilterFormat === 'excel') {
+              handleExportWithFilters('excel')
+            } else if (exportFilterFormat === 'pdf') {
+              handleExportPDFWithFilters()
+            } else if (exportFilterFormat === 'detailed_pdf') {
+              handleExportDetailedPDFWithFilters()
+            }
+          }}
+          okText="Export"
+          cancelText="Cancel"
+          width={600}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <Typography.Text strong>Export Format:</Typography.Text>
+            <Select
+              value={exportFilterFormat}
+              onChange={setExportFilterFormat}
+              style={{ width: '100%', marginTop: 8 }}
+              options={[
+                { value: 'excel', label: '📊 Excel Spreadsheet' },
+                { value: 'pdf', label: '📄 PDF Report (Summary)' },
+                { value: 'detailed_pdf', label: '📑 PDF Report (Detailed with Steps)' }
+              ]}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <Typography.Text strong>Filter Options:</Typography.Text>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={exportFilters.excludeDispatched}
+                  onChange={(e) => setExportFilters({ ...exportFilters, excludeDispatched: e.target.checked })}
+                  style={{ marginRight: 8, width: 16, height: 16 }}
+                />
+                <span>🚚 Exclude Dispatched Job Cards</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={exportFilters.excludeCompleted}
+                  onChange={(e) => setExportFilters({ ...exportFilters, excludeCompleted: e.target.checked })}
+                  style={{ marginRight: 8, width: 16, height: 16 }}
+                />
+                <span>✅ Exclude Completed Job Cards (100% progress)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={exportFilters.includeOnlyWithRejected}
+                  onChange={(e) => setExportFilters({ ...exportFilters, includeOnlyWithRejected: e.target.checked })}
+                  style={{ marginRight: 8, width: 16, height: 16 }}
+                />
+                <span>❌ Include ONLY Job Cards with Rejected Quantities</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={exportFilters.includeOnlyWithPending}
+                  onChange={(e) => setExportFilters({ ...exportFilters, includeOnlyWithPending: e.target.checked })}
+                  style={{ marginRight: 8, width: 16, height: 16 }}
+                />
+                <span>⏳ Include ONLY Job Cards with Pending Quantities</span>
+              </label>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: 16,
+            padding: 12,
+            backgroundColor: '#f0f7ff',
+            borderRadius: 4,
+            border: '1px solid #91d5ff'
+          }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <InfoCircleOutlined style={{ marginRight: 4 }} />
+              <strong>Note:</strong> If you select "Include ONLY with Rejected" or "Include ONLY with Pending",
+              only job cards that have rejected or pending quantities in their step progress will be exported.
+              This is useful for quality control and identifying problematic job cards.
+            </Typography.Text>
+          </div>
+        </Modal>
       </div>
     </Layout>
   )
