@@ -679,5 +679,51 @@ export const getProductionKPIData = createAsyncThunk(
   }
 )
 
+// Get job cards with detailed step progress for export
+export const getJobCardsWithStepProgress = createAsyncThunk(
+  'production/getJobCardsWithStepProgress',
+  async ({ page = 1, limit = 1000, search = '', status = null, excludeDispatched = false }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page)
+      params.append('limit', limit)
+      if (search) params.append('search', search)
+      if (status) params.append('status', status)
+      if (excludeDispatched) params.append('excludeDispatched', excludeDispatched)
+
+      const response = await client.get(
+        `/production/job-cards-with-step-progress?${params.toString()}`
+      )
+
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
+// Optimized batch endpoint for PDF export - fetches job cards with step progress in single query
+export const getJobCardsWithStepProgressBatch = createAsyncThunk(
+  'production/getJobCardsWithStepProgressBatch',
+  async ({ page = 1, limit = 1000, search = '', status = null, excludeDispatched = false }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page)
+      params.append('limit', limit)
+      if (search) params.append('search', search)
+      if (status) params.append('status', status)
+      if (excludeDispatched) params.append('excludeDispatched', excludeDispatched)
+
+      const response = await client.get(
+        `/production/job-cards-with-step-progress-batch?${params.toString()}`
+      )
+
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
 // Get finish-specific sales metrics for Smart Production Dashboard
 // getFinishSalesMetrics - REMOVED

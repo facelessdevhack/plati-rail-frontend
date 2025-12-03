@@ -10,7 +10,8 @@ import {
   Divider,
   Typography,
   Tooltip,
-  Badge
+  Badge,
+  Checkbox
 } from 'antd'
 import {
   CloseOutlined,
@@ -18,7 +19,8 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   RightOutlined,
-  LeftOutlined
+  LeftOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import { FixedSizeList as List } from 'react-window'
 
@@ -189,12 +191,24 @@ const SelectedItemsPanel = ({
                 ))}
             </Select>
 
-            <div className='flex gap-2'>
+            <div className='flex gap-2 items-center'>
               <QuantityInput
                 planId={item.planId}
                 quantity={plan?.quantity}
                 onUpdate={onUpdatePlan}
               />
+              <Tooltip title="Mark this production plan as urgent">
+                <Checkbox
+                  checked={plan?.urgent || false}
+                  onChange={(e) => onUpdatePlan(item.planId, 'urgent', e.target.checked)}
+                  size='small'
+                >
+                  <span className={`text-xs ${plan?.urgent ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                    {plan?.urgent && <ThunderboltOutlined className='mr-1' />}
+                    Urgent
+                  </span>
+                </Checkbox>
+              </Tooltip>
               {isConfigured && (
                 <Tag color='success' icon={<CheckCircleOutlined />}>
                   Ready

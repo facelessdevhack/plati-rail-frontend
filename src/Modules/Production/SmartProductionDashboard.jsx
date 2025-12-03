@@ -492,6 +492,7 @@ const SmartProductionDashboard = () => {
           sourceAlloy: alloy,
           targetFinish: null,
           quantity: 1,
+          urgent: false,
           originalAlloyId: alloyId // Keep reference to original alloy ID
         }
       }))
@@ -633,6 +634,7 @@ const SmartProductionDashboard = () => {
             sourceAlloy: matchingAlloy,
             targetFinish: suggestion.recommendedFinish,
             quantity: Math.max(suggestion.recommendedQuantity, 1),
+            urgent: false,
             originalAlloyId: matchingAlloy.id
           }
 
@@ -934,6 +936,7 @@ const SmartProductionDashboard = () => {
               sourceAlloy: alloy,
               targetFinish: availableFinishes[0].value,
               quantity: 1,
+              urgent: false,
               originalAlloyId: alloy.id
             }
           }
@@ -1005,7 +1008,7 @@ const SmartProductionDashboard = () => {
             alloyId: plan.sourceAlloy.id,
             convertId: targetFinishOption.alloyId,
             quantity: plan.quantity,
-            urgent: false,
+            urgent: plan.urgent || false,
             userId: user?.id || 1,
             presetName: null
           }
