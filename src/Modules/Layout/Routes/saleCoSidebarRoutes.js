@@ -66,6 +66,10 @@ export const saleCoSidebarRoutes = [
   getItemLayout(
     <Link to='/sales-dispatch-entries'>📦 Dispatch Approval</Link>,
     'sales-dispatch-entries'
+  ),
+  getItemLayout(
+    <Link to='/sales-co-dispatch-entries'>📋 Sales Dispatch Entries</Link>,
+    'sales-co-dispatch-entries'
   )
 
   // Sales Coordination System - Primary Section

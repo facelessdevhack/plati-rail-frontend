@@ -126,9 +126,21 @@ const StackNavigation = () => {
       <Route
         path='/admin-dispatch-entries'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5]}>
             <AdminLayout
               title="Today's Dispatch Entries"
+              content={<DispatchEntriesPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/sales-co-dispatch-entries'
+        element={
+          <PrivateRoute allowedRoles={[7]}>
+            <AdminLayout
+              title="Dispatch Entries - Sales Coordinator"
+              items={saleCoSidebarRoutes}
               content={<DispatchEntriesPage />}
             />
           </PrivateRoute>
@@ -431,7 +443,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[1, 2, 3, 4, 5, 6, 7]}>
             <AdminLayout
               title='📊 Sales Coordinator Dashboard'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 1 ? dataUserSiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes))}
+              items={user?.roleId === 7 ? saleCoSidebarRoutes : (user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 1 ? dataUserSiderRoutes : adminSiderRoutes))}
               content={<SalesCoordinatorDashboard />}
             />
           </PrivateRoute>
