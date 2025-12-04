@@ -12,7 +12,8 @@ import {
   getPaymentDailyEntry,
   getAdminPaymentMethods,
   getAllPaymentMethods,
-  getChargesDailyEntry
+  getChargesDailyEntry,
+  getDispatchEntriesAPI
 } from '../api/entriesAPI'
 import { getAllDealersOrders } from '../api/entriesAPI'
 
@@ -98,7 +99,8 @@ const initialState = {
   allPaymentDailyEntries: [],
   allChargesDailyEntries: [],
   allDealersOrders: [],
-  dealersOrdersCount: 0
+  dealersOrdersCount: 0,
+  dispatchEntries: []
 }
 
 export const entrySlice = createSlice({
@@ -460,6 +462,23 @@ export const entrySlice = createSlice({
         state.error = payload
         state.allPMEntries = []
         state.pmEntryCount = 0
+      })
+      .addCase(getDispatchEntriesAPI.pending, state => {
+        state.loading = true
+        state.status = 'pending'
+        state.dispatchEntries = []
+      })
+      .addCase(getDispatchEntriesAPI.fulfilled, (state, { payload }) => {
+        state.loading = false
+        state.status = 'fulfilled'
+        state.dispatchEntries = payload.dispatchEntries || payload.data || payload
+        state.error = null
+      })
+      .addCase(getDispatchEntriesAPI.rejected, (state, { payload }) => {
+        state.loading = false
+        state.status = 'rejected'
+        state.error = payload
+        state.dispatchEntries = []
       })
   }
 })

@@ -5,7 +5,8 @@ import {
   ClockCircleOutlined,
   DeleteOutlined,
   ExportOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  FilePdfOutlined
 } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
@@ -15,6 +16,7 @@ import {
 import { useDispatch } from 'react-redux'
 import moment from 'moment'
 import * as XLSX from 'xlsx'
+import DispatchPDFExport from '../../Components/DispatchPDFExport.jsx'
 
 const DispatchEntriesView = () => {
   const dispatch = useDispatch()
@@ -86,7 +88,21 @@ const DispatchEntriesView = () => {
       return
     }
 
-    exportToPDF(dispatchEntries, 'Dispatch Entries Report')
+    // Extract unique dealer information
+    const availableDealers = [...new Map(dispatchEntries.map(entry => [entry.dealerId, {
+      id: entry.dealerId,
+      name: entry.dealerName
+    }])).values()]
+
+    // Use professional PDF export with selected entries
+    const selectedIds = dispatchEntries.map(entry => entry.id)
+    return (
+      <DispatchPDFExport
+        selectedOrderIds={selectedIds}
+        availableDealers={availableDealers}
+        onExportComplete={() => message.success('PDF export completed')}
+      />
+    )
   }
 
   const handleExportTodayEntries = () => {
@@ -94,7 +110,6 @@ const DispatchEntriesView = () => {
 
     // Filter entries for today (using IST)
     const todayEntries = dispatchEntries.filter(entry => {
-      // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
       return entryDate.format('YYYY-MM-DD') === today
     })
@@ -104,7 +119,21 @@ const DispatchEntriesView = () => {
       return
     }
 
-    exportToPDF(todayEntries, `Today's Dispatch Entries`)
+    // Extract unique dealer information
+    const availableDealers = [...new Map(todayEntries.map(entry => [entry.dealerId, {
+      id: entry.dealerId,
+      name: entry.dealerName
+    }])).values()]
+
+    // Use professional PDF export with today's entries
+    const selectedIds = todayEntries.map(entry => entry.id)
+    return (
+      <DispatchPDFExport
+        selectedOrderIds={selectedIds}
+        availableDealers={availableDealers}
+        onExportComplete={() => message.success('Today\'s PDF export completed')}
+      />
+    )
   }
 
   const handleExportExcelDispatchEntries = () => {
@@ -202,9 +231,9 @@ const DispatchEntriesView = () => {
                 word-wrap: break-word;
               }
               th {
-                background-color: #f8f9fa;
+                background-color: #000000;
                 font-weight: bold;
-                color: #333;
+                color: #ffffff;
                 font-size: 16px;
               }
               tr:nth-child(even) {
@@ -502,38 +531,51 @@ const DispatchEntriesView = () => {
     {
       title: 'Action',
       key: 'action',
-      width: 200,
+      width: 300,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Button
-            type='primary'
-            size='small'
-            icon={<CheckCircleOutlined />}
-            loading={processingId === record.id}
-            onClick={() => handleProcessEntry(record.id)}
-          >
-            Dispatch
-          </Button>
-          <Popconfirm
-            title='Delete this entry?'
-            description='Stock will be restored. This action cannot be undone.'
-            onConfirm={() => handleDeleteEntry(record.id)}
-            okText='Yes, Delete'
-            cancelText='Cancel'
-            okButtonProps={{ danger: true }}
-          >
+      render: (_, record) => {
+        // Extract dealer information for single order export
+        const dealerInfo = {
+          id: record.dealerId,
+          name: record.dealerName
+        }
+
+        return (
+          <Space>
             <Button
-              danger
+              type='primary'
               size='small'
-              icon={<DeleteOutlined />}
-              loading={deletingId === record.id}
+              icon={<CheckCircleOutlined />}
+              loading={processingId === record.id}
+              onClick={() => handleProcessEntry(record.id)}
             >
-              Delete
+              Dispatch
             </Button>
-          </Popconfirm>
-        </Space>
-      )
+            <DispatchPDFExport
+              selectedOrderIds={record.id}
+              availableDealers={[dealerInfo]}
+              onExportComplete={() => message.success('Order PDF exported successfully')}
+            />
+            <Popconfirm
+              title='Delete this entry?'
+              description='Stock will be restored. This action cannot be undone.'
+              onConfirm={() => handleDeleteEntry(record.id)}
+              okText='Yes, Delete'
+              cancelText='Cancel'
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                danger
+                size='small'
+                icon={<DeleteOutlined />}
+                loading={deletingId === record.id}
+              >
+                Delete
+              </Button>
+            </Popconfirm>
+          </Space>
+        )
+      }
     }
   ]
 
@@ -547,18 +589,42 @@ const DispatchEntriesView = () => {
           </p>
         </div>
         <Space>
-          <Button
-            type='primary'
-            icon={<ExportOutlined />}
-            onClick={handleExportDispatchEntries}
-            disabled={dispatchEntries.length === 0}
-          >
-            Export All
-          </Button>
+          <DispatchPDFExport
+            selectedOrderIds={dispatchEntries.map(entry => entry.id)}
+            availableDealers={[...new Map(dispatchEntries.map(entry => [entry.dealerId, {
+              id: entry.dealerId,
+              name: entry.dealerName
+            }])).values()]}
+            onExportComplete={() => message.success('Consolidated PDF export completed')}
+          />
           <Button
             type='default'
-            icon={<ExportOutlined />}
-            onClick={handleExportTodayEntries}
+            icon={<FilePdfOutlined />}
+            onClick={() => {
+              const today = moment().format('YYYY-MM-DD')
+              const todayEntries = dispatchEntries.filter(entry => {
+                const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+                return entryDate.format('YYYY-MM-DD') === today
+              })
+
+              if (todayEntries.length === 0) {
+                message.warning('No dispatch entries found for today')
+                return
+              }
+
+              const availableDealers = [...new Map(todayEntries.map(entry => [entry.dealerId, {
+                id: entry.dealerId,
+                name: entry.dealerName
+              }])).values()]
+
+              return (
+                <DispatchPDFExport
+                  selectedOrderIds={todayEntries.map(entry => entry.id)}
+                  availableDealers={availableDealers}
+                  onExportComplete={() => message.success('Today\'s PDF export completed')}
+                />
+              )
+            }}
           >
             Export Today
           </Button>

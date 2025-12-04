@@ -16,6 +16,7 @@ import AddDailyEntry from '../../Modules/DataEntry/AddDailyEntry'
 import DailyEntryAdmin from '../../Modules/DailyEntry'
 import AdminDailyEntryDealersPage from '../../Modules/DailyEntry/DailyEntryDealers'
 import AdminDealerDetails from '../../Modules/DailyEntry/Dealers/DealersDetails'
+import DispatchEntriesPage from '../../Modules/DailyEntry/DispatchEntries'
 import AddPMEntry from '../../Modules/DataEntry/AddPMEntry'
 import PrivateRoute from './PrivateRoute'
 import UnauthorizedPage from './UnauthorizedPage'
@@ -118,6 +119,17 @@ const StackNavigation = () => {
             <AdminLayout
               title='Daily Entry Dealers'
               content={<AdminDailyEntryDealersPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/admin-dispatch-entries'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+            <AdminLayout
+              title="Today's Dispatch Entries"
+              content={<DispatchEntriesPage />}
             />
           </PrivateRoute>
         }

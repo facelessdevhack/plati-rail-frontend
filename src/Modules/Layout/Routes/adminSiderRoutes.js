@@ -74,6 +74,15 @@ export const adminSiderRoutes = [
     <FileTextOutlined style={{ fontSize: '16px' }} />
   ),
 
+  // Today's Dispatch Entries
+  getItemLayout(
+    <Link to='/admin-dispatch-entries'>
+      <span style={{ fontWeight: 600 }}>📦 Today's Dispatch</span>
+    </Link>,
+    'todays-dispatch-entries',
+    <ClockCircleOutlined style={{ fontSize: '16px' }} />
+  ),
+
   // Pricing Entries
   getItemLayout(
     <Link to='/data-entry-pricing'>
