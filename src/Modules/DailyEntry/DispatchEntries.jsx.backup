@@ -27,9 +27,6 @@ import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { getDispatchEntriesAPI } from '../../redux/api/entriesAPI'
 import moment from 'moment'
-import JSZip from 'jszip'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
 
 const { Text, Title } = Typography
 const { Search } = Input
@@ -125,416 +122,28 @@ const DispatchEntriesPage = () => {
     })
   }
 
-  // Handle export dispatch entries as ZIP with PDF files
-  const handleExportDispatchEntries = async () => {
+  // Handle export dispatch entries
+  const handleExportDispatchEntries = () => {
     if (groupedData.length === 0) {
       message.warning('No dispatch entries available to export')
       return
     }
 
-    try {
-      const zip = new JSZip()
-      message.loading('Creating PDF ZIP file...', 0)
+    // Sort dealers by name for consistent export order
+    const sortedDealerGroups = [...groupedData].sort((a, b) =>
+      a.dealerName?.localeCompare(b.dealerName)
+    )
 
-      // Sort dealers by name for consistent export order
-      const sortedDealerGroups = [...groupedData].sort((a, b) =>
-        a.dealerName?.localeCompare(b.dealerName)
-      )
+    // Export individual PDF for each dealer
+    sortedDealerGroups.forEach((dealerGroup, index) => {
+      setTimeout(() => {
+        exportIndividualDealerPDF(dealerGroup)
+      }, index * 500) // Small delay between exports to avoid browser blocking
+    })
 
-      // Create individual PDF files for each dealer and add to ZIP
-      for (const dealerGroup of sortedDealerGroups) {
-        const pdfBlob = await createDealerPDF(dealerGroup)
-        const sanitizedDealerName = dealerGroup.dealerName.replace(
-          /[^a-zA-Z0-9]/g,
-          '_'
-        )
-        const fileName = `${sanitizedDealerName}_${moment().format(
-          'DD-MM-YYYY'
-        )}.pdf`
-        zip.file(fileName, pdfBlob)
-      }
-
-      // Generate and download ZIP
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(zipBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `Dispatch_Reports_${moment().format('DD-MM-YYYY')}.zip`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      message.success(
-        `ZIP file created with ${sortedDealerGroups.length} PDF reports`
-      )
-    } catch (error) {
-      console.error('Error creating PDF ZIP file:', error)
-      message.error('Failed to create PDF ZIP file')
-    }
-  }
-
-  // Create individual dealer PDF using original design
-  const createDealerPDF = async dealerGroup => {
-    const { dealerName, dealerId, entries, entryCount, totalQuantity } =
-      dealerGroup
-    const reportTitle = `${dealerName} - ${moment().format('DD MMM YYYY')}`
-
-    // Create HTML content using the original approved design
-    let htmlContent = `
-      <html>
-        <head>
-          <title>${reportTitle}</title>
-          <style>
-            @page {
-              size: A4;
-              margin: 15mm;
-              orientation: portrait;
-            }
-            body {
-              font-family: Arial, Helvetica, sans-serif;
-              font-size: 12px;
-              margin: 0;
-              padding: 20px;
-              color: #2c3e50;
-              background: #ffffff;
-              line-height: 1.4;
-            }
-
-            /* Clean Header Section */
-            .header {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 20px;
-              border-bottom: 2px solid #34495e;
-              padding-bottom: 15px;
-            }
-
-            .company-logo {
-              width: 50px;
-              height: 50px;
-              background: #000;
-              border: 1px solid #ddd;
-              border-radius: 4px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: bold;
-              font-size: 16px;
-              color: white;
-            }
-
-            .header-info {
-              text-align: right;
-            }
-
-            .company-name {
-              font-size: 18px;
-              font-weight: bold;
-              margin: 0;
-              color: #2c3e50;
-            }
-
-            .document-title {
-              font-size: 14px;
-              margin: 2px 0 0 0;
-              color: #7f8c8d;
-            }
-
-            /* Main Document Title */
-            .main-title {
-              text-align: center;
-              margin: 20px 0 30px 0;
-              font-size: 24px;
-              font-weight: bold;
-              color: #2c3e50;
-              text-transform: uppercase;
-            }
-
-            /* Dealer Information Section */
-            .dealer-info {
-              background: #f8f9fa;
-              border: 1px solid #e9ecef;
-              padding: 25px;
-              margin-bottom: 30px;
-              border-radius: 4px;
-            }
-
-            .dealer-header {
-              text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 1px solid #dee2e6;
-              padding-bottom: 15px;
-            }
-
-            .dealer-name {
-              font-size: 20px;
-              font-weight: bold;
-              color: #2c3e50;
-              margin: 0;
-            }
-
-            .stats-row {
-              display: flex;
-              justify-content: space-around;
-              text-align: center;
-            }
-
-            .stat-item {
-              flex: 1;
-              padding: 0 10px;
-            }
-
-            .stat-label {
-              font-size: 12px;
-              color: #7f8c8d;
-              text-transform: uppercase;
-              font-weight: 600;
-              letter-spacing: 0.5px;
-              margin-bottom: 5px;
-            }
-
-            .stat-value {
-              font-size: 24px;
-              font-weight: bold;
-              color: #2c3e50;
-            }
-
-            .stat-unit {
-              font-size: 12px;
-              color: #7f8c8d;
-              margin-top: 2px;
-            }
-
-            /* Table Styling */
-            .table-wrapper {
-              border: 1px solid #dee2e6;
-              border-radius: 4px;
-              overflow: hidden;
-              margin-bottom: 30px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            }
-
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 0;
-            }
-
-            th {
-              background: #000 !important;
-              color: #ffffff !important;
-              font-weight: 700 !important;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              padding: 15px 12px;
-              text-align: left;
-              font-size: 11px;
-              border-bottom: 1px solid #2c3e50;
-            }
-
-            td {
-              padding: 15px 12px;
-              border-bottom: 1px solid #dee2e6;
-              vertical-align: top;
-            }
-
-            tr:nth-child(even) {
-              background-color: #f8f9fa;
-            }
-
-            /* Column Specific Styling */
-            .sno-col {
-              width: 8%;
-              text-align: center;
-              font-weight: 600;
-              color: #34495e;
-            }
-
-            .date-col {
-              width: 20%;
-              text-align: center;
-              color: #495057;
-            }
-
-            .product-col {
-              width: 52%;
-              color: #2c3e50;
-              font-weight: 500;
-            }
-
-            .qty-col {
-              width: 20%;
-              text-align: center;
-              font-weight: 600;
-              color: #28a745;
-            }
-
-            .no-entries {
-              text-align: center;
-              font-style: italic;
-              color: #7f8c8d;
-              padding: 30px;
-              background: #f8f9fa;
-              font-size: 14px;
-            }
-
-            /* Footer */
-            .footer {
-              margin-top: 40px;
-              padding: 20px 0;
-              border-top: 1px solid #dee2e6;
-              text-align: center;
-              color: #7f8c8d;
-              font-size: 11px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="company-logo">
-              <img src="${
-                window.location.origin
-              }/assets/logo.png" alt="Plati Logo" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #34495e;">PLATI</div>
-            </div>
-            <div class="header-info">
-              <div class="company-name">PLATI INDIA PVT. LTD.</div>
-              <div class="document-title">Dealer Dispatch Report</div>
-            </div>
-          </div>
-
-          <div class="dealer-info">
-            <div class="dealer-header">
-              <div class="dealer-name">${dealerName}</div>
-            </div>
-            <div class="stats-row">
-              <div class="stat-item">
-                <div class="stat-label">Total Quantity</div>
-                <div class="stat-value">${totalQuantity}</div>
-                <div class="stat-unit">pieces</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-label">Report Date</div>
-                <div class="stat-value">${moment().format('DD')}</div>
-                <div class="stat-unit">${moment().format('MMM YYYY')}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th class="sno-col">S.No</th>
-                  <th class="date-col">Date</th>
-                  <th class="product-col">Product Name</th>
-                  <th class="qty-col">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  entries.length === 0
-                    ? `
-                  <tr>
-                    <td colspan="4" class="no-entries">No entries found for this dealer</td>
-                  </tr>
-                `
-                    : entries
-                        .map((entry, index) => {
-                          const productName = entry.productName || 'N/A'
-                          const quantity = entry.quantity || 0
-                          const date = entry.dateIST
-                            ? moment(entry.dateIST).format('DD MMM YYYY')
-                            : moment(entry.date || entry.createdAt).format(
-                                'DD MMM YYYY'
-                              )
-
-                          return `
-                    <tr>
-                      <td class="sno-col">${index + 1}</td>
-                      <td class="date-col">${date}</td>
-                      <td class="product-col">${productName}</td>
-                      <td class="qty-col">${quantity}</td>
-                    </tr>
-                  `
-                        })
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
-
-          <div class="footer">
-            <div>This is a computer-generated dispatch report from Plati India Pvt. Ltd.</div>
-            <div>Report generated on ${moment().format(
-              'DD MMM YYYY, hh:mm A'
-            )}</div>
-          </div>
-        </body>
-      </html>
-    `
-
-    // Create a temporary div to render the content with proper A4 sizing
-    const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
-    tempDiv.style.minHeight = '297mm' // A4 height
-    tempDiv.style.background = 'white'
-    tempDiv.style.padding = '15mm' // Add proper padding
-    tempDiv.style.boxSizing = 'border-box'
-    tempDiv.innerHTML = htmlContent
-
-    document.body.appendChild(tempDiv)
-
-    try {
-      // Create canvas from the HTML content
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight
-      })
-
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      })
-
-      const imgData = canvas.toDataURL('image/png')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-
-      let position = 0
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
-
-      // Convert PDF to blob
-      const pdfBlob = pdf.output('blob')
-      document.body.removeChild(tempDiv)
-
-      return pdfBlob
-    } catch (error) {
-      document.body.removeChild(tempDiv)
-      throw error
-    }
+    message.success(
+      `Exporting ${sortedDealerGroups.length} separate PDFs - one for each dealer`
+    )
   }
 
   // Export individual dealer PDF function - Clean Corporate Design
@@ -1132,7 +741,7 @@ const DispatchEntriesPage = () => {
                 justifyContent: { xs: 'stretch', lg: 'flex-end' }
               }}
             >
-              <Tooltip title='Export all dealer reports as a single ZIP file'>
+              <Tooltip title='Export individual PDF files for each dealer'>
                 <Button
                   type='primary'
                   icon={<FilePdfOutlined />}
@@ -1160,7 +769,7 @@ const DispatchEntriesPage = () => {
                   }}
                 >
                   <span style={{ display: { xs: 'none', sm: 'inline' } }}>
-                    Export ZIP
+                    Export PDFs
                   </span>
                 </Button>
               </Tooltip>
