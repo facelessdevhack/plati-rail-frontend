@@ -193,6 +193,9 @@ const JobCardListing = () => {
     includeOnlyWithPending: false
   })
 
+  // Selected job cards for export
+  const [selectedJobCardIds, setSelectedJobCardIds] = useState([])
+
   // Helper functions for checking rejected/pending quantities
   const hasRejectedQuantities = (jobCard) => {
     if (!jobCard.stepProgress || !Array.isArray(jobCard.stepProgress)) return false
@@ -388,6 +391,68 @@ const JobCardListing = () => {
     } catch (error) {
       console.error('Detailed PDF export error:', error)
       message.error('Failed to export detailed PDF')
+      setDetailedExportLoading(false)
+    }
+  }
+
+  const handleExportSelectedJobCards = async () => {
+    try {
+      if (selectedJobCardIds.length === 0) {
+        message.warning('Please select at least one job card to export')
+        return
+      }
+
+      setDetailedExportLoading(true)
+
+      const loadingMessage = message.loading({
+        content: `📋 Fetching step progress for ${selectedJobCardIds.length} selected job cards...`,
+        duration: 0
+      })
+
+      console.log(`🔍 Fetching ONLY selected job cards: ${selectedJobCardIds.join(', ')}`)
+
+      // Fetch step progress for ONLY the selected job cards
+      const selectedJobCardsWithSteps = []
+      
+      for (const jobCardId of selectedJobCardIds) {
+        try {
+          const result = await dispatch(getJobCardStepProgress(jobCardId)).unwrap()
+          const stepProgress = result.data || result.stepProgress || []
+          
+          // Find the job card in the current loaded list
+          const jobCard = jobCards.find(jc => 
+            (jc.jobCardId || jc.id) === jobCardId
+          )
+          
+          if (jobCard) {
+            selectedJobCardsWithSteps.push({
+              ...jobCard,
+              stepProgress: stepProgress
+            })
+            console.log(`✅ Fetched step progress for job card ${jobCardId}`)
+          }
+        } catch (error) {
+          console.error(`Failed to fetch step progress for job card ${jobCardId}:`, error)
+        }
+      }
+
+      if (selectedJobCardsWithSteps.length === 0) {
+        message.warning('No step progress found for selected job cards')
+        loadingMessage()
+        setDetailedExportLoading(false)
+        return
+      }
+
+      console.log(`✅ Successfully fetched ${selectedJobCardsWithSteps.length} selected job cards with step progress`)
+      loadingMessage()
+
+      // Use existing handleExportDetailedPDF logic but with selected data
+      await handleExportDetailedPDF(false, selectedJobCardsWithSteps)
+
+      message.success(`✅ Exported ${selectedJobCardsWithSteps.length} selected job cards to PDF`)
+    } catch (error) {
+      console.error('Export selected job cards error:', error)
+      message.error('Failed to export selected job cards')
       setDetailedExportLoading(false)
     }
   }
@@ -870,39 +935,48 @@ const JobCardListing = () => {
   }
 
   // Handle export to detailed PDF with step-wise quantities (using working individual APIs)
-  const handleExportDetailedPDF = async (excludeDispatched = false) => {
+  const handleExportDetailedPDF = async (excludeDispatched = false, preFilteredJobCards = null) => {
     try {
       setDetailedExportLoading(true)
 
-      // Show specific loading message
-      const loadingMessage = message.loading({
-        content: '🔍 Fetching job cards and step progress for detailed PDF export...',
-        duration: 0 // Don't auto dismiss
-      })
+      let jobCardsWithSteps = preFilteredJobCards
+      let loadingMessage = null
 
-      console.log(`🚀 Using optimized batch endpoint that replicates individual API logic...`)
-
-      // Use the batch endpoint that replicates the exact logic of individual APIs
-      const batchResult = await dispatch(
-        getJobCardsWithStepProgressBatch({
-          page: 1,
-          limit: 1000,
-          search: searchTerm,
-          status: selectedStatus === 'all' ? null : selectedStatus,
-          excludeDispatched
+      // Only fetch from API if pre-filtered cards are not provided
+      if (!preFilteredJobCards) {
+        // Show specific loading message
+        loadingMessage = message.loading({
+          content: '🔍 Fetching job cards and step progress for detailed PDF export...',
+          duration: 0 // Don't auto dismiss
         })
-      ).unwrap()
 
-      if (!batchResult.jobCards || batchResult.jobCards.length === 0) {
-        message.warning('No job cards found for detailed export')
-        loadingMessage()
-        return
+        console.log(`🚀 Using optimized batch endpoint that replicates individual API logic...`)
+
+        // Use the batch endpoint that replicates the exact logic of individual APIs
+        const batchResult = await dispatch(
+          getJobCardsWithStepProgressBatch({
+            page: 1,
+            limit: 1000,
+            search: searchTerm,
+            status: selectedStatus === 'all' ? null : selectedStatus,
+            excludeDispatched
+          })
+        ).unwrap()
+
+        if (!batchResult.jobCards || batchResult.jobCards.length === 0) {
+          message.warning('No job cards found for detailed export')
+          if (loadingMessage) loadingMessage()
+          setDetailedExportLoading(false)
+          return
+        }
+
+        jobCardsWithSteps = batchResult.jobCards
+        console.log(`✅ Successfully fetched ${jobCardsWithSteps.length} job cards with step progress in batch`)
+
+        if (loadingMessage) loadingMessage()
+      } else {
+        console.log(`✅ Using ${preFilteredJobCards.length} pre-filtered job cards`)
       }
-
-      const jobCardsWithSteps = batchResult.jobCards
-      console.log(`✅ Successfully fetched ${jobCardsWithSteps.length} job cards with step progress in batch`)
-
-      loadingMessage()
 
       // Check what we're getting
       if (jobCardsWithSteps.length > 0) {
@@ -911,18 +985,12 @@ const JobCardListing = () => {
         console.log('🔍 STEP PROGRESS LENGTH:', jobCardsWithSteps[0].stepProgress.length)
       }
 
-      // Group job cards by status for better organization
-      const groupedByStatus = jobCardsWithSteps.reduce((groups, jc) => {
-        const status = jc.status
-        if (!groups[status]) {
-          groups[status] = []
-        }
-        groups[status].push(jc)
-        return groups
-      }, {})
+      // Sort all job cards by ID in descending order
+      const sortedJobCards = [...jobCardsWithSteps].sort((a, b) => b.id - a.id)
 
-      // Create HTML content for detailed PDF with proper tables
+      // Create HTML content for detailed PDF with 2x2 grid layout
       const reportTitle = excludeDispatched ? 'Detailed Non-Dispatched Job Cards Report' : 'Detailed Job Cards Report'
+      
       let htmlContent = `
         <html>
           <head>
@@ -930,55 +998,83 @@ const JobCardListing = () => {
             <style>
               @page {
                 size: A4;
-                margin: 10mm;
+                margin: 8mm;
                 orientation: portrait;
               }
               body {
                 font-family: Arial, sans-serif;
-                font-size: 12px;
+                font-size: 8px;
                 margin: 0;
-                padding: 6px;
+                padding: 0;
                 color: #000;
                 width: 100%;
-                max-width: 100%;
                 box-sizing: border-box;
               }
-              h1 {
+              .page-header {
                 text-align: center;
-                margin-bottom: 12px;
-                font-size: 18px;
+                margin: 0 0 8px 0;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #333;
+              }
+              .page-header h1 {
+                margin: 0 0 4px 0;
+                font-size: 14px;
                 color: #333;
                 font-weight: bold;
               }
+              .page-header .summary {
+                font-size: 9px;
+                font-weight: bold;
+                color: #1890ff;
+              }
+              .page {
+                page-break-after: always;
+                width: 100%;
+                min-height: 277mm;
+              }
+              .page:last-child {
+                page-break-after: auto;
+              }
+              .grid-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr 1fr;
+                gap: 6px;
+                width: 100%;
+                height: 265mm;
+              }
               .jobcard-section {
-                margin-bottom: 30px;
-                page-break-inside: avoid;
-                border: 2px solid #ddd;
-                border-radius: 8px;
-                padding: 12px;
+                border: 2px solid #333;
+                border-radius: 6px;
+                padding: 4px;
                 background-color: #fafafa;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
               }
               .jobcard-header {
                 background-color: #e9ecef;
-                padding: 8px;
-                border-radius: 6px;
-                margin-bottom: 12px;
-                border: 1px solid #ccc;
+                padding: 3px;
+                border-radius: 4px;
+                margin-bottom: 4px;
+                border: 1px solid #999;
               }
               .jobcard-title {
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 8px;
                 text-align: center;
-                margin-bottom: 4px;
+                margin-bottom: 2px;
               }
               .jobcard-details {
-                display: flex;
-                justify-content: space-between;
-                font-size: 11px;
-                margin-bottom: 4px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2px;
+                font-size: 6px;
               }
               .jobcard-detail-item {
-                flex: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
               }
               .jobcard-detail-label {
                 font-weight: bold;
@@ -989,167 +1085,115 @@ const JobCardListing = () => {
               .status-pending { color: #d9d9d9; font-weight: bold; }
               .priority-urgent { color: #ff4d4f; font-weight: bold; }
               .priority-normal { color: #52c41a; font-weight: bold; }
-
               .steps-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 8px;
-                font-size: 10px;
+                font-size: 5px;
                 background-color: white;
+                flex: 1;
               }
               .steps-table th,
               .steps-table td {
-                border: 1px solid #ddd;
-                padding: 3px 5px;
+                border: 1px solid #ccc;
+                padding: 1px 2px;
                 text-align: left;
                 vertical-align: top;
-                word-wrap: break-word;
               }
               .steps-table th {
                 background-color: #f8f9fa;
                 font-weight: bold;
-                font-size: 9px;
+                font-size: 5px;
                 text-align: center;
+                padding: 2px 1px;
               }
-              .steps-table td {
-                font-size: 9px;
-              }
-              .step-col { width: 12%; }
-              .input-col { width: 10%; text-align: center; }
-              .accepted-col { width: 10%; text-align: center; }
-              .rejected-col { width: 10%; text-align: center; }
-              .pending-col { width: 10%; text-align: center; }
-              .rework-col { width: 10%; text-align: center; }
-              .status-col { width: 12%; text-align: center; }
-              .reason-col { width: 16%; }
-              .date-col { width: 10%; text-align: center; }
-
-              .summary-section {
-                margin-bottom: 20px;
-                padding: 10px;
-                background-color: #e3f2fd;
-                border: 1px solid #2196f3;
-                border-radius: 6px;
-                text-align: center;
-                font-weight: bold;
-              }
-
+              .step-col { width: 15%; }
+              .qty-col { width: 7%; text-align: center; }
+              .status-col { width: 10%; text-align: center; }
+              .reason-col { width: 25%; font-size: 5px; }
               .no-entries {
                 text-align: center;
                 font-style: italic;
                 color: #666;
-                padding: 8px;
+                padding: 4px;
+                font-size: 6px;
               }
-
               .quantity-zero { color: #999; }
               .quantity-positive { color: #000; font-weight: bold; }
               .quantity-rejected { color: #ff4d4f; font-weight: bold; }
               .quantity-pending { color: #faad14; font-weight: bold; }
-
               @media print {
                 * {
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
-                body {
-                  font-size: 8px !important;
-                  line-height: 1.1 !important;
-                }
-                h1 {
-                  font-size: 14px !important;
-                  margin-bottom: 6px !important;
-                }
-                .jobcard-section {
-                  margin-bottom: 20px !important;
-                  padding: 8px !important;
-                }
-                .jobcard-header {
-                  padding: 4px !important;
-                  margin-bottom: 6px !important;
-                }
-                .jobcard-title {
-                  font-size: 12px !important;
-                }
-                .jobcard-details {
-                  font-size: 9px !important;
-                }
-                .steps-table th, .steps-table td {
-                  padding: 1px 3px !important;
-                  font-size: 7px !important;
-                }
               }
             </style>
           </head>
           <body>
-            <h1>${reportTitle} - ${moment().format('DD MMM YYYY HH:mm')}</h1>
-
-            <div class="summary-section">
-              Total Job Cards: ${jobCardsWithSteps.length} |
-              Completed: ${(groupedByStatus['Completed'] || []).length} |
-              In Progress: ${(groupedByStatus['In Progress'] || []).length} |
-              Urgent: ${jobCardsWithSteps.filter(jc => jc.isUrgent).length}
-            </div>
       `
 
-      Object.keys(groupedByStatus).forEach(status => {
-        htmlContent += `
-              <div style="margin-bottom: 15px;">
-                <div style="font-weight: bold; font-size: 14px; text-align: center; background-color: #f0f0f0; padding: 4px; border-radius: 4px;">
-                  ${status} (${groupedByStatus[status].length} job cards)
-                </div>
-        `
+      // Process job cards in batches of 4 (2x2 grid)
+      for (let i = 0; i < sortedJobCards.length; i += 4) {
+        const pageCards = sortedJobCards.slice(i, i + 4)
+        
+        // Add page header on first page only
+        if (i === 0) {
+          htmlContent += `
+            <div class="page-header">
+              <h1>${reportTitle}</h1>
+              <div class="summary">
+                Date: ${moment().format('DD MMM YYYY HH:mm')} | 
+                Total: ${sortedJobCards.length} cards |
+                Showing 4 per page
+              </div>
+            </div>
+          `
+        }
 
-        if (groupedByStatus[status].length === 0) {
-          htmlContent += `<div class="no-entries">No job cards found</div>`
-        } else {
-          // Sort by job card ID in descending order
-          const sortedJobCards = [...groupedByStatus[status]].sort((a, b) => b.id - a.id)
-          sortedJobCards.forEach(jc => {
+        htmlContent += `<div class="page"><div class="grid-container">`
+        
+        // Add up to 4 job cards in the grid
+        for (let j = 0; j < 4; j++) {
+          const jc = pageCards[j]
+          
+          if (jc) {
             const priorityClass = jc.isUrgent ? 'priority-urgent' : 'priority-normal'
             const priorityText = jc.isUrgent ? 'Urgent' : 'Normal'
+            const hasStepProgress = jc.stepProgress && jc.stepProgress.length > 0
 
             htmlContent += `
-                <div class="jobcard-section">
-                  <div class="jobcard-header">
-                    <div class="jobcard-title">Job Card #${jc.id} - ${jc.alloyName} → ${jc.convertName}</div>
-                    <div class="jobcard-details">
-                      <div class="jobcard-detail-item">
-                        <span class="jobcard-detail-label">Quantity:</span> ${jc.quantity}
-                      </div>
-                      <div class="jobcard-detail-item">
-                        <span class="jobcard-detail-label">Created:</span> ${jc.createdAt ? moment(jc.createdAt).format('DD/MM/YYYY') : 'N/A'}
-                      </div>
-                      <div class="jobcard-detail-item">
-                        <span class="jobcard-detail-label">Priority:</span> <span class="${priorityClass}">${priorityText}</span>
-                      </div>
-                      <div class="jobcard-detail-item">
-                        <span class="jobcard-detail-label">Progress:</span> ${jc.progressPercentage}%
-                      </div>
-                      <div class="jobcard-detail-item">
-                        <span class="jobcard-detail-label">Created By:</span> ${jc.createdBy}
-                      </div>
+              <div class="jobcard-section">
+                <div class="jobcard-header">
+                  <div class="jobcard-title">JC #${jc.id} - ${jc.alloyName} → ${jc.convertName}</div>
+                  <div class="jobcard-details">
+                    <div class="jobcard-detail-item">
+                      <span class="jobcard-detail-label">Qty:</span> ${jc.quantity}
+                    </div>
+                    <div class="jobcard-detail-item">
+                      <span class="jobcard-detail-label">Progress:</span> ${jc.progressPercentage}%
+                    </div>
+                    <div class="jobcard-detail-item">
+                      <span class="jobcard-detail-label">Priority:</span> <span class="${priorityClass}">${priorityText}</span>
+                    </div>
+                    <div class="jobcard-detail-item">
+                      <span class="jobcard-detail-label">Status:</span> ${jc.status}
                     </div>
                   </div>
-
-                  <table class="steps-table">
-                    <thead>
-                      <tr>
-                        <th class="step-col">Step</th>
-                        <th class="input-col">Input</th>
-                        <th class="accepted-col">Accepted</th>
-                        <th class="rejected-col">Rejected</th>
-                        <th class="pending-col">Pending</th>
-                        <th class="rework-col">Rework</th>
-                        <th class="status-col">Status</th>
-                        <th class="reason-col">Rejection Reason</th>
-                        <th class="date-col">Processed At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                </div>
+                <table class="steps-table">
+                  <thead>
+                    <tr>
+                      <th class="step-col">Step Name</th>
+                      <th class="qty-col">Input</th>
+                      <th class="qty-col">Accepted</th>
+                      <th class="qty-col">Rejected</th>
+                      <th class="qty-col">Pending</th>
+                      <th class="status-col">Status</th>
+                      <th class="reason-col">Rejection Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
             `
-
-            // Check if step progress exists and has data
-            const hasStepProgress = jc.stepProgress && jc.stepProgress.length > 0
 
             if (hasStepProgress) {
               jc.stepProgress.forEach(step => {
@@ -1157,66 +1201,58 @@ const JobCardListing = () => {
                                    step.status === 'in_progress' ? 'status-in-progress' : 'status-pending'
 
                 htmlContent += `
-                      <tr>
-                        <td>${step.stepIcon || ''} ${step.stepName}</td>
-                        <td class="${step.inputQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center;">
-                          ${step.inputQuantity || 0}
-                        </td>
-                        <td class="${step.acceptedQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center;">
-                          ${step.acceptedQuantity || 0}
-                        </td>
-                        <td class="${step.rejectedQuantity > 0 ? 'quantity-rejected' : 'quantity-zero'}" style="text-align: center;">
-                          ${step.rejectedQuantity || 0}
-                        </td>
-                        <td class="${step.pendingQuantity > 0 ? 'quantity-pending' : 'quantity-zero'}" style="text-align: center;">
-                          ${step.pendingQuantity || 0}
-                        </td>
-                        <td class="${step.reworkQuantity > 0 ? 'quantity-rejected' : 'quantity-zero'}" style="text-align: center;">
-                          ${step.reworkQuantity || 0}
-                        </td>
-                        <td style="text-align: center; font-weight: bold;" class="${statusClass}">
-                          ${step.status?.replace('_', ' ').toUpperCase() || 'PENDING'}
-                        </td>
-                        <td style="font-size: 8px;">${step.rejectionReason || '-'}</td>
-                        <td style="font-size: 8px; text-align: center;">
-                          ${step.processedAt ? moment(step.processedAt).format('DD/MM HH:mm') : '-'}
-                        </td>
-                      </tr>
+                  <tr>
+                    <td style="font-size: 5px;">${step.stepIcon || ''} ${step.stepName}</td>
+                    <td class="${step.inputQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                      ${step.inputQuantity || 0}
+                    </td>
+                    <td class="${step.acceptedQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                      ${step.acceptedQuantity || 0}
+                    </td>
+                    <td class="${step.rejectedQuantity > 0 ? 'quantity-rejected' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                      ${step.rejectedQuantity || 0}
+                    </td>
+                    <td class="${step.pendingQuantity > 0 ? 'quantity-pending' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                      ${step.pendingQuantity || 0}
+                    </td>
+                    <td style="text-align: center; font-weight: bold; font-size: 5px;" class="${statusClass}">
+                      ${step.status?.replace('_', ' ').toUpperCase() || 'PENDING'}
+                    </td>
+                    <td style="font-size: 5px; word-wrap: break-word;">
+                      ${step.rejectionReason || '-'}
+                    </td>
+                  </tr>
                 `
               })
             } else {
-              // Show a basic step information when step progress is not available
               const currentStep = jc.prodStep || 1
               const totalSteps = jc.totalWorkflowSteps || 11
 
               htmlContent += `
-                      <tr>
-                    <td colspan="9" class="no-entries" style="text-align: center; padding: 8px;">
-                      <div style="font-size: 10px; color: #666;">
-                        Step progress data not initialized<br>
-                        Current Step: ${currentStep}/${totalSteps} (${Math.round((currentStep/totalSteps) * 100)}%)<br>
-                        <small style="color: #999;">Note: Step-wise quality tracking may need to be initialized for this job card</small>
-                      </div>
-                    </td>
-                      </tr>
+                <tr>
+                  <td colspan="7" class="no-entries">
+                    Step progress not initialized<br>
+                    Current: ${currentStep}/${totalSteps} (${Math.round((currentStep/totalSteps) * 100)}%)
+                  </td>
+                </tr>
               `
             }
 
             htmlContent += `
-                    </tbody>
-                  </table>
-                </div>
+                  </tbody>
+                </table>
+              </div>
             `
-          })
+          } else {
+            // Empty grid cell
+            htmlContent += `<div class="jobcard-section" style="border: 1px dashed #ccc; background: transparent;"></div>`
+          }
         }
+        
+        htmlContent += `</div></div>`
+      }
 
-        htmlContent += `</div>`
-      })
-
-      htmlContent += `
-          </body>
-        </html>
-      `
+      htmlContent += `</body></html>`
 
       // Create a temporary window to print the content
       const printWindow = window.open('', '_blank', 'width=1000,height=800')
@@ -1275,9 +1311,9 @@ const JobCardListing = () => {
           })
         }, 500)
       }
-      
-      // Close the loading message
-      loadingMessage()
+
+      // Close the loading message if it exists
+      if (loadingMessage) loadingMessage()
 
     } catch (error) {
       console.error('Detailed PDF Export error:', error)
@@ -1712,6 +1748,16 @@ const JobCardListing = () => {
       label: '🎯 Custom Export (Filter Options)',
       onClick: () => setExportFilterModalVisible(true),
       disabled: exportLoading || detailedExportLoading
+    },
+    { type: 'divider' },
+    {
+      key: 'export_selected',
+      icon: detailedExportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
+      label: selectedJobCardIds.length > 0
+        ? `📋 Export Selected (${selectedJobCardIds.length}) to Detailed PDF`
+        : '📋 Export Selected to Detailed PDF',
+      onClick: () => handleExportSelectedJobCards(),
+      disabled: exportLoading || detailedExportLoading || selectedJobCardIds.length === 0
     }
   ]
 
@@ -1818,8 +1864,51 @@ const JobCardListing = () => {
     }
   }
 
+  // Handle select all checkbox
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = jobCards.map(jc => jc.jobCardId || jc.id)
+      setSelectedJobCardIds(allIds)
+    } else {
+      setSelectedJobCardIds([])
+    }
+  }
+
+  // Handle individual checkbox
+  const handleSelectJobCard = (jobCardId) => {
+    setSelectedJobCardIds(prev => {
+      if (prev.includes(jobCardId)) {
+        return prev.filter(id => id !== jobCardId)
+      } else {
+        return [...prev, jobCardId]
+      }
+    })
+  }
+
   // Enhanced table columns with modern design
   const columns = [
+    {
+      title: (
+        <input
+          type="checkbox"
+          checked={selectedJobCardIds.length === jobCards.length && jobCards.length > 0}
+          indeterminate={selectedJobCardIds.length > 0 && selectedJobCardIds.length < jobCards.length}
+          onChange={handleSelectAll}
+          style={{ width: 16, height: 16, cursor: 'pointer' }}
+        />
+      ),
+      key: 'select',
+      width: 50,
+      fixed: 'left',
+      render: (_, record) => (
+        <input
+          type="checkbox"
+          checked={selectedJobCardIds.includes(record.jobCardId || record.id)}
+          onChange={() => handleSelectJobCard(record.jobCardId || record.id)}
+          style={{ width: 16, height: 16, cursor: 'pointer' }}
+        />
+      )
+    },
     {
       title: (
         <div className='flex items-center gap-2'>
