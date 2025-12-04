@@ -176,15 +176,17 @@ const JobCardListing = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false)
   const [selectedJobCard, setSelectedJobCard] = useState(null)
-  
+
   // Step progress modal state
-  const [stepProgressModalVisible, setStepProgressModalVisible] = useState(false)
+  const [stepProgressModalVisible, setStepProgressModalVisible] =
+    useState(false)
   const [selectedStepProgress, setSelectedStepProgress] = useState(null)
   const [stepProgressData, setStepProgressData] = useState([])
   const [stepProgressLoading, setStepProgressLoading] = useState(false)
 
   // Export filter modal state
-  const [exportFilterModalVisible, setExportFilterModalVisible] = useState(false)
+  const [exportFilterModalVisible, setExportFilterModalVisible] =
+    useState(false)
   const [exportFilterFormat, setExportFilterFormat] = useState('pdf') // 'pdf', 'detailed_pdf', 'excel'
   const [exportFilters, setExportFilters] = useState({
     excludeDispatched: true,
@@ -197,25 +199,30 @@ const JobCardListing = () => {
   const [selectedJobCardIds, setSelectedJobCardIds] = useState([])
 
   // Helper functions for checking rejected/pending quantities
-  const hasRejectedQuantities = (jobCard) => {
-    if (!jobCard.stepProgress || !Array.isArray(jobCard.stepProgress)) return false
+  const hasRejectedQuantities = jobCard => {
+    if (!jobCard.stepProgress || !Array.isArray(jobCard.stepProgress))
+      return false
     return jobCard.stepProgress.some(step => (step.rejectedQuantity || 0) > 0)
   }
 
-  const hasPendingQuantities = (jobCard) => {
-    if (!jobCard.stepProgress || !Array.isArray(jobCard.stepProgress)) return false
+  const hasPendingQuantities = jobCard => {
+    if (!jobCard.stepProgress || !Array.isArray(jobCard.stepProgress))
+      return false
     return jobCard.stepProgress.some(step => (step.pendingQuantity || 0) > 0)
   }
 
   // Apply custom export filters to job cards
-  const applyExportFilters = (jobCards) => {
+  const applyExportFilters = jobCards => {
     let filtered = [...jobCards]
 
     // Filter by dispatched status
     if (exportFilters.excludeDispatched) {
       filtered = filtered.filter(jc => {
-        const isDispatched = jc.status === 'Completed' &&
-          jc.stepProgress?.some(sp => sp.stepName?.toLowerCase().includes('dispatch'))
+        const isDispatched =
+          jc.status === 'Completed' &&
+          jc.stepProgress?.some(sp =>
+            sp.stepName?.toLowerCase().includes('dispatch')
+          )
         return !isDispatched
       })
     }
@@ -239,7 +246,7 @@ const JobCardListing = () => {
   }
 
   // Export functions with custom filters
-  const handleExportWithFilters = async (format) => {
+  const handleExportWithFilters = async format => {
     try {
       setExportLoading(true)
 
@@ -278,13 +285,15 @@ const JobCardListing = () => {
       // Prepare export data
       const exportData = filteredJobCards.map(jc => ({
         'Job Card ID': jc.id,
-        'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm') : '',
+        Date: jc.createdAt
+          ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm')
+          : '',
         'Source Product': jc.alloyName || '',
         'Target Product': jc.convertName || '',
-        'Quantity': jc.quantity || 0,
+        Quantity: jc.quantity || 0,
         'Progress %': `${jc.progressPercentage || 0}%`,
-        'Status': jc.status,
-        'Priority': jc.isUrgent ? 'Urgent' : 'Normal',
+        Status: jc.status,
+        Priority: jc.isUrgent ? 'Urgent' : 'Normal',
         'Created By': jc.createdBy || 'Unknown',
         'Has Rejected': hasRejectedQuantities(jc) ? 'Yes' : 'No',
         'Has Pending': hasPendingQuantities(jc) ? 'Yes' : 'No'
@@ -295,22 +304,29 @@ const JobCardListing = () => {
       const csvContent = [
         headers.join(','),
         ...exportData.map(row =>
-          headers.map(header => {
-            const value = row[header]
-            return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-              ? `"${value.replace(/"/g, '""')}"`
-              : value
-          }).join(',')
+          headers
+            .map(header => {
+              const value = row[header]
+              return typeof value === 'string' &&
+                (value.includes(',') || value.includes('"'))
+                ? `"${value.replace(/"/g, '""')}"`
+                : value
+            })
+            .join(',')
         )
       ].join('\n')
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `job-cards-custom-export-${moment().format('YYYY-MM-DD')}.csv`
+      link.download = `job-cards-custom-export-${moment().format(
+        'YYYY-MM-DD'
+      )}.csv`
       link.click()
 
-      message.success(`✅ Exported ${filteredJobCards.length} job cards to Excel`)
+      message.success(
+        `✅ Exported ${filteredJobCards.length} job cards to Excel`
+      )
       setExportLoading(false)
     } catch (error) {
       console.error('Export error:', error)
@@ -409,30 +425,49 @@ const JobCardListing = () => {
         duration: 0
       })
 
-      console.log(`🔍 Fetching ONLY selected job cards: ${selectedJobCardIds.join(', ')}`)
+      console.log(
+        `🔍 Fetching ONLY selected job cards: ${selectedJobCardIds.join(', ')}`
+      )
 
       // Fetch step progress for ONLY the selected job cards
       const selectedJobCardsWithSteps = []
-      
+
       for (const jobCardId of selectedJobCardIds) {
         try {
-          const result = await dispatch(getJobCardStepProgress(jobCardId)).unwrap()
+          const result = await dispatch(
+            getJobCardStepProgress(jobCardId)
+          ).unwrap()
           const stepProgress = result.data || result.stepProgress || []
-          
+
           // Find the job card in the current loaded list
-          const jobCard = jobCards.find(jc => 
-            (jc.jobCardId || jc.id) === jobCardId
+          const jobCard = jobCards.find(
+            jc => (jc.jobCardId || jc.id) === jobCardId
           )
-          
+
           if (jobCard) {
+            // Calculate progress percentage
+            const totalSteps = jobCard.totalWorkflowSteps || 11
+            const currentStep = jobCard.prodStep || 1
+            const progressPercentage = Math.round(
+              (currentStep / totalSteps) * 100
+            )
+
             selectedJobCardsWithSteps.push({
               ...jobCard,
+              id: jobCard.jobCardId || jobCard.id,
+              alloyName: jobCard.sourceProductName || jobCard.alloyName,
+              convertName: jobCard.targetProductName || jobCard.convertName,
+              progressPercentage: progressPercentage,
+              status: currentStep >= totalSteps ? 'Completed' : 'In Progress',
               stepProgress: stepProgress
             })
             console.log(`✅ Fetched step progress for job card ${jobCardId}`)
           }
         } catch (error) {
-          console.error(`Failed to fetch step progress for job card ${jobCardId}:`, error)
+          console.error(
+            `Failed to fetch step progress for job card ${jobCardId}:`,
+            error
+          )
         }
       }
 
@@ -443,13 +478,17 @@ const JobCardListing = () => {
         return
       }
 
-      console.log(`✅ Successfully fetched ${selectedJobCardsWithSteps.length} selected job cards with step progress`)
+      console.log(
+        `✅ Successfully fetched ${selectedJobCardsWithSteps.length} selected job cards with step progress`
+      )
       loadingMessage()
 
       // Use existing handleExportDetailedPDF logic but with selected data
       await handleExportDetailedPDF(false, selectedJobCardsWithSteps)
 
-      message.success(`✅ Exported ${selectedJobCardsWithSteps.length} selected job cards to PDF`)
+      message.success(
+        `✅ Exported ${selectedJobCardsWithSteps.length} selected job cards to PDF`
+      )
     } catch (error) {
       console.error('Export selected job cards error:', error)
       message.error('Failed to export selected job cards')
@@ -506,7 +545,6 @@ const JobCardListing = () => {
           )
         })
 
-  
         return {
           ...jc,
           // Fix field name mapping
@@ -541,11 +579,7 @@ const JobCardListing = () => {
             jc.workflowPreset ||
             jc.workflow_preset_name ||
             null,
-          presetId:
-            jc.presetid ||
-            jc.presetId ||
-            jc.preset_id ||
-            null,
+          presetId: jc.presetid || jc.presetId || jc.preset_id || null,
           stepAssignmentMode:
             jc.stepassignmentmode ||
             jc.stepAssignmentMode ||
@@ -644,7 +678,10 @@ const JobCardListing = () => {
             return { presetId, presetName, steps }
           })
           .catch(error => {
-            console.warn(`Failed to load preset ${presetName} (${presetId}):`, error)
+            console.warn(
+              `Failed to load preset ${presetName} (${presetId}):`,
+              error
+            )
             return { presetId, presetName, steps: [] }
           })
       )
@@ -793,7 +830,9 @@ const JobCardListing = () => {
   const handleExport = async (format, excludeDispatched = false) => {
     try {
       // Show loading message
-      const loadingMessage = message.loading('Fetching all job cards for export...')
+      const loadingMessage = message.loading(
+        'Fetching all job cards for export...'
+      )
 
       // Fetch ALL job cards (without pagination)
       const allJobCardsResult = await dispatch(
@@ -831,17 +870,29 @@ const JobCardListing = () => {
           // Fix field name mapping
           id: jc.jobcardid || jc.id,
           prodPlanId: jc.prodplanid || jc.prodPlanId,
-          alloyName: jc.sourceproductname || jc.alloyName || plan.alloyName || 'Unknown Alloy',
-          convertName: jc.targetproductname || jc.convertName || plan.convertName || 'Unknown Conversion',
+          alloyName:
+            jc.sourceproductname ||
+            jc.alloyName ||
+            plan.alloyName ||
+            'Unknown Alloy',
+          convertName:
+            jc.targetproductname ||
+            jc.convertName ||
+            plan.convertName ||
+            'Unknown Conversion',
           isUrgent: Boolean(jc.urgent) || jc.isUrgent || Boolean(plan.urgent),
-          createdBy: jc.createdbyfirstname && jc.createdbylastname
-            ? `${jc.createdbyfirstname} ${jc.createdbylastname}`
-            : jc.createdBy || 'Unknown',
+          createdBy:
+            jc.createdbyfirstname && jc.createdbylastname
+              ? `${jc.createdbyfirstname} ${jc.createdbylastname}`
+              : jc.createdBy || 'Unknown',
           planTotalQuantity: plan.quantity || 0,
           planAllocatedQuantity: tracking.totalJobCardQuantity || 0,
           planRemainingQuantity: tracking.remainingQuantity || 0,
           planCompletedQuantity: tracking.completedQuantity || 0,
-          allocationPercentage: plan.quantity > 0 ? Math.round((jc.quantity / plan.quantity) * 100) : 0
+          allocationPercentage:
+            plan.quantity > 0
+              ? Math.round((jc.quantity / plan.quantity) * 100)
+              : 0
         }
       })
 
@@ -850,7 +901,9 @@ const JobCardListing = () => {
         allJobCards = allJobCards.filter(jc => {
           const stepInfo = getStepInfo(jc, jc.prodStep)
           const totalSteps = getTotalSteps(jc)
-          const isDispatched = jc.prodStep >= totalSteps && stepInfo?.name?.toLowerCase().includes('dispatch')
+          const isDispatched =
+            jc.prodStep >= totalSteps &&
+            stepInfo?.name?.toLowerCase().includes('dispatch')
           return !isDispatched
         })
       }
@@ -866,17 +919,19 @@ const JobCardListing = () => {
         return {
           'Job Card ID': jc.jobCardId || jc.id,
           'Plan ID': jc.prodPlanId,
-          'Date': jc.createdAt ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm') : '',
+          Date: jc.createdAt
+            ? moment(jc.createdAt).format('YYYY-MM-DD HH:mm')
+            : '',
           'Source Product': jc.sourceProductName || jc.alloyName || '',
           'Target Product': jc.targetProductName || jc.convertName || '',
-          'Quantity': jc.quantity || 0,
+          Quantity: jc.quantity || 0,
           'Current Step': stepInfo?.name || 'Unknown',
           'Step Progress': `${jc.prodStep}/${totalSteps}`,
           'Progress %': `${progress}%`,
-          'Priority': jc.isUrgent ? 'Urgent' : 'Normal',
+          Priority: jc.isUrgent ? 'Urgent' : 'Normal',
           'Created By': jc.createdBy || 'Unknown',
-          'Preset': jc.presetName || 'Standard',
-          'Status': jc.prodStep >= totalSteps ? 'Completed' : 'In Progress'
+          Preset: jc.presetName || 'Standard',
+          Status: jc.prodStep >= totalSteps ? 'Completed' : 'In Progress'
         }
       })
 
@@ -886,37 +941,52 @@ const JobCardListing = () => {
         const csvContent = [
           headers.join(','),
           ...exportData.map(row =>
-            headers.map(header => {
-              const value = row[header]
-              // Escape commas and quotes in values
-              return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-                ? `"${value.replace(/"/g, '""')}"`
-                : value
-            }).join(',')
+            headers
+              .map(header => {
+                const value = row[header]
+                // Escape commas and quotes in values
+                return typeof value === 'string' &&
+                  (value.includes(',') || value.includes('"'))
+                  ? `"${value.replace(/"/g, '""')}"`
+                  : value
+              })
+              .join(',')
           )
         ].join('\n')
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `job_cards_${excludeDispatched ? 'non_dispatched_' : ''}${moment().format('YYYY-MM-DD')}.csv`
+        link.download = `job_cards_${
+          excludeDispatched ? 'non_dispatched_' : ''
+        }${moment().format('YYYY-MM-DD')}.csv`
         link.click()
-        message.success(`${allJobCards.length} job cards exported to CSV successfully`)
+        message.success(
+          `${allJobCards.length} job cards exported to CSV successfully`
+        )
       } else {
         // Excel Export - using simple HTML table method
         const tableHTML = `
           <table>
             <thead>
               <tr>
-                ${Object.keys(exportData[0]).map(header => `<th>${header}</th>`).join('')}
+                ${Object.keys(exportData[0])
+                  .map(header => `<th>${header}</th>`)
+                  .join('')}
               </tr>
             </thead>
             <tbody>
-              ${exportData.map(row => `
+              ${exportData
+                .map(
+                  row => `
                 <tr>
-                  ${Object.values(row).map(value => `<td>${value}</td>`).join('')}
+                  ${Object.values(row)
+                    .map(value => `<td>${value}</td>`)
+                    .join('')}
                 </tr>
-              `).join('')}
+              `
+                )
+                .join('')}
             </tbody>
           </table>
         `
@@ -924,9 +994,13 @@ const JobCardListing = () => {
         const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `job_cards_${excludeDispatched ? 'non_dispatched_' : ''}${moment().format('YYYY-MM-DD')}.xls`
+        link.download = `job_cards_${
+          excludeDispatched ? 'non_dispatched_' : ''
+        }${moment().format('YYYY-MM-DD')}.xls`
         link.click()
-        message.success(`${allJobCards.length} job cards exported to Excel successfully`)
+        message.success(
+          `${allJobCards.length} job cards exported to Excel successfully`
+        )
       }
     } catch (error) {
       console.error('Export error:', error)
@@ -935,7 +1009,10 @@ const JobCardListing = () => {
   }
 
   // Handle export to detailed PDF with step-wise quantities (using working individual APIs)
-  const handleExportDetailedPDF = async (excludeDispatched = false, preFilteredJobCards = null) => {
+  const handleExportDetailedPDF = async (
+    excludeDispatched = false,
+    preFilteredJobCards = null
+  ) => {
     try {
       setDetailedExportLoading(true)
 
@@ -946,11 +1023,14 @@ const JobCardListing = () => {
       if (!preFilteredJobCards) {
         // Show specific loading message
         loadingMessage = message.loading({
-          content: '🔍 Fetching job cards and step progress for detailed PDF export...',
+          content:
+            '🔍 Fetching job cards and step progress for detailed PDF export...',
           duration: 0 // Don't auto dismiss
         })
 
-        console.log(`🚀 Using optimized batch endpoint that replicates individual API logic...`)
+        console.log(
+          `🚀 Using optimized batch endpoint that replicates individual API logic...`
+        )
 
         // Use the batch endpoint that replicates the exact logic of individual APIs
         const batchResult = await dispatch(
@@ -971,35 +1051,49 @@ const JobCardListing = () => {
         }
 
         jobCardsWithSteps = batchResult.jobCards
-        console.log(`✅ Successfully fetched ${jobCardsWithSteps.length} job cards with step progress in batch`)
+        console.log(
+          `✅ Successfully fetched ${jobCardsWithSteps.length} job cards with step progress in batch`
+        )
 
         if (loadingMessage) loadingMessage()
       } else {
-        console.log(`✅ Using ${preFilteredJobCards.length} pre-filtered job cards`)
+        console.log(
+          `✅ Using ${preFilteredJobCards.length} pre-filtered job cards`
+        )
       }
 
       // Check what we're getting
       if (jobCardsWithSteps.length > 0) {
         console.log('🔍 FIRST JOB CARD:', jobCardsWithSteps[0])
-        console.log('🔍 FIRST JOB CARD STEP PROGRESS:', jobCardsWithSteps[0].stepProgress)
-        console.log('🔍 STEP PROGRESS LENGTH:', jobCardsWithSteps[0].stepProgress.length)
+        console.log(
+          '🔍 FIRST JOB CARD STEP PROGRESS:',
+          jobCardsWithSteps[0].stepProgress
+        )
+        console.log(
+          '🔍 STEP PROGRESS LENGTH:',
+          jobCardsWithSteps[0].stepProgress.length
+        )
       }
 
       // Sort all job cards by ID in descending order
       const sortedJobCards = [...jobCardsWithSteps].sort((a, b) => b.id - a.id)
 
       // Create HTML content for detailed PDF with 2x2 grid layout
-      const reportTitle = excludeDispatched ? 'Detailed Non-Dispatched Job Cards Report' : 'Detailed Job Cards Report'
-      
+      const reportTitle = excludeDispatched
+        ? 'Detailed Non-Dispatched Job Cards Report'
+        : 'Detailed Job Cards Report'
+
       let htmlContent = `
         <html>
           <head>
             <title>${reportTitle} - ${moment().format('DD MMM YYYY')}</title>
             <style>
               @page {
-                size: A4;
-                margin: 8mm;
-                orientation: portrait;
+                size: A4 portrait;
+                margin: 10mm;
+              }
+              * {
+                box-sizing: border-box;
               }
               body {
                 font-family: Arial, sans-serif;
@@ -1007,8 +1101,6 @@ const JobCardListing = () => {
                 margin: 0;
                 padding: 0;
                 color: #000;
-                width: 100%;
-                box-sizing: border-box;
               }
               .page-header {
                 text-align: center;
@@ -1030,46 +1122,43 @@ const JobCardListing = () => {
               .page {
                 page-break-after: always;
                 width: 100%;
-                min-height: 277mm;
+                height: 250mm;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+
               }
               .page:last-child {
                 page-break-after: auto;
               }
-              .grid-container {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: 1fr 1fr;
-                gap: 6px;
-                width: 100%;
-                height: 265mm;
-              }
               .jobcard-section {
                 border: 2px solid #333;
-                border-radius: 6px;
-                padding: 4px;
+                border-radius: 4px;
+                padding: 6px;
                 background-color: #fafafa;
                 display: flex;
                 flex-direction: column;
+                height: 255mm;
                 overflow: hidden;
               }
               .jobcard-header {
                 background-color: #e9ecef;
-                padding: 3px;
-                border-radius: 4px;
-                margin-bottom: 4px;
+                padding: 4px;
+                border-radius: 3px;
+                margin-bottom: 6px;
                 border: 1px solid #999;
               }
               .jobcard-title {
                 font-weight: bold;
-                font-size: 8px;
+                font-size: 11px;
                 text-align: center;
-                margin-bottom: 2px;
+                margin-bottom: 3px;
               }
               .jobcard-details {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 2px;
-                font-size: 6px;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 3px;
+                font-size: 8px;
               }
               .jobcard-detail-item {
                 white-space: nowrap;
@@ -1088,28 +1177,31 @@ const JobCardListing = () => {
               .steps-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 5px;
+                font-size: 9px;
                 background-color: white;
-                flex: 1;
+                table-layout: fixed;
               }
               .steps-table th,
               .steps-table td {
-                border: 1px solid #ccc;
-                padding: 1px 2px;
+                border: 1px solid #999;
+                padding: 38px 3px;
                 text-align: left;
-                vertical-align: top;
+                vertical-align: middle;
+                overflow: hidden;
+                line-height: 1.3;
               }
               .steps-table th {
                 background-color: #f8f9fa;
                 font-weight: bold;
-                font-size: 5px;
+                font-size: 9px;
                 text-align: center;
-                padding: 2px 1px;
+                padding: 5px 3px;
+                line-height: 1.2;
               }
-              .step-col { width: 15%; }
-              .qty-col { width: 7%; text-align: center; }
-              .status-col { width: 10%; text-align: center; }
-              .reason-col { width: 25%; font-size: 5px; }
+              .step-col { width: 20%; }
+              .qty-col { width: 8%; text-align: center; }
+              .status-col { width: 12%; text-align: center; }
+              .reason-col { width: 20%; word-wrap: break-word; }
               .no-entries {
                 text-align: center;
                 font-style: italic;
@@ -1132,36 +1224,32 @@ const JobCardListing = () => {
           <body>
       `
 
-      // Process job cards in batches of 4 (2x2 grid)
-      for (let i = 0; i < sortedJobCards.length; i += 4) {
-        const pageCards = sortedJobCards.slice(i, i + 4)
-        
+      // Process job cards one per page
+      sortedJobCards.forEach((jc, index) => {
         // Add page header on first page only
-        if (i === 0) {
+        if (index === 0) {
           htmlContent += `
             <div class="page-header">
               <h1>${reportTitle}</h1>
               <div class="summary">
                 Date: ${moment().format('DD MMM YYYY HH:mm')} | 
                 Total: ${sortedJobCards.length} cards |
-                Showing 4 per page
+                1 job card per page
               </div>
             </div>
           `
         }
 
-        htmlContent += `<div class="page"><div class="grid-container">`
-        
-        // Add up to 4 job cards in the grid
-        for (let j = 0; j < 4; j++) {
-          const jc = pageCards[j]
-          
-          if (jc) {
-            const priorityClass = jc.isUrgent ? 'priority-urgent' : 'priority-normal'
-            const priorityText = jc.isUrgent ? 'Urgent' : 'Normal'
-            const hasStepProgress = jc.stepProgress && jc.stepProgress.length > 0
+        htmlContent += `<div class="page">`
 
-            htmlContent += `
+        {
+          const priorityClass = jc.isUrgent
+            ? 'priority-urgent'
+            : 'priority-normal'
+          const priorityText = jc.isUrgent ? 'Urgent' : 'Normal'
+          const hasStepProgress = jc.stepProgress && jc.stepProgress.length > 0
+
+          htmlContent += `
               <div class="jobcard-section">
                 <div class="jobcard-header">
                   <div class="jobcard-title">JC #${jc.id} - ${jc.alloyName} → ${jc.convertName}</div>
@@ -1195,68 +1283,91 @@ const JobCardListing = () => {
                   <tbody>
             `
 
-            if (hasStepProgress) {
-              jc.stepProgress.forEach(step => {
-                const statusClass = step.status === 'completed' ? 'status-completed' :
-                                   step.status === 'in_progress' ? 'status-in-progress' : 'status-pending'
+          if (hasStepProgress) {
+            jc.stepProgress.forEach(step => {
+              const statusClass =
+                step.status === 'completed'
+                  ? 'status-completed'
+                  : step.status === 'in_progress'
+                  ? 'status-in-progress'
+                  : 'status-pending'
 
-                htmlContent += `
+              htmlContent += `
                   <tr>
-                    <td style="font-size: 5px;">${step.stepIcon || ''} ${step.stepName}</td>
-                    <td class="${step.inputQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                    <td style="font-size: 9px; font-weight: 500;">${
+                      step.stepIcon || ''
+                    } ${step.stepName}</td>
+                    <td class="${
+                      step.inputQuantity > 0
+                        ? 'quantity-positive'
+                        : 'quantity-zero'
+                    }" style="text-align: center; font-size: 9px;">
                       ${step.inputQuantity || 0}
                     </td>
-                    <td class="${step.acceptedQuantity > 0 ? 'quantity-positive' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                    <td class="${
+                      step.acceptedQuantity > 0
+                        ? 'quantity-positive'
+                        : 'quantity-zero'
+                    }" style="text-align: center; font-size: 9px;">
                       ${step.acceptedQuantity || 0}
                     </td>
-                    <td class="${step.rejectedQuantity > 0 ? 'quantity-rejected' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                    <td class="${
+                      step.rejectedQuantity > 0
+                        ? 'quantity-rejected'
+                        : 'quantity-zero'
+                    }" style="text-align: center; font-size: 9px;">
                       ${step.rejectedQuantity || 0}
                     </td>
-                    <td class="${step.pendingQuantity > 0 ? 'quantity-pending' : 'quantity-zero'}" style="text-align: center; font-size: 6px;">
+                    <td class="${
+                      step.pendingQuantity > 0
+                        ? 'quantity-pending'
+                        : 'quantity-zero'
+                    }" style="text-align: center; font-size: 9px;">
                       ${step.pendingQuantity || 0}
                     </td>
-                    <td style="text-align: center; font-weight: bold; font-size: 5px;" class="${statusClass}">
-                      ${step.status?.replace('_', ' ').toUpperCase() || 'PENDING'}
+                    <td style="text-align: center; font-weight: bold; font-size: 9px;" class="${statusClass}">
+                      ${
+                        step.status?.replace('_', ' ').toUpperCase() ||
+                        'PENDING'
+                      }
                     </td>
-                    <td style="font-size: 5px; word-wrap: break-word;">
+                    <td style="font-size: 8px; word-wrap: break-word;">
                       ${step.rejectionReason || '-'}
                     </td>
                   </tr>
                 `
-              })
-            } else {
-              const currentStep = jc.prodStep || 1
-              const totalSteps = jc.totalWorkflowSteps || 11
+            })
+          } else {
+            const currentStep = jc.prodStep || 1
+            const totalSteps = jc.totalWorkflowSteps || 11
 
-              htmlContent += `
+            htmlContent += `
                 <tr>
                   <td colspan="7" class="no-entries">
                     Step progress not initialized<br>
-                    Current: ${currentStep}/${totalSteps} (${Math.round((currentStep/totalSteps) * 100)}%)
+                    Current: ${currentStep}/${totalSteps} (${Math.round(
+              (currentStep / totalSteps) * 100
+            )}%)
                   </td>
                 </tr>
               `
-            }
+          }
 
-            htmlContent += `
+          htmlContent += `
                   </tbody>
                 </table>
               </div>
             `
-          } else {
-            // Empty grid cell
-            htmlContent += `<div class="jobcard-section" style="border: 1px dashed #ccc; background: transparent;"></div>`
-          }
         }
-        
-        htmlContent += `</div></div>`
-      }
+
+        htmlContent += `</div>`
+      })
 
       htmlContent += `</body></html>`
 
       // Create a temporary window to print the content
       const printWindow = window.open('', '_blank', 'width=1000,height=800')
-      
+
       if (!printWindow) {
         // Popup was blocked - offer alternative
         Modal.error({
@@ -1264,13 +1375,16 @@ const JobCardListing = () => {
           content: (
             <div>
               <p>The browser blocked the popup window needed for PDF export.</p>
-              <p><strong>To fix this:</strong></p>
+              <p>
+                <strong>To fix this:</strong>
+              </p>
               <ol style={{ paddingLeft: '20px', marginTop: '10px' }}>
                 <li>Allow popups for this site in your browser settings</li>
                 <li>Click the PDF export button again</li>
               </ol>
               <p style={{ marginTop: '10px', color: '#1890ff' }}>
-                <strong>Tip:</strong> Look for a popup blocker icon in your browser's address bar and click "Always allow popups".
+                <strong>Tip:</strong> Look for a popup blocker icon in your
+                browser's address bar and click "Always allow popups".
               </p>
             </div>
           ),
@@ -1278,31 +1392,44 @@ const JobCardListing = () => {
         })
         return
       }
-      
+
       printWindow.document.write(htmlContent)
-      printWindow.document.title = `${reportTitle} - ${moment().format('DD MMM YYYY')}`
+      printWindow.document.title = `${reportTitle} - ${moment().format(
+        'DD MMM YYYY'
+      )}`
       printWindow.document.close()
 
       // Wait for the content to load, then trigger print
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print()
-          
+
           // Show helpful instructions
           Modal.info({
             title: '📄 PDF Export Instructions',
             content: (
               <div>
-                <p><strong>A print dialog has been opened in a new window.</strong></p>
+                <p>
+                  <strong>
+                    A print dialog has been opened in a new window.
+                  </strong>
+                </p>
                 <p>To save as PDF:</p>
                 <ol style={{ paddingLeft: '20px', marginTop: '10px' }}>
-                  <li><strong>Windows/Linux:</strong> Select "Save as PDF" or "Microsoft Print to PDF" as the printer</li>
-                  <li><strong>Mac:</strong> Click "PDF" button in bottom-left, then select "Save as PDF"</li>
+                  <li>
+                    <strong>Windows/Linux:</strong> Select "Save as PDF" or
+                    "Microsoft Print to PDF" as the printer
+                  </li>
+                  <li>
+                    <strong>Mac:</strong> Click "PDF" button in bottom-left,
+                    then select "Save as PDF"
+                  </li>
                   <li>Choose your save location</li>
                   <li>Click "Save"</li>
                 </ol>
                 <p style={{ marginTop: '10px', color: '#faad14' }}>
-                  <strong>Note:</strong> If you don't see the print window, check if it was blocked by your browser's popup blocker.
+                  <strong>Note:</strong> If you don't see the print window,
+                  check if it was blocked by your browser's popup blocker.
                 </p>
               </div>
             ),
@@ -1314,7 +1441,6 @@ const JobCardListing = () => {
 
       // Close the loading message if it exists
       if (loadingMessage) loadingMessage()
-
     } catch (error) {
       console.error('Detailed PDF Export error:', error)
       message.error('Failed to export detailed job cards to PDF')
@@ -1366,24 +1492,37 @@ const JobCardListing = () => {
         const tracking = plan.quantityTracking || {}
         const stepInfo = getStepInfo(jc, jc.prodStep)
         const totalSteps = getTotalSteps(jc)
-        const progress = totalSteps > 0 ? Math.round((jc.prodStep / totalSteps) * 100) : 0
+        const progress =
+          totalSteps > 0 ? Math.round((jc.prodStep / totalSteps) * 100) : 0
 
         return {
           ...jc,
           // Fix field name mapping
           id: jc.jobcardid || jc.id,
           prodPlanId: jc.prodplanid || jc.prodPlanId,
-          alloyName: jc.sourceproductname || jc.alloyName || plan.alloyName || 'Unknown Alloy',
-          convertName: jc.targetproductname || jc.convertName || plan.convertName || 'Unknown Conversion',
+          alloyName:
+            jc.sourceproductname ||
+            jc.alloyName ||
+            plan.alloyName ||
+            'Unknown Alloy',
+          convertName:
+            jc.targetproductname ||
+            jc.convertName ||
+            plan.convertName ||
+            'Unknown Conversion',
           isUrgent: Boolean(jc.urgent) || jc.isUrgent || Boolean(plan.urgent),
-          createdBy: jc.createdbyfirstname && jc.createdbylastname
-            ? `${jc.createdbyfirstname} ${jc.createdbylastname}`
-            : jc.createdBy || 'Unknown',
+          createdBy:
+            jc.createdbyfirstname && jc.createdbylastname
+              ? `${jc.createdbyfirstname} ${jc.createdbylastname}`
+              : jc.createdBy || 'Unknown',
           planTotalQuantity: plan.quantity || 0,
           planAllocatedQuantity: tracking.totalJobCardQuantity || 0,
           planRemainingQuantity: tracking.remainingQuantity || 0,
           planCompletedQuantity: tracking.completedQuantity || 0,
-          allocationPercentage: plan.quantity > 0 ? Math.round((jc.quantity / plan.quantity) * 100) : 0,
+          allocationPercentage:
+            plan.quantity > 0
+              ? Math.round((jc.quantity / plan.quantity) * 100)
+              : 0,
           // Additional fields for PDF
           currentStepName: stepInfo?.name || 'Unknown',
           totalSteps: totalSteps,
@@ -1397,7 +1536,9 @@ const JobCardListing = () => {
         allJobCards = allJobCards.filter(jc => {
           const stepInfo = getStepInfo(jc, jc.prodStep)
           const totalSteps = getTotalSteps(jc)
-          const isDispatched = jc.prodStep >= totalSteps && stepInfo?.name?.toLowerCase().includes('dispatch')
+          const isDispatched =
+            jc.prodStep >= totalSteps &&
+            stepInfo?.name?.toLowerCase().includes('dispatch')
           return !isDispatched
         })
       }
@@ -1420,7 +1561,9 @@ const JobCardListing = () => {
       }, {})
 
       // Create HTML content for PDF with proper tables
-      const reportTitle = excludeDispatched ? 'Non-Dispatched Job Cards Report' : 'All Job Cards Report'
+      const reportTitle = excludeDispatched
+        ? 'Non-Dispatched Job Cards Report'
+        : 'All Job Cards Report'
       let htmlContent = `
         <html>
           <head>
@@ -1540,9 +1683,15 @@ const JobCardListing = () => {
 
             <div class="summary-section">
               <strong>Total Job Cards: ${allJobCards.length}</strong> |
-              <strong>Completed: ${(groupedByStatus['Completed'] || []).length}</strong> |
-              <strong>In Progress: ${(groupedByStatus['In Progress'] || []).length}</strong> |
-              <strong>Urgent: ${allJobCards.filter(jc => jc.isUrgent).length}</strong>
+              <strong>Completed: ${
+                (groupedByStatus['Completed'] || []).length
+              }</strong> |
+              <strong>In Progress: ${
+                (groupedByStatus['In Progress'] || []).length
+              }</strong> |
+              <strong>Urgent: ${
+                allJobCards.filter(jc => jc.isUrgent).length
+              }</strong>
             </div>
       `
 
@@ -1575,9 +1724,13 @@ const JobCardListing = () => {
           `
         } else {
           // Sort by job card ID in descending order
-          const sortedJobCards = [...groupedByStatus[status]].sort((a, b) => b.id - a.id)
+          const sortedJobCards = [...groupedByStatus[status]].sort(
+            (a, b) => b.id - a.id
+          )
           sortedJobCards.forEach(jc => {
-            const createdDate = jc.createdAt ? moment(jc.createdAt).format('DD/MM/YYYY') : 'N/A'
+            const createdDate = jc.createdAt
+              ? moment(jc.createdAt).format('DD/MM/YYYY')
+              : 'N/A'
             const priorityClass = jc.isUrgent ? 'urgent-tag' : 'normal-tag'
             const priorityText = jc.isUrgent ? 'Urgent' : 'Normal'
 
@@ -1612,7 +1765,7 @@ const JobCardListing = () => {
       // Create a temporary window to print the content
       console.log('🖨️ Opening print window...')
       const printWindow = window.open('', '_blank', 'width=800,height=600')
-      
+
       if (!printWindow) {
         loadingMessage()
         // Popup was blocked - offer alternative
@@ -1621,13 +1774,16 @@ const JobCardListing = () => {
           content: (
             <div>
               <p>The browser blocked the popup window needed for PDF export.</p>
-              <p><strong>To fix this:</strong></p>
+              <p>
+                <strong>To fix this:</strong>
+              </p>
               <ol style={{ paddingLeft: '20px', marginTop: '10px' }}>
                 <li>Allow popups for this site in your browser settings</li>
                 <li>Click the PDF export button again</li>
               </ol>
               <p style={{ marginTop: '10px', color: '#1890ff' }}>
-                <strong>Tip:</strong> Look for a popup blocker icon in your browser's address bar and click "Always allow popups".
+                <strong>Tip:</strong> Look for a popup blocker icon in your
+                browser's address bar and click "Always allow popups".
               </p>
             </div>
           ),
@@ -1635,10 +1791,12 @@ const JobCardListing = () => {
         })
         return
       }
-      
+
       console.log('🖨️ Writing HTML content to print window...')
       printWindow.document.write(htmlContent)
-      printWindow.document.title = `${reportTitle} - ${moment().format('DD MMM YYYY')}`
+      printWindow.document.title = `${reportTitle} - ${moment().format(
+        'DD MMM YYYY'
+      )}`
       printWindow.document.close()
 
       // Wait for the content to load, then trigger print
@@ -1646,22 +1804,33 @@ const JobCardListing = () => {
         console.log('🖨️ Print window loaded, triggering print dialog...')
         setTimeout(() => {
           printWindow.print()
-          
+
           // Show helpful instructions
           Modal.info({
             title: '📄 PDF Export Instructions',
             content: (
               <div>
-                <p><strong>A print dialog has been opened in a new window.</strong></p>
+                <p>
+                  <strong>
+                    A print dialog has been opened in a new window.
+                  </strong>
+                </p>
                 <p>To save as PDF:</p>
                 <ol style={{ paddingLeft: '20px', marginTop: '10px' }}>
-                  <li><strong>Windows/Linux:</strong> Select "Save as PDF" or "Microsoft Print to PDF" as the printer</li>
-                  <li><strong>Mac:</strong> Click "PDF" button in bottom-left, then select "Save as PDF"</li>
+                  <li>
+                    <strong>Windows/Linux:</strong> Select "Save as PDF" or
+                    "Microsoft Print to PDF" as the printer
+                  </li>
+                  <li>
+                    <strong>Mac:</strong> Click "PDF" button in bottom-left,
+                    then select "Save as PDF"
+                  </li>
                   <li>Choose your save location</li>
                   <li>Click "Save"</li>
                 </ol>
                 <p style={{ marginTop: '10px', color: '#faad14' }}>
-                  <strong>Note:</strong> If you don't see the print window, check if it was blocked by your browser's popup blocker.
+                  <strong>Note:</strong> If you don't see the print window,
+                  check if it was blocked by your browser's popup blocker.
                 </p>
               </div>
             ),
@@ -1670,10 +1839,9 @@ const JobCardListing = () => {
           })
         }, 500)
       }
-      
+
       console.log('🖨️ Print window setup complete')
       loadingMessage()
-
     } catch (error) {
       console.error('PDF Export error:', error)
       message.error('Failed to export job cards to PDF')
@@ -1701,14 +1869,22 @@ const JobCardListing = () => {
     {
       key: 'pdf',
       icon: exportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
-      label: exportLoading ? 'Exporting to PDF...' : 'Export All Job Cards to PDF',
+      label: exportLoading
+        ? 'Exporting to PDF...'
+        : 'Export All Job Cards to PDF',
       onClick: () => handleExportPDF(false),
       disabled: exportLoading || detailedExportLoading
     },
     {
       key: 'detailed_pdf',
-      icon: detailedExportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
-      label: detailedExportLoading ? 'Creating Detailed PDF...' : 'Export All Job Cards to Detailed PDF',
+      icon: detailedExportLoading ? (
+        <FilePdfOutlined spin />
+      ) : (
+        <FilePdfOutlined />
+      ),
+      label: detailedExportLoading
+        ? 'Creating Detailed PDF...'
+        : 'Export All Job Cards to Detailed PDF',
       onClick: () => handleExportDetailedPDF(false),
       disabled: exportLoading || detailedExportLoading
     },
@@ -1730,14 +1906,22 @@ const JobCardListing = () => {
     {
       key: 'pdf_non_dispatched',
       icon: exportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
-      label: exportLoading ? 'Exporting Non-Dispatched to PDF...' : 'Export Non-Dispatched Job Cards to PDF',
+      label: exportLoading
+        ? 'Exporting Non-Dispatched to PDF...'
+        : 'Export Non-Dispatched Job Cards to PDF',
       onClick: () => handleExportPDF(true),
       disabled: exportLoading || detailedExportLoading
     },
     {
       key: 'detailed_pdf_non_dispatched',
-      icon: detailedExportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
-      label: detailedExportLoading ? 'Creating Non-Dispatched Detailed PDF...' : 'Export Non-Dispatched Job Cards to Detailed PDF',
+      icon: detailedExportLoading ? (
+        <FilePdfOutlined spin />
+      ) : (
+        <FilePdfOutlined />
+      ),
+      label: detailedExportLoading
+        ? 'Creating Non-Dispatched Detailed PDF...'
+        : 'Export Non-Dispatched Job Cards to Detailed PDF',
       onClick: () => handleExportDetailedPDF(true),
       disabled: exportLoading || detailedExportLoading
     },
@@ -1752,12 +1936,20 @@ const JobCardListing = () => {
     { type: 'divider' },
     {
       key: 'export_selected',
-      icon: detailedExportLoading ? <FilePdfOutlined spin /> : <FilePdfOutlined />,
-      label: selectedJobCardIds.length > 0
-        ? `📋 Export Selected (${selectedJobCardIds.length}) to Detailed PDF`
-        : '📋 Export Selected to Detailed PDF',
+      icon: detailedExportLoading ? (
+        <FilePdfOutlined spin />
+      ) : (
+        <FilePdfOutlined />
+      ),
+      label:
+        selectedJobCardIds.length > 0
+          ? `📋 Export Selected (${selectedJobCardIds.length}) to Detailed PDF`
+          : '📋 Export Selected to Detailed PDF',
       onClick: () => handleExportSelectedJobCards(),
-      disabled: exportLoading || detailedExportLoading || selectedJobCardIds.length === 0
+      disabled:
+        exportLoading ||
+        detailedExportLoading ||
+        selectedJobCardIds.length === 0
     }
   ]
 
@@ -1783,14 +1975,14 @@ const JobCardListing = () => {
     setDetailsModalVisible(true)
   }
 
-  const handleMoveToNextStep = async (jobCard) => {
+  const handleMoveToNextStep = async jobCard => {
     try {
       // Load step progress data for this job card
       setStepProgressLoading(true)
       const jobCardId = jobCard.id || jobCard.jobCardId
       let result = await dispatch(getJobCardStepProgress(jobCardId)).unwrap()
       let stepProgress = result.data || result.stepProgress || []
-      
+
       // If no step progress exists, initialize it
       if (!stepProgress || stepProgress.length === 0) {
         try {
@@ -1801,31 +1993,33 @@ const JobCardListing = () => {
         } catch (initError) {
           notification.error({
             message: 'Initialization Failed',
-            description: initError.message || 'Failed to initialize step tracking for this job card'
+            description:
+              initError.message ||
+              'Failed to initialize step tracking for this job card'
           })
           return
         }
       }
-      
+
       // Find current step progress
       const currentStepProgress = stepProgress.find(
         s => s.stepOrder === jobCard.prodStep && s.status !== 'completed'
       )
-      
+
       if (!currentStepProgress) {
         notification.warning({
           message: 'No Step Progress Data',
-          description: 'Unable to find current step progress. Please view job card details for more information.'
+          description:
+            'Unable to find current step progress. Please view job card details for more information.'
         })
         return
       }
-      
+
       // Set step progress data and open modal
       setStepProgressData(stepProgress)
       setSelectedStepProgress(currentStepProgress)
       setSelectedJobCard(jobCard)
       setStepProgressModalVisible(true)
-      
     } catch (error) {
       notification.error({
         message: 'Failed to Load Step Data',
@@ -1835,25 +2029,24 @@ const JobCardListing = () => {
       setStepProgressLoading(false)
     }
   }
-  
+
   // Handle step progress submission
-  const handleSubmitStepProgress = async (progressData) => {
+  const handleSubmitStepProgress = async progressData => {
     try {
       setStepProgressLoading(true)
       await dispatch(processStepProgress(progressData)).unwrap()
-      
+
       notification.success({
         message: 'Step Processed',
         description: 'Quality data recorded successfully'
       })
-      
+
       setStepProgressModalVisible(false)
       setSelectedStepProgress(null)
       setSelectedJobCard(null)
-      
+
       // Reload job cards
       loadJobCards()
-      
     } catch (error) {
       notification.error({
         message: 'Processing Failed',
@@ -1865,7 +2058,7 @@ const JobCardListing = () => {
   }
 
   // Handle select all checkbox
-  const handleSelectAll = (e) => {
+  const handleSelectAll = e => {
     if (e.target.checked) {
       const allIds = jobCards.map(jc => jc.jobCardId || jc.id)
       setSelectedJobCardIds(allIds)
@@ -1875,7 +2068,7 @@ const JobCardListing = () => {
   }
 
   // Handle individual checkbox
-  const handleSelectJobCard = (jobCardId) => {
+  const handleSelectJobCard = jobCardId => {
     setSelectedJobCardIds(prev => {
       if (prev.includes(jobCardId)) {
         return prev.filter(id => id !== jobCardId)
@@ -1890,9 +2083,14 @@ const JobCardListing = () => {
     {
       title: (
         <input
-          type="checkbox"
-          checked={selectedJobCardIds.length === jobCards.length && jobCards.length > 0}
-          indeterminate={selectedJobCardIds.length > 0 && selectedJobCardIds.length < jobCards.length}
+          type='checkbox'
+          checked={
+            selectedJobCardIds.length === jobCards.length && jobCards.length > 0
+          }
+          indeterminate={
+            selectedJobCardIds.length > 0 &&
+            selectedJobCardIds.length < jobCards.length
+          }
           onChange={handleSelectAll}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
@@ -1902,7 +2100,7 @@ const JobCardListing = () => {
       fixed: 'left',
       render: (_, record) => (
         <input
-          type="checkbox"
+          type='checkbox'
           checked={selectedJobCardIds.includes(record.jobCardId || record.id)}
           onChange={() => handleSelectJobCard(record.jobCardId || record.id)}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
@@ -2221,7 +2419,8 @@ const JobCardListing = () => {
                         } catch (error) {
                           notification.error({
                             message: 'Delete Failed',
-                            description: error.message || 'Failed to delete job card'
+                            description:
+                              error.message || 'Failed to delete job card'
                           })
                         }
                       }
@@ -2324,7 +2523,8 @@ const JobCardListing = () => {
                         } catch (error) {
                           notification.error({
                             message: 'Delete Failed',
-                            description: error.message || 'Failed to delete job card'
+                            description:
+                              error.message || 'Failed to delete job card'
                           })
                         }
                       }
@@ -2460,15 +2660,22 @@ const JobCardListing = () => {
                 >
                   Refresh
                 </Button>
-                <Dropdown
-                  menu={{ items: exportMenuItems }}
-                  trigger={['click']}
-                >
+                <Dropdown menu={{ items: exportMenuItems }} trigger={['click']}>
                   <Button
-                    icon={(exportLoading || detailedExportLoading) ? <DownloadOutlined spin /> : <DownloadOutlined />}
+                    icon={
+                      exportLoading || detailedExportLoading ? (
+                        <DownloadOutlined spin />
+                      ) : (
+                        <DownloadOutlined />
+                      )
+                    }
                     loading={exportLoading || detailedExportLoading}
                   >
-                    {exportLoading ? 'Exporting...' : detailedExportLoading ? 'Creating Detailed PDF...' : 'Export All'}
+                    {exportLoading
+                      ? 'Exporting...'
+                      : detailedExportLoading
+                      ? 'Creating Detailed PDF...'
+                      : 'Export All'}
                   </Button>
                 </Dropdown>
                 <Button
@@ -2757,7 +2964,7 @@ const JobCardListing = () => {
             onRefresh={loadJobCards}
           />
         )}
-        
+
         {/* Step Progress Modal for Quality Data Entry */}
         {selectedStepProgress && selectedJobCard && (
           <StepProgressModal
@@ -2774,8 +2981,12 @@ const JobCardListing = () => {
               order: selectedStepProgress?.stepOrder || 0
             }}
             nextStepInfo={(() => {
-              const nextStep = stepProgressData.find(s => s.stepOrder === (selectedStepProgress?.stepOrder || 0) + 1)
-              return nextStep ? { name: nextStep.stepName || 'Unknown Step' } : null
+              const nextStep = stepProgressData.find(
+                s => s.stepOrder === (selectedStepProgress?.stepOrder || 0) + 1
+              )
+              return nextStep
+                ? { name: nextStep.stepName || 'Unknown Step' }
+                : null
             })()}
             jobCard={selectedJobCard}
             loading={stepProgressLoading}
@@ -2784,7 +2995,7 @@ const JobCardListing = () => {
 
         {/* Export Filter Modal */}
         <Modal
-          title="📊 Custom Export Options"
+          title='📊 Custom Export Options'
           open={exportFilterModalVisible}
           onCancel={() => setExportFilterModalVisible(false)}
           onOk={() => {
@@ -2798,8 +3009,8 @@ const JobCardListing = () => {
               handleExportDetailedPDFWithFilters()
             }
           }}
-          okText="Export"
-          cancelText="Cancel"
+          okText='Export'
+          cancelText='Cancel'
           width={600}
         >
           <div style={{ marginBottom: 20 }}>
@@ -2811,49 +3022,103 @@ const JobCardListing = () => {
               options={[
                 { value: 'excel', label: '📊 Excel Spreadsheet' },
                 { value: 'pdf', label: '📄 PDF Report (Summary)' },
-                { value: 'detailed_pdf', label: '📑 PDF Report (Detailed with Steps)' }
+                {
+                  value: 'detailed_pdf',
+                  label: '📑 PDF Report (Detailed with Steps)'
+                }
               ]}
             />
           </div>
 
           <div style={{ marginBottom: 20 }}>
             <Typography.Text strong>Filter Options:</Typography.Text>
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <div
+              style={{
+                marginTop: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+              }}
+            >
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
+              >
                 <input
-                  type="checkbox"
+                  type='checkbox'
                   checked={exportFilters.excludeDispatched}
-                  onChange={(e) => setExportFilters({ ...exportFilters, excludeDispatched: e.target.checked })}
+                  onChange={e =>
+                    setExportFilters({
+                      ...exportFilters,
+                      excludeDispatched: e.target.checked
+                    })
+                  }
                   style={{ marginRight: 8, width: 16, height: 16 }}
                 />
                 <span>🚚 Exclude Dispatched Job Cards</span>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
+              >
                 <input
-                  type="checkbox"
+                  type='checkbox'
                   checked={exportFilters.excludeCompleted}
-                  onChange={(e) => setExportFilters({ ...exportFilters, excludeCompleted: e.target.checked })}
+                  onChange={e =>
+                    setExportFilters({
+                      ...exportFilters,
+                      excludeCompleted: e.target.checked
+                    })
+                  }
                   style={{ marginRight: 8, width: 16, height: 16 }}
                 />
                 <span>✅ Exclude Completed Job Cards (100% progress)</span>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
+              >
                 <input
-                  type="checkbox"
+                  type='checkbox'
                   checked={exportFilters.includeOnlyWithRejected}
-                  onChange={(e) => setExportFilters({ ...exportFilters, includeOnlyWithRejected: e.target.checked })}
+                  onChange={e =>
+                    setExportFilters({
+                      ...exportFilters,
+                      includeOnlyWithRejected: e.target.checked
+                    })
+                  }
                   style={{ marginRight: 8, width: 16, height: 16 }}
                 />
                 <span>❌ Include ONLY Job Cards with Rejected Quantities</span>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
+              >
                 <input
-                  type="checkbox"
+                  type='checkbox'
                   checked={exportFilters.includeOnlyWithPending}
-                  onChange={(e) => setExportFilters({ ...exportFilters, includeOnlyWithPending: e.target.checked })}
+                  onChange={e =>
+                    setExportFilters({
+                      ...exportFilters,
+                      includeOnlyWithPending: e.target.checked
+                    })
+                  }
                   style={{ marginRight: 8, width: 16, height: 16 }}
                 />
                 <span>⏳ Include ONLY Job Cards with Pending Quantities</span>
@@ -2861,18 +3126,22 @@ const JobCardListing = () => {
             </div>
           </div>
 
-          <div style={{
-            marginTop: 16,
-            padding: 12,
-            backgroundColor: '#f0f7ff',
-            borderRadius: 4,
-            border: '1px solid #91d5ff'
-          }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              backgroundColor: '#f0f7ff',
+              borderRadius: 4,
+              border: '1px solid #91d5ff'
+            }}
+          >
+            <Typography.Text type='secondary' style={{ fontSize: 12 }}>
               <InfoCircleOutlined style={{ marginRight: 4 }} />
-              <strong>Note:</strong> If you select "Include ONLY with Rejected" or "Include ONLY with Pending",
-              only job cards that have rejected or pending quantities in their step progress will be exported.
-              This is useful for quality control and identifying problematic job cards.
+              <strong>Note:</strong> If you select "Include ONLY with Rejected"
+              or "Include ONLY with Pending", only job cards that have rejected
+              or pending quantities in their step progress will be exported.
+              This is useful for quality control and identifying problematic job
+              cards.
             </Typography.Text>
           </div>
         </Modal>
