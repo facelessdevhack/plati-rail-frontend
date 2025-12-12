@@ -37,12 +37,14 @@ import {
   getJobCardProgress,
   getJobCardStepProgress,
   initializeJobCardSteps,
-  processStepProgress
+  processStepProgress,
+  createInventoryRequest
 } from '../../redux/api/productionAPI'
 import JobCardDetailsModal from './JobCardDetailsModal'
 import StepManagementView from './StepManagementView'
 import StepProgressModal from './StepProgressModal'
 import JobCardCreationModal from './JobCardCreationModal'
+import InventoryRequestModal from './InventoryRequestModal'
 
 const ProductionPlanDetailsPage = () => {
   const { planId } = useParams()
@@ -80,6 +82,11 @@ const ProductionPlanDetailsPage = () => {
 
   // Job card creation modal states
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
+
+  // Inventory request modal states
+  const [inventoryRequestModalVisible, setInventoryRequestModalVisible] = useState(false)
+  const [selectedStepForInventory, setSelectedStepForInventory] = useState(null)
+  const [inventoryRequestSubmitting, setInventoryRequestSubmitting] = useState(false)
 
   // Get selected plan from Redux if available
   const { selectedPlan, productionPlans } = useSelector(state => state.productionDetails)
@@ -311,12 +318,23 @@ const ProductionPlanDetailsPage = () => {
   }
 
   const handleProcessStep = (step) => {
-    // This would open the step processing modal
-    // For now, we'll just reload the data
-    if (selectedJobCardForSteps) {
-      const cardId = selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id
-      loadStepProgressData(cardId)
+    // Open the step processing modal with the step data
+    if (!selectedJobCardForSteps) {
+      console.error('No job card selected for step processing')
+      return
     }
+
+    // Enhance step progress with job card info
+    setSelectedStepProgress({
+      ...step,
+      jobCardId: selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id,
+      jobCard: selectedJobCardForSteps,
+      currentStepInfo: {
+        name: step.stepName,
+        order: step.stepOrder
+      }
+    })
+    setStepProgressModalVisible(true)
   }
 
   const loadAggregatedQualityData = async () => {
@@ -446,21 +464,45 @@ const ProductionPlanDetailsPage = () => {
     loadAggregatedQualityData()
   }
 
-  const handleProcessStepFromAggregated = (stepProgress, jobCardId) => {
+  const handleProcessStepFromAggregated = async (stepProgress, jobCardId) => {
     // Find the job card for this step
     const jobCard = jobCards.find(jc => (jc.jobCardId || jc.id) === jobCardId)
 
-    // Enhance step progress with job card ID and step info
-    setSelectedStepProgress({
-      ...stepProgress,
-      jobCardId: jobCardId,
-      jobCard: jobCard,
-      currentStepInfo: {
-        name: stepProgress.stepName,
-        order: stepProgress.stepOrder
+    if (!jobCard) {
+      console.error('Job card not found:', jobCardId)
+      return
+    }
+
+    // Fetch the actual step progress data for this specific job card
+    try {
+      const cardId = jobCard.jobCardId || jobCard.id
+      const response = await dispatch(getJobCardStepProgress(cardId)).unwrap()
+      const stepProgressData = response.data || []
+
+      // Find the specific step progress record that matches the step order
+      const specificStepProgress = stepProgressData.find(
+        sp => sp.stepOrder === stepProgress.stepOrder && sp.stepName === stepProgress.stepName
+      )
+
+      if (!specificStepProgress) {
+        console.error('Step progress not found for step:', stepProgress.stepName)
+        return
       }
-    })
-    setStepProgressModalVisible(true)
+
+      // Enhance step progress with job card ID and step info
+      setSelectedStepProgress({
+        ...specificStepProgress,
+        jobCardId: jobCardId,
+        jobCard: jobCard,
+        currentStepInfo: {
+          name: specificStepProgress.stepName,
+          order: specificStepProgress.stepOrder
+        }
+      })
+      setStepProgressModalVisible(true)
+    } catch (error) {
+      console.error('Error loading step progress for job card:', error)
+    }
   }
 
   const handleSubmitStepProgress = async (progressData) => {
@@ -468,8 +510,18 @@ const ProductionPlanDetailsPage = () => {
       setStepProgressSubmitting(true)
       await dispatch(processStepProgress(progressData)).unwrap()
 
-      // Reload aggregated quality data
-      await loadAggregatedQualityData()
+      // Reload data based on current active tab
+      if (activeViewTab === 'aggregated') {
+        // Reload aggregated quality data
+        await loadAggregatedQualityData()
+      } else if (activeViewTab === 'steps' && selectedJobCardForSteps) {
+        // Reload step progress data for the selected job card
+        const cardId = selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id
+        await loadStepProgressData(cardId)
+      }
+
+      // Also reload job cards to update the overview
+      await loadJobCards()
 
       setStepProgressModalVisible(false)
       setSelectedStepProgress(null)
@@ -492,6 +544,41 @@ const ProductionPlanDetailsPage = () => {
     setJobCardModalVisible(false)
     // Reload job cards
     loadJobCards()
+  }
+
+  const handleRequestInventory = (step) => {
+    // Open the inventory request modal with the step data
+    if (!selectedJobCardForSteps) {
+      console.error('No job card selected for inventory request')
+      return
+    }
+
+    setSelectedStepForInventory({
+      ...step,
+      jobCardId: selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id,
+      jobCard: selectedJobCardForSteps
+    })
+    setInventoryRequestModalVisible(true)
+  }
+
+  const handleSubmitInventoryRequest = async (requestData) => {
+    try {
+      setInventoryRequestSubmitting(true)
+      
+      await dispatch(createInventoryRequest(requestData)).unwrap()
+      
+      console.log('Inventory request submitted successfully:', requestData)
+      
+      alert(`Inventory request created successfully!\nQuantity: ${requestData.quantityRequested} units`)
+
+      setInventoryRequestModalVisible(false)
+      setSelectedStepForInventory(null)
+    } catch (error) {
+      console.error('Failed to create inventory request:', error)
+      alert(`Failed to create inventory request: ${error.message || 'Please try again.'}`)
+    } finally {
+      setInventoryRequestSubmitting(false)
+    }
   }
 
   if (loading) {
@@ -1068,6 +1155,7 @@ const ProductionPlanDetailsPage = () => {
                   jobCard={selectedJobCardForSteps}
                   stepProgressData={stepProgressData}
                   onProcessStep={handleProcessStep}
+                  onRequestInventory={handleRequestInventory}
                   loading={stepProgressLoading}
                 />
               </div>
@@ -1295,6 +1383,21 @@ const ProductionPlanDetailsPage = () => {
         onSuccess={handleJobCardCreateSuccess}
         selectedPlan={planDetails}
       />
+
+      {/* Inventory Request Modal */}
+      {selectedStepForInventory && (
+        <InventoryRequestModal
+          visible={inventoryRequestModalVisible}
+          stepProgress={selectedStepForInventory}
+          jobCard={selectedStepForInventory.jobCard}
+          onCancel={() => {
+            setInventoryRequestModalVisible(false)
+            setSelectedStepForInventory(null)
+          }}
+          onSubmit={handleSubmitInventoryRequest}
+          loading={inventoryRequestSubmitting}
+        />
+      )}
     </div>
   )
 }

@@ -27,7 +27,7 @@ import moment from 'moment'
 
 const { Text, Title } = Typography
 
-const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading = false }) => {
+const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, onRequestInventory, loading = false }) => {
   const [selectedStep, setSelectedStep] = useState(null)
 
   // Calculate aggregates
@@ -177,7 +177,7 @@ const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading 
     {
       title: 'Action',
       key: 'action',
-      width: 120,
+      width: 200,
       fixed: 'right',
       render: (_, record) => {
         const status = getStepStatus(record)
@@ -186,21 +186,39 @@ const StepManagementView = ({ jobCard, stepProgressData, onProcessStep, loading 
         const hasInput = record.inputQuantity > 0
         const hasPending = record.pendingQuantity > 0
         const canProcess = hasPending || hasInput || (isFirstStep && jobCard?.quantity > 0)
+        
+        // Check if this is the "REQUESTED FROM INVENTORY" step
+        const isInventoryRequestStep = record.stepName?.toUpperCase().includes('REQUESTED FROM INVENTORY')
 
-        return canProcess ? (
-          <Button
-            type="primary"
-            size="small"
-            icon={<ToolOutlined />}
-            onClick={() => onProcessStep(record)}
-            loading={loading}
-          >
-            Process
-          </Button>
-        ) : (
-          <Button size="small" disabled>
-            Completed
-          </Button>
+        return (
+          <Space size="small">
+            {canProcess ? (
+              <Button
+                type="primary"
+                size="small"
+                icon={<ToolOutlined />}
+                onClick={() => onProcessStep(record)}
+                loading={loading}
+              >
+                Process
+              </Button>
+            ) : (
+              <Button size="small" disabled>
+                Completed
+              </Button>
+            )}
+            
+            {isInventoryRequestStep && (
+              <Button
+                type="default"
+                size="small"
+                onClick={() => onRequestInventory(record)}
+                disabled={!hasInput && !hasPending}
+              >
+                Request
+              </Button>
+            )}
+          </Space>
         )
       }
     }

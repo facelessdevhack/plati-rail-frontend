@@ -60,6 +60,7 @@ import TurboProductionPlanner from '../../Modules/Production/TurboProductionPlan
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
 import SimplifiedProductionSystem from '../../Modules/Production/SimplifiedProductionSystem';
+import InventoryRequests from '../../Modules/Production/InventoryRequests';
 import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
 import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
 import PendingEntriesView from '../../Modules/SalesCoordination/PendingEntriesView';
@@ -677,6 +678,18 @@ const StackNavigation = () => {
               title='Simplified Production System'
               items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
               content={<SimplifiedProductionSystem />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory-requests'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Inventory Requests'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<InventoryRequests />}
             />
           </PrivateRoute>
         }

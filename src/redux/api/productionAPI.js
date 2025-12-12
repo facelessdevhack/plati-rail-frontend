@@ -568,6 +568,25 @@ export const processStepProgress = createAsyncThunk(
   }
 )
 
+// Create inventory request
+export const createInventoryRequest = createAsyncThunk(
+  'production/createInventoryRequest',
+  async ({ jobCardId, alloyId, alloyName, quantityRequested, requestedBy }, { rejectWithValue }) => {
+    try {
+      const response = await client.post('/production/inventory-request', {
+        jobCardId,
+        alloyId,
+        alloyName,
+        quantityRequested,
+        requestedBy
+      })
+      return response.data
+    } catch (error) {
+      return rejectWithValue(getError(error))
+    }
+  }
+)
+
 // Get job card step progress details
 export const getJobCardStepProgress = createAsyncThunk(
   'production/getJobCardStepProgress',

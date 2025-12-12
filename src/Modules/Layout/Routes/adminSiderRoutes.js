@@ -136,6 +136,10 @@ export const adminSiderRoutes = [
     getItemLayout(
       <Link to='/production-presets'>Preset Management</Link>,
       '7a'
+    ),
+    getItemLayout(
+      <Link to='/inventory-requests'><DatabaseOutlined style={{ marginRight: '8px' }} />Inventory Requests</Link>,
+      '6e'
     )
   ]),
 
