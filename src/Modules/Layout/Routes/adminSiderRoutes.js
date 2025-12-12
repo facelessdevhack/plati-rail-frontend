@@ -121,19 +121,11 @@ export const adminSiderRoutes = [
       <Link to='/smart-production'><RocketOutlined style={{ marginRight: '8px' }} />Smart Planner</Link>,
       '6a'
     ),
-    getItemLayout(
-      <Link to='/turbo-production'><ThunderboltOutlined style={{ marginRight: '8px' }} />Turbo Dashboard</Link>,
-      '6b'
-    ),
-    getItemLayout(
+      getItemLayout(
       <Link to='/job-cards'>Job Card Management</Link>,
       '6c'
     ),
-    getItemLayout(
-      <Link to='/simplified-production'><ToolOutlined style={{ marginRight: '8px' }} />Simplified Production</Link>,
-      '6d'
-    ),
-    getItemLayout(
+        getItemLayout(
       <Link to='/production-presets'>Preset Management</Link>,
       '7a'
     ),

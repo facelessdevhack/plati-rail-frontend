@@ -55,11 +55,8 @@ import AlloySelection from '../../Modules/Production/AlloySelection';
 import PresetManagement from '../../Modules/Production/PresetManagement';
 import SmartProductionDashboard from '../../Modules/Production/SmartProductionDashboard';
 import ProductionPlannerV2 from '../../Modules/Production/ProductionPlannerV2';
-import TurboProductionDashboard from '../../Modules/Production/TurboProductionDashboard';
-import TurboProductionPlanner from '../../Modules/Production/TurboProductionPlanner';
 import JobCardListing from '../../Modules/Production/JobCardListing';
 import ProductionDashboard from '../../Modules/Production/ProductionDashboard';
-import SimplifiedProductionSystem from '../../Modules/Production/SimplifiedProductionSystem';
 import InventoryRequests from '../../Modules/Production/InventoryRequests';
 import PurchaseDashboard from '../../Modules/PurchaseSystem/PurchaseDashboard';
 import SmartPurchasing from '../../Modules/PurchaseSystem/smartPurchasing';
@@ -634,31 +631,7 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
-      <Route
-        path='/turbo-production'
-        element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
-            <AdminLayout
-              title='Turbo Production Dashboard'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
-              content={<TurboProductionDashboard />}
-            />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path='/turbo-production-planner'
-        element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
-            <AdminLayout
-              title='Turbo Production Planner'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
-              content={<TurboProductionPlanner />}
-            />
-          </PrivateRoute>
-        }
-      />
-      <Route
+          <Route
         path='/job-cards'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
@@ -670,19 +643,7 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
-      <Route
-        path='/simplified-production'
-        element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
-            <AdminLayout
-              title='Simplified Production System'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
-              content={<SimplifiedProductionSystem />}
-            />
-          </PrivateRoute>
-        }
-      />
-      <Route
+          <Route
         path='/inventory-requests'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6]}>

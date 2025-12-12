@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'
 import {
   DashboardOutlined,
   ToolOutlined,
@@ -9,30 +9,33 @@ import {
   DatabaseOutlined,
   HistoryOutlined,
   AuditOutlined
-} from '@ant-design/icons';
+} from '@ant-design/icons'
 
-function getItemLayout(label, key, icon, children) {
+function getItemLayout (label, key, icon, children) {
   return {
     key,
     icon,
     children,
     label,
-    style: icon === null ? {
-      color: '#6C757D',
-      fontSize: '11px',
-      fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px',
-      margin: '16px 0 8px 0',
-      cursor: 'default',
-      pointerEvents: 'none',
-      padding: '0 12px'
-    } : {
-      margin: '2px 0',
-      borderRadius: '8px',
-      overflow: 'hidden'
-    }
-  };
+    style:
+      icon === null
+        ? {
+            color: '#6C757D',
+            fontSize: '11px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            margin: '16px 0 8px 0',
+            cursor: 'default',
+            pointerEvents: 'none',
+            padding: '0 12px'
+          }
+        : {
+            margin: '2px 0',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }
+  }
 }
 
 export const dataUserSiderRoutes = [
@@ -87,7 +90,24 @@ export const dataUserSiderRoutes = [
     <AppstoreOutlined style={{ fontSize: '16px' }} />
   ),
   getItemLayout(
-    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inventory</span>,
+    <Link to='/inventory-requests'>
+      <DatabaseOutlined style={{ marginRight: '8px' }} />
+      Inventory Requests
+    </Link>,
+    '6e'
+  ),
+  getItemLayout(
+    <span
+      style={{
+        fontWeight: 600,
+        color: '#6C757D',
+        fontSize: '12px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}
+    >
+      Inventory
+    </span>,
     'inventory-divider',
     null,
     []
@@ -102,7 +122,17 @@ export const dataUserSiderRoutes = [
 
   // Stock Logging System
   getItemLayout(
-    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stock Tracking</span>,
+    <span
+      style={{
+        fontWeight: 600,
+        color: '#6C757D',
+        fontSize: '12px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}
+    >
+      Stock Tracking
+    </span>,
     'stock-tracking-divider',
     null,
     []
@@ -120,5 +150,5 @@ export const dataUserSiderRoutes = [
     </Link>,
     'stock-reconciliation',
     <AuditOutlined style={{ fontSize: '16px' }} />
-  ),
-];
+  )
+]
