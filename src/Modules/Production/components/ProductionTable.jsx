@@ -1,7 +1,31 @@
 import React from 'react'
-import { Table, Button, Dropdown, Tag, Input, Select, DatePicker, Space, Card, Row, Col, Statistic } from 'antd'
-import { EyeOutlined, MoreOutlined, SearchOutlined, FilterOutlined, CalendarOutlined, PlusOutlined, DownloadOutlined,
-         ExclamationCircleOutlined, InboxOutlined, CheckCircleOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import {
+  Table,
+  Button,
+  Dropdown,
+  Tag,
+  Input,
+  Select,
+  DatePicker,
+  Space,
+  Card,
+  Row,
+  Col,
+  Statistic
+} from 'antd'
+import {
+  EyeOutlined,
+  MoreOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  CalendarOutlined,
+  PlusOutlined,
+  DownloadOutlined,
+  ExclamationCircleOutlined,
+  InboxOutlined,
+  CheckCircleOutlined,
+  ThunderboltOutlined
+} from '@ant-design/icons'
 import moment from 'moment'
 
 const { RangePicker } = DatePicker
@@ -59,9 +83,9 @@ const ProductionTable = ({
     completionRate: 0
   }
 
-  console.log('🔍 ProductionTable Debug - totalKPIs from Redux:', totalKPIs);
-  console.log('🔍 ProductionTable Debug - kpis used for display:', kpis);
-  console.log('🔍 ProductionTable Debug - kpisLoading:', kpisLoading);
+  console.log('🔍 ProductionTable Debug - totalKPIs from Redux:', totalKPIs)
+  console.log('🔍 ProductionTable Debug - kpis used for display:', kpis)
+  console.log('🔍 ProductionTable Debug - kpisLoading:', kpisLoading)
   const columns = [
     {
       title: 'Plan ID',
@@ -69,14 +93,14 @@ const ProductionTable = ({
       key: 'id',
       width: 100,
       sorter: (a, b) => (a.id || 0) - (b.id || 0),
-      render: (id) => <span className="font-semibold">#{id}</span>
+      render: id => <span className='font-semibold'>#{id}</span>
     },
     {
       title: 'Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 130,
-      render: (createdAt) => (
+      render: createdAt => (
         <span>{moment(createdAt).format('MMM DD, YYYY')}</span>
       )
     },
@@ -85,19 +109,22 @@ const ProductionTable = ({
       dataIndex: 'urgent',
       key: 'urgent',
       width: 100,
-      render: (urgent) => (
+      render: urgent =>
         urgent ? (
-          <Tag color="red">URGENT</Tag>
+          <Tag color='red'>URGENT</Tag>
         ) : (
-          <Tag color="default">Normal</Tag>
+          <Tag color='default'>Normal</Tag>
         )
-      )
     },
     {
       title: 'Source Alloy',
       key: 'sourceAlloy',
       render: (_, record) => {
-        const sourceProduct = record.alloyName || record.sourceProduct || record.sourceproductname || `Alloy ${record.alloyId}`
+        const sourceProduct =
+          record.alloyName ||
+          record.sourceProduct ||
+          record.sourceproductname ||
+          `Alloy ${record.alloyId}`
         return <span>{sourceProduct}</span>
       }
     },
@@ -105,22 +132,30 @@ const ProductionTable = ({
       title: 'Target Alloy',
       key: 'targetAlloy',
       render: (_, record) => {
-        const targetProduct = record.convertName || record.targetProduct || record.targetproductname || `Convert ${record.convertToAlloyId}`
+        const targetProduct =
+          record.convertName ||
+          record.targetProduct ||
+          record.targetproductname ||
+          `Convert ${record.convertToAlloyId}`
         return <span>{targetProduct}</span>
       }
     },
     {
-      title: 'Quantity',
+      title: 'Pending/Total',
       key: 'quantity',
       width: 150,
       render: (_, record) => {
-        const allocated = record.allocatedQuantity || 0
+        const inProgressQuantity =
+          record.quantityTracking.inProgressQuantity || 0
         const total = record.quantity || 0
+        console.log(record, 'RECORD')
         return (
           <div>
-            <span className="font-semibold">{allocated.toLocaleString()}</span>
-            <span className="text-gray-400"> / </span>
-            <span className="font-semibold">{total.toLocaleString()}</span>
+            <span className='font-semibold'>
+              {inProgressQuantity.toLocaleString()}
+            </span>
+            <span className='text-gray-400'> / </span>
+            <span className='font-semibold'>{total.toLocaleString()}</span>
           </div>
         )
       }
@@ -137,14 +172,16 @@ const ProductionTable = ({
         const completedCards = record.completedJobCardsStatus || 0
 
         if (totalCards === 0) {
-          return <Tag color="default">No cards</Tag>
+          return <Tag color='default'>No cards</Tag>
         }
 
         return (
           <Space size={4}>
-            <Tag color="blue">{totalCards} total</Tag>
-            {activeCards > 0 && <Tag color="orange">{activeCards} active</Tag>}
-            {completedCards > 0 && <Tag color="green">{completedCards} done</Tag>}
+            <Tag color='blue'>{totalCards} total</Tag>
+            {activeCards > 0 && <Tag color='orange'>{activeCards} active</Tag>}
+            {completedCards > 0 && (
+              <Tag color='green'>{completedCards} done</Tag>
+            )}
           </Space>
         )
       }
@@ -155,23 +192,20 @@ const ProductionTable = ({
       width: 100,
       fixed: 'right',
       render: (_, record) => (
-        <div className="flex gap-2">
+        <div className='flex gap-2'>
           <Button
-            type="link"
-            size="small"
+            type='link'
+            size='small'
             icon={<EyeOutlined />}
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation()
               handleView(record)
             }}
           />
-          <Dropdown
-            menu={getActionMenu(record)}
-            trigger={['click']}
-          >
+          <Dropdown menu={getActionMenu(record)} trigger={['click']}>
             <Button
-              type="link"
-              size="small"
+              type='link'
+              size='small'
               icon={<MoreOutlined />}
               onClick={e => e.stopPropagation()}
             />
@@ -184,14 +218,18 @@ const ProductionTable = ({
   // Old KPI functions removed - using calculateKPIs function defined above
 
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {/* KPI Cards */}
-      <div className="space-y-3">
+      <div className='space-y-3'>
         {/* KPI Header */}
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">Production Overview (All Production Plans)</h3>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            {kpisLoading && <span className="text-blue-500">Updating KPIs...</span>}
+        <div className='flex justify-between items-center'>
+          <h3 className='text-lg font-semibold text-gray-800'>
+            Production Overview (All Production Plans)
+          </h3>
+          <div className='flex items-center gap-3 text-xs text-gray-500'>
+            {kpisLoading && (
+              <span className='text-blue-500'>Updating KPIs...</span>
+            )}
             {lastKPIUpdate && (
               <span>
                 Last updated: {moment(lastKPIUpdate).format('MMM DD, HH:mm')}
@@ -200,59 +238,61 @@ const ProductionTable = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
           {/* Today's Quantity */}
-          <Card className="text-center" loading={kpisLoading}>
+          <Card className='text-center' loading={kpisLoading}>
             <Statistic
-              title={<span className="text-gray-600">Today's Quantity</span>}
+              title={<span className='text-gray-600'>Today's Quantity</span>}
               value={kpis.todayQuantity}
-              suffix="units"
+              suffix='units'
               valueStyle={{ color: '#1890ff' }}
               prefix={<CheckCircleOutlined />}
             />
-            <div className="text-xs text-gray-500 mt-2">
+            <div className='text-xs text-gray-500 mt-2'>
               {kpis.todayPlansCount || 0} plans created today
             </div>
           </Card>
 
           {/* Unallocated Quantity */}
-          <Card className="text-center" loading={kpisLoading}>
+          <Card className='text-center' loading={kpisLoading}>
             <Statistic
-              title={<span className="text-gray-600">Unallocated Quantity</span>}
+              title={
+                <span className='text-gray-600'>Unallocated Quantity</span>
+              }
               value={kpis.totalUnallocated}
-              suffix="units"
+              suffix='units'
               valueStyle={{ color: '#faad14' }}
               prefix={<InboxOutlined />}
             />
-            <div className="text-xs text-gray-500 mt-2">
+            <div className='text-xs text-gray-500 mt-2'>
               Available for job cards
             </div>
           </Card>
 
           {/* Allocated Quantity */}
-          <Card className="text-center" loading={kpisLoading}>
+          <Card className='text-center' loading={kpisLoading}>
             <Statistic
-              title={<span className="text-gray-600">Allocated Quantity</span>}
+              title={<span className='text-gray-600'>Allocated Quantity</span>}
               value={kpis.totalAllocated}
-              suffix="units"
+              suffix='units'
               valueStyle={{ color: '#52c41a' }}
               prefix={<ThunderboltOutlined />}
             />
-            <div className="text-xs text-gray-500 mt-2">
+            <div className='text-xs text-gray-500 mt-2'>
               {kpis.completionRate || 0}% completion rate
             </div>
           </Card>
 
           {/* Urgent Plans */}
-          <Card className="text-center" loading={kpisLoading}>
+          <Card className='text-center' loading={kpisLoading}>
             <Statistic
-              title={<span className="text-gray-600">Urgent Plans</span>}
+              title={<span className='text-gray-600'>Urgent Plans</span>}
               value={kpis.urgentPlans || 0}
               suffix={`/ ${kpis.totalPlans || 0}`}
               valueStyle={{ color: '#ff4d4f' }}
               prefix={<ExclamationCircleOutlined />}
             />
-            <div className="text-xs text-gray-500 mt-2">
+            <div className='text-xs text-gray-500 mt-2'>
               High priority plans
             </div>
           </Card>
@@ -260,11 +300,11 @@ const ProductionTable = ({
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex flex-wrap gap-3 items-center">
+      <div className='bg-white p-4 rounded-lg border border-gray-200'>
+        <div className='flex flex-wrap gap-3 items-center'>
           {/* Search */}
           <Input
-            placeholder="Search production plans..."
+            placeholder='Search production plans...'
             prefix={<SearchOutlined />}
             value={localSearch}
             onChange={e => setLocalSearch(e.target.value)}
@@ -296,7 +336,7 @@ const ProductionTable = ({
 
           {/* Priority Filter */}
           <Select
-            placeholder="Priority"
+            placeholder='Priority'
             value={filters.urgent}
             onChange={value => handleFilterChange('urgent', value)}
             options={urgentOptions}
@@ -304,15 +344,17 @@ const ProductionTable = ({
             allowClear
           />
 
+  
           {/* Clear Filters */}
-          {(searchTerm || filters.urgent || filters.dateRange || isTodayFilter) && (
-            <Button onClick={handleClearFilters}>
-              Clear Filters
-            </Button>
+          {(searchTerm ||
+            filters.urgent ||
+            filters.dateRange ||
+            isTodayFilter) && (
+            <Button onClick={handleClearFilters}>Clear Filters</Button>
           )}
 
           {/* Actions - Right Side */}
-          <div className="ml-auto flex gap-2">
+          <div className='ml-auto flex gap-2'>
             <Dropdown
               menu={{ items: exportMenuItems }}
               trigger={['click']}
@@ -326,7 +368,7 @@ const ProductionTable = ({
               </Button>
             </Dropdown>
             <Button
-              type="primary"
+              type='primary'
               icon={<PlusOutlined />}
               onClick={handleCreatePlan}
             >
@@ -340,7 +382,7 @@ const ProductionTable = ({
       <Table
         columns={columns}
         dataSource={productionPlans}
-        rowKey="id"
+        rowKey='id'
         loading={loading}
         onChange={handleTableChange}
         pagination={{
@@ -349,7 +391,8 @@ const ProductionTable = ({
           total: totalPlansCount,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} plans`,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} plans`,
           pageSizeOptions: ['10', '25', '50', '100']
         }}
         expandable={{
@@ -358,7 +401,7 @@ const ProductionTable = ({
           expandedRowRender,
           expandRowByClick: false
         }}
-        onRow={(record) => ({
+        onRow={record => ({
           onClick: () => handleView(record),
           style: { cursor: 'pointer' }
         })}

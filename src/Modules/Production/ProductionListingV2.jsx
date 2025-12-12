@@ -75,7 +75,8 @@ const ProductionListingV2 = () => {
   const [selectedPlanForDetails, setSelectedPlanForDetails] = useState(null)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [selectedPlanForEdit, setSelectedPlanForEdit] = useState(null)
-  const [assignPresetModalVisible, setAssignPresetModalVisible] = useState(false)
+  const [assignPresetModalVisible, setAssignPresetModalVisible] =
+    useState(false)
   const [selectedPlanForPreset, setSelectedPlanForPreset] = useState(null)
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
   const [selectedPlanForJobCard, setSelectedPlanForJobCard] = useState(null)
@@ -102,20 +103,32 @@ const ProductionListingV2 = () => {
     lastKPIUpdate
   } = useSelector(state => state.productionDetails)
 
+  // Helper function to get API parameters with all current filters
+  const getApiParams = (extraParams = {}) => {
+    return {
+      page: currentPage,
+      limit: pageSize,
+      search: searchTerm,
+      sortField,
+      sortOrder,
+      urgent: filters.urgent,
+      dateRange: filters.dateRange,
+      ...extraParams
+    }
+  }
+
   // Load data on component mount with enhanced quantity tracking
   useEffect(() => {
-    dispatch(
-      getProductionPlansWithQuantities({
-        page: currentPage,
-        limit: pageSize,
-        search: searchTerm,
-        sortField,
-        sortOrder,
-        urgent: filters.urgent,
-        dateRange: filters.dateRange
-      })
-    )
-  }, [dispatch, currentPage, pageSize, searchTerm, filters, sortField, sortOrder])
+    dispatch(getProductionPlansWithQuantities(getApiParams()))
+  }, [
+    dispatch,
+    currentPage,
+    pageSize,
+    searchTerm,
+    filters,
+    sortField,
+    sortOrder
+  ])
 
   // Load initial data only once
   useEffect(() => {
@@ -239,7 +252,10 @@ const ProductionListingV2 = () => {
     }
 
     // Handle pagination
-    if (pagination.current !== currentPage || pagination.pageSize !== pageSize) {
+    if (
+      pagination.current !== currentPage ||
+      pagination.pageSize !== pageSize
+    ) {
       handlePageChange(pagination.current, pagination.pageSize)
     }
   }
@@ -392,15 +408,7 @@ const ProductionListingV2 = () => {
           })
 
           // Refresh the production plans list
-          dispatch(
-            getProductionPlansWithQuantities({
-              page: currentPage,
-              limit: pageSize,
-              search: searchTerm,
-              urgent: filters.urgent,
-              dateRange: filters.dateRange
-            })
-          )
+          dispatch(getProductionPlansWithQuantities(getApiParams()))
         } catch (error) {
           message.error({
             content: (
@@ -432,16 +440,16 @@ const ProductionListingV2 = () => {
   const handleExport = async format => {
     try {
       // Show loading message
-      const loadingMessage = message.loading('Fetching all production plans for export...')
+      const loadingMessage = message.loading(
+        'Fetching all production plans for export...'
+      )
 
       // Fetch ALL production plans (without pagination)
       const allPlansResponse = await dispatch(
         getProductionPlansWithQuantities({
+          ...getApiParams(),
           page: 1,
-          limit: 10000, // Large number to get all plans
-          search: searchTerm,
-          urgent: filters.urgent,
-          dateRange: filters.dateRange
+          limit: 10000 // Large number to get all plans
         })
       ).unwrap()
 
@@ -497,7 +505,9 @@ const ProductionListingV2 = () => {
         link.href = URL.createObjectURL(blob)
         link.download = `production_plans_${moment().format('YYYY-MM-DD')}.csv`
         link.click()
-        message.success(`${allPlans.length} production plans exported to CSV successfully`)
+        message.success(
+          `${allPlans.length} production plans exported to CSV successfully`
+        )
       } else {
         // Excel Export - using simple HTML table method
         const tableHTML = `
@@ -530,7 +540,9 @@ const ProductionListingV2 = () => {
         link.href = URL.createObjectURL(blob)
         link.download = `production_plans_${moment().format('YYYY-MM-DD')}.xls`
         link.click()
-        message.success(`${allPlans.length} production plans exported to Excel successfully`)
+        message.success(
+          `${allPlans.length} production plans exported to Excel successfully`
+        )
       }
     } catch (error) {
       console.error('Export error:', error)
@@ -575,15 +587,7 @@ const ProductionListingV2 = () => {
   // Handle successful edit
   const handleEditSuccess = () => {
     // Refresh the production plans list
-    dispatch(
-      getProductionPlansWithQuantities({
-        page: currentPage,
-        limit: pageSize,
-        search: searchTerm,
-        urgent: filters.urgent,
-        dateRange: filters.dateRange
-      })
-    )
+    dispatch(getProductionPlansWithQuantities(getApiParams()))
   }
 
   // Handle successful preset assignment
@@ -594,15 +598,7 @@ const ProductionListingV2 = () => {
 
     // Refresh the production plans list with a small delay to ensure backend updates
     setTimeout(() => {
-      dispatch(
-        getProductionPlansWithQuantities({
-          page: currentPage,
-          limit: pageSize,
-          search: searchTerm,
-          urgent: filters.urgent,
-          dateRange: filters.dateRange
-        })
-      )
+      dispatch(getProductionPlansWithQuantities(getApiParams()))
     }, 500)
   }
 
@@ -620,15 +616,7 @@ const ProductionListingV2 = () => {
     // Add a small delay to ensure backend triggers have completed
     // then refresh the production plans list
     setTimeout(() => {
-      dispatch(
-        getProductionPlansWithQuantities({
-          page: currentPage,
-          limit: pageSize,
-          search: searchTerm,
-          urgent: filters.urgent,
-          dateRange: filters.dateRange
-        })
-      )
+      dispatch(getProductionPlansWithQuantities(getApiParams()))
     }, 500)
   }
 
@@ -972,7 +960,6 @@ const ProductionListingV2 = () => {
     return { items: menuItems }
   }
 
-  
   // Filter options
   const urgentOptions = [
     { value: '', label: 'All Priorities' },
@@ -984,15 +971,15 @@ const ProductionListingV2 = () => {
   const columns = [
     {
       title: (
-        <div className="space-y-2">
-          <div className="font-semibold">Production Plan</div>
+        <div className='space-y-2'>
+          <div className='font-semibold'>Production Plan</div>
           <Input
-            placeholder="Search plans..."
+            placeholder='Search plans...'
             value={localSearch}
             onChange={e => setLocalSearch(e.target.value)}
             onPressEnter={handleSearch}
-            prefix={<SearchOutlined className="text-gray-400" />}
-            size="small"
+            prefix={<SearchOutlined className='text-gray-400' />}
+            size='small'
             allowClear
           />
         </div>
@@ -1028,7 +1015,10 @@ const ProductionListingV2 = () => {
             <div className='bg-gray-50 rounded-lg p-3 space-y-2'>
               <div>
                 <div className='text-xs text-gray-600 mb-1'>From:</div>
-                <div className='font-medium text-sm text-gray-900 truncate' title={sourceProduct}>
+                <div
+                  className='font-medium text-sm text-gray-900 truncate'
+                  title={sourceProduct}
+                >
                   {sourceProduct}
                 </div>
               </div>
@@ -1041,7 +1031,10 @@ const ProductionListingV2 = () => {
 
               <div>
                 <div className='text-xs text-gray-600 mb-1'>To:</div>
-                <div className='font-medium text-sm text-blue-700 truncate' title={targetProduct}>
+                <div
+                  className='font-medium text-sm text-blue-700 truncate'
+                  title={targetProduct}
+                >
                   {targetProduct}
                 </div>
               </div>
@@ -1052,15 +1045,15 @@ const ProductionListingV2 = () => {
     },
     {
       title: (
-        <div className="space-y-2">
-          <div className="font-semibold">Date & Priority</div>
+        <div className='space-y-2'>
+          <div className='font-semibold'>Date & Priority</div>
           <Select
             value={filters.urgent}
             onChange={value => handleFilterChange('urgent', value)}
             options={urgentOptions}
-            className="w-full"
-            placeholder="Priority"
-            size="small"
+            className='w-full'
+            placeholder='Priority'
+            size='small'
             allowClear
           />
         </div>
@@ -1085,9 +1078,9 @@ const ProductionListingV2 = () => {
     },
     {
       title: (
-        <div className="space-y-2">
-          <div className="font-semibold">Quantity</div>
-          <div className="text-xs text-gray-500">Total & Progress</div>
+        <div className='space-y-2'>
+          <div className='font-semibold'>Quantity</div>
+          <div className='text-xs text-gray-500'>Total & Progress</div>
         </div>
       ),
       key: 'quantity',
@@ -1096,20 +1089,32 @@ const ProductionListingV2 = () => {
         const total = record.quantity || 0
         const allocated = record.quantityTracking?.allocatedQuantity || 0
         const remaining = record.quantityTracking?.remainingQuantity || 0
-        const percentage = total > 0 ? Math.round((allocated / total) * 100) : 0
+        // Calculate pending quantity as the remaining amount that needs to be allocated
+        // Pending = Total quantity - Already allocated to job cards
+        const totalPendingQuantity = Math.max(0, total - (record.quantityTracking?.allocatedQuantity || 0))
+
+        // Calculate the ratio as "totalPendingQuantity across job cards / total quantity"
+        const displayRatio =
+          totalPendingQuantity > 0
+            ? `${totalPendingQuantity.toLocaleString()} / ${total.toLocaleString()}`
+            : `0 / ${total.toLocaleString()}`
+
+        // Calculate percentage based on pending quantity vs total
+        const percentage =
+          total > 0 ? Math.round((totalPendingQuantity / total) * 100) : 0
 
         return (
           <div className='py-2 space-y-2'>
             <div className='text-center'>
               <div className='text-lg font-bold text-gray-900'>
-                {total.toLocaleString()}
+                {displayRatio}
               </div>
-              <div className='text-xs text-gray-500'>units</div>
+              <div className='text-xs text-gray-500'>Pending / Total</div>
             </div>
 
             <div className='space-y-1'>
               <div className='flex justify-between text-xs'>
-                <span className='text-gray-600'>Allocated</span>
+                <span className='text-gray-600'>Pending</span>
                 <span className='font-medium'>{percentage}%</span>
               </div>
               <div className='w-full bg-gray-200 rounded-full h-2'>
@@ -1133,9 +1138,9 @@ const ProductionListingV2 = () => {
     },
     {
       title: (
-        <div className="space-y-2">
-          <div className="font-semibold">Status</div>
-          <div className="text-xs text-gray-500">Current Step</div>
+        <div className='space-y-2'>
+          <div className='font-semibold'>Status</div>
+          <div className='text-xs text-gray-500'>Current Step</div>
         </div>
       ),
       key: 'status',
@@ -1178,7 +1183,11 @@ const ProductionListingV2 = () => {
 
         return (
           <div className='py-2 space-y-2'>
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                status
+              )}`}
+            >
               <span>{getStatusIcon(status)}</span>
               <span className='truncate max-w-[120px]' title={stepName}>
                 {stepName}
@@ -1196,9 +1205,9 @@ const ProductionListingV2 = () => {
     },
     {
       title: (
-        <div className="space-y-2">
-          <div className="font-semibold">Actions</div>
-          <div className="text-xs text-gray-500">Manage Plan</div>
+        <div className='space-y-2'>
+          <div className='font-semibold'>Actions</div>
+          <div className='text-xs text-gray-500'>Manage Plan</div>
         </div>
       ),
       key: 'actions',
