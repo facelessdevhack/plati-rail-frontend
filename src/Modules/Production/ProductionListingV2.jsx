@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -130,6 +130,8 @@ const ProductionListingV2 = () => {
     sortOrder
   ])
 
+  // REMOVED: Lazy load job cards only when rows are expanded (see handleExpand)
+
   // Load initial data only once
   useEffect(() => {
     dispatch(getProductionSteps())
@@ -156,19 +158,19 @@ const ProductionListingV2 = () => {
     }
   }, [error, dispatch])
 
-  // Handle search
-  const handleSearch = () => {
+  // Handle search (memoized)
+  const handleSearch = useCallback(() => {
     dispatch(setSearchTerm(localSearch))
     dispatch(setCurrentPage(1))
-  }
+  }, [dispatch, localSearch])
 
-  // Handle filters
-  const handleFilterChange = (filterName, value) => {
+  // Handle filters (memoized)
+  const handleFilterChange = useCallback((filterName, value) => {
     dispatch(setFilters({ [filterName]: value }))
     dispatch(setCurrentPage(1))
-  }
+  }, [dispatch])
 
-  const handleDateRangeChange = dates => {
+  const handleDateRangeChange = useCallback((dates) => {
     // Turn off Today filter when user manually changes date range
     if (isTodayFilter) {
       setIsTodayFilter(false)
@@ -182,14 +184,14 @@ const ProductionListingV2 = () => {
       })
     )
     dispatch(setCurrentPage(1))
-  }
+  }, [dispatch, isTodayFilter])
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setLocalSearch('')
     setIsTodayFilter(false)
     dispatch(clearFilters())
     dispatch(setCurrentPage(1))
-  }
+  }, [dispatch])
 
   // Calculate total quantity from filtered production plans
   const getTotalQuantity = () => {
@@ -675,6 +677,25 @@ const ProductionListingV2 = () => {
     return 'Move to next production step'
   }
 
+  // Get row className for deadline highlighting (using API-provided deadline info)
+  const getRowClassName = useCallback((record) => {
+    // Use deadline info directly from API response
+    const deadlineInfo = record.deadlineInfo || {}
+    const status = deadlineInfo.status || 'none'
+
+    switch (status) {
+      case 'overdue':
+      case 'due_today':
+        return 'bg-red-50 border-l-4 border-red-500'
+      case 'urgent':
+        return 'bg-orange-50 border-l-4 border-orange-500'
+      case 'normal':
+        return 'bg-yellow-50 border-l-4 border-yellow-500'
+      default:
+        return ''
+    }
+  }, [])
+
   // Handle expanding a row to show job cards
   const handleExpand = async (expanded, record) => {
     const keys = expanded
@@ -885,8 +906,8 @@ const ProductionListingV2 = () => {
     )
   }
 
-  // Create dropdown menu for mobile actions
-  const getActionMenu = record => {
+  // Create dropdown menu for mobile actions (memoized)
+  const getActionMenu = useCallback((record) => {
     const menuItems = [
       {
         key: 'view',
@@ -958,320 +979,13 @@ const ProductionListingV2 = () => {
     )
 
     return { items: menuItems }
-  }
+  }, [handleView, handleEdit, handleCreateJobCard, handleAssignPreset, handleMoveToNextStep, handleDelete])
 
   // Filter options
   const urgentOptions = [
     { value: '', label: 'All Priorities' },
     { value: 'true', label: 'Urgent' },
     { value: 'false', label: 'Normal' }
-  ]
-
-  // Simplified table columns with inline filters
-  const columns = [
-    {
-      title: (
-        <div className='space-y-2'>
-          <div className='font-semibold'>Production Plan</div>
-          <Input
-            placeholder='Search plans...'
-            value={localSearch}
-            onChange={e => setLocalSearch(e.target.value)}
-            onPressEnter={handleSearch}
-            prefix={<SearchOutlined className='text-gray-400' />}
-            size='small'
-            allowClear
-          />
-        </div>
-      ),
-      key: 'planDetails',
-      width: 300,
-      fixed: 'left',
-      render: (_, record) => {
-        const sourceProduct =
-          record.alloyName ||
-          record.sourceProduct ||
-          record.sourceproductname ||
-          `Alloy ${record.alloyId}`
-        const targetProduct =
-          record.convertName ||
-          record.targetProduct ||
-          record.targetproductname ||
-          `Convert ${record.convertToAlloyId}`
-
-        return (
-          <div className='py-2'>
-            <div className='flex items-center justify-between mb-2'>
-              <span className='font-semibold text-blue-600 text-sm'>
-                #{record.id}
-              </span>
-              {record.urgent && (
-                <Tag color='red' size='small' className='text-xs font-medium'>
-                  🔥 URGENT
-                </Tag>
-              )}
-            </div>
-
-            <div className='bg-gray-50 rounded-lg p-3 space-y-2'>
-              <div>
-                <div className='text-xs text-gray-600 mb-1'>From:</div>
-                <div
-                  className='font-medium text-sm text-gray-900 truncate'
-                  title={sourceProduct}
-                >
-                  {sourceProduct}
-                </div>
-              </div>
-
-              <div className='flex items-center justify-center'>
-                <div className='flex-1 h-px bg-gray-300'></div>
-                <span className='px-2 text-gray-400'>→</span>
-                <div className='flex-1 h-px bg-gray-300'></div>
-              </div>
-
-              <div>
-                <div className='text-xs text-gray-600 mb-1'>To:</div>
-                <div
-                  className='font-medium text-sm text-blue-700 truncate'
-                  title={targetProduct}
-                >
-                  {targetProduct}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
-    },
-    {
-      title: (
-        <div className='space-y-2'>
-          <div className='font-semibold'>Date & Priority</div>
-          <Select
-            value={filters.urgent}
-            onChange={value => handleFilterChange('urgent', value)}
-            options={urgentOptions}
-            className='w-full'
-            placeholder='Priority'
-            size='small'
-            allowClear
-          />
-        </div>
-      ),
-      key: 'datePriority',
-      width: 150,
-      render: (_, record) => (
-        <div className='py-2 space-y-1'>
-          <div className='text-sm font-medium'>
-            {moment(record.createdAt).format('MMM DD, YYYY')}
-          </div>
-          <div className='text-xs text-gray-500'>
-            {moment(record.createdAt).format('HH:mm')}
-          </div>
-          {record.urgent && (
-            <Tag color='red' size='small' className='mt-1'>
-              URGENT
-            </Tag>
-          )}
-        </div>
-      )
-    },
-    {
-      title: (
-        <div className='space-y-2'>
-          <div className='font-semibold'>Quantity</div>
-          <div className='text-xs text-gray-500'>Total & Progress</div>
-        </div>
-      ),
-      key: 'quantity',
-      width: 150,
-      render: (_, record) => {
-        const total = record.quantity || 0
-        const allocated = record.quantityTracking?.allocatedQuantity || 0
-        const remaining = record.quantityTracking?.remainingQuantity || 0
-        // Calculate pending quantity as the remaining amount that needs to be allocated
-        // Pending = Total quantity - Already allocated to job cards
-        const totalPendingQuantity = Math.max(0, total - (record.quantityTracking?.allocatedQuantity || 0))
-
-        // Calculate the ratio as "totalPendingQuantity across job cards / total quantity"
-        const displayRatio =
-          totalPendingQuantity > 0
-            ? `${totalPendingQuantity.toLocaleString()} / ${total.toLocaleString()}`
-            : `0 / ${total.toLocaleString()}`
-
-        // Calculate percentage based on pending quantity vs total
-        const percentage =
-          total > 0 ? Math.round((totalPendingQuantity / total) * 100) : 0
-
-        return (
-          <div className='py-2 space-y-2'>
-            <div className='text-center'>
-              <div className='text-lg font-bold text-gray-900'>
-                {displayRatio}
-              </div>
-              <div className='text-xs text-gray-500'>Pending / Total</div>
-            </div>
-
-            <div className='space-y-1'>
-              <div className='flex justify-between text-xs'>
-                <span className='text-gray-600'>Pending</span>
-                <span className='font-medium'>{percentage}%</span>
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2'>
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    percentage === 100
-                      ? 'bg-red-500'
-                      : percentage > 50
-                      ? 'bg-orange-500'
-                      : percentage > 0
-                      ? 'bg-blue-500'
-                      : 'bg-gray-300'
-                  }`}
-                  style={{ width: `${Math.max(percentage, 2)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )
-      }
-    },
-    {
-      title: (
-        <div className='space-y-2'>
-          <div className='font-semibold'>Status</div>
-          <div className='text-xs text-gray-500'>Current Step</div>
-        </div>
-      ),
-      key: 'status',
-      width: 180,
-      render: (_, record) => {
-        const stepName = record.currentStepName || 'Not Started'
-        const status = record.currentStepStatus || 'waiting'
-
-        const getStatusColor = status => {
-          switch (status) {
-            case 'completed':
-              return 'bg-green-100 text-green-800'
-            case 'in_progress':
-              return 'bg-blue-100 text-blue-800'
-            case 'pending':
-              return 'bg-orange-100 text-orange-800'
-            case 'paused':
-              return 'bg-yellow-100 text-yellow-800'
-            case 'waiting':
-              return 'bg-gray-100 text-gray-600'
-            default:
-              return 'bg-gray-100 text-gray-600'
-          }
-        }
-
-        const getStatusIcon = status => {
-          switch (status) {
-            case 'completed':
-              return '✓'
-            case 'in_progress':
-              return '⚡'
-            case 'pending':
-              return '⏳'
-            case 'paused':
-              return '⏸'
-            default:
-              return '○'
-          }
-        }
-
-        return (
-          <div className='py-2 space-y-2'>
-            <div
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                status
-              )}`}
-            >
-              <span>{getStatusIcon(status)}</span>
-              <span className='truncate max-w-[120px]' title={stepName}>
-                {stepName}
-              </span>
-            </div>
-
-            {record.jobCardsCount > 0 && (
-              <div className='text-xs text-gray-500'>
-                {record.jobCardsCount} job cards
-              </div>
-            )}
-          </div>
-        )
-      }
-    },
-    {
-      title: (
-        <div className='space-y-2'>
-          <div className='font-semibold'>Actions</div>
-          <div className='text-xs text-gray-500'>Manage Plan</div>
-        </div>
-      ),
-      key: 'actions',
-      width: 160,
-      fixed: 'right',
-      render: (_, record) => {
-        const hasWorkflowOrPreset =
-          record.workflowInfo?.hasCustomWorkflow ||
-          record.hasWorkflowSteps ||
-          record.workflowInfo?.presetName ||
-          record.presetName ||
-          record.preset_name
-
-        return (
-          <div className='flex items-center justify-center'>
-            <div className='flex gap-1'>
-              {hasWorkflowOrPreset ? (
-                // Show Job Card button when preset/workflow is assigned
-                <Button
-                  type='primary'
-                  icon={<PlayCircleOutlined />}
-                  onClick={e => {
-                    e.stopPropagation()
-                    handleCreateJobCard(record)
-                  }}
-                  size='small'
-                  disabled={!canCreateJobCard(record)}
-                  title={getCreateJobCardTooltip(record)}
-                >
-                  Job Card
-                </Button>
-              ) : (
-                // Show Preset button when no preset/workflow is assigned
-                <Button
-                  type='default'
-                  icon={<SettingOutlined />}
-                  onClick={e => {
-                    e.stopPropagation()
-                    handleAssignPreset(record)
-                  }}
-                  size='small'
-                  title='Assign a preset/workflow to this production plan'
-                >
-                  Preset
-                </Button>
-              )}
-
-              <Dropdown
-                menu={getActionMenu(record)}
-                trigger={['click']}
-                placement='bottomRight'
-              >
-                <Button
-                  type='text'
-                  icon={<MoreOutlined />}
-                  size='small'
-                  onClick={e => e.stopPropagation()}
-                />
-              </Dropdown>
-            </div>
-          </div>
-        )
-      }
-    }
   ]
 
   return (
@@ -1309,6 +1023,7 @@ const ProductionListingV2 = () => {
           totalKPIs={totalKPIs}
           kpisLoading={kpisLoading}
           lastKPIUpdate={lastKPIUpdate}
+          rowClassName={getRowClassName}
         />
       </div>
 

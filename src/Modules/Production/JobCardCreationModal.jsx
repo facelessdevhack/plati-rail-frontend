@@ -12,14 +12,16 @@ import {
   Statistic,
   Progress,
   notification,
-  Button
+  Button,
+  DatePicker
 } from 'antd'
 import {
   PlayCircleOutlined,
   InfoCircleOutlined,
   WarningOutlined,
   CheckCircleOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  CalendarOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import moment from 'moment'
@@ -114,6 +116,7 @@ const JobCardCreationModal = ({
         notes: values.notes || '',
         isPartialQuantity: showReasonField,
         reason: showReasonField ? values.reason : '',
+        deadline: values.deadline ? values.deadline.format('YYYY-MM-DD') : null,
         createdBy: user?.id || user?.name || 'System'
       }
 
@@ -305,6 +308,28 @@ const JobCardCreationModal = ({
             </Button>
           </div>
         )}
+
+        {/* Deadline Date */}
+        <Form.Item
+          name="deadline"
+          label={
+            <span className="font-medium flex items-center gap-2">
+              <CalendarOutlined />
+              Deadline Date (Optional)
+            </span>
+          }
+        >
+          <DatePicker
+            placeholder="Select deadline date"
+            size="large"
+            className="w-full"
+            format="YYYY-MM-DD"
+            disabledDate={(current) => {
+              // Disable dates before today
+              return current && current < moment().startOf('day')
+            }}
+          />
+        </Form.Item>
 
         {/* Notes */}
         <Form.Item

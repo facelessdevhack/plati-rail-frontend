@@ -64,7 +64,9 @@ const ProductionTable = ({
   // Total KPIs from entire dataset (not paginated)
   totalKPIs,
   kpisLoading,
-  lastKPIUpdate
+  lastKPIUpdate,
+  // Row styling
+  rowClassName
 }) => {
   const urgentOptions = [
     { value: '', label: 'All Priorities' },
@@ -86,6 +88,60 @@ const ProductionTable = ({
   console.log('🔍 ProductionTable Debug - totalKPIs from Redux:', totalKPIs)
   console.log('🔍 ProductionTable Debug - kpis used for display:', kpis)
   console.log('🔍 ProductionTable Debug - kpisLoading:', kpisLoading)
+
+  // Get deadline urgency status for a production plan (using API-provided data)
+  const getDeadlineStatus = record => {
+    const deadlineInfo = record.deadlineInfo || {}
+
+    console.log(`🔍 Plan #${record.id} deadlineInfo:`, {
+      deadlineInfo,
+      earliestDeadline: deadlineInfo.earliestDeadline,
+      status: deadlineInfo.status,
+      overdueCount: deadlineInfo.overdueCount,
+      dueTodayCount: deadlineInfo.dueTodayCount,
+      urgentCount: deadlineInfo.urgentCount,
+      today: moment().format('YYYY-MM-DD')
+    })
+
+    // Map API status to component status
+    const apiStatus = deadlineInfo.status || 'none'
+
+    // Calculate days remaining if we have an earliest deadline
+    let daysRemaining = null
+    let closestDeadline = null
+
+    if (deadlineInfo.earliestDeadline) {
+      closestDeadline = moment(deadlineInfo.earliestDeadline)
+      daysRemaining = closestDeadline.diff(moment(), 'days')
+
+      console.log(`📅 Plan #${record.id} deadline calculation:`, {
+        deadline: deadlineInfo.earliestDeadline,
+        today: moment().format('YYYY-MM-DD'),
+        daysRemaining,
+        apiStatus
+      })
+    }
+
+    // Map API status values to component status values
+    const statusMap = {
+      'overdue': 'delayed',
+      'due_today': 'today',
+      'urgent': 'urgent',
+      'normal': 'upcoming',
+      'none': 'none'
+    }
+
+    const mappedStatus = statusMap[apiStatus] || 'none'
+
+    console.log(`✅ Plan #${record.id} final status: ${apiStatus} → ${mappedStatus}`)
+
+    return {
+      status: mappedStatus,
+      daysRemaining,
+      closestDeadline
+    }
+  }
+
   const columns = [
     {
       title: 'Plan ID',
@@ -93,7 +149,43 @@ const ProductionTable = ({
       key: 'id',
       width: 100,
       sorter: (a, b) => (a.id || 0) - (b.id || 0),
-      render: id => <span className='font-semibold'>#{id}</span>
+      render: (id, record) => {
+        const deadlineInfo = getDeadlineStatus(record)
+        return (
+          <div>
+            {console.log(deadlineInfo, 'DEADLINE INFO')}
+            <span className='font-semibold'>#{id}</span>
+            {deadlineInfo.status === 'delayed' && (
+              <div className='mt-1'>
+                <Tag color='red' size='small' className='text-xs'>
+                  ⚠️ DELAYED
+                </Tag>
+              </div>
+            )}
+            {deadlineInfo.status === 'today' && (
+              <div className='mt-1'>
+                <Tag color='red' size='small' className='text-xs'>
+                  📅 TODAY
+                </Tag>
+              </div>
+            )}
+            {deadlineInfo.status === 'urgent' && (
+              <div className='mt-1'>
+                <Tag color='orange' size='small' className='text-xs'>
+                  ⏰ DUE SOON
+                </Tag>
+              </div>
+            )}
+            {deadlineInfo.status === 'upcoming' && (
+              <div className='mt-1'>
+                <Tag color='gold' size='small' className='text-xs'>
+                  📅 UPCOMING
+                </Tag>
+              </div>
+            )}
+          </div>
+        )
+      }
     },
     {
       title: 'Date',
@@ -143,19 +235,46 @@ const ProductionTable = ({
     {
       title: 'Pending/Total',
       key: 'quantity',
-      width: 150,
+      width: 200,
       render: (_, record) => {
         const inProgressQuantity =
           record.quantityTracking.inProgressQuantity || 0
         const total = record.quantity || 0
+        const deadlineInfo = getDeadlineStatus(record)
         console.log(record, 'RECORD')
         return (
           <div>
-            <span className='font-semibold'>
-              {inProgressQuantity.toLocaleString()}
-            </span>
-            <span className='text-gray-400'> / </span>
-            <span className='font-semibold'>{total.toLocaleString()}</span>
+            <div>
+              <span className='font-semibold'>
+                {inProgressQuantity.toLocaleString()}
+              </span>
+              <span className='text-gray-400'> / </span>
+              <span className='font-semibold'>{total.toLocaleString()}</span>
+            </div>
+            {deadlineInfo.closestDeadline && (
+              <div className='mt-1'>
+                {deadlineInfo.status === 'delayed' && (
+                  <span className='text-xs text-red-600 font-medium'>
+                    ⚠️ Delayed by {Math.abs(deadlineInfo.daysRemaining)} {Math.abs(deadlineInfo.daysRemaining) === 1 ? 'day' : 'days'}
+                  </span>
+                )}
+                {deadlineInfo.status === 'today' && (
+                  <span className='text-xs text-red-600 font-medium'>
+                    📅 To be delivered today
+                  </span>
+                )}
+                {deadlineInfo.status === 'urgent' && (
+                  <span className='text-xs text-orange-600 font-medium'>
+                    ⏰ Due in {deadlineInfo.daysRemaining} {deadlineInfo.daysRemaining === 1 ? 'day' : 'days'}
+                  </span>
+                )}
+                {deadlineInfo.status === 'upcoming' && (
+                  <span className='text-xs text-yellow-600 font-medium'>
+                    📅 {deadlineInfo.closestDeadline.format('MMM DD')}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )
       }
@@ -344,7 +463,6 @@ const ProductionTable = ({
             allowClear
           />
 
-  
           {/* Clear Filters */}
           {(searchTerm ||
             filters.urgent ||
@@ -385,6 +503,7 @@ const ProductionTable = ({
         rowKey='id'
         loading={loading}
         onChange={handleTableChange}
+        rowClassName={rowClassName}
         pagination={{
           current: currentPage,
           pageSize: pageSize,
