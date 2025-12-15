@@ -17,7 +17,8 @@ import {
   Checkbox,
   Modal,
   Divider,
-  Statistic
+  Statistic,
+  Table
 } from 'antd'
 import {
   RocketOutlined,
@@ -177,15 +178,8 @@ const SmartProductionDashboard = () => {
         limit: 1000
       }
 
-      if (alloyId) {
-        params.alloyId = alloyId
-        console.log(
-          '🔍 Fetching production data for specific alloy ID:',
-          alloyId
-        )
-      } else {
-        console.log('🔍 Fetching production data for all alloys')
-      }
+      // Always fetch all plans to ensure we have global context for aggregations (e.g. source A + source B -> target X)
+      console.log('🔍 Fetching production data for all alloys (Global Context)')
 
       const result = await dispatch(
         getProductionPlansForSmartPlanner(params)
@@ -840,6 +834,8 @@ const SmartProductionDashboard = () => {
           quantity: plan.quantity || 0,
           remaining:
             plan.quantityTracking?.remainingQuantity || plan.quantity || 0,
+          pendingQuantity: plan.pendingQuantity || 0,
+          rejectedQuantity: plan.rejectedQuantity || 0,
           inProduction: plan.inProductionQuantity || 0,
           status:
             plan.quantityTracking?.completionStatus || plan.status || 'pending'
@@ -1310,7 +1306,7 @@ const SmartProductionDashboard = () => {
     [planCounter]
   )
 
-  // Calculate row size for variable height - now more compact
+  // Calculate row size for variable height
   const getItemSize = useCallback(
     index => {
       const alloy = filteredStockData[index]
@@ -1318,17 +1314,18 @@ const SmartProductionDashboard = () => {
 
       const isExpanded = expandedRows.has(alloy.id)
 
-      // Check if this is a without paint/lacquer alloy that will show monthly average
+      // Base row height logic
       const alloyFinish = alloy.finish ? alloy.finish.toLowerCase() : ''
       const isWithoutPaint =
         alloyFinish.includes('without paint') ||
         alloyFinish.includes('without lacquer')
       const hasMonthlyAvg =
         isWithoutPaint && entriesData[alloy.id]?.monthlyAverageSales > 0
+      
+      const baseRowHeight = hasMonthlyAvg ? 75 : 60
 
       if (!isExpanded) {
-        // Base height is 60px (more compact), add 15px if monthly average badge is present
-        return hasMonthlyAvg ? 75 : 60
+        return baseRowHeight
       }
 
       const selectedFinishes = getSelectedFinishesForAlloy(alloy.id)
@@ -1337,21 +1334,20 @@ const SmartProductionDashboard = () => {
         selectedFinishes
       )
 
-      // Calculate dynamic height based on actual content
-      let totalHeight = 120 // Base row + header (60 + 30)
+      if (availableFinishes.length === 0) return baseRowHeight
 
-      // Debug: Log expanded state and available finishes
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `getItemSize - Alloy: ${alloy.id}, Expanded: ${isExpanded}, Available finishes: ${availableFinishes.length}`
-        )
-      }
+      // Calculate expanded area height
+      // Padding (top+bottom of container): 32px
+      // Badge/Title Header: 30px
+      // Table Header: 39px (standard AntD small table header)
+      // Table Border/Padding overhead: ~10px
+      let extraHeight = 32 + 30 + 39 + 10
 
       availableFinishes.forEach(finish => {
-        // Base Card height (more compact)
-        let cardHeight = 90 // Finish name + button
+        // Calculate dynamic height for each table row
+        let rowHeight = 55 // Base table row height
 
-        // Check if this finish has production data
+        // Check if production plans list expands the row
         const finishAlloy = stockManagementData?.find(
           a =>
             a.modelName === alloy.modelName &&
@@ -1365,31 +1361,21 @@ const SmartProductionDashboard = () => {
           ? getAllProductionDataForAlloy(finishAlloy, productionData)
           : null
 
-        // Add height only if production data exists
-        if (finishProductionData && finishProductionData.totalPlans > 0) {
-          cardHeight += 24 // Production status section (more compact)
+        const activePlans = finishProductionData?.plans || []
+        const plansCount = activePlans.length
+
+        if (plansCount > 0) {
+          // Each plan takes ~20px vertical space. 
+          // Default row might accommodate 1-2 lines, but let's be safe.
+          // 40px base content + (plans * 20px)
+          const contentHeight = 20 + (plansCount * 22)
+          rowHeight = Math.max(rowHeight, contentHeight + 16) // +16 for cell padding
         }
 
-        // Sales metrics section - dynamic based on data availability
-        // Check if we have sales data for this alloy (shared across all finishes)
-        const alloySalesData = entriesData[alloy.id]
-        const hasSalesData = alloySalesData?.monthlySalesData?.length > 0
-        cardHeight += hasSalesData ? 140 : 120 // Enhanced vs Compact layout (more compact)
-
-        // Debug: Log height calculation for this finish (Content Library)
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `Content Library Height - Alloy: ${alloy.id}, Finish: ${finish.value}, HasSalesData: ${hasSalesData}, CardHeight: ${cardHeight}`
-          )
-        }
-
-        // Card spacing (more compact)
-        cardHeight += 8
-
-        totalHeight += cardHeight
+        extraHeight += rowHeight
       })
 
-      return totalHeight
+      return baseRowHeight + extraHeight
     },
     [
       filteredStockData,
@@ -1398,7 +1384,8 @@ const SmartProductionDashboard = () => {
       getAvailableTargetFinishes,
       stockManagementData,
       productionData,
-      getAllProductionDataForAlloy
+      getAllProductionDataForAlloy,
+      entriesData // Added entriesData dependency for hasMonthlyAvg check
     ]
   )
 
@@ -1583,23 +1570,22 @@ const SmartProductionDashboard = () => {
           </div>
         </div>
 
-        {/* Expanded Content */}
+        {/* Expanded Content - Professional Table Layout */}
         {isExpanded && availableFinishes.length > 0 && (
-          <div className='px-2 pb-1.5 bg-gray-50 border-t border-gray-200'>
-            <div className='flex items-center gap-2 py-1'>
+          <div className='bg-gray-50 border-t border-gray-200 p-4'>
+            <div className='flex items-center gap-2 mb-3'>
               <Badge
                 count={availableFinishes.length}
                 color='purple'
                 size='small'
               />
-              <Text className='text-xs text-gray-600'>
+              <Text className='text-sm font-semibold text-gray-700'>
                 Available Conversions
               </Text>
             </div>
 
-            <div className='space-y-1'>
-              {console.log(availableFinishes, 'AVAILABLE FINISHES')}
-              {availableFinishes.map(finish => {
+            <Table
+              dataSource={availableFinishes.map(finish => {
                 // Get production data for this specific finish variant
                 const finishAlloy = stockManagementData?.find(
                   a =>
@@ -1610,345 +1596,121 @@ const SmartProductionDashboard = () => {
                     a.widthId === alloy.widthId &&
                     a.finish === finish.value
                 )
+                
                 const finishProductionData =
                   finishAlloy && productionData?.length > 0
                     ? getAllProductionDataForAlloy(finishAlloy, productionData)
                     : null
 
-                console.log(finishProductionData, 'finishePd')
-                const isAlreadyAdded = selectedFinishes.includes(finish.value)
+                // Trigger sales data fetch if needed
+                if (finish.alloyId && !entriesData[finish.alloyId] && !loadingEntries[finish.alloyId]) {
+                  fetchEntriesForAlloy(finish.alloyId)
+                }
 
-                return (
-                  <Card
-                    key={finish.value}
-                    size='small'
-                    className='hover:shadow transition-shadow'
-                    bodyStyle={{ padding: '6px 8px' }}
-                    style={{
-                      borderLeft: `3px solid ${
-                        finish.stock > 10
-                          ? '#52c41a'
-                          : finish.stock > 0
-                          ? '#faad14'
-                          : '#ff4d4f'
-                      }`
-                    }}
-                  >
-                    {/* Finish Name and Stock */}
-                    <div className='flex items-center justify-between gap-2 mb-1'>
-                      <Space size={4}>
-                        <Text strong className='text-sm'>
-                          {finish.label}
-                        </Text>
-                        <div className='flex items-center gap-2'>
-                          <div
-                            className={`px-2 py-1 rounded-full font-bold text-xs ${
-                              finish.stock > 10
-                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                : finish.stock > 0
-                                ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                                : 'bg-red-100 text-red-700 border border-red-300'
-                            }`}
-                          >
-                            {finish.stock} In Stock
+                return {
+                  key: finish.value,
+                  ...finish,
+                  finishAlloy,
+                  finishProductionData,
+                  salesData: entriesData[finish.alloyId],
+                  isLoadingSales: loadingEntries[finish.alloyId]
+                }
+              })}
+              columns={[
+                {
+                  title: 'Variant',
+                  dataIndex: 'label',
+                  key: 'variant',
+                  width: '20%',
+                  render: (text) => <Text strong>{text}</Text>
+                },
+                {
+                  title: 'Stock',
+                  dataIndex: 'stock',
+                  key: 'stock',
+                  width: '10%',
+                  render: (stock) => <Text strong>{stock}</Text>
+                },
+                {
+                  title: 'Sales Performance',
+                  key: 'sales',
+                  width: '25%',
+                  render: (_, record) => {
+                     if (record.isLoadingSales) return <Spin size="small" />
+                     const monthlyAvg = record.salesData?.monthlyAverageSales || 0
+                     const trend = record.salesData?.salesTrend?.direction || 'stable'
+                     return (
+                       <Space>
+                         <div className="flex flex-col">
+                           <Text strong>{monthlyAvg > 0 ? `${monthlyAvg.toLocaleString()}/mo` : 'No data'}</Text>
+                           {monthlyAvg > 0 && (
+                             <Text type="secondary" style={{ fontSize: '11px' }}>
+                               {getTrendIcon(trend)} {trend}
+                             </Text>
+                           )}
+                         </div>
+                       </Space>
+                     )
+                  }
+                },
+                {
+                  title: 'Production Status',
+                  key: 'production',
+                  width: '30%',
+                  render: (_, record) => {
+                    const data = record.finishProductionData
+                    // Show all plans
+                    const activePlans = data?.plans || []
+                    
+                    if (activePlans.length === 0) return <Text type="secondary">-</Text>
+
+                    return (
+                      <div className="flex flex-col gap-1">
+                        {activePlans.map(plan => (
+                          <div key={plan.id} className="text-xs">
+                             <Space size={4}>
+                               <span className="font-semibold text-blue-600">#{plan.id}</span>
+                               <span className="text-gray-400">-</span>
+                               <span className="font-bold text-gray-900">{plan.pendingQuantity} Pending</span>
+                               {plan.rejectedQuantity > 0 && (
+                                 <>
+                                   <span className="text-gray-400">·</span>
+                                   <span className="text-red-600 font-semibold">{plan.rejectedQuantity} Rejected</span>
+                                 </>
+                               )}
+                             </Space>
                           </div>
-
-                          {/* Add monthly average for without paint/lacquer finishes */}
-                          {(() => {
-                            const finishText = finish.label
-                              ? finish.label.toLowerCase()
-                              : ''
-                            const isWithoutPaint =
-                              finishText.includes('without paint') ||
-                              finishText.includes('without lacquer')
-
-                            if (isWithoutPaint) {
-                              const finishAlloyData = stockManagementData?.find(
-                                a =>
-                                  a.modelName === alloy.modelName &&
-                                  a.inchesId === alloy.inchesId &&
-                                  a.pcdId === alloy.pcdId &&
-                                  a.holesId === alloy.holesId &&
-                                  a.widthId === alloy.widthId &&
-                                  a.finish === finish.value
-                              )
-
-                              const alloyEntries =
-                                entriesData[finishAlloyData?.id]
-                              const monthlyAverage =
-                                alloyEntries?.monthlyAverageSales || 0
-
-                              if (monthlyAverage > 0) {
-                                return (
-                                  <div className='px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300 font-medium text-xs'>
-                                    📊 {monthlyAverage.toLocaleString()}/mo
-                                  </div>
-                                )
-                              }
-                            }
-
-                            return null
-                          })()}
-                        </div>
-                      </Space>
+                        ))}
+                      </div>
+                    )
+                  }
+                },
+                {
+                  title: 'Action',
+                  key: 'action',
+                  width: '15%',
+                  align: 'right',
+                  render: (_, record) => {
+                    const isAlreadyAdded = selectedFinishes.includes(record.value)
+                    return (
                       <Button
                         type={isAlreadyAdded ? 'default' : 'primary'}
-                        size='small'
-                        icon={
-                          isAlreadyAdded ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <PlusCircleOutlined />
-                          )
-                        }
-                        onClick={() =>
-                          handleAddFinishFromExpanded(alloy, finish.value)
-                        }
+                        size="small"
+                        icon={isAlreadyAdded ? <CheckCircleOutlined /> : <PlusCircleOutlined />}
+                        onClick={() => handleAddFinishFromExpanded(alloy, record.value)}
                         disabled={isAlreadyAdded}
-                        className='text-xs h-5'
                       >
                         {isAlreadyAdded ? 'Added' : 'Add'}
                       </Button>
-                    </div>
-
-                    {/* Production Status */}
-                    {finishProductionData &&
-                      finishProductionData.totalPlans > 0 && (
-                        <div className='bg-blue-50 rounded px-1.5 py-0.5 mb-1'>
-                          <Space wrap size={[4, 2]}>
-                            <Text type='secondary' className='text-xs'>
-                              Production:
-                            </Text>
-                            <Tag color='blue' className='text-xs m-0 px-1 py-0'>
-                              {finishProductionData.totalPlans} plan
-                              {finishProductionData.totalPlans > 1 ? 's' : ''}
-                            </Tag>
-                            <Tag
-                              color='orange'
-                              className='text-xs m-0 px-1 py-0'
-                            >
-                              {finishProductionData.pendingQuantity} pending
-                            </Tag>
-                            {/* <Tag
-                              color='green'
-                              className='text-xs m-0 px-1 py-0'
-                            >
-                              {finishProductionData.inProductionQuantity} in
-                              prod
-                            </Tag> */}
-                          </Space>
-                        </div>
-                      )}
-
-                    {/* Entry History */}
-                    {(() => {
-                      const finishEntries = entriesData[finish.alloyId] || []
-                      const isLoadingEntries = loadingEntries[finish.alloyId]
-
-                      // Fetch entries when card is rendered
-                      if (!entriesData[finish.alloyId] && !isLoadingEntries) {
-                        fetchEntriesForAlloy(finish.alloyId)
-                      }
-
-                      if (isLoadingEntries) {
-                        return (
-                          <div className='bg-gray-50 rounded px-2 py-1 text-center'>
-                            <Spin size='small' />
-                            <Text type='secondary' className='text-xs ml-1'>
-                              Loading...
-                            </Text>
-                          </div>
-                        )
-                      }
-                      {
-                        // Removed debug log
-                      }
-
-                      return (
-                        <div className='bg-white rounded-lg border border-gray-200 p-3'>
-                          {/* Content Library: Conditional display based on data availability */}
-                          {finishEntries.monthlySalesData &&
-                          finishEntries.monthlySalesData.length > 0 ? (
-                            // Enhanced layout when data is available
-                            <div className='grid grid-cols-12 gap-3 items-stretch'>
-                              {/* Total Units Sold KPI */}
-                              <div className='col-span-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200 flex flex-col justify-center relative overflow-hidden'>
-                                <div className='absolute top-0 right-0 w-12 h-12 bg-blue-200 opacity-20 rounded-full -mr-6 -mt-6'></div>
-                                <div className='flex items-start justify-between mb-2 relative z-10'>
-                                  <div className='flex items-center gap-1'>
-                                    <div className='w-1.5 h-1.5 bg-blue-500 rounded-full'></div>
-                                    <span className='text-xs text-blue-600 font-semibold uppercase tracking-wide'>
-                                      Total Units
-                                    </span>
-                                  </div>
-                                  <div className='text-xs text-blue-500 font-medium bg-blue-100 px-1.5 py-0.5 rounded'>
-                                    All Time
-                                  </div>
-                                </div>
-                                <div className='relative z-10'>
-                                  <div className='text-2xl font-bold text-blue-700 mb-0.5'>
-                                    {(
-                                      finishEntries.totalUnits || 0
-                                    ).toLocaleString()}
-                                  </div>
-                                  <div className='flex items-center gap-1'>
-                                    <span className='text-xs text-blue-500 font-medium'>
-                                      units sold
-                                    </span>
-                                    {finishEntries.totalUnits > 0 && (
-                                      <span className='text-xs text-green-600 font-medium'>
-                                        ✓ Active
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Monthly Sales Average KPI */}
-                              <div className='col-span-3 bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-3 border border-cyan-200 flex flex-col justify-center relative overflow-hidden'>
-                                <div className='absolute top-0 right-0 w-12 h-12 bg-cyan-200 opacity-20 rounded-full -mr-6 -mt-6'></div>
-                                <div className='flex items-start justify-between mb-2 relative z-10'>
-                                  <div className='flex items-center gap-1'>
-                                    <div className='w-1.5 h-1.5 bg-cyan-500 rounded-full'></div>
-                                    <span className='text-xs text-cyan-600 font-semibold uppercase tracking-wide'>
-                                      Monthly Avg
-                                    </span>
-                                  </div>
-                                  <div className='text-xs text-cyan-500 font-medium bg-cyan-100 px-1.5 py-0.5 rounded'>
-                                    Per Month
-                                  </div>
-                                </div>
-                                <div className='relative z-10'>
-                                  <div className='text-2xl font-bold text-cyan-700 mb-0.5'>
-                                    {(
-                                      finishEntries.monthlyAverageSales || 0
-                                    ).toLocaleString()}
-                                  </div>
-                                  <div className='flex items-center gap-1'>
-                                    <span className='text-xs text-cyan-500 font-medium'>
-                                      units/month
-                                    </span>
-                                    {finishEntries.monthlyAverageSales > 0 && (
-                                      <span className='text-xs text-orange-600 font-medium'>
-                                        📊 Trending
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Sales Trend Chart */}
-                              <div className='col-span-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100 p-3 flex flex-col'>
-                                <div className='flex items-center justify-between mb-2'>
-                                  <div>
-                                    <h4 className='text-sm font-semibold text-gray-700 mb-0.5'>
-                                      Sales Trend
-                                    </h4>
-                                    <p className='text-xs text-gray-500'>
-                                      {finishEntries.monthlySalesData?.length ||
-                                        0}{' '}
-                                      months
-                                    </p>
-                                  </div>
-                                  <div className='flex items-center gap-2'>
-                                    <span className='text-base'>
-                                      {getTrendIcon(
-                                        finishEntries.salesTrend?.direction
-                                      )}
-                                    </span>
-                                    <div className='text-right'>
-                                      <div className='text-sm font-semibold text-green-700 capitalize'>
-                                        {finishEntries.salesTrend?.direction ||
-                                          'stable'}
-                                      </div>
-                                      <div className='text-xs text-green-500'>
-                                        {finishEntries.salesTrend?.strength ||
-                                          'unknown'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className='flex-1 flex items-end'>
-                                  <SalesChart
-                                    salesHistory={
-                                      finishEntries.monthlySalesData || []
-                                    }
-                                    height={90}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            // Compact layout when no data available
-                            <div className='grid grid-cols-4 gap-3 items-center'>
-                              {/* Total Units Sold KPI */}
-                              <div className='bg-blue-50 rounded-lg p-2 border border-blue-100'>
-                                <div className='text-xs text-blue-600 font-medium mb-0.5'>
-                                  Total Units
-                                </div>
-                                <div className='text-lg font-bold text-blue-700'>
-                                  {(
-                                    finishEntries.totalUnits || 0
-                                  ).toLocaleString()}
-                                </div>
-                                <div className='text-xs text-blue-500'>
-                                  units
-                                </div>
-                              </div>
-
-                              {/* Monthly Sales Average KPI */}
-                              <div className='bg-cyan-50 rounded-lg p-2 border border-cyan-100'>
-                                <div className='text-xs text-cyan-600 font-medium mb-0.5'>
-                                  Monthly Avg
-                                </div>
-                                <div className='text-lg font-bold text-cyan-700'>
-                                  {(
-                                    finishEntries.monthlyAverageSales || 0
-                                  ).toLocaleString()}
-                                </div>
-                                <div className='text-xs text-cyan-500'>
-                                  units/month
-                                </div>
-                              </div>
-
-                              {/* Sales Trend KPI */}
-                              <div className='bg-green-50 rounded-lg p-2 border border-green-100'>
-                                <div className='text-xs text-green-600 font-medium mb-0.5'>
-                                  Trend
-                                </div>
-                                <div className='flex items-center gap-1'>
-                                  <span className='text-base'>
-                                    {getTrendIcon(
-                                      finishEntries.salesTrend?.direction
-                                    )}
-                                  </span>
-                                  <span className='text-xs font-semibold text-green-700 capitalize'>
-                                    {finishEntries.salesTrend?.direction ||
-                                      'stable'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* No Data Message */}
-                              <div className='bg-gray-50 rounded-lg p-2 border border-gray-200 flex items-center justify-center'>
-                                <div className='text-center'>
-                                  <div className='text-gray-400 mb-0.5'>📊</div>
-                                  <div className='text-xs text-gray-500'>
-                                    No sales data
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-
-                      return null
-                    })()}
-                  </Card>
-                )
-              })}
-            </div>
+                    )
+                  }
+                }
+              ]}
+              pagination={false}
+              size="small"
+              bordered
+              rowClassName="bg-white"
+            />
           </div>
         )}
       </div>
