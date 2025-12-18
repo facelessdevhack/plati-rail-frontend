@@ -73,6 +73,8 @@ import PriceListPage from '../../Modules/Admin/PriceListPage';
 import EditPriceListPage from '../../Modules/Admin/EditPriceListPage';
 
 
+import RejectedStockManagement from '../../Modules/Production/RejectedStockManagement';
+
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
   const navigate = useNavigate()
@@ -607,6 +609,18 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
+       <Route
+         path='/rejected-stock'
+         element={
+           <PrivateRoute allowedRoles={[4, 5, 6]}>
+             <AdminLayout
+               title='Rejected Stock Management'
+               items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+               content={<RejectedStockManagement />}
+             />
+           </PrivateRoute>
+         }
+       />
       <Route
         path='/smart-production'
         element={

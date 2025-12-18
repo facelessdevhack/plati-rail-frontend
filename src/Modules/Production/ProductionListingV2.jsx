@@ -112,6 +112,7 @@ const ProductionListingV2 = () => {
       sortField,
       sortOrder,
       urgent: filters.urgent,
+      status: filters.status,
       dateRange: filters.dateRange,
       ...extraParams
     }

@@ -33,7 +33,8 @@ import {
   DownOutlined,
   UpOutlined,
   BulbOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -1787,6 +1788,13 @@ const SmartProductionDashboard = () => {
                 <Text type='secondary' className='text-xs'>
                   Shortcuts: Ctrl+F (search) • Ctrl+A (select all)
                 </Text>
+                <Button
+                  danger
+                  icon={<ExclamationCircleOutlined />}
+                  onClick={() => navigate('/rejected-stock')}
+                >
+                  Rejected Stock
+                </Button>
                 <Button
                   icon={
                     loadingAiSuggestions ? (

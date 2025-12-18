@@ -233,23 +233,45 @@ const ProductionTable = ({
       }
     },
     {
-      title: 'Pending/Total',
+      title: (
+        <span>
+          Pending / <span className='text-red-600'>Rejected</span> / Total
+        </span>
+      ),
       key: 'quantity',
       width: 200,
       render: (_, record) => {
         const inProgressQuantity =
           record.quantityTracking.inProgressQuantity || 0
+        const rejectedQuantity = record.quantityTracking.rejectedQuantity || 0
         const total = record.quantity || 0
         const deadlineInfo = getDeadlineStatus(record)
         console.log(record, 'RECORD')
         return (
           <div>
             <div>
-              <span className='font-semibold'>
+              <span className='font-semibold' title="In Progress">
                 {inProgressQuantity.toLocaleString()}
               </span>
               <span className='text-gray-400'> / </span>
-              <span className='font-semibold'>{total.toLocaleString()}</span>
+              {rejectedQuantity > 0 ? (
+                <>
+                  <span 
+                    className='font-bold text-red-600' 
+                    style={{ color: '#cf1322' }} 
+                    title="Rejected"
+                  >
+                    {rejectedQuantity.toLocaleString()}
+                  </span>
+                  <span className='text-gray-400'> / </span>
+                </>
+              ) : (
+                <>
+                   <span className='text-gray-300' title="Rejected">0</span>
+                   <span className='text-gray-400'> / </span>
+                </>
+              )}
+              <span className='font-semibold' title="Total Plan Quantity">{total.toLocaleString()}</span>
             </div>
             {deadlineInfo.closestDeadline && (
               <div className='mt-1'>
@@ -463,9 +485,25 @@ const ProductionTable = ({
             allowClear
           />
 
+          {/* Status Filter */}
+          <Select
+            placeholder='Status'
+            value={filters.status}
+            onChange={value => handleFilterChange('status', value)}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'rejected', label: 'Rejected' },
+              { value: 'completed', label: 'Completed' }
+            ]}
+            style={{ width: 150 }}
+            allowClear
+          />
+
           {/* Clear Filters */}
           {(searchTerm ||
             filters.urgent ||
+            filters.status ||
             filters.dateRange ||
             isTodayFilter) && (
             <Button onClick={handleClearFilters}>Clear Filters</Button>
