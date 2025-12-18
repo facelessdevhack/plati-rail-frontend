@@ -74,6 +74,7 @@ import EditPriceListPage from '../../Modules/Admin/EditPriceListPage';
 
 
 import RejectedStockManagement from '../../Modules/Production/RejectedStockManagement';
+import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -770,6 +771,20 @@ const StackNavigation = () => {
               title='🔩 Create Alloys Order - Sales Coordination'
               items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
               content={<CreateOrderAlloys />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* User Production Steps Management */}
+      <Route
+        path='/user-production-steps'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='👥 User Production Step Assignments'
+              items={adminSiderRoutes}
+              content={<UserProductionSteps />}
             />
           </PrivateRoute>
         }

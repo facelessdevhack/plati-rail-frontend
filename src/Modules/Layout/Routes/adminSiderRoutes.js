@@ -111,6 +111,10 @@ export const adminSiderRoutes = [
       '5a'
     ),
     getItemLayout(
+      <Link to='/user-production-steps'><TeamOutlined style={{ marginRight: '8px' }} />User Step Assignments</Link>,
+      'user-production-steps'
+    ),
+    getItemLayout(
       <Link to='/production-plans'>Production Plans</Link>,
       '6'
     ),
