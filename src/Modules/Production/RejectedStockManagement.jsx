@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
+import CreateReworkPlanModal from './CreateReworkPlanModal'
 
 const { Title, Text } = Typography
 
@@ -34,6 +35,8 @@ const RejectedStockManagement = () => {
     pageSize: 10,
     total: 0
   })
+  const [reworkModalVisible, setReworkModalVisible] = useState(false)
+  const [selectedRejection, setSelectedRejection] = useState(null)
 
   const fetchRejectedStock = async (page = 1) => {
     setLoading(true)
@@ -156,23 +159,26 @@ const RejectedStockManagement = () => {
             </Button>
           </Popconfirm>
 
-          <Popconfirm
-            title='Start Rework?'
-            description={`Create a new Rework Plan for ${record.rejectedQuantity} items?`}
-            onConfirm={() => handleAction(record.rejectionId, 'create_rework_plan')}
-            okText='Create Plan'
-            okType='danger'
-            cancelText='Cancel'
-            icon={<ToolOutlined style={{ color: 'orange' }} />}
+          <Button
+            type='primary'
+            danger
+            icon={<ToolOutlined />}
+            onClick={() => {
+              setSelectedRejection(record)
+              setReworkModalVisible(true)
+            }}
           >
-            <Button type='primary' danger icon={<ToolOutlined />}>
-              Create Rework Plan
-            </Button>
-          </Popconfirm>
+            Create Rework Plan
+          </Button>
         </Space>
       )
     }
   ]
+
+  const handleReworkSuccess = (successMessage, planId) => {
+    message.success(successMessage || 'Rework plan created successfully')
+    fetchRejectedStock(pagination.current) // Refresh the list
+  }
 
   return (
     <div style={{ padding: '20px' }}>
@@ -216,6 +222,17 @@ const RejectedStockManagement = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Create Rework Plan Modal */}
+      <CreateReworkPlanModal
+        visible={reworkModalVisible}
+        onCancel={() => {
+          setReworkModalVisible(false)
+          setSelectedRejection(null)
+        }}
+        onSuccess={handleReworkSuccess}
+        rejectionRecord={selectedRejection}
+      />
     </div>
   )
 }
