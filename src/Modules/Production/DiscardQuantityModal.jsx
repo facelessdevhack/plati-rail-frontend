@@ -12,10 +12,16 @@ import {
   Space,
   Alert,
   Divider,
-  Tag
+  Tag,
+  Descriptions,
+  Card,
+  Row,
+  Col,
+  Empty
 } from 'antd'
-import { UploadOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { UploadOutlined, InfoCircleOutlined, PictureOutlined, DeleteOutlined } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
+import moment from 'moment'
 
 const { Text, Title, Paragraph } = Typography
 const { TextArea } = Input
@@ -23,8 +29,8 @@ const { TextArea } = Input
 const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord }) => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [fileList, setFileList] = useState([])
-  const [uploading, setUploading] = useState(false)
+  const [uploadingSlots, setUploadingSlots] = useState({}) // track loading per slot
+  const [itemPhotos, setItemPhotos] = useState([]) // array of strings (urls)
   const [discardQty, setDiscardQty] = useState(1)
 
   useEffect(() => {
@@ -33,16 +39,36 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
         quantity: 1,
         reason: ''
       })
-      setFileList([])
+      setItemPhotos([null]) // initial 1 slot
       setDiscardQty(1)
+      setUploadingSlots({})
     }
   }, [visible, form])
 
-  const handleUpload = async (file) => {
+  // Adjust slots when quantity changes
+  const handleQuantityChange = (val) => {
+    const qty = val || 1
+    setDiscardQty(qty)
+    setItemPhotos(prev => {
+      const newPhotos = [...prev]
+      if (qty > newPhotos.length) {
+        // Add slots
+        for (let i = newPhotos.length; i < qty; i++) {
+          newPhotos.push(null)
+        }
+      } else if (qty < newPhotos.length) {
+        // Remove slots
+        return newPhotos.slice(0, qty)
+      }
+      return newPhotos
+    })
+  }
+
+  const handleUpload = async (file, index) => {
     const formData = new FormData()
     formData.append('file', file)
 
-    setUploading(true)
+    setUploadingSlots(prev => ({ ...prev, [index]: true }))
     try {
       const response = await client.post('/upload/storej', formData, {
         headers: {
@@ -50,44 +76,46 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
         }
       })
 
-      // The API returns the path as a string (e.g. "/temp/filename.jpg")
       const photoUrl = response.data
-      const newFile = {
-        uid: file.uid,
-        name: file.name,
-        status: 'done',
-        url: photoUrl,
-        thumbUrl: photoUrl
-      }
-
-      setFileList(prev => [...prev, newFile])
-      message.success(`${file.name} uploaded successfully`)
-      return false // Prevent default antd upload
+      setItemPhotos(prev => {
+        const next = [...prev]
+        next[index] = photoUrl
+        return next
+      })
+      message.success(`Photo for item ${index + 1} uploaded`)
+      return false
     } catch (error) {
       console.error('Upload error:', error)
-      message.error(`${file.name} upload failed`)
+      message.error(`Upload failed for item ${index + 1}`)
       return Upload.LIST_IGNORE
     } finally {
-      setUploading(false)
+      setUploadingSlots(prev => ({ ...prev, [index]: false }))
     }
+  }
+
+  const removePhoto = (index) => {
+    setItemPhotos(prev => {
+      const next = [...prev]
+      next[index] = null
+      return next
+    })
   }
 
   const onFinish = async (values) => {
     // Validation: 1 photo per quantity
-    if (fileList.length < values.quantity) {
-      message.warning(`Please upload at least ${values.quantity} photos (one for each item discarded)`)
+    const missingPhotos = itemPhotos.some(photo => !photo)
+    if (missingPhotos) {
+      message.warning(`Please upload a photo for every item (Total: ${values.quantity})`)
       return
     }
 
     setLoading(true)
     try {
-      const photoUrls = fileList.map(file => file.url)
-      
       const response = await client.post('/production/rejected-stock/discard-request', {
         rejectionId: rejectionRecord.rejectionId,
         quantity: values.quantity,
         reason: values.reason,
-        photoUrls: photoUrls
+        photoUrls: itemPhotos
       })
 
       if (response.data.success) {
@@ -108,31 +136,36 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
       title={
         <Space>
           <Text strong style={{ fontSize: '18px' }}>Request Discard</Text>
-          <Tag color="volcano">Rejected Stock</Tag>
+          <Tag color="volcano">Resolution Workflow</Tag>
         </Space>
       }
       visible={visible}
       onCancel={onCancel}
       footer={null}
-      width={600}
+      width={750}
       maskClosable={false}
+      bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
     >
       {rejectionRecord && (
-        <div style={{ marginBottom: '20px' }}>
-          <Alert
-            message={
-              <Space direction="vertical" size={0}>
-                <Text strong>{rejectionRecord.alloyName}</Text>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {rejectionRecord.finishName} | Job Card #{rejectionRecord.jobCardId}
-                </Text>
-              </Space>
-            }
-            type="info"
-            showIcon
-            icon={<InfoCircleOutlined />}
-          />
-        </div>
+        <Card size="small" className="bg-gray-50 mb-6" bordered={false}>
+          <Descriptions title="Rejected Entry Details" bordered size="small" column={2}>
+            <Descriptions.Item label="Alloy">{rejectionRecord.alloyName}</Descriptions.Item>
+            <Descriptions.Item label="Finish">{rejectionRecord.finishName}</Descriptions.Item>
+            <Descriptions.Item label="Job Card">#{rejectionRecord.jobCardId}</Descriptions.Item>
+            <Descriptions.Item label="Rejected Qty">
+               <Tag color="red">{rejectionRecord.rejectedQuantity}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Rejection Date">
+                {moment(rejectionRecord.rejectionDate).format('DD-MM-YYYY')}
+            </Descriptions.Item>
+            <Descriptions.Item label="Reported By">
+                {rejectionRecord.createdByFirstName} {rejectionRecord.createdByLastName}
+            </Descriptions.Item>
+            <Descriptions.Item label="Rejection Reason" span={2}>
+                {rejectionRecord.rejectionReason || 'No reason provided'}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
       )}
 
       <Form
@@ -141,67 +174,107 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
         onFinish={onFinish}
         initialValues={{ quantity: 1 }}
       >
-        <Form.Item
-          label="Quantity to Discard"
-          name="quantity"
-          rules={[
-            { required: true, message: 'Please enter quantity' },
-            { 
-              type: 'number', 
-              min: 1, 
-              max: rejectionRecord?.rejectedQuantity || 1,
-              message: `Max available: ${rejectionRecord?.rejectedQuantity || 1}` 
-            }
-          ]}
-        >
-          <InputNumber 
-            style={{ width: '100%' }} 
-            size="large"
-            onChange={val => setDiscardQty(val || 1)}
-          />
-        </Form.Item>
+        <Row gutter={16}>
+            <Col span={8}>
+                <Form.Item
+                label="Qty to Discard"
+                name="quantity"
+                rules={[
+                    { required: true, message: 'Required' },
+                    { 
+                    type: 'number', 
+                    min: 1, 
+                    max: Math.min(rejectionRecord?.rejectedQuantity || 1, 9),
+                    message: `Max: ${Math.min(rejectionRecord?.rejectedQuantity || 1, 9)}` 
+                    }
+                ]}
+                >
+                <InputNumber 
+                    style={{ width: '100%' }} 
+                    size="large"
+                    max={9}
+                    onChange={handleQuantityChange}
+                />
+                </Form.Item>
+            </Col>
+            <Col span={16}>
+                <Form.Item
+                label="Discard Reason"
+                name="reason"
+                rules={[{ required: true, message: 'Please provide a reason' }]}
+                >
+                <Input 
+                    placeholder="Briefly explain why this stock is being discarded..." 
+                    size="large"
+                />
+                </Form.Item>
+            </Col>
+        </Row>
 
-        <Form.Item
-          label="Discard Reason"
-          name="reason"
-          rules={[{ required: true, message: 'Please provide a reason' }]}
-        >
-          <TextArea 
-            rows={3} 
-            placeholder="Describe why these items are being discarded..." 
-          />
-        </Form.Item>
-
-        <Divider orientation="left" style={{ marginTop: 0 }}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>Photo Documentation</Text>
+        <Divider orientation="left" style={{ margin: '10px 0 20px 0' }}>
+          <Space>
+            <PictureOutlined />
+            <Text strong>Required Photos ({discardQty})</Text>
+          </Space>
         </Divider>
 
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-            <Text strong>Evidence Photos</Text>
-            <Text type={fileList.length < discardQty ? "danger" : "success"}>
-              {fileList.length} / {discardQty} photos uploaded
-            </Text>
-          </div>
+          <Row gutter={[16, 16]}>
+            {itemPhotos.map((photo, index) => (
+              <Col span={8} key={index}>
+                <Card 
+                    size="small" 
+                    title={`Item ${index + 1}`} 
+                    bodyStyle={{ padding: '8px', textAlign: 'center' }}
+                    className={!photo ? "border-dashed" : ""}
+                >
+                    {photo ? (
+                        <div style={{ position: 'relative' }}>
+                            <img 
+                                src={photo} 
+                                alt={`Item ${index + 1}`} 
+                                style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '4px' }} 
+                            />
+                            <Button 
+                                type="primary" 
+                                danger 
+                                shape="circle" 
+                                icon={<DeleteOutlined />} 
+                                size="small"
+                                style={{ position: 'absolute', top: '5px', right: '5px' }}
+                                onClick={() => removePhoto(index)}
+                            />
+                        </div>
+                    ) : (
+                        <Upload
+                            listType="picture-card"
+                            showUploadList={false}
+                            beforeUpload={(file) => handleUpload(file, index)}
+                            disabled={uploadingSlots[index]}
+                        >
+                            <div style={{ padding: '20px 0' }}>
+                                {uploadingSlots[index] ? <Text>Uploading...</Text> : (
+                                    <>
+                                        <UploadOutlined />
+                                        <div style={{ marginTop: 8 }}>Upload Photo</div>
+                                    </>
+                                )}
+                            </div>
+                        </Upload>
+                    )}
+                </Card>
+              </Col>
+            ))}
+          </Row>
           
-          <Upload
-            listType="picture-card"
-            fileList={fileList}
-            beforeUpload={handleUpload}
-            onRemove={file => {
-              setFileList(prev => prev.filter(item => item.uid !== file.uid))
-            }}
-            multiple
-          >
-            <div>
-              <UploadOutlined />
-              <div style={{ marginTop: 8 }}>Upload</div>
-            </div>
-          </Upload>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            <InfoCircleOutlined style={{ marginRight: '4px' }} />
-            You must upload at least one distinct photo for each discarded item.
-          </Text>
+          <div style={{ marginTop: '16px' }}>
+            <Alert
+                message="One distinct photo is required per discarded item for audit purposes."
+                type="warning"
+                showIcon
+                size="small"
+            />
+          </div>
         </div>
 
         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
@@ -210,10 +283,11 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
             <Button 
                type="primary" 
                htmlType="submit" 
-               loading={loading || uploading}
+               loading={loading}
                danger
+               icon={<DeleteOutlined />}
             >
-              Submit Discard Request
+              Confirm Discard Request
             </Button>
           </Space>
         </Form.Item>
