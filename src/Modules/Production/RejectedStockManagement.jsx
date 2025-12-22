@@ -12,40 +12,60 @@ import {
   Tooltip,
   Row,
   Col,
-  Statistic
+  Statistic,
+  Input,
+  DatePicker
 } from 'antd'
 import {
   ReloadOutlined,
   RollbackOutlined,
   ToolOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+   SearchOutlined,
+  ClearOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
 import CreateReworkPlanModal from './CreateReworkPlanModal'
+import DiscardQuantityModal from './DiscardQuantityModal'
 
 const { Title, Text } = Typography
+const { Search } = Input
+const { RangePicker } = DatePicker
 
 const RejectedStockManagement = () => {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState([])
+  const [searchText, setSearchText] = useState('')
+  const [dateRange, setDateRange] = useState(null)
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0
   })
   const [reworkModalVisible, setReworkModalVisible] = useState(false)
+  const [discardModalVisible, setDiscardModalVisible] = useState(false)
   const [selectedRejection, setSelectedRejection] = useState(null)
 
-  const fetchRejectedStock = async (page = 1) => {
+  const fetchRejectedStock = async (page = 1, search = searchText, range = dateRange) => {
     setLoading(true)
     try {
+      const params = { 
+        page, 
+        limit: pagination.pageSize,
+        search
+      }
+
+      if (range && range[0] && range[1]) {
+        params.startDate = range[0].format('YYYY-MM-DD')
+        params.endDate = range[1].format('YYYY-MM-DD')
+      }
+
       const response = await client.get(
         '/production/rejected-stock',
-        {
-          params: { page, limit: pagination.pageSize }
-        }
+        { params }
       )
 
       if (response.data.success) {
@@ -67,6 +87,22 @@ const RejectedStockManagement = () => {
   useEffect(() => {
     fetchRejectedStock()
   }, [])
+
+  const handleSearch = (value) => {
+    setSearchText(value)
+    fetchRejectedStock(1, value, dateRange)
+  }
+
+  const handleDateChange = (range) => {
+    setDateRange(range)
+    fetchRejectedStock(1, searchText, range)
+  }
+
+  const handleClearFilters = () => {
+    setSearchText('')
+    setDateRange(null)
+    fetchRejectedStock(1, '', null)
+  }
 
   const handleAction = async (id, action) => {
     setLoading(true)
@@ -170,6 +206,18 @@ const RejectedStockManagement = () => {
           >
             Create Rework Plan
           </Button>
+
+          <Button
+            type='default'
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => {
+              setSelectedRejection(record)
+              setDiscardModalVisible(true)
+            }}
+          >
+            Discard
+          </Button>
         </Space>
       )
     }
@@ -205,6 +253,45 @@ const RejectedStockManagement = () => {
         </Col>
 
         <Col span={24}>
+          <Card bordered={false} className="shadow-sm mb-4" bodyStyle={{ padding: '16px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <Text type="secondary" strong style={{ fontSize: '12px', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Search</Text>
+                <Search
+                  placeholder="Search Product, Model, Finish or Job Card ID..."
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  value={searchText}
+                  onChange={e => setSearchText(e.target.value)}
+                  onSearch={handleSearch}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ flex: '1 1 280px' }}>
+                <Text type="secondary" strong style={{ fontSize: '12px', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Date Range</Text>
+                <RangePicker 
+                  style={{ width: '100%' }} 
+                  value={dateRange}
+                  onChange={handleDateChange}
+                  format="DD-MM-YYYY"
+                />
+              </div>
+
+              <div style={{ paddingTop: '20px' }}>
+                <Button 
+                  icon={<ClearOutlined />} 
+                  onClick={handleClearFilters}
+                  disabled={!searchText && !dateRange}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </Col>
+
+        <Col span={24}>
            <Card bordered={false} className="shadow-sm"> 
             <Table
               columns={columns}
@@ -213,7 +300,7 @@ const RejectedStockManagement = () => {
               rowKey='rejectionId'
               pagination={{
                 ...pagination,
-                onChange: page => fetchRejectedStock(page)
+                onChange: (page) => fetchRejectedStock(page, searchText, dateRange)
               }}
               locale={{
                 emptyText: <div style={{padding: '40px', textAlign: 'center'}}><Text type="secondary">No rejected stock pending resolution</Text></div>
@@ -231,6 +318,17 @@ const RejectedStockManagement = () => {
           setSelectedRejection(null)
         }}
         onSuccess={handleReworkSuccess}
+        rejectionRecord={selectedRejection}
+      />
+
+      {/* Discard Quantity Modal */}
+      <DiscardQuantityModal
+        visible={discardModalVisible}
+        onCancel={() => {
+          setDiscardModalVisible(false)
+          setSelectedRejection(null)
+        }}
+        onSuccess={() => fetchRejectedStock(pagination.current)}
         rejectionRecord={selectedRejection}
       />
     </div>

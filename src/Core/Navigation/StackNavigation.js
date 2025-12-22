@@ -74,6 +74,7 @@ import EditPriceListPage from '../../Modules/Admin/EditPriceListPage';
 
 
 import RejectedStockManagement from '../../Modules/Production/RejectedStockManagement';
+import DiscardedStockManagement from '../../Modules/Production/DiscardedStockManagement';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 
 const StackNavigation = () => {
@@ -622,6 +623,18 @@ const StackNavigation = () => {
            </PrivateRoute>
          }
        />
+      <Route
+        path='/discarded-stock-management'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Discarded Stock Management'
+              items={adminSiderRoutes}
+              content={<DiscardedStockManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
       <Route
         path='/smart-production'
         element={

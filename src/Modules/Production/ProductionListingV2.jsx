@@ -166,26 +166,32 @@ const ProductionListingV2 = () => {
   }, [dispatch, localSearch])
 
   // Handle filters (memoized)
-  const handleFilterChange = useCallback((filterName, value) => {
-    dispatch(setFilters({ [filterName]: value }))
-    dispatch(setCurrentPage(1))
-  }, [dispatch])
+  const handleFilterChange = useCallback(
+    (filterName, value) => {
+      dispatch(setFilters({ [filterName]: value }))
+      dispatch(setCurrentPage(1))
+    },
+    [dispatch]
+  )
 
-  const handleDateRangeChange = useCallback((dates) => {
-    // Turn off Today filter when user manually changes date range
-    if (isTodayFilter) {
-      setIsTodayFilter(false)
-    }
+  const handleDateRangeChange = useCallback(
+    dates => {
+      // Turn off Today filter when user manually changes date range
+      if (isTodayFilter) {
+        setIsTodayFilter(false)
+      }
 
-    dispatch(
-      setFilters({
-        dateRange: dates
-          ? [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
-          : null
-      })
-    )
-    dispatch(setCurrentPage(1))
-  }, [dispatch, isTodayFilter])
+      dispatch(
+        setFilters({
+          dateRange: dates
+            ? [dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]
+            : null
+        })
+      )
+      dispatch(setCurrentPage(1))
+    },
+    [dispatch, isTodayFilter]
+  )
 
   const handleClearFilters = useCallback(() => {
     setLocalSearch('')
@@ -679,7 +685,7 @@ const ProductionListingV2 = () => {
   }
 
   // Get row className for deadline highlighting (using API-provided deadline info)
-  const getRowClassName = useCallback((record) => {
+  const getRowClassName = useCallback(record => {
     // Use deadline info directly from API response
     const deadlineInfo = record.deadlineInfo || {}
     const status = deadlineInfo.status || 'none'
@@ -691,7 +697,7 @@ const ProductionListingV2 = () => {
       case 'urgent':
         return 'bg-orange-50 border-l-4 border-orange-500'
       case 'normal':
-        return 'bg-yellow-50 border-l-4 border-yellow-500'
+        return ' border-l-4 border-yellow-500'
       default:
         return ''
     }
@@ -908,79 +914,89 @@ const ProductionListingV2 = () => {
   }
 
   // Create dropdown menu for mobile actions (memoized)
-  const getActionMenu = useCallback((record) => {
-    const menuItems = [
-      {
-        key: 'view',
-        label: 'View Details',
-        icon: <EyeOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleView(record)
-        }
-      },
-      {
-        key: 'edit',
-        label: 'Edit Plan',
-        icon: <EditOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleEdit(record)
-        }
-      },
-      {
-        key: 'createJobCard',
-        label: 'Create Job Card',
-        icon: <PlayCircleOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleCreateJobCard(record)
+  const getActionMenu = useCallback(
+    record => {
+      const menuItems = [
+        {
+          key: 'view',
+          label: 'View Details',
+          icon: <EyeOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleView(record)
+          }
         },
-        disabled: !canCreateJobCard(record)
+        {
+          key: 'edit',
+          label: 'Edit Plan',
+          icon: <EditOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleEdit(record)
+          }
+        },
+        {
+          key: 'createJobCard',
+          label: 'Create Job Card',
+          icon: <PlayCircleOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleCreateJobCard(record)
+          },
+          disabled: !canCreateJobCard(record)
+        }
+      ]
+
+      // Only add Assign Preset if no workflow is assigned yet
+      if (!record.workflowInfo?.hasCustomWorkflow && !record.hasWorkflowSteps) {
+        menuItems.push({
+          key: 'preset',
+          label: 'Assign Preset',
+          icon: <SettingOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleAssignPreset(record)
+          }
+        })
       }
+
+      menuItems.push(
+        {
+          key: 'nextStep',
+          label: 'Move to Next Step',
+          icon: <ArrowRightOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleMoveToNextStep(record)
+          },
+          disabled: !canMoveToNextStep(record)
+        },
+        {
+          type: 'divider'
+        },
+        {
+          key: 'delete',
+          label: 'Delete Plan',
+          icon: <DeleteOutlined />,
+          onClick: e => {
+            e.domEvent?.stopPropagation?.()
+            handleDelete(record)
+          },
+          danger: true
+        }
+      )
+
+      return { items: menuItems }
+    },
+    [
+      handleView,
+      handleEdit,
+      handleCreateJobCard,
+      handleAssignPreset,
+      handleMoveToNextStep,
+      handleDelete
     ]
-
-    // Only add Assign Preset if no workflow is assigned yet
-    if (!record.workflowInfo?.hasCustomWorkflow && !record.hasWorkflowSteps) {
-      menuItems.push({
-        key: 'preset',
-        label: 'Assign Preset',
-        icon: <SettingOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleAssignPreset(record)
-        }
-      })
-    }
-
-    menuItems.push(
-      {
-        key: 'nextStep',
-        label: 'Move to Next Step',
-        icon: <ArrowRightOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleMoveToNextStep(record)
-        },
-        disabled: !canMoveToNextStep(record)
-      },
-      {
-        type: 'divider'
-      },
-      {
-        key: 'delete',
-        label: 'Delete Plan',
-        icon: <DeleteOutlined />,
-        onClick: e => {
-          e.domEvent?.stopPropagation?.()
-          handleDelete(record)
-        },
-        danger: true
-      }
-    )
-
-    return { items: menuItems }
-  }, [handleView, handleEdit, handleCreateJobCard, handleAssignPreset, handleMoveToNextStep, handleDelete])
+  )
 
   // Filter options
   const urgentOptions = [

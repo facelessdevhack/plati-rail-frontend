@@ -20,7 +20,8 @@ import {
   ControlOutlined,
   HistoryOutlined,
   AuditOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -141,6 +142,10 @@ export const adminSiderRoutes = [
     getItemLayout(
       <Link to='/rejected-stock'><ExclamationCircleOutlined style={{ marginRight: '8px' }} />Rejected Stock</Link>,
       'rejected-stock'
+    ),
+    getItemLayout(
+      <Link to='/discarded-stock-management'><DeleteOutlined style={{ marginRight: '8px' }} />Discarded Stock</Link>,
+      'discarded-stock'
     )
   ]),
 

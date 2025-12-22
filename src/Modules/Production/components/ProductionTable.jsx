@@ -93,16 +93,6 @@ const ProductionTable = ({
   const getDeadlineStatus = record => {
     const deadlineInfo = record.deadlineInfo || {}
 
-    console.log(`🔍 Plan #${record.id} deadlineInfo:`, {
-      deadlineInfo,
-      earliestDeadline: deadlineInfo.earliestDeadline,
-      status: deadlineInfo.status,
-      overdueCount: deadlineInfo.overdueCount,
-      dueTodayCount: deadlineInfo.dueTodayCount,
-      urgentCount: deadlineInfo.urgentCount,
-      today: moment().format('YYYY-MM-DD')
-    })
-
     // Map API status to component status
     const apiStatus = deadlineInfo.status || 'none'
 
@@ -113,27 +103,33 @@ const ProductionTable = ({
     if (deadlineInfo.earliestDeadline) {
       closestDeadline = moment(deadlineInfo.earliestDeadline)
       daysRemaining = closestDeadline.diff(moment(), 'days')
-
-      console.log(`📅 Plan #${record.id} deadline calculation:`, {
-        deadline: deadlineInfo.earliestDeadline,
-        today: moment().format('YYYY-MM-DD'),
-        daysRemaining,
-        apiStatus
-      })
     }
 
     // Map API status values to component status values
-    const statusMap = {
-      'overdue': 'delayed',
-      'due_today': 'today',
-      'urgent': 'urgent',
-      'normal': 'upcoming',
-      'none': 'none'
+    // Priority order: overdue > due_today > urgent (2-3 days) > upcoming (exactly 1 day)
+    let mappedStatus = 'none'
+
+    if (apiStatus === 'overdue' || (daysRemaining !== null && daysRemaining < 0)) {
+      mappedStatus = 'delayed'
+    } else if (apiStatus === 'due_today' || daysRemaining === 0) {
+      mappedStatus = 'today'
+    } else if (apiStatus === 'urgent' || (daysRemaining !== null && daysRemaining >= 2 && daysRemaining <= 3)) {
+      // Urgent means 2-3 days - show DUE SOON
+      mappedStatus = 'urgent'
+    } else if (daysRemaining !== null && daysRemaining === 1) {
+      // Only show UPCOMING/TOMORROW if exactly 1 day left
+      mappedStatus = 'upcoming'
     }
+    // If daysRemaining > 3 or null, don't show any tag (mappedStatus = 'none')
 
-    const mappedStatus = statusMap[apiStatus] || 'none'
-
-    console.log(`✅ Plan #${record.id} final status: ${apiStatus} → ${mappedStatus}`)
+    // Debug logging for plans showing incorrect tags
+    if (mappedStatus === 'upcoming' && daysRemaining !== 1) {
+      console.warn(`⚠️ Plan #${record.id}: UPCOMING status but daysRemaining = ${daysRemaining}`, {
+        apiStatus,
+        daysRemaining,
+        deadline: deadlineInfo.earliestDeadline
+      })
+    }
 
     return {
       status: mappedStatus,
@@ -150,36 +146,20 @@ const ProductionTable = ({
       width: 100,
       sorter: (a, b) => (a.id || 0) - (b.id || 0),
       render: (id, record) => {
-        const deadlineInfo = getDeadlineStatus(record)
         return (
           <div>
-            {console.log(deadlineInfo, 'DEADLINE INFO')}
-            <span className='font-semibold'>#{id}</span>
-            {deadlineInfo.status === 'delayed' && (
-              <div className='mt-1'>
-                <Tag color='red' size='small' className='text-xs'>
-                  ⚠️ DELAYED
+            <div className='flex items-center gap-2'>
+              <span className='font-semibold'>#{id}</span>
+              {record.isRework && (
+                <Tag color='purple' className='text-xs font-bold m-0'>
+                  🔄 REWORK
                 </Tag>
-              </div>
-            )}
-            {deadlineInfo.status === 'today' && (
+              )}
+            </div>
+            {record.urgent === 1 && (
               <div className='mt-1'>
-                <Tag color='red' size='small' className='text-xs'>
-                  📅 TODAY
-                </Tag>
-              </div>
-            )}
-            {deadlineInfo.status === 'urgent' && (
-              <div className='mt-1'>
-                <Tag color='orange' size='small' className='text-xs'>
-                  ⏰ DUE SOON
-                </Tag>
-              </div>
-            )}
-            {deadlineInfo.status === 'upcoming' && (
-              <div className='mt-1'>
-                <Tag color='gold' size='small' className='text-xs'>
-                  📅 UPCOMING
+                <Tag color='#ff4d4f' size='small' className='text-xs' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
+                  ⚡ URGENT
                 </Tag>
               </div>
             )}
@@ -197,16 +177,48 @@ const ProductionTable = ({
       )
     },
     {
-      title: 'Priority',
-      dataIndex: 'urgent',
-      key: 'urgent',
-      width: 100,
-      render: urgent =>
-        urgent ? (
-          <Tag color='red'>URGENT</Tag>
-        ) : (
-          <Tag color='default'>Normal</Tag>
+      title: 'Deadline',
+      key: 'deadline',
+      width: 150,
+      render: (_, record) => {
+        const deadlineInfo = getDeadlineStatus(record)
+
+        if (!deadlineInfo.closestDeadline) {
+          return <span className='text-gray-400'>No deadline</span>
+        }
+
+        const deadlineDate = deadlineInfo.closestDeadline.format('MMM DD, YYYY')
+        const daysText = deadlineInfo.daysRemaining !== null
+          ? `(${deadlineInfo.daysRemaining === 0 ? 'Today' : deadlineInfo.daysRemaining === 1 ? '1 day' : `${deadlineInfo.daysRemaining} days`})`
+          : ''
+
+        return (
+          <div>
+            <div className='text-sm font-medium'>{deadlineDate}</div>
+            {daysText && <div className='text-xs text-gray-500'>{daysText}</div>}
+            {deadlineInfo.status === 'delayed' && (
+              <Tag color='#ff4d4f' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
+                ⚠️ DELAYED
+              </Tag>
+            )}
+            {deadlineInfo.status === 'today' && (
+              <Tag color='#ff4d4f' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
+                📅 DUE TODAY
+              </Tag>
+            )}
+            {deadlineInfo.status === 'urgent' && (
+              <Tag color='#fa8c16' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#fa8c16', color: 'white' }}>
+                ⏰ DUE SOON
+              </Tag>
+            )}
+            {deadlineInfo.status === 'upcoming' && (
+              <Tag color='#faad14' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#faad14', color: 'white' }}>
+                📅 TOMORROW
+              </Tag>
+            )}
+          </div>
         )
+      }
     },
     {
       title: 'Source Alloy',
