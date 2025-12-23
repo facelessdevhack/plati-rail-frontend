@@ -76,7 +76,14 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
         }
       })
 
-      const photoUrl = response.data
+      // The backend returns an array of results: [{ success, location, ... }]
+      const uploadResult = response.data[0]
+      
+      if (!uploadResult?.success) {
+        throw new Error(uploadResult?.error || 'Upload failed')
+      }
+
+      const photoUrl = uploadResult.location
       setItemPhotos(prev => {
         const next = [...prev]
         next[index] = photoUrl

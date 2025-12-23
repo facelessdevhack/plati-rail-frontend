@@ -75,6 +75,7 @@ import EditPriceListPage from '../../Modules/Admin/EditPriceListPage';
 
 import RejectedStockManagement from '../../Modules/Production/RejectedStockManagement';
 import DiscardedStockManagement from '../../Modules/Production/DiscardedStockManagement';
+import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 
 const StackNavigation = () => {
@@ -623,6 +624,18 @@ const StackNavigation = () => {
            </PrivateRoute>
          }
        />
+      <Route
+        path='/dispatch-to-sales'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 6]}>
+            <AdminLayout
+              title='Dispatch to Sales - Ready Units'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<DispatchToSales />}
+            />
+          </PrivateRoute>
+        }
+      />
       <Route
         path='/discarded-stock-management'
         element={
