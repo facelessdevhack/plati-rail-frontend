@@ -14,7 +14,10 @@ import {
   DatePicker,
   message,
   Badge,
-  Progress
+  Progress,
+  Modal,
+  InputNumber,
+  Checkbox
 } from 'antd'
 import {
   ReloadOutlined,
@@ -23,7 +26,10 @@ import {
   RocketOutlined,
   CheckCircleOutlined,
   WarningOutlined,
-  TruckOutlined
+  TruckOutlined,
+  DownOutlined,
+  RightOutlined,
+  ExportOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
@@ -44,6 +50,20 @@ const DispatchToSales = () => {
     pageSize: 10,
     total: 0
   })
+  const [expandedRowKeys, setExpandedRowKeys] = useState([])
+  const [jobCardsData, setJobCardsData] = useState({}) // { planId: jobCards[] }
+  const [loadingJobCards, setLoadingJobCards] = useState({})
+
+  // Accept quantity modal
+  const [acceptModalVisible, setAcceptModalVisible] = useState(false)
+  const [selectedJobCard, setSelectedJobCard] = useState(null)
+  const [acceptQuantity, setAcceptQuantity] = useState(0)
+
+  // Export modal
+  const [exportModalVisible, setExportModalVisible] = useState(false)
+  const [todayDispatchedItems, setTodayDispatchedItems] = useState([])
+  const [selectedExportItems, setSelectedExportItems] = useState([])
+  const [loadingExport, setLoadingExport] = useState(false)
 
   const fetchDispatchReadyPlans = async (
     page = 1,
@@ -111,6 +131,256 @@ const DispatchToSales = () => {
     setUrgentFilter('')
     setDateRange(null)
     fetchDispatchReadyPlans(1, '', '', null)
+  }
+
+  // Fetch job cards for a production plan when row is expanded
+  const fetchJobCardsForPlan = async prodPlanId => {
+    setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: true }))
+    try {
+      const res = await client.get(`/production/plan/${prodPlanId}/dispatch-job-cards`)
+      setJobCardsData(prev => ({ ...prev, [prodPlanId]: res.data.jobCards }))
+    } catch (error) {
+      console.error('Error fetching job cards:', error)
+      message.error('Failed to fetch job cards')
+    } finally {
+      setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: false }))
+    }
+  }
+
+  // Handle row expand/collapse
+  const handleExpand = (expanded, record) => {
+    if (expanded) {
+      setExpandedRowKeys([...expandedRowKeys, record.id])
+      if (!jobCardsData[record.id]) {
+        fetchJobCardsForPlan(record.id)
+      }
+    } else {
+      setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.id))
+    }
+  }
+
+  // Show accept quantity modal
+  const showAcceptModal = jobCard => {
+    setSelectedJobCard(jobCard)
+    setAcceptQuantity(jobCard.pendingQuantity) // Default to all pending
+    setAcceptModalVisible(true)
+  }
+
+  // Accept job card quantities
+  const handleAcceptJobCard = async () => {
+    if (!selectedJobCard) return
+
+    if (acceptQuantity <= 0 || acceptQuantity > selectedJobCard.pendingQuantity) {
+      message.error(
+        `Please enter a valid quantity between 1 and ${selectedJobCard.pendingQuantity}`
+      )
+      return
+    }
+
+    try {
+      const res = await client.post(
+        `/production/step-progress/${selectedJobCard.stepProgressId}/accept-dispatch`,
+        { acceptedQuantity: acceptQuantity }
+      )
+
+      message.success(`Accepted ${acceptQuantity} units`)
+
+      if (res.data.data.planCompleted) {
+        message.success('Production plan completed!')
+      }
+
+      // Close modal and refresh data
+      setAcceptModalVisible(false)
+      setSelectedJobCard(null)
+      setAcceptQuantity(0)
+      await fetchJobCardsForPlan(selectedJobCard.prodPlanId)
+      await fetchDispatchReadyPlans(pagination.current)
+    } catch (error) {
+      console.error('Error accepting job card:', error)
+      message.error(error.response?.data?.message || 'Failed to accept')
+    }
+  }
+
+  // Fetch today's dispatched items for export
+  const fetchTodayDispatchedItems = async () => {
+    setLoadingExport(true)
+    try {
+      const today = moment().format('YYYY-MM-DD')
+      const response = await client.get('/production/today-dispatched', {
+        params: { date: today }
+      })
+
+      if (response.data.dispatchedItems) {
+        setTodayDispatchedItems(response.data.dispatchedItems)
+        setSelectedExportItems([]) // Reset selection
+      }
+    } catch (error) {
+      console.error('Error fetching today dispatched items:', error)
+      message.error('Failed to fetch dispatched items')
+    } finally {
+      setLoadingExport(false)
+    }
+  }
+
+  // Show export modal
+  const showExportModal = () => {
+    fetchTodayDispatchedItems()
+    setExportModalVisible(true)
+  }
+
+  // Handle export item selection
+  const handleExportItemSelect = (itemId, checked) => {
+    if (checked) {
+      setSelectedExportItems([...selectedExportItems, itemId])
+    } else {
+      setSelectedExportItems(selectedExportItems.filter(id => id !== itemId))
+    }
+  }
+
+  // Select/Deselect all export items
+  const handleSelectAllExport = checked => {
+    if (checked) {
+      setSelectedExportItems(todayDispatchedItems.map(item => item.id))
+    } else {
+      setSelectedExportItems([])
+    }
+  }
+
+  // Export selected items
+  const handleExportDispatch = () => {
+    if (selectedExportItems.length === 0) {
+      message.warning('Please select at least one item to export')
+      return
+    }
+
+    // Filter selected items
+    const itemsToExport = todayDispatchedItems.filter(item =>
+      selectedExportItems.includes(item.id)
+    )
+
+    // Group by production plan and concatenate job card numbers
+    const groupedByPlan = itemsToExport.reduce((acc, item) => {
+      const planId = item.prodPlanId
+      if (!acc[planId]) {
+        acc[planId] = {
+          ...item,
+          jobCardNumbers: [item.jobCardId]
+        }
+      } else {
+        acc[planId].jobCardNumbers.push(item.jobCardId)
+        acc[planId].acceptedQuantity += item.acceptedQuantity
+      }
+      return acc
+    }, {})
+
+    // Convert to array and format
+    const exportData = Object.values(groupedByPlan).map(item => ({
+      'Production Plan ID': item.prodPlanId,
+      'Job Card Numbers': item.jobCardNumbers.join(', '),
+      'Product Name': item.productName,
+      'Model': item.modelName,
+      'Size': item.inches + '"',
+      'Finish': item.finish,
+      'Accepted Quantity': item.acceptedQuantity,
+      'Dispatched At': moment(item.dispatchedAt).format('DD-MM-YYYY HH:mm')
+    }))
+
+    // Convert to CSV
+    const headers = Object.keys(exportData[0])
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row => headers.map(h => `"${row[h]}"`).join(','))
+    ].join('\n')
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute(
+      'download',
+      `dispatch_report_${moment().format('YYYY-MM-DD')}.csv`
+    )
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    message.success(`Exported ${selectedExportItems.length} items`)
+    setExportModalVisible(false)
+  }
+
+  // Render expandable job cards table
+  const expandedRowRender = record => {
+    const jobCards = jobCardsData[record.id] || []
+    const loading = loadingJobCards[record.id]
+
+    const columns = [
+      {
+        title: 'Job Card ID',
+        dataIndex: 'jobCardId',
+        render: id => <Text strong>#{id}</Text>
+      },
+      {
+        title: 'Total Qty',
+        dataIndex: 'jobCardQuantity',
+        render: qty => <Text>{qty}</Text>
+      },
+      {
+        title: 'Pending',
+        dataIndex: 'pendingQuantity',
+        render: qty => (
+          <Tag color="orange" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+            {qty}
+          </Tag>
+        )
+      },
+      {
+        title: 'Accepted',
+        dataIndex: 'acceptedQuantity',
+        render: qty => <Tag color="green">{qty || 0}</Tag>
+      },
+      {
+        title: 'Action',
+        render: (_, jc) => (
+          <Button
+            type="primary"
+            size="small"
+            disabled={jc.pendingQuantity === 0}
+            onClick={() => showAcceptModal(jc)}
+          >
+            Accept Quantity
+          </Button>
+        )
+      }
+    ]
+
+    if (loading) {
+      return (
+        <div style={{ padding: 20, textAlign: 'center' }}>
+          <Text type="secondary">Loading job cards...</Text>
+        </div>
+      )
+    }
+
+    if (!jobCards.length) {
+      return (
+        <div style={{ padding: 20, textAlign: 'center' }}>
+          <Text type="secondary">No job cards at dispatch step</Text>
+        </div>
+      )
+    }
+
+    return (
+      <Table
+        columns={columns}
+        dataSource={jobCards}
+        pagination={false}
+        rowKey="jobCardId"
+        size="small"
+        style={{ margin: '0 48px' }}
+      />
+    )
   }
 
   const columns = [
@@ -296,44 +566,18 @@ const DispatchToSales = () => {
       width: 150,
       fixed: 'right',
       render: (_, record) => (
-        <Space direction="vertical" size={4}>
-          <Button
-            type="primary"
-            icon={<CheckCircleOutlined />}
-            size="small"
-            block
-            onClick={() => handleDispatchToWarehouse(record)}
-          >
-            Accept & Dispatch
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => handleViewDetails(record)}
-          >
-            View Details
-          </Button>
-        </Space>
+        <Button
+          type="primary"
+          icon={expandedRowKeys.includes(record.id) ? <DownOutlined /> : <RightOutlined />}
+          size="small"
+          block
+          onClick={() => handleExpand(!expandedRowKeys.includes(record.id), record)}
+        >
+          {expandedRowKeys.includes(record.id) ? 'Hide' : 'View'} Job Cards
+        </Button>
       )
     }
   ]
-
-  const handleDispatchToWarehouse = record => {
-    message.info(
-      `${record.dispatchPendingQuantity} units pending acceptance at dispatch step...`
-    )
-    // TODO: Implement accept/dispatch logic
-    // This would:
-    // 1. Accept the pending quantity (move from pending_quantity to accepted_quantity)
-    // 2. Add stock to alloy_master.in_house_stock
-    // 3. Update job card status
-    // 4. Create stock movement record
-  }
-
-  const handleViewDetails = record => {
-    message.info(`Viewing details for Plan #${record.id}`)
-    // TODO: Navigate to plan details page or open modal
-  }
 
   // Calculate summary statistics
   const summaryStats = {
@@ -370,13 +614,22 @@ const DispatchToSales = () => {
                 Dispatch to Sales - Pending Acceptance
               </Title>
             </Space>
-            <Button
-              type="primary"
-              icon={<ReloadOutlined />}
-              onClick={() => fetchDispatchReadyPlans(pagination.current)}
-            >
-              Refresh
-            </Button>
+            <Space>
+              <Button
+                type="default"
+                icon={<ExportOutlined />}
+                onClick={showExportModal}
+              >
+                Export Today's Dispatch
+              </Button>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={() => fetchDispatchReadyPlans(pagination.current)}
+              >
+                Refresh
+              </Button>
+            </Space>
           </div>
         </Col>
 
@@ -524,6 +777,11 @@ const DispatchToSales = () => {
               dataSource={data}
               loading={loading}
               rowKey="id"
+              expandable={{
+                expandedRowRender,
+                expandedRowKeys,
+                onExpand: handleExpand
+              }}
               pagination={{
                 ...pagination,
                 showSizeChanger: true,
@@ -549,6 +807,155 @@ const DispatchToSales = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Accept Quantity Modal */}
+      <Modal
+        title="Accept Dispatch Quantity"
+        open={acceptModalVisible}
+        onOk={handleAcceptJobCard}
+        onCancel={() => {
+          setAcceptModalVisible(false)
+          setSelectedJobCard(null)
+          setAcceptQuantity(0)
+        }}
+        okText="Accept"
+        cancelText="Cancel"
+      >
+        {selectedJobCard && (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <div>
+              <Text strong>Job Card #</Text>
+              <Text>{selectedJobCard.jobCardId}</Text>
+            </div>
+            <div>
+              <Text strong>Pending Quantity: </Text>
+              <Tag color="orange" style={{ fontSize: '14px' }}>
+                {selectedJobCard.pendingQuantity}
+              </Tag>
+            </div>
+            <div>
+              <Text strong>Enter Quantity to Accept:</Text>
+              <InputNumber
+                min={1}
+                max={selectedJobCard.pendingQuantity}
+                value={acceptQuantity}
+                onChange={value => setAcceptQuantity(value)}
+                style={{ width: '100%', marginTop: 8 }}
+                size="large"
+              />
+            </div>
+          </Space>
+        )}
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal
+        title="Export Today's Dispatch Report"
+        open={exportModalVisible}
+        onOk={handleExportDispatch}
+        onCancel={() => setExportModalVisible(false)}
+        okText="Export Selected"
+        cancelText="Cancel"
+        width={800}
+        okButtonProps={{ disabled: selectedExportItems.length === 0 }}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <Text strong>
+              Today's Dispatched Items ({todayDispatchedItems.length})
+            </Text>
+            <Checkbox
+              checked={
+                selectedExportItems.length === todayDispatchedItems.length &&
+                todayDispatchedItems.length > 0
+              }
+              indeterminate={
+                selectedExportItems.length > 0 &&
+                selectedExportItems.length < todayDispatchedItems.length
+              }
+              onChange={e => handleSelectAllExport(e.target.checked)}
+            >
+              Select All
+            </Checkbox>
+          </div>
+
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {loadingExport ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Text type="secondary">Loading...</Text>
+              </div>
+            ) : todayDispatchedItems.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Text type="secondary">No items dispatched today</Text>
+              </div>
+            ) : (
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                {todayDispatchedItems.map(item => (
+                  <Card
+                    key={item.id}
+                    size="small"
+                    style={{
+                      backgroundColor: selectedExportItems.includes(item.id)
+                        ? '#e6f7ff'
+                        : 'white'
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Checkbox
+                        checked={selectedExportItems.includes(item.id)}
+                        onChange={e =>
+                          handleExportItemSelect(item.id, e.target.checked)
+                        }
+                      />
+                      <div style={{ flex: 1, marginLeft: 12 }}>
+                        <Space direction="vertical" size={2}>
+                          <Text strong>
+                            Plan #{item.prodPlanId} | Job Card #{item.jobCardId}
+                          </Text>
+                          <Text>
+                            {item.productName} - {item.modelName} {item.inches}"
+                            {item.finish}
+                          </Text>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            Accepted: {item.acceptedQuantity} units |{' '}
+                            {moment(item.dispatchedAt).format(
+                              'DD-MM-YYYY HH:mm'
+                            )}
+                          </Text>
+                        </Space>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </Space>
+            )}
+          </div>
+
+          {selectedExportItems.length > 0 && (
+            <div
+              style={{
+                backgroundColor: '#f0f2f5',
+                padding: '12px',
+                borderRadius: '4px'
+              }}
+            >
+              <Text strong>Selected: {selectedExportItems.length} items</Text>
+            </div>
+          )}
+        </Space>
+      </Modal>
     </div>
   )
 }
