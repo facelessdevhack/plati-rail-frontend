@@ -9,7 +9,8 @@ import {
   DatabaseOutlined,
   HistoryOutlined,
   AuditOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  TruckOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -96,6 +97,13 @@ export const dataUserSiderRoutes = [
       Inventory Requests
     </Link>,
     '6e'
+  ),
+  getItemLayout(
+    <Link to='/dispatch-to-sales'>
+      <TruckOutlined style={{ marginRight: '8px' }} />
+      Dispatch to Sales
+    </Link>,
+    'dispatch-to-sales'
   ),
   getItemLayout(
     <Link to='/rejected-stock'>
