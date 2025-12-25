@@ -29,10 +29,13 @@ import {
   TruckOutlined,
   DownOutlined,
   RightOutlined,
+  FilePdfOutlined,
   ExportOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -96,7 +99,9 @@ const DispatchToSales = () => {
         setPagination({
           ...pagination,
           current: page,
-          total: response.data.pagination?.totalCount || response.data.productionPlans.length
+          total:
+            response.data.pagination?.totalCount ||
+            response.data.productionPlans.length
         })
       }
     } catch (error) {
@@ -137,7 +142,9 @@ const DispatchToSales = () => {
   const fetchJobCardsForPlan = async prodPlanId => {
     setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: true }))
     try {
-      const res = await client.get(`/production/plan/${prodPlanId}/dispatch-job-cards`)
+      const res = await client.get(
+        `/production/plan/${prodPlanId}/dispatch-job-cards`
+      )
       setJobCardsData(prev => ({ ...prev, [prodPlanId]: res.data.jobCards }))
     } catch (error) {
       console.error('Error fetching job cards:', error)
@@ -170,7 +177,10 @@ const DispatchToSales = () => {
   const handleAcceptJobCard = async () => {
     if (!selectedJobCard) return
 
-    if (acceptQuantity <= 0 || acceptQuantity > selectedJobCard.pendingQuantity) {
+    if (
+      acceptQuantity <= 0 ||
+      acceptQuantity > selectedJobCard.pendingQuantity
+    ) {
       message.error(
         `Please enter a valid quantity between 1 and ${selectedJobCard.pendingQuantity}`
       )
@@ -246,68 +256,145 @@ const DispatchToSales = () => {
     }
   }
 
-  // Export selected items
-  const handleExportDispatch = () => {
-    if (selectedExportItems.length === 0) {
-      message.warning('Please select at least one item to export')
-      return
-    }
+  // Export as PDF (client-side using jsPDF)
+  const handleExportPdf = (exportAll = false) => {
+    try {
+      // Determine which items to export
+      const itemsToExport = exportAll
+        ? todayDispatchedItems
+        : todayDispatchedItems.filter(item =>
+            selectedExportItems.includes(item.id)
+          )
 
-    // Filter selected items
-    const itemsToExport = todayDispatchedItems.filter(item =>
-      selectedExportItems.includes(item.id)
-    )
-
-    // Group by production plan and concatenate job card numbers
-    const groupedByPlan = itemsToExport.reduce((acc, item) => {
-      const planId = item.prodPlanId
-      if (!acc[planId]) {
-        acc[planId] = {
-          ...item,
-          jobCardNumbers: [item.jobCardId]
-        }
-      } else {
-        acc[planId].jobCardNumbers.push(item.jobCardId)
-        acc[planId].acceptedQuantity += item.acceptedQuantity
+      if (itemsToExport.length === 0) {
+        message.warning(
+          exportAll
+            ? 'No items to export'
+            : 'Please select at least one item to export'
+        )
+        return
       }
-      return acc
-    }, {})
 
-    // Convert to array and format
-    const exportData = Object.values(groupedByPlan).map(item => ({
-      'Production Plan ID': item.prodPlanId,
-      'Job Card Numbers': item.jobCardNumbers.join(', '),
-      'Product Name': item.productName,
-      'Model': item.modelName,
-      'Size': item.inches + '"',
-      'Finish': item.finish,
-      'Accepted Quantity': item.acceptedQuantity,
-      'Dispatched At': moment(item.dispatchedAt).format('DD-MM-YYYY HH:mm')
-    }))
+      // Group by alloy name and sum quantities
+      const groupedData = itemsToExport.reduce((acc, item) => {
+        const alloyName = `${item.productName} ${item.modelName} ${item.inches}" ${item.finish}`
+        if (acc[alloyName]) {
+          acc[alloyName].quantityDispatched += item.acceptedQuantity
+        } else {
+          acc[alloyName] = {
+            alloyName,
+            quantityDispatched: item.acceptedQuantity
+          }
+        }
+        return acc
+      }, {})
 
-    // Convert to CSV
-    const headers = Object.keys(exportData[0])
-    const csvContent = [
-      headers.join(','),
-      ...exportData.map(row => headers.map(h => `"${row[h]}"`).join(','))
-    ].join('\n')
+      // Convert to array and sort by alloy name
+      const exportData = Object.values(groupedData).sort((a, b) =>
+        a.alloyName.localeCompare(b.alloyName)
+      )
 
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute(
-      'download',
-      `dispatch_report_${moment().format('YYYY-MM-DD')}.csv`
-    )
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+      // Create PDF
+      const doc = new jsPDF()
+      const today = moment().format('DD/MM/YYYY')
 
-    message.success(`Exported ${selectedExportItems.length} items`)
-    setExportModalVisible(false)
+      // Add title
+      doc.setFontSize(18)
+      doc.text('DISPATCH REPORT', doc.internal.pageSize.width / 2, 20, {
+        align: 'center'
+      })
+
+      // Add date
+      doc.setFontSize(12)
+      doc.text(`Date: ${today}`, doc.internal.pageSize.width / 2, 28, {
+        align: 'center'
+      })
+
+      // Prepare table data
+      const tableData = exportData.map((item, index) => [
+        (index + 1).toString(),
+        item.alloyName,
+        item.quantityDispatched.toString(),
+        '' // Blank for Qty Received (manual entry)
+      ])
+
+      // Add total row
+      const totalQty = exportData.reduce(
+        (sum, item) => sum + item.quantityDispatched,
+        0
+      )
+      tableData.push(['', 'TOTAL', totalQty.toString(), ''])
+
+      // Generate table using autoTable
+      doc.autoTable({
+        startY: 38,
+        head: [['S.No.', 'Alloy Name', 'Qty Dispatched', 'Qty Received']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [24, 144, 255],
+          textColor: 255,
+          fontSize: 11,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        bodyStyles: {
+          fontSize: 10
+        },
+        columnStyles: {
+          0: { cellWidth: 20, halign: 'center' },
+          1: { cellWidth: 'auto', halign: 'left' },
+          2: { cellWidth: 35, halign: 'center' },
+          3: { cellWidth: 35, halign: 'center', fillColor: [245, 245, 245] }
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: function (data) {
+          // Add signature section at the bottom of each page
+          const pageHeight = doc.internal.pageSize.height
+          const signatureY = pageHeight - 45
+
+          doc.setFontSize(10)
+          doc.setFont('helvetica', 'normal')
+
+          // Dispatched By
+          doc.text('_______________________', 30, signatureY)
+          doc.text('Dispatched By', 30, signatureY + 8)
+          doc.text('(Signature & Date)', 30, signatureY + 14)
+
+          // Received By
+          doc.text('_______________________', 120, signatureY)
+          doc.text('Received By', 120, signatureY + 8)
+          doc.text('(Signature & Date)', 120, signatureY + 14)
+        }
+      })
+
+      // Add footer with page numbers
+      const pageCount = doc.internal.getNumberOfPages()
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.text(
+          `Generated: ${moment().format(
+            'DD/MM/YYYY HH:mm'
+          )} | Page ${i} of ${pageCount}`,
+          doc.internal.pageSize.width / 2,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        )
+      }
+
+      // Save PDF
+      const fileName = `Dispatch_Report_${moment().format('YYYY-MM-DD')}.pdf`
+      doc.save(fileName)
+
+      message.success(
+        `PDF exported successfully: ${exportData.length} unique alloys`
+      )
+      setExportModalVisible(false)
+    } catch (error) {
+      message.error('Failed to export PDF')
+      console.error('Error generating PDF:', error)
+    }
   }
 
   // Render expandable job cards table
@@ -330,7 +417,7 @@ const DispatchToSales = () => {
         title: 'Pending',
         dataIndex: 'pendingQuantity',
         render: qty => (
-          <Tag color="orange" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+          <Tag color='orange' style={{ fontSize: '14px', fontWeight: 'bold' }}>
             {qty}
           </Tag>
         )
@@ -338,14 +425,14 @@ const DispatchToSales = () => {
       {
         title: 'Accepted',
         dataIndex: 'acceptedQuantity',
-        render: qty => <Tag color="green">{qty || 0}</Tag>
+        render: qty => <Tag color='green'>{qty || 0}</Tag>
       },
       {
         title: 'Action',
         render: (_, jc) => (
           <Button
-            type="primary"
-            size="small"
+            type='primary'
+            size='small'
             disabled={jc.pendingQuantity === 0}
             onClick={() => showAcceptModal(jc)}
           >
@@ -358,7 +445,7 @@ const DispatchToSales = () => {
     if (loading) {
       return (
         <div style={{ padding: 20, textAlign: 'center' }}>
-          <Text type="secondary">Loading job cards...</Text>
+          <Text type='secondary'>Loading job cards...</Text>
         </div>
       )
     }
@@ -366,7 +453,7 @@ const DispatchToSales = () => {
     if (!jobCards.length) {
       return (
         <div style={{ padding: 20, textAlign: 'center' }}>
-          <Text type="secondary">No job cards at dispatch step</Text>
+          <Text type='secondary'>No job cards at dispatch step</Text>
         </div>
       )
     }
@@ -376,8 +463,8 @@ const DispatchToSales = () => {
         columns={columns}
         dataSource={jobCards}
         pagination={false}
-        rowKey="jobCardId"
-        size="small"
+        rowKey='jobCardId'
+        size='small'
         style={{ margin: '0 48px' }}
       />
     )
@@ -390,10 +477,10 @@ const DispatchToSales = () => {
       key: 'id',
       width: 100,
       render: (text, record) => (
-        <Space direction="vertical" size={0}>
+        <Space direction='vertical' size={0}>
           <Text strong>#{text}</Text>
           {record.isUrgent === 1 && (
-            <Tag color="red" icon={<WarningOutlined />}>
+            <Tag color='red' icon={<WarningOutlined />}>
               Urgent
             </Tag>
           )}
@@ -406,15 +493,15 @@ const DispatchToSales = () => {
       key: 'product',
       width: 250,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space direction='vertical' size={2}>
           <Text strong>{record.targetProductName || 'N/A'}</Text>
           <Space size={4} wrap>
-            <Tag color="blue">{record.targetModelName}</Tag>
-            <Tag color="cyan">{record.targetInches}"</Tag>
-            <Tag color="green">{record.targetFinish}</Tag>
+            <Tag color='blue'>{record.targetModelName}</Tag>
+            <Tag color='cyan'>{record.targetInches}"</Tag>
+            <Tag color='green'>{record.targetFinish}</Tag>
           </Space>
           {record.sourceProductName && (
-            <Text type="secondary" style={{ fontSize: '12px' }}>
+            <Text type='secondary' style={{ fontSize: '12px' }}>
               From: {record.sourceProductName}
             </Text>
           )}
@@ -431,7 +518,7 @@ const DispatchToSales = () => {
         const percentage = totalQty > 0 ? (pendingQty / totalQty) * 100 : 0
 
         return (
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Space direction='vertical' size={4} style={{ width: '100%' }}>
             <div
               style={{
                 display: 'flex',
@@ -442,19 +529,19 @@ const DispatchToSales = () => {
               <Text strong style={{ fontSize: '18px', color: '#ff9800' }}>
                 {pendingQty}
               </Text>
-              <Text type="secondary">/ {totalQty}</Text>
+              <Text type='secondary'>/ {totalQty}</Text>
             </div>
             <Progress
               percent={Number(percentage.toFixed(1))}
-              size="small"
+              size='small'
               strokeColor={{
                 '0%': '#ff9800',
                 '100%': '#ff5722'
               }}
-              status="active"
+              status='active'
               format={percent => `${percent}%`}
             />
-            <Text type="secondary" style={{ fontSize: '11px' }}>
+            <Text type='secondary' style={{ fontSize: '11px' }}>
               Awaiting acceptance
             </Text>
           </Space>
@@ -473,7 +560,7 @@ const DispatchToSales = () => {
         const percentage = total > 0 ? (completed / total) * 100 : 0
 
         return (
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Space direction='vertical' size={4} style={{ width: '100%' }}>
             <Space>
               <CheckCircleOutlined style={{ color: '#52c41a' }} />
               <Text>
@@ -482,12 +569,12 @@ const DispatchToSales = () => {
             </Space>
             <Progress
               percent={Number(percentage.toFixed(1))}
-              size="small"
+              size='small'
               status={percentage === 100 ? 'success' : 'active'}
             />
-            <Text type="secondary" style={{ fontSize: '11px' }}>
-              {record.completedJobCardsStatus || 0} / {record.totalJobCards || 0}{' '}
-              cards done
+            <Text type='secondary' style={{ fontSize: '11px' }}>
+              {record.completedJobCardsStatus || 0} /{' '}
+              {record.totalJobCards || 0} cards done
             </Text>
           </Space>
         )
@@ -504,15 +591,15 @@ const DispatchToSales = () => {
         const acceptanceRate = total > 0 ? (accepted / total) * 100 : 0
 
         return (
-          <Space direction="vertical" size={4}>
+          <Space direction='vertical' size={4}>
             <Space>
-              <Badge status="success" />
+              <Badge status='success' />
               <Text>{accepted} accepted</Text>
             </Space>
             {rejected > 0 && (
               <Space>
-                <Badge status="error" />
-                <Text type="danger">{rejected} rejected</Text>
+                <Badge status='error' />
+                <Text type='danger'>{rejected} rejected</Text>
               </Space>
             )}
             {total > 0 && (
@@ -529,12 +616,12 @@ const DispatchToSales = () => {
       key: 'timeline',
       width: 150,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
+        <Space direction='vertical' size={2}>
+          <Text type='secondary' style={{ fontSize: '12px' }}>
             Created: {moment(record.createdAt).format('DD MMM YYYY')}
           </Text>
           {record.completedAt && (
-            <Text type="secondary" style={{ fontSize: '12px' }}>
+            <Text type='secondary' style={{ fontSize: '12px' }}>
               Completed: {moment(record.completedAt).format('DD MMM YYYY')}
             </Text>
           )}
@@ -550,10 +637,10 @@ const DispatchToSales = () => {
       key: 'currentStep',
       width: 150,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Tag color="processing">{record.currentStepName || 'N/A'}</Tag>
+        <Space direction='vertical' size={2}>
+          <Tag color='processing'>{record.currentStepName || 'N/A'}</Tag>
           {record.avgProgressPercentage && (
-            <Text type="secondary" style={{ fontSize: '11px' }}>
+            <Text type='secondary' style={{ fontSize: '11px' }}>
               Avg: {Number(record.avgProgressPercentage).toFixed(0)}% complete
             </Text>
           )}
@@ -567,11 +654,19 @@ const DispatchToSales = () => {
       fixed: 'right',
       render: (_, record) => (
         <Button
-          type="primary"
-          icon={expandedRowKeys.includes(record.id) ? <DownOutlined /> : <RightOutlined />}
-          size="small"
+          type='primary'
+          icon={
+            expandedRowKeys.includes(record.id) ? (
+              <DownOutlined />
+            ) : (
+              <RightOutlined />
+            )
+          }
+          size='small'
           block
-          onClick={() => handleExpand(!expandedRowKeys.includes(record.id), record)}
+          onClick={() =>
+            handleExpand(!expandedRowKeys.includes(record.id), record)
+          }
         >
           {expandedRowKeys.includes(record.id) ? 'Hide' : 'View'} Job Cards
         </Button>
@@ -606,24 +701,22 @@ const DispatchToSales = () => {
               marginBottom: '16px'
             }}
           >
-            <Space align="center">
-              <RocketOutlined
-                style={{ fontSize: '24px', color: '#1890ff' }}
-              />
+            <Space align='center'>
+              <RocketOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
               <Title level={3} style={{ margin: 0 }}>
                 Dispatch to Sales - Pending Acceptance
               </Title>
             </Space>
             <Space>
               <Button
-                type="default"
+                type='default'
                 icon={<ExportOutlined />}
                 onClick={showExportModal}
               >
                 Export Today's Dispatch
               </Button>
               <Button
-                type="primary"
+                type='primary'
                 icon={<ReloadOutlined />}
                 onClick={() => fetchDispatchReadyPlans(pagination.current)}
               >
@@ -635,11 +728,11 @@ const DispatchToSales = () => {
 
         {/* Summary Statistics */}
         <Col span={24}>
-          <Card bordered={false} className="shadow-sm">
+          <Card bordered={false} className='shadow-sm'>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={6}>
                 <Statistic
-                  title="Plans Pending"
+                  title='Plans Pending'
                   value={summaryStats.totalPlans}
                   prefix={<TruckOutlined />}
                   valueStyle={{ color: '#1890ff' }}
@@ -647,15 +740,15 @@ const DispatchToSales = () => {
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <Statistic
-                  title="Total Pending Units"
+                  title='Total Pending Units'
                   value={summaryStats.totalPendingUnits}
-                  suffix="units"
+                  suffix='units'
                   valueStyle={{ color: '#ff9800' }}
                 />
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <Statistic
-                  title="Urgent Plans"
+                  title='Urgent Plans'
                   value={summaryStats.urgentPlans}
                   prefix={<WarningOutlined />}
                   valueStyle={{
@@ -665,7 +758,7 @@ const DispatchToSales = () => {
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <Statistic
-                  title="Fully At Dispatch"
+                  title='Fully At Dispatch'
                   value={summaryStats.fullyPendingPlans}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ color: '#ff9800' }}
@@ -677,7 +770,11 @@ const DispatchToSales = () => {
 
         {/* Filters */}
         <Col span={24}>
-          <Card bordered={false} className="shadow-sm" bodyStyle={{ padding: '16px' }}>
+          <Card
+            bordered={false}
+            className='shadow-sm'
+            bodyStyle={{ padding: '16px' }}
+          >
             <div
               style={{
                 display: 'flex',
@@ -688,7 +785,7 @@ const DispatchToSales = () => {
             >
               <div style={{ flex: '1 1 300px' }}>
                 <Text
-                  type="secondary"
+                  type='secondary'
                   strong
                   style={{
                     fontSize: '12px',
@@ -700,7 +797,7 @@ const DispatchToSales = () => {
                   Search
                 </Text>
                 <Search
-                  placeholder="Search Product, Model, Finish..."
+                  placeholder='Search Product, Model, Finish...'
                   allowClear
                   enterButton={<SearchOutlined />}
                   value={searchText}
@@ -712,7 +809,7 @@ const DispatchToSales = () => {
 
               <div style={{ flex: '0 0 150px' }}>
                 <Text
-                  type="secondary"
+                  type='secondary'
                   strong
                   style={{
                     fontSize: '12px',
@@ -725,19 +822,19 @@ const DispatchToSales = () => {
                 </Text>
                 <Select
                   style={{ width: '100%' }}
-                  placeholder="All"
+                  placeholder='All'
                   value={urgentFilter}
                   onChange={handleUrgentChange}
                   allowClear
                 >
-                  <Option value="1">Urgent Only</Option>
-                  <Option value="0">Normal</Option>
+                  <Option value='1'>Urgent Only</Option>
+                  <Option value='0'>Normal</Option>
                 </Select>
               </div>
 
               <div style={{ flex: '1 1 280px' }}>
                 <Text
-                  type="secondary"
+                  type='secondary'
                   strong
                   style={{
                     fontSize: '12px',
@@ -752,7 +849,7 @@ const DispatchToSales = () => {
                   style={{ width: '100%' }}
                   value={dateRange}
                   onChange={handleDateChange}
-                  format="DD-MM-YYYY"
+                  format='DD-MM-YYYY'
                 />
               </div>
 
@@ -771,12 +868,12 @@ const DispatchToSales = () => {
 
         {/* Table */}
         <Col span={24}>
-          <Card bordered={false} className="shadow-sm">
+          <Card bordered={false} className='shadow-sm'>
             <Table
               columns={columns}
               dataSource={data}
               loading={loading}
-              rowKey="id"
+              rowKey='id'
               expandable={{
                 expandedRowRender,
                 expandedRowKeys,
@@ -796,7 +893,7 @@ const DispatchToSales = () => {
                       style={{ fontSize: '48px', color: '#d9d9d9' }}
                     />
                     <div style={{ marginTop: '16px' }}>
-                      <Text type="secondary">
+                      <Text type='secondary'>
                         No production plans ready for dispatch
                       </Text>
                     </div>
@@ -810,7 +907,7 @@ const DispatchToSales = () => {
 
       {/* Accept Quantity Modal */}
       <Modal
-        title="Accept Dispatch Quantity"
+        title='Accept Dispatch Quantity'
         open={acceptModalVisible}
         onOk={handleAcceptJobCard}
         onCancel={() => {
@@ -818,18 +915,18 @@ const DispatchToSales = () => {
           setSelectedJobCard(null)
           setAcceptQuantity(0)
         }}
-        okText="Accept"
-        cancelText="Cancel"
+        okText='Accept'
+        cancelText='Cancel'
       >
         {selectedJobCard && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction='vertical' size={16} style={{ width: '100%' }}>
             <div>
               <Text strong>Job Card #</Text>
               <Text>{selectedJobCard.jobCardId}</Text>
             </div>
             <div>
               <Text strong>Pending Quantity: </Text>
-              <Tag color="orange" style={{ fontSize: '14px' }}>
+              <Tag color='orange' style={{ fontSize: '14px' }}>
                 {selectedJobCard.pendingQuantity}
               </Tag>
             </div>
@@ -841,7 +938,7 @@ const DispatchToSales = () => {
                 value={acceptQuantity}
                 onChange={value => setAcceptQuantity(value)}
                 style={{ width: '100%', marginTop: 8 }}
-                size="large"
+                size='large'
               />
             </div>
           </Space>
@@ -852,14 +949,57 @@ const DispatchToSales = () => {
       <Modal
         title="Export Today's Dispatch Report"
         open={exportModalVisible}
-        onOk={handleExportDispatch}
         onCancel={() => setExportModalVisible(false)}
-        okText="Export Selected"
-        cancelText="Cancel"
         width={800}
-        okButtonProps={{ disabled: selectedExportItems.length === 0 }}
+        footer={[
+          <Button key='cancel' onClick={() => setExportModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key='pdf-selected'
+            icon={<FilePdfOutlined />}
+            onClick={() => handleExportPdf(false)}
+            disabled={selectedExportItems.length === 0}
+            style={{
+              backgroundColor: '#ff4d4f',
+              borderColor: '#ff4d4f',
+              color: 'white'
+            }}
+          >
+            Export PDF ({selectedExportItems.length})
+          </Button>,
+          <Button
+            key='pdf-all'
+            type='primary'
+            icon={<FilePdfOutlined />}
+            onClick={() => handleExportPdf(true)}
+            disabled={todayDispatchedItems.length === 0}
+            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+          >
+            Export PDF (All)
+          </Button>
+        ]}
       >
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction='vertical' size={16} style={{ width: '100%' }}>
+          {/* PDF Export Info */}
+          <Card
+            size='small'
+            style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}
+          >
+            <Space>
+              <FilePdfOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
+              <div>
+                <Text strong>PDF Export</Text>
+                <br />
+                <Text type='secondary' style={{ fontSize: '12px' }}>
+                  Exports all dispatched items with columns: Alloy Name, Qty
+                  Dispatched, Qty Received (empty for manual fill), and
+                  signature section.
+                </Text>
+              </div>
+            </Space>
+          </Card>
+
           <div
             style={{
               display: 'flex',
@@ -881,25 +1021,25 @@ const DispatchToSales = () => {
               }
               onChange={e => handleSelectAllExport(e.target.checked)}
             >
-              Select All
+              Select All (for CSV)
             </Checkbox>
           </div>
 
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
             {loadingExport ? (
               <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text type="secondary">Loading...</Text>
+                <Text type='secondary'>Loading...</Text>
               </div>
             ) : todayDispatchedItems.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text type="secondary">No items dispatched today</Text>
+                <Text type='secondary'>No items dispatched today</Text>
               </div>
             ) : (
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Space direction='vertical' size={8} style={{ width: '100%' }}>
                 {todayDispatchedItems.map(item => (
                   <Card
                     key={item.id}
-                    size="small"
+                    size='small'
                     style={{
                       backgroundColor: selectedExportItems.includes(item.id)
                         ? '#e6f7ff'
@@ -920,16 +1060,16 @@ const DispatchToSales = () => {
                         }
                       />
                       <div style={{ flex: 1, marginLeft: 12 }}>
-                        <Space direction="vertical" size={2}>
+                        <Space direction='vertical' size={2}>
                           <Text strong>
-                            Plan #{item.prodPlanId} | Job Card #{item.jobCardId}
-                          </Text>
-                          <Text>
-                            {item.productName} - {item.modelName} {item.inches}"
+                            {item.productName} - {item.modelName} {item.inches}"{' '}
                             {item.finish}
                           </Text>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            Accepted: {item.acceptedQuantity} units |{' '}
+                          <Text type='secondary' style={{ fontSize: '12px' }}>
+                            Accepted: {item.acceptedQuantity} units | Plan #
+                            {item.prodPlanId} | Job Card #{item.jobCardId}
+                          </Text>
+                          <Text type='secondary' style={{ fontSize: '12px' }}>
                             {moment(item.dispatchedAt).format(
                               'DD-MM-YYYY HH:mm'
                             )}
@@ -943,7 +1083,7 @@ const DispatchToSales = () => {
             )}
           </div>
 
-          {selectedExportItems.length > 0 && (
+          {todayDispatchedItems.length > 0 && (
             <div
               style={{
                 backgroundColor: '#f0f2f5',
@@ -951,7 +1091,14 @@ const DispatchToSales = () => {
                 borderRadius: '4px'
               }}
             >
-              <Text strong>Selected: {selectedExportItems.length} items</Text>
+              <Text strong>
+                Selected: {selectedExportItems.length} items | Total:{' '}
+                {todayDispatchedItems.reduce(
+                  (sum, item) => sum + item.acceptedQuantity,
+                  0
+                )}{' '}
+                units
+              </Text>
             </div>
           )}
         </Space>
