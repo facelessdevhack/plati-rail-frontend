@@ -10,7 +10,8 @@ import {
 import {
   getDispatchEntriesAPI,
   processDispatchEntryAPI,
-  deleteDispatchEntryAPI
+  deleteDispatchEntryAPI,
+  getDailyEntry
 } from '../../redux/api/entriesAPI'
 import { useDispatch } from 'react-redux'
 import moment from 'moment'
@@ -132,6 +133,28 @@ const DispatchEntriesView = () => {
     }
 
     exportToExcel(todayEntries, `Today's Dispatch Entries`)
+  }
+
+  const handleExportDealerWiseExcel = async () => {
+    try {
+      message.loading({ content: 'Fetching today\'s processed entries...', key: 'dealerExport' })
+
+      // Fetch today's processed entries from entry_master
+      const response = await dispatch(getDailyEntry({})).unwrap()
+      const processedEntries = response.data || []
+
+      if (processedEntries.length === 0) {
+        message.warning({ content: 'No processed entries found for today', key: 'dealerExport' })
+        return
+      }
+
+      message.loading({ content: 'Generating dealer-wise Excel...', key: 'dealerExport' })
+      exportDealerWiseToExcel(processedEntries, `Today's Processed Entries`)
+      message.success({ content: 'Export completed!', key: 'dealerExport' })
+    } catch (error) {
+      console.error('Error fetching processed entries:', error)
+      message.error({ content: 'Failed to fetch processed entries', key: 'dealerExport' })
+    }
   }
 
   const exportToPDF = (entries, reportTitle) => {
@@ -430,6 +453,157 @@ const DispatchEntriesView = () => {
     }
   }
 
+  const exportDealerWiseToExcel = (entries, reportTitle) => {
+    try {
+      // Helper to get dealer name (handles both camelCase and snake_case)
+      const getDealerName = (entry) => entry.dealerName || entry.dealer_name || 'Unknown Dealer'
+      // Helper to get product name
+      const getProductName = (entry) => entry.productName || entry.product_name || 'N/A'
+      // Helper to get transport status (dispatch_entries uses isTransportPaid, entry_master uses isTransport)
+      const getTransportStatus = (entry) => {
+        if (entry.isTransportPaid !== undefined) return entry.isTransportPaid ? 'Paid' : 'To Pay'
+        if (entry.isTransport !== undefined) return entry.isTransport === 1 ? 'Paid' : 'To Pay'
+        return 'N/A'
+      }
+      // Helper to get date
+      const getFormattedDate = (entry) => {
+        if (entry.dateIST) return moment(entry.dateIST).format('DD MMM YYYY HH:mm')
+        if (entry.date) return moment(entry.date).format('DD MMM YYYY HH:mm')
+        if (entry.createdAt) return moment(entry.createdAt).format('DD MMM YYYY HH:mm')
+        if (entry.created_at) return moment(entry.created_at).format('DD MMM YYYY HH:mm')
+        return 'N/A'
+      }
+
+      // Group entries by dealer (same grouping as PDF export)
+      const groupedByDealer = entries.reduce((groups, entry) => {
+        const dealerName = getDealerName(entry)
+        if (!groups[dealerName]) {
+          groups[dealerName] = []
+        }
+        groups[dealerName].push(entry)
+        return groups
+      }, {})
+
+      // Sort dealer names alphabetically
+      const sortedDealerNames = Object.keys(groupedByDealer).sort()
+
+      // Create workbook
+      const wb = XLSX.utils.book_new()
+
+      // Create a summary sheet with all dealers
+      const summaryData = []
+      let serialNo = 1
+
+      sortedDealerNames.forEach(dealerName => {
+        const dealerEntries = groupedByDealer[dealerName]
+
+        // Add dealer header row
+        summaryData.push({
+          'S.No': '',
+          'Date': dealerName,
+          'Product': '',
+          'Quantity': '',
+          'Transport': ''
+        })
+
+        // Add entries for this dealer
+        dealerEntries.forEach(entry => {
+          summaryData.push({
+            'S.No': serialNo++,
+            'Date': getFormattedDate(entry),
+            'Product': getProductName(entry),
+            'Quantity': entry.quantity || 0,
+            'Transport': getTransportStatus(entry)
+          })
+        })
+
+        // Add dealer total row
+        const totalQuantity = dealerEntries.reduce((sum, e) => sum + (e.quantity || 0), 0)
+        summaryData.push({
+          'S.No': '',
+          'Date': '',
+          'Product': `Total for ${dealerName}`,
+          'Quantity': totalQuantity,
+          'Transport': ''
+        })
+
+        // Add empty row for spacing between dealers
+        summaryData.push({
+          'S.No': '',
+          'Date': '',
+          'Product': '',
+          'Quantity': '',
+          'Transport': ''
+        })
+      })
+
+      // Create summary worksheet
+      const summaryWs = XLSX.utils.json_to_sheet(summaryData)
+
+      // Set column widths for summary sheet
+      summaryWs['!cols'] = [
+        { wch: 8 },   // S.No
+        { wch: 25 },  // Date / Dealer Name
+        { wch: 40 },  // Product
+        { wch: 12 },  // Quantity
+        { wch: 12 }   // Transport
+      ]
+
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'All Dealers')
+
+      // Create individual sheets for each dealer
+      sortedDealerNames.forEach(dealerName => {
+        const dealerEntries = groupedByDealer[dealerName]
+
+        // Prepare data for dealer sheet (matching PDF format)
+        const dealerData = dealerEntries.map((entry, index) => {
+          return {
+            'S.No': index + 1,
+            'Date': getFormattedDate(entry),
+            'Product': getProductName(entry),
+            'Quantity': entry.quantity || 0,
+            'Transport': getTransportStatus(entry)
+          }
+        })
+
+        // Add total row
+        const totalQuantity = dealerEntries.reduce((sum, e) => sum + (e.quantity || 0), 0)
+        dealerData.push({
+          'S.No': '',
+          'Date': '',
+          'Product': 'TOTAL',
+          'Quantity': totalQuantity,
+          'Transport': ''
+        })
+
+        // Create worksheet for this dealer
+        const dealerWs = XLSX.utils.json_to_sheet(dealerData)
+
+        // Set column widths
+        dealerWs['!cols'] = [
+          { wch: 8 },   // S.No
+          { wch: 22 },  // Date
+          { wch: 40 },  // Product
+          { wch: 12 },  // Quantity
+          { wch: 12 }   // Transport
+        ]
+
+        // Truncate sheet name to max 31 characters (Excel limit)
+        const sheetName = dealerName.length > 31 ? dealerName.substring(0, 28) + '...' : dealerName
+        XLSX.utils.book_append_sheet(wb, dealerWs, sheetName)
+      })
+
+      // Generate filename with date
+      const fileName = `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY_HH-mm')}.xlsx`
+
+      // Download the file
+      XLSX.writeFile(wb, fileName)
+    } catch (error) {
+      console.error('Error exporting dealer-wise entries to Excel:', error)
+      message.error('Failed to export dealer-wise entries to Excel')
+    }
+  }
+
   const columns = [
     {
       title: 'Entry ID',
@@ -578,6 +752,15 @@ const DispatchEntriesView = () => {
             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
           >
             Export Today (Excel)
+          </Button>
+          <Button
+            type='default'
+            icon={<FileExcelOutlined />}
+            onClick={handleExportDealerWiseExcel}
+            disabled={dispatchEntries.length === 0}
+            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
+          >
+            Dealer Wise (Excel)
           </Button>
           <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh

@@ -43,7 +43,7 @@ const AddDailyPurchaseEntry = () => {
 
   React.useEffect(() => {
     dispatch(getDealersDropdown({}));
-    dispatch(getAllProducts({}));
+    dispatch(getAllProducts({ type: 1 })); // type 1 = alloys (default for purchases)
     dispatch(getInwardsDailyEntry({}))
     getAndSetYesterdayOrSaturdayDate()
   }, [dispatch]);
@@ -223,6 +223,7 @@ const AddDailyPurchaseEntry = () => {
                     setInwardsEntry({
                       productId: e,
                       productName: l ? l.label : null,
+                      productType: l ? l.type : 1, // Set product type from selection
                     }),
                   )
                 }

@@ -238,6 +238,7 @@ const AddDailyEntryPPF = () => {
                     setEntry({
                       productId: e,
                       productName: l ? l.label : null,
+                      productType: l ? l.type : 4, // Set product type from selection (4 = PPF)
                     }),
                   )
                   console.log(e, l.label, 'SELECTED PRODUCT')

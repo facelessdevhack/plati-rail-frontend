@@ -77,6 +77,8 @@ import RejectedStockManagement from '../../Modules/Production/RejectedStockManag
 import DiscardedStockManagement from '../../Modules/Production/DiscardedStockManagement';
 import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
+import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
+import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -535,6 +537,44 @@ const StackNavigation = () => {
         }
       />
 
+      {/* Inventory System Routes */}
+      <Route
+        path='/inventory-locations'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Inventory Locations'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<InventoryLocationsPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory-locations/:locationId'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Location Details'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<InventoryLocationDetailsPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/inventory-movements'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+            <AdminLayout
+              title='Inventory Movements'
+              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              content={<InventoryMovementsPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+
       {/* Production Routes */}
       <Route
         path='/production-dashboard'
@@ -839,6 +879,44 @@ const StackNavigation = () => {
               title='⚙️ Edit Price List'
               items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
               content={<EditPriceListPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Cost Management Routes */}
+      <Route
+        path='/cost-categories'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Cost Categories'
+              items={adminSiderRoutes}
+              content={<CostCategoriesPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/monthly-overheads'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Monthly Overheads'
+              items={adminSiderRoutes}
+              content={<MonthlyOverheadsPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/profit-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Profit Dashboard'
+              items={adminSiderRoutes}
+              content={<ProfitDashboardPage />}
             />
           </PrivateRoute>
         }

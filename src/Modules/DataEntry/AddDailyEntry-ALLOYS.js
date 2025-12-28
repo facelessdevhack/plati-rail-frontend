@@ -251,6 +251,7 @@ const AddDailyEntryALLOYS = () => {
                     setEntry({
                       productId: e,
                       productName: l ? l.label : null,
+                      productType: l ? l.type : entry.productType, // Set product type from selection
                     }),
                   )
                   console.log(e, l.label, 'SELECTED PRODUCT')

@@ -241,6 +241,7 @@ const AddDailyEntryTYRES = () => {
                     setEntry({
                       productId: e,
                       productName: l ? l.label : null,
+                      productType: l ? l.type : 2, // Set product type from selection (2 = tyres)
                     }),
                   )
                   console.log(e, l.label, 'SELECTED PRODUCT')

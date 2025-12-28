@@ -22,7 +22,10 @@ import {
   AuditOutlined,
   ExclamationCircleOutlined,
   DeleteOutlined,
-  TruckOutlined
+  TruckOutlined,
+  EnvironmentOutlined,
+  SwapOutlined,
+  InboxOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -163,10 +166,21 @@ export const adminSiderRoutes = [
     <ShopOutlined style={{ fontSize: '16px' }} />
   ),
 
-  getItemLayout(
-    <Link to='/inventory-management-v2'>Inventory Management</Link>,
-    'inventory-v2'
-  ),
+  // Inventory System
+  getItemLayout('Inventory System', 'inventory-system-menu', <InboxOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/inventory-locations'><EnvironmentOutlined style={{ marginRight: '8px' }} />Inventory Locations</Link>,
+      'inventory-locations'
+    ),
+    getItemLayout(
+      <Link to='/inventory-movements'><SwapOutlined style={{ marginRight: '8px' }} />Inventory Movements</Link>,
+      'inventory-movements'
+    ),
+    getItemLayout(
+      <Link to='/inventory-management-v2'><DatabaseOutlined style={{ marginRight: '8px' }} />Inventory Management</Link>,
+      'inventory-v2'
+    )
+  ]),
 
   // Stock Logging System
   getItemLayout('Stock Tracking', 'stock-logging-menu', <HistoryOutlined style={{ fontSize: '16px' }} />, [
@@ -177,6 +191,22 @@ export const adminSiderRoutes = [
     getItemLayout(
       <Link to='/stock-reconciliation'><AuditOutlined style={{ marginRight: '8px' }} />Stock Reconciliation</Link>,
       'stock-reconciliation'
+    )
+  ]),
+
+  // Cost Management System
+  getItemLayout('Cost Management', 'cost-management-menu', <DollarOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/cost-categories'><SettingOutlined style={{ marginRight: '8px' }} />Cost Categories</Link>,
+      'cost-categories'
+    ),
+    getItemLayout(
+      <Link to='/monthly-overheads'><BankOutlined style={{ marginRight: '8px' }} />Monthly Overheads</Link>,
+      'monthly-overheads'
+    ),
+    getItemLayout(
+      <Link to='/profit-dashboard'><LineChartOutlined style={{ marginRight: '8px' }} />Profit Dashboard</Link>,
+      'profit-dashboard'
     )
   ]),
 

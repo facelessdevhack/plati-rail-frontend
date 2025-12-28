@@ -25,7 +25,7 @@ const AddCapEntry = () => {
 
     React.useEffect(() => {
         dispatch(getAllDealers({}));
-        dispatch(getAllProducts({}));
+        dispatch(getAllProducts({ type: 3 })); // type 3 = caps
         dispatch(getDailyEntry({}))
         console.log(allDailyEntries)
     }, [dispatch]);
@@ -191,6 +191,7 @@ const AddCapEntry = () => {
                                         setEntry({
                                             productId: e,
                                             productName: l ? l.label : null,
+                                            productType: l ? l.type : 3, // Set product type from selection (3 = caps)
                                         }),
                                     )
                                 }

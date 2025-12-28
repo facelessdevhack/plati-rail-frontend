@@ -238,6 +238,7 @@ const AddDailyEntryCAP = () => {
                     setEntry({
                       productId: e,
                       productName: l ? l.label : null,
+                      productType: l ? l.type : 3, // Set product type from selection (3 = caps)
                     }),
                   )
                   console.log(e, l.label, 'SELECTED PRODUCT')
