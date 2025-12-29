@@ -90,7 +90,7 @@ const AddDailyPurchaseEntry = () => {
 
     if (isEditing) {
       try {
-        const editEntryResponse = await editInwardsEntryAPI({ ...inwardsEntry, id: editingEntryId })
+        const editEntryResponse = await editInwardsEntryAPI({ ...inwardsEntry, entryId: editingEntryId })
         if (editEntryResponse.status === 200) {
           console.log(editEntryResponse, 'editEntryResponse');
           dispatch(updateInwardsEntryById({ ...inwardsEntry, id: editingEntryId }));
