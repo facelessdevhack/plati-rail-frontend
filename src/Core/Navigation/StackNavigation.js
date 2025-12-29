@@ -77,6 +77,7 @@ import RejectedStockManagement from '../../Modules/Production/RejectedStockManag
 import DiscardedStockManagement from '../../Modules/Production/DiscardedStockManagement';
 import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
+import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
 import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
 
