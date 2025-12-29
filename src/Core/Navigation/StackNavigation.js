@@ -504,7 +504,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Inventory Management'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<InventoryManagement />}
             />
           </PrivateRoute>
@@ -518,7 +518,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Stock Logs'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<StockLogViewer />}
             />
           </PrivateRoute>
@@ -530,7 +530,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Stock Reconciliation'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<StockReconciliation />}
             />
           </PrivateRoute>
@@ -544,7 +544,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Inventory Locations'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<InventoryLocationsPage />}
             />
           </PrivateRoute>
@@ -556,7 +556,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Location Details'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<InventoryLocationDetailsPage />}
             />
           </PrivateRoute>
@@ -568,7 +568,7 @@ const StackNavigation = () => {
           <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
             <AdminLayout
               title='Inventory Movements'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
               content={<InventoryMovementsPage />}
             />
           </PrivateRoute>
@@ -851,6 +851,20 @@ const StackNavigation = () => {
               title='👥 User Production Step Assignments'
               items={adminSiderRoutes}
               content={<UserProductionSteps />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Equipment Management */}
+      <Route
+        path='/equipment-management'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='🔧 Equipment Management'
+              items={adminSiderRoutes}
+              content={<EquipmentManagement />}
             />
           </PrivateRoute>
         }

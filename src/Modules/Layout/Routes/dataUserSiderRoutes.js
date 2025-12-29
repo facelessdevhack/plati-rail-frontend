@@ -10,7 +10,10 @@ import {
   HistoryOutlined,
   AuditOutlined,
   ExclamationCircleOutlined,
-  TruckOutlined
+  TruckOutlined,
+  EnvironmentOutlined,
+  SwapOutlined,
+  InboxOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -112,29 +115,21 @@ export const dataUserSiderRoutes = [
     </Link>,
     'rejected-stock'
   ),
-  getItemLayout(
-    <span
-      style={{
-        fontWeight: 600,
-        color: '#6C757D',
-        fontSize: '12px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-      }}
-    >
-      Inventory
-    </span>,
-    'inventory-divider',
-    null,
-    []
-  ),
-  getItemLayout(
-    <Link to='/inventory-management-v2'>
-      <span style={{ fontWeight: 600 }}>Inventory Management</span>
-    </Link>,
-    'inventory-management',
-    <DatabaseOutlined style={{ fontSize: '16px' }} />
-  ),
+  // Inventory System
+  getItemLayout('Inventory System', 'inventory-system-menu', <InboxOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/inventory-locations'><EnvironmentOutlined style={{ marginRight: '8px' }} />Inventory Locations</Link>,
+      'inventory-locations'
+    ),
+    getItemLayout(
+      <Link to='/inventory-movements'><SwapOutlined style={{ marginRight: '8px' }} />Inventory Movements</Link>,
+      'inventory-movements'
+    ),
+    getItemLayout(
+      <Link to='/inventory-management-v2'><DatabaseOutlined style={{ marginRight: '8px' }} />Inventory Management</Link>,
+      'inventory-v2'
+    )
+  ]),
 
   // Stock Logging System
   getItemLayout(

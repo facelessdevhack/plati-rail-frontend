@@ -12,7 +12,12 @@ import {
   SyncOutlined,
   ClockCircleOutlined,
   DollarOutlined,
-  ControlOutlined
+  ControlOutlined,
+  EnvironmentOutlined,
+  SwapOutlined,
+  InboxOutlined,
+  HistoryOutlined,
+  AuditOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -103,19 +108,33 @@ export const entrySiderRoutes = [
     )
   ]),
 
-  // Inventory Management
-  getItemLayout(
-    <span style={{ fontWeight: 600, color: '#6C757D', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inventory</span>,
-    'inventory-divider',
-    null,
-    []
-  ),
-  
-  getItemLayout(
-    <Link to='/entry-inventory-system'>Inventory System</Link>,
-    '8',
-    <DatabaseOutlined style={{ fontSize: '16px' }} />
-  ),
+  // Inventory System
+  getItemLayout('Inventory System', 'inventory-system-menu', <InboxOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/inventory-locations'><EnvironmentOutlined style={{ marginRight: '8px' }} />Inventory Locations</Link>,
+      'inventory-locations'
+    ),
+    getItemLayout(
+      <Link to='/inventory-movements'><SwapOutlined style={{ marginRight: '8px' }} />Inventory Movements</Link>,
+      'inventory-movements'
+    ),
+    getItemLayout(
+      <Link to='/inventory-management-v2'><DatabaseOutlined style={{ marginRight: '8px' }} />Inventory Management</Link>,
+      'inventory-v2'
+    )
+  ]),
+
+  // Stock Tracking
+  getItemLayout('Stock Tracking', 'stock-logging-menu', <HistoryOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/stock-logs'><HistoryOutlined style={{ marginRight: '8px' }} />Stock Logs</Link>,
+      'stock-logs'
+    ),
+    getItemLayout(
+      <Link to='/stock-reconciliation'><AuditOutlined style={{ marginRight: '8px' }} />Stock Reconciliation</Link>,
+      'stock-reconciliation'
+    )
+  ]),
   
   // Business Operations
   getItemLayout(
