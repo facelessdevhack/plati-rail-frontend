@@ -129,7 +129,7 @@ const AddDailyPurchaseEntry = () => {
 
   const handleEdit = (entry) => {
     dispatch(setInwardsEntries(entry));
-    dispatch(setEditing({ isEditing: true, editingEntryId: inwardsEntry.id }));
+    dispatch(setEditing({ isEditing: true, editingEntryId: entry.entryId || entry.id }));
   };
 
   const handleCancelEdit = () => {
@@ -392,10 +392,17 @@ const AddDailyPurchaseEntry = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-x-4">
-                      <Button onClick={() => handleEdit(inwardsEntry)}>Edit</Button>
-                      {/* <Button onClick={() => handleDelete(inwardsEntry.entryId)}>
+                      <Button onClick={() => handleEdit(entry)}>Edit</Button>
+                      <Button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this entry? This will reverse inventory and dealer balance.')) {
+                            handleDelete(entry.inwardsEntryId);
+                          }
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                      >
                         Delete
-                      </Button> */}
+                      </Button>
                     </div>
                   </div>
                 ))}
