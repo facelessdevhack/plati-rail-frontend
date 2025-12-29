@@ -78,6 +78,7 @@ import DiscardedStockManagement from '../../Modules/Production/DiscardedStockMan
 import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
+import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
 import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
 
@@ -866,6 +867,20 @@ const StackNavigation = () => {
               title='🔧 Equipment Management'
               items={adminSiderRoutes}
               content={<EquipmentManagement />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Step-Position Mapping */}
+      <Route
+        path='/step-position-mapping'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='📍 Step-Position Mapping'
+              items={adminSiderRoutes}
+              content={<StepPositionMapping />}
             />
           </PrivateRoute>
         }

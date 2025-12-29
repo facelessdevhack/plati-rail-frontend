@@ -124,6 +124,10 @@ export const adminSiderRoutes = [
       'equipment-management'
     ),
     getItemLayout(
+      <Link to='/step-position-mapping'><EnvironmentOutlined style={{ marginRight: '8px' }} />Step-Position Mapping</Link>,
+      'step-position-mapping'
+    ),
+    getItemLayout(
       <Link to='/production-plans'>Production Plans</Link>,
       '6'
     ),
