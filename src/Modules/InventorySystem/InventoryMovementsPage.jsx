@@ -57,7 +57,8 @@ const InventoryMovementsPage = () => {
     locationId: null,
     productType: null,
     dateRange: null,
-    search: ''
+    search: '',
+    referenceType: null
   });
 
   const [pagination, setPagination] = useState({
@@ -92,6 +93,12 @@ const InventoryMovementsPage = () => {
       if (filters.dateRange && filters.dateRange.length === 2) {
         params.append('startDate', filters.dateRange[0].format('YYYY-MM-DD'));
         params.append('endDate', filters.dateRange[1].format('YYYY-MM-DD'));
+      }
+      if (filters.search && filters.search.trim()) {
+        params.append('search', filters.search.trim());
+      }
+      if (filters.referenceType) {
+        params.append('referenceType', filters.referenceType);
       }
 
       params.append('page', pagination.current);
@@ -152,12 +159,18 @@ const InventoryMovementsPage = () => {
       locationId: null,
       productType: null,
       dateRange: null,
-      search: ''
+      search: '',
+      referenceType: null
     });
     setPagination(prev => ({
       ...prev,
       current: 1
     }));
+  };
+
+  // Debounced search handler
+  const handleSearch = (value) => {
+    handleFilterChange('search', value);
   };
 
   const getMovementTypeConfig = (type) => {
@@ -267,17 +280,31 @@ const InventoryMovementsPage = () => {
     {
       title: 'Product',
       key: 'product',
-      render: (record) => (
-        <div>
-          <div style={{ fontWeight: 'bold' }}>
-            <Tag color={record.productType === 'alloy' ? 'blue' : 'green'}>
-              {record.productType?.toUpperCase()}
-            </Tag>
-            <span style={{ marginLeft: '8px' }}>#{record.productId}</span>
+      render: (record) => {
+        const productName = record.productType === 'alloy'
+          ? record.alloyName
+          : (record.tyreBrand ? `${record.tyreBrand} ${record.tyreSize || ''}`.trim() : null);
+        return (
+          <div>
+            <div style={{ fontWeight: 'bold' }}>
+              <Tag color={record.productType === 'alloy' ? 'blue' : 'green'}>
+                {record.productType?.toUpperCase()}
+              </Tag>
+              <span style={{ marginLeft: '8px' }}>#{record.productId}</span>
+            </div>
+            {productName && (
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px', maxWidth: '200px' }}>
+                <Tooltip title={productName}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                    {productName}
+                  </span>
+                </Tooltip>
+              </div>
+            )}
           </div>
-        </div>
-      ),
-      width: 160
+        );
+      },
+      width: 220
     },
     {
       title: 'Quantity Change',
@@ -438,14 +465,36 @@ const InventoryMovementsPage = () => {
         </Col>
       </Row>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card style={{ marginBottom: '24px' }}>
+        {/* Search Row */}
+        <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Col span={12}>
+            <Search
+              placeholder="Search by product name, product ID, reference ID, location, or notes..."
+              allowClear
+              enterButton={<SearchOutlined />}
+              size="large"
+              value={filters.search}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              onSearch={handleSearch}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Text type="secondary" style={{ marginRight: '8px' }}>
+              Press Enter to search or click the search button
+            </Text>
+          </Col>
+        </Row>
+
+        {/* Filters Row */}
         <Row gutter={16} align="middle">
           <Col>
             <FilterOutlined style={{ marginRight: '8px' }} />
             <Text strong>Filters:</Text>
           </Col>
-          <Col span={4}>
+          <Col span={3}>
             <Select
               placeholder="Movement Type"
               value={filters.movementType}
@@ -459,7 +508,23 @@ const InventoryMovementsPage = () => {
               <Option value="adjustment">Adjustment</Option>
             </Select>
           </Col>
-          <Col span={4}>
+          <Col span={3}>
+            <Select
+              placeholder="Reference Type"
+              value={filters.referenceType}
+              onChange={(value) => handleFilterChange('referenceType', value)}
+              allowClear
+              style={{ width: '100%' }}
+            >
+              <Option value="purchase">Purchase</Option>
+              <Option value="production_request">Production</Option>
+              <Option value="dispatch">Dispatch</Option>
+              <Option value="transfer">Transfer</Option>
+              <Option value="adjustment">Adjustment</Option>
+              <Option value="return">Return</Option>
+            </Select>
+          </Col>
+          <Col span={3}>
             <Select
               placeholder="Location"
               value={filters.locationId}
@@ -472,7 +537,7 @@ const InventoryMovementsPage = () => {
               ))}
             </Select>
           </Col>
-          <Col span={4}>
+          <Col span={3}>
             <Select
               placeholder="Product Type"
               value={filters.productType}
@@ -497,7 +562,7 @@ const InventoryMovementsPage = () => {
               icon={<ClearOutlined />}
               onClick={clearFilters}
             >
-              Clear Filters
+              Clear
             </Button>
           </Col>
         </Row>
@@ -517,7 +582,7 @@ const InventoryMovementsPage = () => {
             pageSizeOptions: ['10', '20', '50', '100']
           }}
           onChange={handleTableChange}
-          scroll={{ x: 1400 }}
+          scroll={{ x: 1500 }}
           locale={{
             emptyText: <Empty description="No movements found" />
           }}
