@@ -72,10 +72,13 @@ const InventoryRequests = () => {
 
     // Search filter
     if (searchText) {
+      const search = searchText.toLowerCase()
       filtered = filtered.filter(
         req =>
-          req.jobCardId.toLowerCase().includes(searchText.toLowerCase()) ||
-          req.alloyName.toLowerCase().includes(searchText.toLowerCase())
+          String(req.jobCardId || '').includes(searchText) ||
+          String(req.id || '').includes(searchText) ||
+          (req.alloyName || '').toLowerCase().includes(search) ||
+          (req.productName || '').toLowerCase().includes(search)
       )
     }
 

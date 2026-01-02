@@ -16,7 +16,12 @@ import {
   Badge,
   Tooltip,
   Empty,
-  Spin
+  Spin,
+  Modal,
+  Form,
+  InputNumber,
+  Radio,
+  AutoComplete
 } from 'antd';
 import {
   HistoryOutlined,
@@ -30,7 +35,10 @@ import {
   CalendarOutlined,
   UserOutlined,
   EnvironmentOutlined,
-  ClearOutlined
+  ClearOutlined,
+  PlusOutlined,
+  MinusOutlined,
+  EditOutlined
 } from '@ant-design/icons';
 import { client } from '../../Utils/axiosClient';
 import moment from 'moment';
@@ -66,6 +74,13 @@ const InventoryMovementsPage = () => {
     pageSize: 20,
     total: 0
   });
+
+  // Adjustment modal states
+  const [adjustmentModalVisible, setAdjustmentModalVisible] = useState(false);
+  const [adjustmentLoading, setAdjustmentLoading] = useState(false);
+  const [productSearchResults, setProductSearchResults] = useState([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [adjustmentForm] = Form.useForm();
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -171,6 +186,94 @@ const InventoryMovementsPage = () => {
   // Debounced search handler
   const handleSearch = (value) => {
     handleFilterChange('search', value);
+  };
+
+  // Product search for adjustment modal
+  const handleProductSearch = async (searchText, productType) => {
+    if (!searchText || searchText.length < 2) {
+      setProductSearchResults([]);
+      return;
+    }
+
+    setProductSearchLoading(true);
+    try {
+      const response = await client.get(`/inventory/products/${productType}`, {
+        params: { search: searchText, limit: 20 }
+      });
+      const products = response.data.data || [];
+      setProductSearchResults(products.map(p => ({
+        value: p.id,
+        label: `#${p.id} - ${p.name}${p.size ? ` (${p.size})` : ''}`,
+        product: p
+      })));
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setProductSearchResults([]);
+    } finally {
+      setProductSearchLoading(false);
+    }
+  };
+
+  // Handle adjustment form submission
+  const handleAdjustmentSubmit = async (values) => {
+    setAdjustmentLoading(true);
+    try {
+      const response = await client.post('/inventory/internal/adjustment', {
+        productType: values.productType,
+        productId: values.productId,
+        adjustmentType: values.adjustmentType,
+        quantity: values.quantity,
+        reason: values.reason,
+        notes: values.notes
+      });
+
+      if (response.data.success) {
+        message.success(response.data.message);
+        setAdjustmentModalVisible(false);
+        adjustmentForm.resetFields();
+        fetchMovements(); // Refresh movements list
+      } else {
+        message.error(response.data.message || 'Failed to create adjustment');
+      }
+    } catch (error) {
+      console.error('Error creating adjustment:', error);
+      message.error(error.response?.data?.message || 'Failed to create adjustment');
+    } finally {
+      setAdjustmentLoading(false);
+    }
+  };
+
+  // Open adjustment modal - can be called with a record to pre-fill product
+  const openAdjustmentModal = (record = null) => {
+    adjustmentForm.resetFields();
+
+    if (record && record.productId && record.productType) {
+      // Pre-fill with product from the row
+      const productName = record.productType === 'alloy'
+        ? record.alloyName
+        : (record.tyreBrand ? `${record.tyreBrand} ${record.tyreSize || ''}`.trim() : `Product #${record.productId}`);
+
+      adjustmentForm.setFieldsValue({
+        productType: record.productType,
+        productId: record.productId,
+        adjustmentType: 'increase'
+      });
+
+      // Set the search results to show the selected product
+      setProductSearchResults([{
+        value: record.productId,
+        label: `#${record.productId} - ${productName}`,
+        product: { id: record.productId, name: productName }
+      }]);
+    } else {
+      adjustmentForm.setFieldsValue({
+        productType: 'alloy',
+        adjustmentType: 'increase'
+      });
+      setProductSearchResults([]);
+    }
+
+    setAdjustmentModalVisible(true);
   };
 
   const getMovementTypeConfig = (type) => {
@@ -385,6 +488,22 @@ const InventoryMovementsPage = () => {
         </div>
       ),
       width: 120
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      fixed: 'right',
+      width: 100,
+      render: (record) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => openAdjustmentModal(record)}
+        >
+          Adjust
+        </Button>
+      )
     }
   ];
 
@@ -410,6 +529,13 @@ const InventoryMovementsPage = () => {
           </Col>
           <Col>
             <Space>
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => openAdjustmentModal()}
+              >
+                New Adjustment
+              </Button>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={fetchMovements}
@@ -518,6 +644,7 @@ const InventoryMovementsPage = () => {
             >
               <Option value="purchase">Purchase</Option>
               <Option value="production_request">Production</Option>
+              <Option value="inventory_request">Inventory Request</Option>
               <Option value="dispatch">Dispatch</Option>
               <Option value="transfer">Transfer</Option>
               <Option value="adjustment">Adjustment</Option>
@@ -588,6 +715,136 @@ const InventoryMovementsPage = () => {
           }}
         />
       </Card>
+
+      {/* Inventory Adjustment Modal */}
+      <Modal
+        title={
+          <Space>
+            <EditOutlined />
+            <span>Manual Inventory Adjustment</span>
+          </Space>
+        }
+        open={adjustmentModalVisible}
+        onCancel={() => setAdjustmentModalVisible(false)}
+        footer={null}
+        width={600}
+        destroyOnClose
+      >
+        <Form
+          form={adjustmentForm}
+          layout="vertical"
+          onFinish={handleAdjustmentSubmit}
+          initialValues={{
+            productType: 'alloy',
+            adjustmentType: 'increase'
+          }}
+        >
+          <Form.Item
+            name="productType"
+            label="Product Type"
+            rules={[{ required: true, message: 'Please select product type' }]}
+          >
+            <Radio.Group
+              onChange={() => {
+                adjustmentForm.setFieldValue('productId', undefined);
+                setProductSearchResults([]);
+              }}
+            >
+              <Radio.Button value="alloy">Alloy</Radio.Button>
+              <Radio.Button value="tyre">Tyre</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => prevValues.productType !== currentValues.productType}
+          >
+            {({ getFieldValue }) => (
+              <Form.Item
+                name="productId"
+                label="Product"
+                rules={[{ required: true, message: 'Please select a product' }]}
+              >
+                <AutoComplete
+                  options={productSearchResults}
+                  onSearch={(text) => handleProductSearch(text, getFieldValue('productType'))}
+                  placeholder={`Search ${getFieldValue('productType') === 'alloy' ? 'alloy' : 'tyre'} by name or ID...`}
+                  notFoundContent={productSearchLoading ? <Spin size="small" /> : 'Type to search...'}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            )}
+          </Form.Item>
+
+          <Form.Item
+            name="adjustmentType"
+            label="Adjustment Type"
+            rules={[{ required: true, message: 'Please select adjustment type' }]}
+          >
+            <Radio.Group>
+              <Radio.Button value="increase">
+                <PlusOutlined /> Increase Stock
+              </Radio.Button>
+              <Radio.Button value="decrease">
+                <MinusOutlined /> Decrease Stock
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item
+            name="quantity"
+            label="Quantity"
+            rules={[
+              { required: true, message: 'Please enter quantity' },
+              { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+            ]}
+          >
+            <InputNumber
+              min={1}
+              style={{ width: '100%' }}
+              placeholder="Enter quantity to adjust"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="reason"
+            label="Reason for Adjustment"
+            rules={[{ required: true, message: 'Please provide a reason' }]}
+          >
+            <Select placeholder="Select reason for adjustment">
+              <Option value="Stock Count Correction">Stock Count Correction</Option>
+              <Option value="Damaged Goods">Damaged Goods</Option>
+              <Option value="Lost/Missing">Lost/Missing</Option>
+              <Option value="Found Stock">Found Stock</Option>
+              <Option value="System Error Correction">System Error Correction</Option>
+              <Option value="Return to Supplier">Return to Supplier</Option>
+              <Option value="Quality Issue">Quality Issue</Option>
+              <Option value="Other">Other</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="notes"
+            label="Additional Notes"
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="Enter any additional details about this adjustment..."
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setAdjustmentModalVisible(false)}>
+                Cancel
+              </Button>
+              <Button type="primary" htmlType="submit" loading={adjustmentLoading}>
+                Submit Adjustment
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

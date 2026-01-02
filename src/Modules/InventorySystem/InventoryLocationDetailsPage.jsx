@@ -18,7 +18,11 @@ import {
   Typography,
   Descriptions,
   Tabs,
-  Progress
+  Progress,
+  Modal,
+  Form,
+  InputNumber,
+  Radio
 } from 'antd'
 import {
   EnvironmentOutlined,
@@ -66,6 +70,12 @@ const InventoryLocationDetailsPage = () => {
   const [transferModalVisible, setTransferModalVisible] = useState(false)
   const [storageAreasModalVisible, setStorageAreasModalVisible] =
     useState(false)
+
+  // Adjustment Modal
+  const [adjustmentModalVisible, setAdjustmentModalVisible] = useState(false)
+  const [adjustmentLoading, setAdjustmentLoading] = useState(false)
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState(null)
+  const [adjustmentForm] = Form.useForm()
 
   const fetchLocationDetails = useCallback(async () => {
     setLoading(true)
@@ -157,6 +167,52 @@ const InventoryLocationDetailsPage = () => {
       release: { color: 'lime', label: 'Release' }
     }
     return config[type] || { color: 'default', label: type }
+  }
+
+  // Adjustment Modal Handlers
+  const openAdjustmentModal = record => {
+    setSelectedInventoryItem(record)
+    adjustmentForm.setFieldsValue({
+      productType: record.productType,
+      productId: record.productId,
+      adjustmentType: 'increase',
+      quantity: 1,
+      reason: '',
+      notes: ''
+    })
+    setAdjustmentModalVisible(true)
+  }
+
+  const handleAdjustmentSubmit = async () => {
+    try {
+      const values = await adjustmentForm.validateFields()
+      setAdjustmentLoading(true)
+
+      await client.post('/inventory/internal/adjustment', {
+        productType: values.productType,
+        productId: values.productId,
+        adjustmentType: values.adjustmentType,
+        quantity: values.quantity,
+        reason: values.reason,
+        notes: values.notes
+      })
+
+      message.success('Inventory adjustment completed successfully')
+      setAdjustmentModalVisible(false)
+      adjustmentForm.resetFields()
+      setSelectedInventoryItem(null)
+      fetchInventory()
+      if (activeTab === 'movements') {
+        fetchMovements()
+      }
+    } catch (error) {
+      console.error('Adjustment error:', error)
+      message.error(
+        error.response?.data?.message || 'Failed to create adjustment'
+      )
+    } finally {
+      setAdjustmentLoading(false)
+    }
   }
 
   // Filter inventory based on search and product type
@@ -307,6 +363,22 @@ const InventoryLocationDetailsPage = () => {
       render: val => (val ? `₹${parseFloat(val).toLocaleString()}` : '-'),
       width: 140,
       align: 'right'
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      render: record => (
+        <Button
+          type='link'
+          size='small'
+          onClick={() => openAdjustmentModal(record)}
+        >
+          Adjust
+        </Button>
+      ),
+      width: 80,
+      align: 'center',
+      fixed: 'right'
     }
   ]
 
@@ -771,6 +843,134 @@ const InventoryLocationDetailsPage = () => {
         locationName={location?.name}
         storageAreas={location?.areas || []}
       />
+
+      {/* Inventory Adjustment Modal */}
+      <Modal
+        title='Manual Inventory Adjustment'
+        open={adjustmentModalVisible}
+        onCancel={() => {
+          setAdjustmentModalVisible(false)
+          adjustmentForm.resetFields()
+          setSelectedInventoryItem(null)
+        }}
+        footer={null}
+        width={500}
+        destroyOnClose
+      >
+        <Form
+          form={adjustmentForm}
+          layout='vertical'
+          onFinish={handleAdjustmentSubmit}
+        >
+          <Form.Item label='Product'>
+            <Input
+              value={
+                selectedInventoryItem
+                  ? `${selectedInventoryItem.productType?.toUpperCase()} #${selectedInventoryItem.productId} - ${
+                      (selectedInventoryItem.productDetails ||
+                        selectedInventoryItem.product_details)?.productName ||
+                      (selectedInventoryItem.productDetails ||
+                        selectedInventoryItem.product_details)?.product_name ||
+                      (selectedInventoryItem.productDetails ||
+                        selectedInventoryItem.product_details)?.brand ||
+                      'Unknown'
+                    }`
+                  : ''
+              }
+              disabled
+            />
+          </Form.Item>
+
+          <Form.Item name='productType' hidden>
+            <Input />
+          </Form.Item>
+
+          <Form.Item name='productId' hidden>
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name='adjustmentType'
+            label='Adjustment Type'
+            rules={[
+              { required: true, message: 'Please select adjustment type' }
+            ]}
+          >
+            <Radio.Group>
+              <Radio.Button value='increase'>
+                <span style={{ color: '#52c41a' }}>+ Increase Stock</span>
+              </Radio.Button>
+              <Radio.Button value='decrease'>
+                <span style={{ color: '#ff4d4f' }}>- Decrease Stock</span>
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item
+            name='quantity'
+            label='Quantity'
+            rules={[
+              { required: true, message: 'Please enter quantity' },
+              { type: 'number', min: 1, message: 'Quantity must be at least 1' }
+            ]}
+          >
+            <InputNumber
+              min={1}
+              style={{ width: '100%' }}
+              placeholder='Enter quantity to adjust'
+            />
+          </Form.Item>
+
+          <Form.Item
+            name='reason'
+            label='Reason for Adjustment'
+            rules={[{ required: true, message: 'Please provide a reason' }]}
+          >
+            <Select placeholder='Select reason for adjustment'>
+              <Option value='Stock Count Correction'>
+                Stock Count Correction
+              </Option>
+              <Option value='Damaged Goods'>Damaged Goods</Option>
+              <Option value='Lost/Missing'>Lost/Missing</Option>
+              <Option value='Found Stock'>Found Stock</Option>
+              <Option value='System Error Correction'>
+                System Error Correction
+              </Option>
+              <Option value='Return to Supplier'>Return to Supplier</Option>
+              <Option value='Quality Issue'>Quality Issue</Option>
+              <Option value='Other'>Other</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name='notes' label='Additional Notes'>
+            <Input.TextArea
+              rows={3}
+              placeholder='Enter any additional details about this adjustment...'
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setAdjustmentModalVisible(false)
+                  adjustmentForm.resetFields()
+                  setSelectedInventoryItem(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type='primary'
+                htmlType='submit'
+                loading={adjustmentLoading}
+              >
+                Submit Adjustment
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }
