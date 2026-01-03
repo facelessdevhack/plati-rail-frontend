@@ -81,6 +81,7 @@ import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
 import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
+import { StockUploadPage } from '../../Modules/StockUpload';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -947,6 +948,20 @@ const StackNavigation = () => {
               title='Profit Dashboard'
               items={adminSiderRoutes}
               content={<ProfitDashboardPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Stock Upload Route */}
+      <Route
+        path='/stock-upload'
+        element={
+          <PrivateRoute allowedRoles={[4, 5]}>
+            <AdminLayout
+              title='Stock Excel Upload'
+              items={adminSiderRoutes}
+              content={<StockUploadPage />}
             />
           </PrivateRoute>
         }

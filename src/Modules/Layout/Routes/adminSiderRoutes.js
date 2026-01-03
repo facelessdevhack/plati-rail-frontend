@@ -25,7 +25,8 @@ import {
   TruckOutlined,
   EnvironmentOutlined,
   SwapOutlined,
-  InboxOutlined
+  InboxOutlined,
+  UploadOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -192,6 +193,10 @@ export const adminSiderRoutes = [
 
   // Stock Logging System
   getItemLayout('Stock Tracking', 'stock-logging-menu', <HistoryOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/stock-upload'><UploadOutlined style={{ marginRight: '8px' }} />Stock Excel Upload</Link>,
+      'stock-upload'
+    ),
     getItemLayout(
       <Link to='/stock-logs'><HistoryOutlined style={{ marginRight: '8px' }} />Stock Logs</Link>,
       'stock-logs'
