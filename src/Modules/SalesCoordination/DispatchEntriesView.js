@@ -5,10 +5,13 @@ import {
   ClockCircleOutlined,
   DeleteOutlined,
   ExportOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  FilePdfOutlined,
+  SendOutlined
 } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
+  sendForDispatchAPI,
   processDispatchEntryAPI,
   deleteDispatchEntryAPI,
   getDailyEntry
@@ -21,6 +24,7 @@ const DispatchEntriesView = () => {
   const dispatch = useDispatch()
   const [dispatchEntries, setDispatchEntries] = useState([])
   const [loading, setLoading] = useState(false)
+  const [sendingId, setSendingId] = useState(null)
   const [processingId, setProcessingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -38,6 +42,26 @@ const DispatchEntriesView = () => {
       message.error('Failed to load dispatch entries')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSendForDispatch = async entryId => {
+    setSendingId(entryId)
+    try {
+      const response = await sendForDispatchAPI({
+        dispatchEntryId: entryId
+      })
+      if (response.status === 200) {
+        message.success('Entry sent for dispatch!')
+        fetchDispatchEntries() // Refresh the list
+      } else {
+        message.error(response.data?.message || 'Failed to send for dispatch')
+      }
+    } catch (error) {
+      console.error('Error sending for dispatch:', error)
+      message.error('Error sending for dispatch')
+    } finally {
+      setSendingId(null)
     }
   }
 
@@ -93,15 +117,17 @@ const DispatchEntriesView = () => {
   const handleExportTodayEntries = () => {
     const today = moment().format('YYYY-MM-DD')
 
-    // Filter entries for today (using IST)
+    // Filter entries for today (using IST) and only awaiting_approval status
     const todayEntries = dispatchEntries.filter(entry => {
       // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      return entryDate.format('YYYY-MM-DD') === today
+      const isToday = entryDate.format('YYYY-MM-DD') === today
+      const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
+      return isToday && isAwaitingApproval
     })
 
     if (todayEntries.length === 0) {
-      message.warning('No dispatch entries found for today')
+      message.warning('No awaiting approval entries found for today')
       return
     }
 
@@ -120,15 +146,17 @@ const DispatchEntriesView = () => {
   const handleExportExcelTodayEntries = () => {
     const today = moment().format('YYYY-MM-DD')
 
-    // Filter entries for today (using IST)
+    // Filter entries for today (using IST) and only awaiting_approval status
     const todayEntries = dispatchEntries.filter(entry => {
       // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      return entryDate.format('YYYY-MM-DD') === today
+      const isToday = entryDate.format('YYYY-MM-DD') === today
+      const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
+      return isToday && isAwaitingApproval
     })
 
     if (todayEntries.length === 0) {
-      message.warning('No dispatch entries found for today')
+      message.warning('No awaiting approval entries found for today')
       return
     }
 
@@ -154,6 +182,58 @@ const DispatchEntriesView = () => {
     } catch (error) {
       console.error('Error fetching processed entries:', error)
       message.error({ content: 'Failed to fetch processed entries', key: 'dealerExport' })
+    }
+  }
+
+  const handleExportDealerWisePDFs = async () => {
+    try {
+      message.loading({ content: 'Generating dealer-wise PDFs...', key: 'dealerPdfExport' })
+
+      // Download ZIP file from backend API
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/export/dispatch-approved-entries`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+
+      if (!response.ok) {
+        // Try to parse error message from JSON response
+        let errorMessage = 'Failed to export PDFs'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch (parseError) {
+          // Response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Check content type - be lenient as proxies may modify headers
+      const contentType = response.headers.get('content-type') || ''
+      console.log('Response Content-Type:', contentType)
+
+      // Create blob and download
+      const blob = await response.blob()
+
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty')
+      }
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dispatch-approved-${moment().format('YYYY-MM-DD')}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      message.success({ content: 'PDFs downloaded successfully!', key: 'dealerPdfExport' })
+    } catch (error) {
+      console.error('Error exporting dealer-wise PDFs:', error)
+      message.error({ content: error.message || 'Failed to export dealer-wise PDFs', key: 'dealerPdfExport' })
     }
   }
 
@@ -667,28 +747,49 @@ const DispatchEntriesView = () => {
       dataIndex: 'dispatchStatus',
       key: 'dispatchStatus',
       width: 150,
-      render: status => (
-        <Tag icon={<ClockCircleOutlined />} color='processing'>
-          {status === 'awaiting_approval' ? 'Awaiting Approval' : status}
-        </Tag>
-      )
+      render: status => {
+        if (status === 'sent_for_dispatch') {
+          return (
+            <Tag icon={<SendOutlined />} color='blue'>
+              Sent for Dispatch
+            </Tag>
+          )
+        }
+        return (
+          <Tag icon={<ClockCircleOutlined />} color='processing'>
+            Awaiting Approval
+          </Tag>
+        )
+      }
     },
     {
       title: 'Action',
       key: 'action',
-      width: 200,
+      width: 250,
       fixed: 'right',
       render: (_, record) => (
         <Space>
-          <Button
-            type='primary'
-            size='small'
-            icon={<CheckCircleOutlined />}
-            loading={processingId === record.id}
-            onClick={() => handleProcessEntry(record.id)}
-          >
-            Dispatch
-          </Button>
+          {record.dispatchStatus === 'awaiting_approval' ? (
+            <Button
+              type='default'
+              size='small'
+              icon={<SendOutlined />}
+              loading={sendingId === record.id}
+              onClick={() => handleSendForDispatch(record.id)}
+            >
+              Send for Dispatch
+            </Button>
+          ) : (
+            <Button
+              type='primary'
+              size='small'
+              icon={<CheckCircleOutlined />}
+              loading={processingId === record.id}
+              onClick={() => handleProcessEntry(record.id)}
+            >
+              Item Dispatched
+            </Button>
+          )}
           <Popconfirm
             title='Delete this entry?'
             description='Stock will be restored. This action cannot be undone.'
@@ -761,6 +862,14 @@ const DispatchEntriesView = () => {
             style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
           >
             Dealer Wise (Excel)
+          </Button>
+          <Button
+            type='default'
+            icon={<FilePdfOutlined />}
+            onClick={handleExportDealerWisePDFs}
+            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1', color: 'white' }}
+          >
+            Dealer Wise (PDFs)
           </Button>
           <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh

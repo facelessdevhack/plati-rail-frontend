@@ -384,9 +384,10 @@ export const checkChargesEntry = createAsyncThunk(
 
 export const getDailyEntry = createAsyncThunk(
   'entries/getDailyEntries',
-  async ({ _ }, { rejectWithValue }) => {
+  async ({ date } = {}, { rejectWithValue }) => {
     try {
-      const response = await client.get(`/entries/get-daily-entries`)
+      const params = date ? { date } : {}
+      const response = await client.get(`/entries/get-daily-entries`, { params })
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e))
@@ -702,6 +703,22 @@ export const processDispatchEntryAPI = async ({ dispatchEntryId }) => {
     return response
   } catch (e) {
     console.log('PROCESS DISPATCH ENTRY ERROR: ' + e)
+    return e
+  }
+}
+
+/**
+ * Send dispatch entry for dispatch - intermediate step before final dispatch
+ */
+export const sendForDispatchAPI = async ({ dispatchEntryId }) => {
+  try {
+    const response = await client.post('entries/send-for-dispatch', {
+      dispatchEntryId
+    })
+    console.log(response, 'SEND FOR DISPATCH RESPONSE')
+    return response
+  } catch (e) {
+    console.log('SEND FOR DISPATCH ERROR: ' + e)
     return e
   }
 }
