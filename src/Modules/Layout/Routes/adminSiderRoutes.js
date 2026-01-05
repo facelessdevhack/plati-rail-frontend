@@ -166,14 +166,17 @@ export const adminSiderRoutes = [
     )
   ]),
 
-  // Purchase System - Separate Section
-  getItemLayout(
-    <Link to='/purchase-orders'>
-      <span style={{ fontWeight: 600 }}>Purchase Orders</span>
-    </Link>,
-    'purchase-orders',
-    <ShopOutlined style={{ fontSize: '16px' }} />
-  ),
+  // Manufacturing System
+  getItemLayout('Manufacturing System', 'manufacturing-system-menu', <ToolOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/purchase-orders'><ShopOutlined style={{ marginRight: '8px' }} />Purchase Orders</Link>,
+      'purchase-orders'
+    ),
+    getItemLayout(
+      <Link to='/mold-management'><ToolOutlined style={{ marginRight: '8px' }} />Mold Management</Link>,
+      'mold-management'
+    )
+  ]),
 
   // Inventory System
   getItemLayout('Inventory System', 'inventory-system-menu', <InboxOutlined style={{ fontSize: '16px' }} />, [
@@ -193,10 +196,6 @@ export const adminSiderRoutes = [
 
   // Stock Logging System
   getItemLayout('Stock Tracking', 'stock-logging-menu', <HistoryOutlined style={{ fontSize: '16px' }} />, [
-    getItemLayout(
-      <Link to='/stock-upload'><UploadOutlined style={{ marginRight: '8px' }} />Stock Excel Upload</Link>,
-      'stock-upload'
-    ),
     getItemLayout(
       <Link to='/stock-logs'><HistoryOutlined style={{ marginRight: '8px' }} />Stock Logs</Link>,
       'stock-logs'

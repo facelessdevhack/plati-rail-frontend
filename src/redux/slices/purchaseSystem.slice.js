@@ -1,12 +1,25 @@
 import { createSlice } from '@reduxjs/toolkit'
 import {
+  // Vendors (replaced suppliers)
+  getVendors,
+  getVendorById,
+  createVendor,
+  updateVendor,
+  deleteVendor,
+  // Molds
+  getMoldsForPurchase,
+  // Legacy suppliers
   getSuppliers,
+  // Purchase orders
   getPurchaseOrders,
+  getPurchaseOrderStats,
   createPurchaseOrder,
   updatePurchaseOrder,
+  updatePurchaseOrderStatus,
   deletePurchaseOrder,
   getPurchaseOrderDetails,
   exportPurchaseOrderPDF,
+  // Receipts & payments
   getPurchaseReceipts,
   createPurchaseReceipt,
   getPurchasePayments,
@@ -15,7 +28,18 @@ import {
 } from '../api/purchaseSystemAPI'
 
 const initialState = {
-  // Suppliers
+  // Vendors (replaced suppliers)
+  vendors: [],
+  vendorsLoading: false,
+  vendorsError: null,
+  selectedVendor: null,
+
+  // Molds
+  molds: [],
+  moldsLoading: false,
+  moldsError: null,
+
+  // Legacy suppliers (backward compatibility - maps to vendors)
   suppliers: [],
   suppliersLoading: false,
   suppliersError: null,
@@ -27,6 +51,11 @@ const initialState = {
   currentOrder: null,
   currentOrderLoading: false,
   currentOrderError: null,
+
+  // Purchase Order Stats
+  orderStats: null,
+  orderStatsLoading: false,
+  orderStatsError: null,
 
   // Purchase Receipts
   purchaseReceipts: [],
@@ -69,10 +98,130 @@ const purchaseSystemSlice = createSlice({
     resetPurchaseOrders: (state) => {
       state.purchaseOrders = []
       state.pagination = initialState.pagination
+    },
+    setSelectedVendor: (state, action) => {
+      state.selectedVendor = action.payload
+    },
+    clearSelectedVendor: (state) => {
+      state.selectedVendor = null
     }
   },
   extraReducers: (builder) => {
-    // Get Suppliers
+    // =============================================
+    // VENDOR REDUCERS (replaced suppliers)
+    // =============================================
+
+    // Get Vendors
+    builder
+      .addCase(getVendors.pending, (state) => {
+        state.vendorsLoading = true
+        state.vendorsError = null
+      })
+      .addCase(getVendors.fulfilled, (state, action) => {
+        state.vendorsLoading = false
+        state.vendors = action.payload.data || action.payload || []
+        // Also update suppliers for backward compatibility
+        state.suppliers = state.vendors
+      })
+      .addCase(getVendors.rejected, (state, action) => {
+        state.vendorsLoading = false
+        state.vendorsError = action.payload
+      })
+
+    // Get Vendor By ID
+    builder
+      .addCase(getVendorById.pending, (state) => {
+        state.vendorsLoading = true
+        state.vendorsError = null
+      })
+      .addCase(getVendorById.fulfilled, (state, action) => {
+        state.vendorsLoading = false
+        state.selectedVendor = action.payload.data || action.payload
+      })
+      .addCase(getVendorById.rejected, (state, action) => {
+        state.vendorsLoading = false
+        state.vendorsError = action.payload
+      })
+
+    // Create Vendor
+    builder
+      .addCase(createVendor.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(createVendor.fulfilled, (state, action) => {
+        state.loading = false
+        const newVendor = action.payload.data || action.payload
+        if (newVendor) {
+          state.vendors.unshift(newVendor)
+          state.suppliers = state.vendors
+        }
+      })
+      .addCase(createVendor.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+
+    // Update Vendor
+    builder
+      .addCase(updateVendor.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(updateVendor.fulfilled, (state, action) => {
+        state.loading = false
+        const updatedVendor = action.payload.data || action.payload
+        const index = state.vendors.findIndex(v => v.id === updatedVendor?.id)
+        if (index !== -1 && updatedVendor) {
+          state.vendors[index] = updatedVendor
+          state.suppliers = state.vendors
+        }
+      })
+      .addCase(updateVendor.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+
+    // Delete Vendor
+    builder
+      .addCase(deleteVendor.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(deleteVendor.fulfilled, (state, action) => {
+        state.loading = false
+        state.vendors = state.vendors.filter(v => v.id !== action.payload)
+        state.suppliers = state.vendors
+      })
+      .addCase(deleteVendor.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+
+    // =============================================
+    // MOLD REDUCERS
+    // =============================================
+
+    // Get Molds for Purchase
+    builder
+      .addCase(getMoldsForPurchase.pending, (state) => {
+        state.moldsLoading = true
+        state.moldsError = null
+      })
+      .addCase(getMoldsForPurchase.fulfilled, (state, action) => {
+        state.moldsLoading = false
+        state.molds = action.payload.data || action.payload || []
+      })
+      .addCase(getMoldsForPurchase.rejected, (state, action) => {
+        state.moldsLoading = false
+        state.moldsError = action.payload
+      })
+
+    // =============================================
+    // LEGACY SUPPLIER REDUCERS (backward compatibility)
+    // =============================================
+
+    // Get Suppliers (maps to vendors)
     builder
       .addCase(getSuppliers.pending, (state) => {
         state.suppliersLoading = true
@@ -80,12 +229,17 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(getSuppliers.fulfilled, (state, action) => {
         state.suppliersLoading = false
-        state.suppliers = action.payload.data || action.payload
+        state.suppliers = action.payload.data || action.payload || []
+        state.vendors = state.suppliers
       })
       .addCase(getSuppliers.rejected, (state, action) => {
         state.suppliersLoading = false
         state.suppliersError = action.payload
       })
+
+    // =============================================
+    // PURCHASE ORDER REDUCERS
+    // =============================================
 
     // Get Purchase Orders
     builder
@@ -95,7 +249,7 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(getPurchaseOrders.fulfilled, (state, action) => {
         state.purchaseOrdersLoading = false
-        state.purchaseOrders = action.payload.data || action.payload
+        state.purchaseOrders = action.payload.data || action.payload || []
         if (action.payload.pagination) {
           state.pagination = action.payload.pagination
         }
@@ -103,6 +257,21 @@ const purchaseSystemSlice = createSlice({
       .addCase(getPurchaseOrders.rejected, (state, action) => {
         state.purchaseOrdersLoading = false
         state.purchaseOrdersError = action.payload
+      })
+
+    // Get Purchase Order Stats
+    builder
+      .addCase(getPurchaseOrderStats.pending, (state) => {
+        state.orderStatsLoading = true
+        state.orderStatsError = null
+      })
+      .addCase(getPurchaseOrderStats.fulfilled, (state, action) => {
+        state.orderStatsLoading = false
+        state.orderStats = action.payload.data || action.payload
+      })
+      .addCase(getPurchaseOrderStats.rejected, (state, action) => {
+        state.orderStatsLoading = false
+        state.orderStatsError = action.payload
       })
 
     // Create Purchase Order
@@ -113,9 +282,9 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(createPurchaseOrder.fulfilled, (state, action) => {
         state.loading = false
-        // Add the new order to the list if it exists
-        if (state.purchaseOrders && Array.isArray(state.purchaseOrders)) {
-          state.purchaseOrders.unshift(action.payload)
+        const newOrder = action.payload.data || action.payload
+        if (newOrder && state.purchaseOrders && Array.isArray(state.purchaseOrders)) {
+          state.purchaseOrders.unshift(newOrder)
         }
       })
       .addCase(createPurchaseOrder.rejected, (state, action) => {
@@ -131,17 +300,42 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(updatePurchaseOrder.fulfilled, (state, action) => {
         state.loading = false
-        // Update the order in the list
-        const index = state.purchaseOrders.findIndex(order => order.id === action.payload.id)
-        if (index !== -1) {
-          state.purchaseOrders[index] = action.payload
-        }
-        // Update current order if it matches
-        if (state.currentOrder && state.currentOrder.id === action.payload.id) {
-          state.currentOrder = action.payload
+        const updatedOrder = action.payload.data || action.payload
+        if (updatedOrder) {
+          const index = state.purchaseOrders.findIndex(order => order.id === updatedOrder.id)
+          if (index !== -1) {
+            state.purchaseOrders[index] = updatedOrder
+          }
+          if (state.currentOrder && state.currentOrder.id === updatedOrder.id) {
+            state.currentOrder = updatedOrder
+          }
         }
       })
       .addCase(updatePurchaseOrder.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+
+    // Update Purchase Order Status
+    builder
+      .addCase(updatePurchaseOrderStatus.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(updatePurchaseOrderStatus.fulfilled, (state, action) => {
+        state.loading = false
+        const updatedOrder = action.payload.data || action.payload
+        if (updatedOrder) {
+          const index = state.purchaseOrders.findIndex(order => order.id === updatedOrder.id)
+          if (index !== -1) {
+            state.purchaseOrders[index] = updatedOrder
+          }
+          if (state.currentOrder && state.currentOrder.id === updatedOrder.id) {
+            state.currentOrder = updatedOrder
+          }
+        }
+      })
+      .addCase(updatePurchaseOrderStatus.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
       })
@@ -154,9 +348,7 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(deletePurchaseOrder.fulfilled, (state, action) => {
         state.loading = false
-        // Remove the order from the list
         state.purchaseOrders = state.purchaseOrders.filter(order => order.id !== action.payload)
-        // Clear current order if it matches
         if (state.currentOrder && state.currentOrder.id === action.payload) {
           state.currentOrder = null
         }
@@ -195,6 +387,10 @@ const purchaseSystemSlice = createSlice({
         state.error = action.payload
       })
 
+    // =============================================
+    // RECEIPT & PAYMENT REDUCERS
+    // =============================================
+
     // Get Purchase Receipts
     builder
       .addCase(getPurchaseReceipts.pending, (state) => {
@@ -203,7 +399,7 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(getPurchaseReceipts.fulfilled, (state, action) => {
         state.receiptsLoading = false
-        state.purchaseReceipts = action.payload.data || action.payload
+        state.purchaseReceipts = action.payload.data || action.payload || []
       })
       .addCase(getPurchaseReceipts.rejected, (state, action) => {
         state.receiptsLoading = false
@@ -218,9 +414,9 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(createPurchaseReceipt.fulfilled, (state, action) => {
         state.loading = false
-        // Add the new receipt to the list
-        if (state.purchaseReceipts && Array.isArray(state.purchaseReceipts)) {
-          state.purchaseReceipts.unshift(action.payload)
+        const newReceipt = action.payload.data || action.payload
+        if (newReceipt && state.purchaseReceipts && Array.isArray(state.purchaseReceipts)) {
+          state.purchaseReceipts.unshift(newReceipt)
         }
       })
       .addCase(createPurchaseReceipt.rejected, (state, action) => {
@@ -236,7 +432,7 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(getPurchasePayments.fulfilled, (state, action) => {
         state.paymentsLoading = false
-        state.purchasePayments = action.payload.data || action.payload
+        state.purchasePayments = action.payload.data || action.payload || []
       })
       .addCase(getPurchasePayments.rejected, (state, action) => {
         state.paymentsLoading = false
@@ -251,9 +447,9 @@ const purchaseSystemSlice = createSlice({
       })
       .addCase(createPurchasePayment.fulfilled, (state, action) => {
         state.loading = false
-        // Add the new payment to the list
-        if (state.purchasePayments && Array.isArray(state.purchasePayments)) {
-          state.purchasePayments.unshift(action.payload)
+        const newPayment = action.payload.data || action.payload
+        if (newPayment && state.purchasePayments && Array.isArray(state.purchasePayments)) {
+          state.purchasePayments.unshift(newPayment)
         }
       })
       .addCase(createPurchasePayment.rejected, (state, action) => {
@@ -275,8 +471,7 @@ const purchaseSystemSlice = createSlice({
         state.statisticsLoading = false
         state.statisticsError = action.payload
       })
-
-    }
+  }
 })
 
 export const purchaseSystemActions = purchaseSystemSlice.actions

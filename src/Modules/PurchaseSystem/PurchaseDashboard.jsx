@@ -32,12 +32,13 @@ import {
   ShopOutlined,
   CalendarOutlined,
   FilterOutlined,
-  DownOutlined
+  DownOutlined,
+  ToolOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
-  getSuppliers,
+  getVendors,
   getPurchaseOrders,
   getPurchaseOrderById,
   deletePurchaseOrder,
@@ -55,24 +56,28 @@ const PurchaseDashboard = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  // Redux state
-  const { suppliers, purchaseOrders, loading, error, pagination } = useSelector(
-    state => state.purchaseSystem
-  )
+  // Redux state - with default empty arrays to prevent undefined errors
+  const {
+    vendors = [],
+    purchaseOrders = [],
+    loading,
+    error,
+    pagination
+  } = useSelector(state => state.purchaseSystem) || {}
 
   // Local state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSupplier, setSelectedSupplier] = useState(null)
+  const [selectedVendor, setSelectedVendor] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
   // Load data on component mount
   useEffect(() => {
     loadData()
-  }, [currentPage, pageSize, selectedSupplier, searchTerm])
+  }, [currentPage, pageSize, selectedVendor, searchTerm])
 
   useEffect(() => {
     if (error) {
@@ -84,12 +89,12 @@ const PurchaseDashboard = () => {
   const loadData = async () => {
     try {
       await Promise.all([
-        dispatch(getSuppliers()).unwrap(),
+        dispatch(getVendors()).unwrap(),
         dispatch(
           getPurchaseOrders({
             page: currentPage,
             limit: pageSize,
-            supplier_id: selectedSupplier,
+            vendor_id: selectedVendor,
             search: searchTerm
           })
         ).unwrap()
@@ -136,7 +141,7 @@ const PurchaseDashboard = () => {
   const handleDeleteOrder = async order => {
     Modal.confirm({
       title: 'Delete Purchase Order',
-      content: `Are you sure you want to delete order ${order.orderNumber}? This action cannot be undone.`,
+      content: `Are you sure you want to delete order ${order.orderNumber || order.order_number}? This action cannot be undone.`,
       okText: 'Yes, Delete',
       okType: 'danger',
       cancelText: 'No, Cancel',
@@ -164,35 +169,38 @@ const PurchaseDashboard = () => {
   const handleExportExcel = order => {
     try {
       // Export single order details with items
+      const orderNumber = order.orderNumber || order.order_number || ''
+      const vendorName = order.vendorName || order.vendor_name || ''
+
       const exportData = order.items ? order.items.map(item => ({
-        'Order Number': order.orderNumber || '',
-        'Order Date': order.orderDate || '',
-        'Supplier Name': order.supplierName || '',
-        'Supplier Code': order.supplierCode || '',
-        'Product Name': item.productName || '',
-        'Model Name': item.modelName || '',
+        'Order Number': orderNumber,
+        'Order Date': order.orderDate || order.order_date || '',
+        'Vendor Name': vendorName,
+        'Mold Code': order.moldCode || order.mold_code || '',
+        'Product Name': item.productName || item.product_name || '',
+        'Model Name': item.modelName || item.model_name || '',
         'Size': item.size || '',
         'PCD': item.pcd || '',
         'Holes': item.holes || '',
         'Width': item.width || '',
-        'Source Finish': item.sourceFinish || '',
-        'Target Finish': item.targetFinish || '',
+        'Source Finish': item.sourceFinish || item.source_finish || '',
+        'Target Finish': item.targetFinish || item.target_finish || '',
         'Quantity': item.quantity || 0,
         'Status': item.status || '',
         'Notes': item.notes || ''
       })) : [{
-        'Order Number': order.orderNumber || '',
-        'Order Date': order.orderDate || '',
-        'Supplier Name': order.supplierName || '',
-        'Supplier Code': order.supplierCode || '',
-        'Total Items': order.totalItems || 0,
-        'Total Quantity': order.totalQuantity || 0,
-        'Status': order.orderStatus || '',
+        'Order Number': orderNumber,
+        'Order Date': order.orderDate || order.order_date || '',
+        'Vendor Name': vendorName,
+        'Mold Code': order.moldCode || order.mold_code || '',
+        'Total Items': order.totalItems || order.total_items || 0,
+        'Total Quantity': order.totalQuantity || order.total_quantity || 0,
+        'Status': order.orderStatus || order.order_status || '',
         'Notes': order.notes || '',
-        'Expected Delivery Date': order.expectedDeliveryDate || ''
+        'Expected Delivery Date': order.expectedDeliveryDate || order.expected_delivery_date || ''
       }]
 
-      // Excel Export - using simple HTML table method (like production plans)
+      // Excel Export - using simple HTML table method
       const tableHTML = `
         <table>
           <thead>
@@ -213,7 +221,7 @@ const PurchaseDashboard = () => {
       const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' })
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `purchase_order_${order.orderNumber}_${new Date().toISOString().split('T')[0]}.xls`
+      link.download = `purchase_order_${orderNumber}_${new Date().toISOString().split('T')[0]}.xls`
       link.click()
       message.success('Excel file downloaded successfully')
     } catch (error) {
@@ -224,16 +232,17 @@ const PurchaseDashboard = () => {
 
   const handleExportAllPDF = async () => {
     try {
-      if (purchaseOrders.length === 0) {
+      const orders = purchaseOrders || []
+      if (orders.length === 0) {
         message.warning('No orders to export')
         return
       }
 
       // Export each order individually (for now)
-      for (const order of purchaseOrders) {
+      for (const order of orders) {
         await dispatch(exportPurchaseOrderPDF(order.id)).unwrap()
       }
-      message.success(`${purchaseOrders.length} PDF files exported successfully`)
+      message.success(`${orders.length} PDF files exported successfully`)
     } catch (error) {
       message.error('Failed to export PDFs')
     }
@@ -241,14 +250,15 @@ const PurchaseDashboard = () => {
 
   const handleExportAllExcel = async () => {
     try {
-      if (purchaseOrders.length === 0) {
+      const orders = purchaseOrders || []
+      if (orders.length === 0) {
         message.warning('No orders to export')
         return
       }
 
       // Fetch detailed data for all orders to get items
       const allOrderItems = []
-      for (const order of purchaseOrders) {
+      for (const order of orders) {
         try {
           const result = await dispatch(getPurchaseOrderById(order.id)).unwrap()
           const detailedOrder = result.data
@@ -257,23 +267,27 @@ const PurchaseDashboard = () => {
             // Add each item as a separate row
             detailedOrder.items.forEach(item => {
               allOrderItems.push({
-                'Order Number': detailedOrder.orderNumber || '',
+                'Order Number': detailedOrder.orderNumber || detailedOrder.order_number || '',
                 'Order Date': detailedOrder.orderDate ? new Date(detailedOrder.orderDate).toLocaleDateString('en-GB') : '',
-                'Product Name': item.productName || '',
-                'Model Name': item.modelName || '',
+                'Vendor': detailedOrder.vendorName || detailedOrder.vendor_name || '',
+                'Mold Code': detailedOrder.moldCode || detailedOrder.mold_code || '',
+                'Product Name': item.productName || item.product_name || '',
+                'Model Name': item.modelName || item.model_name || '',
                 'Size': item.size || '',
                 'PCD': item.pcd || '',
                 'Holes': item.holes || '',
                 'Width': item.width || '',
-                'Finish': item.targetFinish || item.sourceFinish || '',
+                'Finish': item.targetFinish || item.target_finish || item.sourceFinish || item.source_finish || '',
                 'Quantity': item.quantity || 0
               })
             })
           } else {
             // If no items, add order summary as one row
             allOrderItems.push({
-              'Order Number': detailedOrder.orderNumber || '',
+              'Order Number': detailedOrder.orderNumber || detailedOrder.order_number || '',
               'Order Date': detailedOrder.orderDate ? new Date(detailedOrder.orderDate).toLocaleDateString('en-GB') : '',
+              'Vendor': detailedOrder.vendorName || detailedOrder.vendor_name || '',
+              'Mold Code': detailedOrder.moldCode || detailedOrder.mold_code || '',
               'Product Name': 'No items',
               'Model Name': '',
               'Size': '',
@@ -281,15 +295,17 @@ const PurchaseDashboard = () => {
               'Holes': '',
               'Width': '',
               'Finish': '',
-              'Quantity': detailedOrder.totalQuantity || 0
+              'Quantity': detailedOrder.totalQuantity || detailedOrder.total_quantity || 0
             })
           }
         } catch (error) {
           console.error('Error fetching order details:', error)
           // Add basic order info if fetch fails
           allOrderItems.push({
-            'Order Number': order.orderNumber || '',
+            'Order Number': order.orderNumber || order.order_number || '',
             'Order Date': order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-GB') : '',
+            'Vendor': order.vendorName || order.vendor_name || '',
+            'Mold Code': order.moldCode || order.mold_code || '',
             'Product Name': 'Error loading items',
             'Model Name': '',
             'Size': '',
@@ -297,7 +313,7 @@ const PurchaseDashboard = () => {
             'Holes': '',
             'Width': '',
             'Finish': '',
-            'Quantity': order.totalQuantity || 0
+            'Quantity': order.totalQuantity || order.total_quantity || 0
           })
         }
       }
@@ -309,7 +325,7 @@ const PurchaseDashboard = () => {
 
       const exportData = allOrderItems
 
-      // Excel Export - using simple HTML table method (like production plans)
+      // Excel Export - using simple HTML table method
       const tableHTML = `
         <table>
           <thead>
@@ -413,65 +429,95 @@ const PurchaseDashboard = () => {
   const columns = [
     {
       title: 'Order Number',
-      dataIndex: 'orderNumber',
-      key: 'orderNumber',
-      render: text => (
+      dataIndex: 'order_number',
+      key: 'order_number',
+      render: (text, record) => (
         <Tag color='blue' icon={<ShoppingCartOutlined />}>
-          {text}
+          {text || record.orderNumber}
         </Tag>
       ),
       sorter: true
     },
     {
-      title: 'Supplier',
-      dataIndex: 'supplierName',
-      key: 'supplierName',
+      title: 'Vendor',
+      dataIndex: 'vendor_name',
+      key: 'vendor_name',
       render: (text, record) => (
         <div>
-          <div className='font-semibold'>{text}</div>
-          <div className='text-xs text-gray-500'>{record.supplierName}</div>
+          <div className='font-semibold'>{text || record.vendorName}</div>
+          <div className='text-xs text-gray-500'>
+            {record.vendor_contact || record.vendorContact || ''}
+          </div>
         </div>
       ),
       sorter: true
     },
     {
+      title: 'Mold',
+      dataIndex: 'mold_code',
+      key: 'mold_code',
+      render: (text, record) => {
+        const moldCode = text || record.moldCode
+        const moldType = record.mold_type || record.moldType
+        return moldCode ? (
+          <Tag color='purple' icon={<ToolOutlined />}>
+            {moldCode}
+            {moldType && <span className='text-xs'> ({moldType})</span>}
+          </Tag>
+        ) : (
+          <span className='text-gray-400'>-</span>
+        )
+      }
+    },
+    {
       title: 'Order Date',
-      dataIndex: 'orderDate',
-      key: 'orderDate',
-      render: date => (
+      dataIndex: 'order_date',
+      key: 'order_date',
+      render: (date, record) => (
         <span className='flex items-center'>
           <CalendarOutlined className='mr-1' />
-          {new Date(date).toLocaleDateString('en-IN')}
+          {new Date(date || record.orderDate).toLocaleDateString('en-IN')}
         </span>
       ),
       sorter: true
     },
     {
-      title: 'Priority',
-      dataIndex: 'priority',
-      key: 'priority',
-      render: count => <Badge count={count} showZero color='#52c41a' />,
+      title: 'Items',
+      dataIndex: 'totalItems',
+      key: 'totalItems',
+      render: (count, record) => (
+        <Badge count={count || record.total_items || 0} showZero color='#52c41a' />
+      ),
       align: 'center'
     },
     {
-      title: 'Total Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      render: quantity => <span className='font-semibold'>{quantity}</span>,
+      title: 'Quantity',
+      dataIndex: 'totalQuantity',
+      key: 'totalQuantity',
+      render: (quantity, record) => (
+        <span className='font-semibold'>{quantity || record.total_quantity || 0}</span>
+      ),
       align: 'center'
     },
     {
-      title: 'Notes',
-      dataIndex: 'notes',
-      key: 'notes',
-      ellipsis: true,
-      render: notes => (
-        <Tooltip title={notes}>
-          <span className='text-gray-600'>
-            {notes || <span className='text-gray-400'>No notes</span>}
-          </span>
-        </Tooltip>
-      )
+      title: 'Status',
+      dataIndex: 'order_status',
+      key: 'order_status',
+      render: (status, record) => {
+        const orderStatus = status || record.orderStatus || 'pending'
+        const statusColors = {
+          pending: 'gold',
+          approved: 'blue',
+          in_progress: 'processing',
+          completed: 'green',
+          cancelled: 'red'
+        }
+        return (
+          <Tag color={statusColors[orderStatus] || 'default'}>
+            {orderStatus.replace('_', ' ').toUpperCase()}
+          </Tag>
+        )
+      }
     },
     {
       title: 'Actions',
@@ -557,7 +603,7 @@ const PurchaseDashboard = () => {
           <Card>
             <Statistic
               title='Total Orders'
-              value={pagination.total}
+              value={pagination?.total || (purchaseOrders || []).length}
               prefix={<ShoppingCartOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -566,8 +612,8 @@ const PurchaseDashboard = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title='Active Suppliers'
-              value={suppliers.length}
+              title='Active Vendors'
+              value={(vendors || []).length}
               prefix={<ShopOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -577,8 +623,8 @@ const PurchaseDashboard = () => {
           <Card>
             <Statistic
               title='Total Items'
-              value={purchaseOrders.reduce(
-                (sum, order) => sum + (order.total_items || 0),
+              value={(purchaseOrders || []).reduce(
+                (sum, order) => sum + (order.totalItems || order.total_items || 0),
                 0
               )}
               prefix={<FilePdfOutlined />}
@@ -590,8 +636,8 @@ const PurchaseDashboard = () => {
           <Card>
             <Statistic
               title='Total Quantity'
-              value={purchaseOrders.reduce(
-                (sum, order) => sum + (order.total_quantity || 0),
+              value={(purchaseOrders || []).reduce(
+                (sum, order) => sum + (order.totalQuantity || order.total_quantity || 0),
                 0
               )}
               prefix={<FileExcelOutlined />}
@@ -606,7 +652,7 @@ const PurchaseDashboard = () => {
         <Row gutter={16} align='middle'>
           <Col flex='auto'>
             <Search
-              placeholder='Search by order number or supplier name...'
+              placeholder='Search by order number or vendor name...'
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               style={{ width: '100%' }}
@@ -615,15 +661,15 @@ const PurchaseDashboard = () => {
           </Col>
           <Col>
             <Select
-              placeholder='Filter by Supplier'
-              value={selectedSupplier}
-              onChange={setSelectedSupplier}
+              placeholder='Filter by Vendor'
+              value={selectedVendor}
+              onChange={setSelectedVendor}
               style={{ width: 200 }}
               allowClear
             >
-              {suppliers.map(supplier => (
-                <Option key={supplier.id} value={supplier.id}>
-                  {supplier.supplierName}
+              {(vendors || []).map(vendor => (
+                <Option key={vendor.id} value={vendor.id}>
+                  {vendor.vendorName || vendor.vendor_name}
                 </Option>
               ))}
             </Select>
@@ -635,12 +681,12 @@ const PurchaseDashboard = () => {
       <Card>
         <Table
           columns={columns}
-          dataSource={purchaseOrders}
+          dataSource={purchaseOrders || []}
           loading={loading}
           pagination={{
             current: currentPage,
             pageSize: pageSize,
-            total: pagination.total,
+            total: pagination?.total || (purchaseOrders || []).length,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>
@@ -648,7 +694,7 @@ const PurchaseDashboard = () => {
           }}
           onChange={handleTableChange}
           rowKey='id'
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1200 }}
         />
       </Card>
 
@@ -658,7 +704,7 @@ const PurchaseDashboard = () => {
         onClose={handleCreateModalClose}
         onSuccess={handleCreateSuccess}
         editOrder={selectedOrder}
-        suppliers={suppliers}
+        vendors={vendors || []}
       />
 
       {/* Order Details Modal */}

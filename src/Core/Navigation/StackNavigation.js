@@ -81,7 +81,7 @@ import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
 import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
-import { StockUploadPage } from '../../Modules/StockUpload';
+import { MoldManagementDashboard } from '../../Modules/Ordering';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
@@ -953,15 +953,15 @@ const StackNavigation = () => {
         }
       />
 
-      {/* Stock Upload Route */}
+      {/* Mold Management Routes */}
       <Route
-        path='/stock-upload'
+        path='/mold-management'
         element={
           <PrivateRoute allowedRoles={[4, 5]}>
             <AdminLayout
-              title='Stock Excel Upload'
+              title='Mold Management'
               items={adminSiderRoutes}
-              content={<StockUploadPage />}
+              content={<MoldManagementDashboard />}
             />
           </PrivateRoute>
         }

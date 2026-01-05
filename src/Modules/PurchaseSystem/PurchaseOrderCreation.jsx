@@ -17,7 +17,8 @@ import {
   Tag,
   Tooltip,
   Empty,
-  Spin
+  Spin,
+  DatePicker
 } from 'antd'
 import {
   PlusOutlined,
@@ -25,13 +26,15 @@ import {
   SaveOutlined,
   ShoppingCartOutlined,
   InfoCircleOutlined,
-  SearchOutlined
+  ToolOutlined
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   createPurchaseOrder,
   updatePurchaseOrder,
-  getPurchaseOrderById
+  getPurchaseOrderById,
+  getVendors,
+  getMoldsForPurchase
 } from '../../redux/api/purchaseSystemAPI'
 import { getStockManagement } from '../../redux/api/stockAPI'
 
@@ -44,25 +47,35 @@ const PurchaseOrderCreation = ({
   onClose,
   onSuccess,
   editOrder,
-  suppliers
+  vendors: propVendors
 }) => {
   const dispatch = useDispatch()
   const [form] = Form.useForm()
-  const { loading } = useSelector(state => state.purchaseSystem)
+  const { loading, vendors: storeVendors, molds: storeMolds } = useSelector(state => state.purchaseSystem)
+
+  // Use vendors from props or store
+  const vendors = propVendors || storeVendors || []
+  const molds = storeMolds || []
 
   // Local state
   const [orderItems, setOrderItems] = useState([])
   const [alloys, setAlloys] = useState([])
   const [loadingAlloys, setLoadingAlloys] = useState(false)
+  const [loadingVendors, setLoadingVendors] = useState(false)
+  const [loadingMolds, setLoadingMolds] = useState(false)
   const [selectedAlloy, setSelectedAlloy] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
+  const [localVendors, setLocalVendors] = useState([])
+  const [localMolds, setLocalMolds] = useState([])
 
   const isEditing = !!editOrder
 
   useEffect(() => {
     if (visible) {
       loadAlloys()
+      loadVendors()
+      loadMolds()
       if (isEditing) {
         loadOrderData()
       } else {
@@ -83,13 +96,39 @@ const PurchaseOrderCreation = ({
     }
   }
 
+  const loadVendors = async () => {
+    try {
+      setLoadingVendors(true)
+      const result = await dispatch(getVendors()).unwrap()
+      setLocalVendors(result?.data || result || [])
+    } catch (error) {
+      console.error('Failed to load vendors:', error)
+    } finally {
+      setLoadingVendors(false)
+    }
+  }
+
+  const loadMolds = async () => {
+    try {
+      setLoadingMolds(true)
+      const result = await dispatch(getMoldsForPurchase()).unwrap()
+      setLocalMolds(result?.data || result || [])
+    } catch (error) {
+      console.error('Failed to load molds:', error)
+    } finally {
+      setLoadingMolds(false)
+    }
+  }
+
   const loadOrderData = async () => {
     try {
       const result = await dispatch(getPurchaseOrderById(editOrder.id)).unwrap()
       const order = result.data
 
       form.setFieldsValue({
-        supplier_id: order.supplierId,
+        vendor_id: order.vendorId || order.vendor_id,
+        mold_id: order.moldId || order.mold_id,
+        expected_delivery_date: order.expectedDeliveryDate || order.expected_delivery_date,
         notes: order.notes
       })
 
@@ -113,8 +152,6 @@ const PurchaseOrderCreation = ({
       return
     }
 
-    console.log('Selected alloy data:', selectedAlloy)
-
     // Check if item already exists
     const existingItemIndex = orderItems.findIndex(
       item => item.productId === selectedAlloy.id
@@ -126,7 +163,7 @@ const PurchaseOrderCreation = ({
       updatedItems[existingItemIndex].quantity += quantity
       setOrderItems(updatedItems)
     } else {
-      // Add new item - use correct field names from stock data
+      // Add new item
       const newItem = {
         productId: selectedAlloy.id,
         productName: selectedAlloy.product_name,
@@ -136,10 +173,9 @@ const PurchaseOrderCreation = ({
         pcd: selectedAlloy.pcd || '',
         holes: selectedAlloy.holes || '',
         width: selectedAlloy.width || '',
-        finish: selectedAlloy.finish || selectedAlloy.finish_name || '',  // Use actual finish field from stock data
+        finish: selectedAlloy.finish || selectedAlloy.finish_name || '',
         quantity: quantity
       }
-      console.log('New item being added:', newItem)
       setOrderItems([...orderItems, newItem])
     }
 
@@ -171,14 +207,18 @@ const PurchaseOrderCreation = ({
       }
 
       const orderData = {
-        supplier_id: values.supplier_id,
+        vendor_id: values.vendor_id,
+        mold_id: values.mold_id || null,
+        expected_delivery_date: values.expected_delivery_date
+          ? values.expected_delivery_date.format('YYYY-MM-DD')
+          : null,
         items: orderItems,
         notes: values.notes || ''
       }
 
       if (isEditing) {
         await dispatch(
-          updatePurchaseOrder({ id: editOrder.id, ...orderData })
+          updatePurchaseOrder({ id: editOrder.id, orderData })
         ).unwrap()
         message.success('Purchase order updated successfully')
       } else {
@@ -202,6 +242,10 @@ const PurchaseOrderCreation = ({
   const getTotalQuantity = () => {
     return orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
   }
+
+  // Use local vendors or props vendors
+  const displayVendors = localVendors.length > 0 ? localVendors : vendors
+  const displayMolds = localMolds.length > 0 ? localMolds : molds
 
   const itemsColumns = [
     {
@@ -299,33 +343,36 @@ const PurchaseOrderCreation = ({
         form={form}
         layout='vertical'
         initialValues={{
-          supplier_id: undefined,
+          vendor_id: undefined,
+          mold_id: undefined,
           notes: ''
         }}
       >
         <Row gutter={16}>
-          <Col span={12}>
+          <Col span={8}>
             <Form.Item
-              name='supplier_id'
-              label='Supplier'
-              rules={[{ required: true, message: 'Please select a supplier' }]}
+              name='vendor_id'
+              label='Vendor'
+              rules={[{ required: true, message: 'Please select a vendor' }]}
             >
               <Select
-                placeholder='Select a supplier'
+                placeholder='Select a vendor'
                 showSearch
+                loading={loadingVendors}
                 filterOption={(input, option) =>
-                  option.children.toLowerCase().indexOf(input.toLowerCase()) >=
-                  0
+                  option.children?.props?.children?.[0]?.props?.children
+                    ?.toLowerCase()
+                    .indexOf(input.toLowerCase()) >= 0
                 }
               >
-                {suppliers.map(supplier => (
-                  <Option key={supplier.id} value={supplier.id}>
+                {displayVendors.map(vendor => (
+                  <Option key={vendor.id} value={vendor.id}>
                     <div>
                       <div className='font-semibold'>
-                        {supplier.supplierName}
+                        {vendor.vendorName || vendor.vendor_name}
                       </div>
                       <div className='text-xs text-gray-500'>
-                        {supplier.supplierCode}
+                        {vendor.contactPerson || vendor.contact_person || 'No contact'}
                       </div>
                     </div>
                   </Option>
@@ -333,11 +380,64 @@ const PurchaseOrderCreation = ({
               </Select>
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col span={8}>
+            <Form.Item
+              name='mold_id'
+              label={
+                <span>
+                  <ToolOutlined className='mr-1' />
+                  Mold (Optional)
+                </span>
+              }
+              tooltip='Select a mold if this order is related to mold manufacturing'
+            >
+              <Select
+                placeholder='Select a mold'
+                showSearch
+                allowClear
+                loading={loadingMolds}
+                filterOption={(input, option) =>
+                  option.children?.props?.children?.[0]?.props?.children
+                    ?.toLowerCase()
+                    .indexOf(input.toLowerCase()) >= 0
+                }
+              >
+                {displayMolds.map(mold => (
+                  <Option key={mold.id} value={mold.id}>
+                    <div>
+                      <div className='font-semibold'>
+                        {mold.moldCode || mold.mold_code}
+                      </div>
+                      <div className='text-xs text-gray-500'>
+                        {mold.moldType || mold.mold_type}
+                        {(mold.sizeInches || mold.size_inches) && ` - ${mold.sizeInches || mold.size_inches}"`}
+                        {(mold.modelName || mold.model_name) && ` - ${mold.modelName || mold.model_name}`}
+                      </div>
+                    </div>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              name='expected_delivery_date'
+              label='Expected Delivery Date'
+            >
+              <DatePicker
+                style={{ width: '100%' }}
+                placeholder='Select expected delivery date'
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={24}>
             <Form.Item name='notes' label='Notes'>
               <TextArea
                 placeholder='Add any notes for this order...'
-                rows={1}
+                rows={2}
                 maxLength={500}
                 showCount
               />
