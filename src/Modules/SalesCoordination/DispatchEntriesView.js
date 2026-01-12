@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { Table, Button, Tag, message, Space, Popconfirm } from 'antd'
+import React, { useEffect, useState, useMemo } from 'react'
+import { Table, Button, Tag, message, Space, Popconfirm, Tabs, Badge, Steps, Card, Alert, DatePicker } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -7,7 +7,10 @@ import {
   ExportOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
-  SendOutlined
+  SendOutlined,
+  PrinterOutlined,
+  CarOutlined,
+  DownloadOutlined
 } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
@@ -18,6 +21,7 @@ import {
 } from '../../redux/api/entriesAPI'
 import { useDispatch } from 'react-redux'
 import moment from 'moment'
+import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 
 const DispatchEntriesView = () => {
@@ -27,6 +31,82 @@ const DispatchEntriesView = () => {
   const [sendingId, setSendingId] = useState(null)
   const [processingId, setProcessingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [activeTab, setActiveTab] = useState('awaiting_approval')
+  const [selectedDate, setSelectedDate] = useState(dayjs())
+
+  // Filter entries based on active tab and selected date
+  // - 'awaiting_approval': filter by dateIST (entry creation date)
+  // - 'sent_for_dispatch': show ALL entries regardless of date (pending backlog)
+  // - 'approved' (dispatched): filter by processedAt (when item was dispatched)
+  const filteredEntries = useMemo(() => {
+    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
+
+    return dispatchEntries.filter(entry => {
+      // Filter by status (tab)
+      const matchesStatus = entry.dispatchStatus === activeTab
+
+      // Sent for dispatch - show ALL entries regardless of date (pending backlog)
+      if (activeTab === 'sent_for_dispatch') {
+        return matchesStatus
+      }
+
+      // Filter by date if selected
+      if (selectedDateStr) {
+        // For dispatched entries, use processedAt (when item was dispatched)
+        if (activeTab === 'approved' && entry.processedAt) {
+          const processedDate = moment(entry.processedAt).format('YYYY-MM-DD')
+          return matchesStatus && processedDate === selectedDateStr
+        }
+        // For awaiting_approval, use dateIST (entry creation date)
+        if (entry.dateIST) {
+          const entryDate = moment(entry.dateIST).format('YYYY-MM-DD')
+          return matchesStatus && entryDate === selectedDateStr
+        }
+      }
+
+      return matchesStatus
+    })
+  }, [dispatchEntries, activeTab, selectedDate])
+
+  // Count entries by status (filtered by selected date where applicable)
+  // - awaiting_approval: filter by dateIST
+  // - sent_for_dispatch: NO date filter (show total backlog count)
+  // - approved: filter by processedAt
+  const statusCounts = useMemo(() => {
+    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
+
+    const filterByDateIST = (entries) => {
+      if (!selectedDateStr) return entries
+      return entries.filter(e => {
+        if (e.dateIST) {
+          const entryDate = moment(e.dateIST).format('YYYY-MM-DD')
+          return entryDate === selectedDateStr
+        }
+        return false
+      })
+    }
+
+    const filterByProcessedAt = (entries) => {
+      if (!selectedDateStr) return entries
+      return entries.filter(e => {
+        if (e.processedAt) {
+          const processedDate = moment(e.processedAt).format('YYYY-MM-DD')
+          return processedDate === selectedDateStr
+        }
+        return false
+      })
+    }
+
+    const awaitingApproval = dispatchEntries.filter(e => e.dispatchStatus === 'awaiting_approval')
+    const sentForDispatch = dispatchEntries.filter(e => e.dispatchStatus === 'sent_for_dispatch')
+    const approved = dispatchEntries.filter(e => e.dispatchStatus === 'approved')
+
+    return {
+      awaiting_approval: filterByDateIST(awaitingApproval).length,
+      sent_for_dispatch: sentForDispatch.length,  // Show total count (no date filter - pending backlog)
+      approved: filterByProcessedAt(approved).length  // Use processedAt for dispatched entries
+    }
+  }, [dispatchEntries, selectedDate])
 
   useEffect(() => {
     fetchDispatchEntries()
@@ -187,10 +267,11 @@ const DispatchEntriesView = () => {
 
   const handleExportDealerWisePDFs = async () => {
     try {
-      message.loading({ content: 'Generating dealer-wise PDFs...', key: 'dealerPdfExport' })
+      const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+      message.loading({ content: `Generating dealer-wise PDFs for ${selectedDate.format('DD MMM YYYY')}...`, key: 'dealerPdfExport' })
 
-      // Download ZIP file from backend API
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/export/dispatch-approved-entries`, {
+      // Download ZIP file from backend API with date parameter
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/export/dispatch-approved-entries?date=${dateStr}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -224,7 +305,7 @@ const DispatchEntriesView = () => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `dispatch-approved-${moment().format('YYYY-MM-DD')}.zip`
+      link.download = `dispatch-approved-${dateStr}.zip`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -748,6 +829,13 @@ const DispatchEntriesView = () => {
       key: 'dispatchStatus',
       width: 150,
       render: status => {
+        if (status === 'approved') {
+          return (
+            <Tag icon={<CheckCircleOutlined />} color='success'>
+              Approved
+            </Tag>
+          )
+        }
         if (status === 'sent_for_dispatch') {
           return (
             <Tag icon={<SendOutlined />} color='blue'>
@@ -756,61 +844,88 @@ const DispatchEntriesView = () => {
           )
         }
         return (
-          <Tag icon={<ClockCircleOutlined />} color='processing'>
+          <Tag icon={<ClockCircleOutlined />} color='warning'>
             Awaiting Approval
           </Tag>
         )
       }
     },
+    // Only show Processed At column for dispatched entries
+    ...(activeTab === 'approved' ? [{
+      title: 'Dispatched At',
+      dataIndex: 'processedAt',
+      key: 'processedAt',
+      width: 160,
+      render: (processedAt) => {
+        if (!processedAt) return 'N/A'
+        return moment(processedAt).format('DD MMM YYYY HH:mm')
+      }
+    }] : []),
     {
       title: 'Action',
       key: 'action',
       width: 250,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          {record.dispatchStatus === 'awaiting_approval' ? (
-            <Button
-              type='default'
-              size='small'
-              icon={<SendOutlined />}
-              loading={sendingId === record.id}
-              onClick={() => handleSendForDispatch(record.id)}
+      render: (_, record) => {
+        // Approved entries - no actions available
+        if (record.dispatchStatus === 'approved') {
+          return (
+            <Tag color='success'>Completed</Tag>
+          )
+        }
+
+        return (
+          <Space>
+            {record.dispatchStatus === 'awaiting_approval' ? (
+              <Button
+                type='default'
+                size='small'
+                icon={<SendOutlined />}
+                loading={sendingId === record.id}
+                onClick={() => handleSendForDispatch(record.id)}
+              >
+                Send for Dispatch
+              </Button>
+            ) : (
+              <Button
+                type='primary'
+                size='small'
+                icon={<CheckCircleOutlined />}
+                loading={processingId === record.id}
+                onClick={() => handleProcessEntry(record.id)}
+              >
+                Item Dispatched
+              </Button>
+            )}
+            <Popconfirm
+              title='Delete this entry?'
+              description='Stock will be restored. This action cannot be undone.'
+              onConfirm={() => handleDeleteEntry(record.id)}
+              okText='Yes, Delete'
+              cancelText='Cancel'
+              okButtonProps={{ danger: true }}
             >
-              Send for Dispatch
-            </Button>
-          ) : (
-            <Button
-              type='primary'
-              size='small'
-              icon={<CheckCircleOutlined />}
-              loading={processingId === record.id}
-              onClick={() => handleProcessEntry(record.id)}
-            >
-              Item Dispatched
-            </Button>
-          )}
-          <Popconfirm
-            title='Delete this entry?'
-            description='Stock will be restored. This action cannot be undone.'
-            onConfirm={() => handleDeleteEntry(record.id)}
-            okText='Yes, Delete'
-            cancelText='Cancel'
-            okButtonProps={{ danger: true }}
-          >
-            <Button
-              danger
-              size='small'
-              icon={<DeleteOutlined />}
-              loading={deletingId === record.id}
-            >
-              Delete
-            </Button>
-          </Popconfirm>
-        </Space>
-      )
+              <Button
+                danger
+                size='small'
+                icon={<DeleteOutlined />}
+                loading={deletingId === record.id}
+              >
+                Delete
+              </Button>
+            </Popconfirm>
+          </Space>
+        )
+      }
     }
   ]
+
+  // Get current step based on active tab
+  const getCurrentStep = () => {
+    if (activeTab === 'awaiting_approval') return 0
+    if (activeTab === 'sent_for_dispatch') return 1
+    return 2
+  }
 
   return (
     <div className='p-6'>
@@ -818,71 +933,160 @@ const DispatchEntriesView = () => {
         <div>
           <h2 className='text-2xl font-bold'>📦 Dispatch Entries</h2>
           <p className='text-gray-600 mt-1'>
-            Entries with stock available, awaiting sales coordinator approval
+            Manage dispatch workflow - approve, send for dispatch, and track entries
           </p>
         </div>
         <Space>
-          <Button
-            type='primary'
-            icon={<ExportOutlined />}
-            onClick={handleExportDispatchEntries}
-            disabled={dispatchEntries.length === 0}
-          >
-            Export All
-          </Button>
-          <Button
-            type='default'
-            icon={<ExportOutlined />}
-            onClick={handleExportTodayEntries}
-          >
-            Export Today
-          </Button>
-          <Button
-            type='default'
-            icon={<FileExcelOutlined />}
-            onClick={handleExportExcelDispatchEntries}
-            disabled={dispatchEntries.length === 0}
-            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
-          >
-            Export All (Excel)
-          </Button>
-          <Button
-            type='default'
-            icon={<FileExcelOutlined />}
-            onClick={handleExportExcelTodayEntries}
-            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
-          >
-            Export Today (Excel)
-          </Button>
-          <Button
-            type='default'
-            icon={<FileExcelOutlined />}
-            onClick={handleExportDealerWiseExcel}
-            disabled={dispatchEntries.length === 0}
-            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
-          >
-            Dealer Wise (Excel)
-          </Button>
-          <Button
-            type='default'
-            icon={<FilePdfOutlined />}
-            onClick={handleExportDealerWisePDFs}
-            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1', color: 'white' }}
-          >
-            Dealer Wise (PDFs)
-          </Button>
+          <DatePicker
+            value={selectedDate}
+            onChange={(date) => setSelectedDate(date || dayjs())}
+            format="DD MMM YYYY"
+            allowClear={false}
+            style={{ width: 150 }}
+          />
           <Button onClick={fetchDispatchEntries} loading={loading}>
             Refresh
           </Button>
-          <Tag color='blue' style={{ fontSize: '14px', padding: '4px 12px' }}>
-            {dispatchEntries.length} Awaiting
-          </Tag>
         </Space>
       </div>
 
+      {/* Workflow Steps Banner */}
+      <Card className='mb-6' styles={{ body: { padding: '16px 24px' } }}>
+        <Steps
+          current={getCurrentStep()}
+          size='small'
+          items={[
+            {
+              title: 'Step 1: Export & Print',
+              description: "Export today's entries and print",
+              icon: <PrinterOutlined />
+            },
+            {
+              title: 'Step 2: Send for Dispatch',
+              description: 'Mark printed entries as sent',
+              icon: <CarOutlined />
+            },
+            {
+              title: 'Step 3: Item Dispatched',
+              description: 'Confirm physical dispatch & export',
+              icon: <DownloadOutlined />
+            }
+          ]}
+        />
+      </Card>
+
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'awaiting_approval',
+            label: (
+              <span>
+                <ClockCircleOutlined /> Step 1: Awaiting Approval{' '}
+                <Badge count={statusCounts.awaiting_approval} overflowCount={9999} style={{ backgroundColor: '#faad14' }} />
+              </span>
+            )
+          },
+          {
+            key: 'sent_for_dispatch',
+            label: (
+              <span>
+                <SendOutlined /> Step 2: Sent for Dispatch{' '}
+                <Badge count={statusCounts.sent_for_dispatch} overflowCount={9999} style={{ backgroundColor: '#1890ff' }} />
+              </span>
+            )
+          },
+          {
+            key: 'approved',
+            label: (
+              <span>
+                <CheckCircleOutlined /> Step 3: Dispatched{' '}
+                <Badge count={statusCounts.approved} overflowCount={9999} style={{ backgroundColor: '#52c41a' }} />
+              </span>
+            )
+          }
+        ]}
+      />
+
+      {/* Tab-specific action bar and helper */}
+      {activeTab === 'awaiting_approval' && (
+        <Alert
+          type='info'
+          showIcon
+          icon={<PrinterOutlined />}
+          message="Export & Print Today's Entries"
+          description={
+            <div className='flex items-center justify-between'>
+              <span>Export entries to print and send to the dispatch department. After printing, click "Send for Dispatch" on each entry.</span>
+              <Space className='ml-4'>
+                <Button
+                  type='primary'
+                  icon={<ExportOutlined />}
+                  onClick={handleExportTodayEntries}
+                >
+                  Export Today (PDF)
+                </Button>
+                <Button
+                  icon={<FileExcelOutlined />}
+                  onClick={handleExportExcelTodayEntries}
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                >
+                  Export Today (Excel)
+                </Button>
+              </Space>
+            </div>
+          }
+          className='mb-4'
+        />
+      )}
+
+      {activeTab === 'sent_for_dispatch' && (
+        <Alert
+          type='warning'
+          showIcon
+          icon={<CarOutlined />}
+          message='Awaiting Physical Dispatch'
+          description='These entries have been sent to dispatch. Once the items are physically dispatched, click "Item Dispatched" to complete the process.'
+          className='mb-4'
+        />
+      )}
+
+      {activeTab === 'approved' && (
+        <Alert
+          type='success'
+          showIcon
+          icon={<CheckCircleOutlined />}
+          message='Dispatch Completed - Export Dealer-wise PDFs'
+          description={
+            <div className='flex items-center justify-between'>
+              <span>These entries have been dispatched. Export dealer-wise PDFs to send invoices/delivery notes to dealers.</span>
+              <Space className='ml-4'>
+                <Button
+                  type='primary'
+                  icon={<FilePdfOutlined />}
+                  onClick={handleExportDealerWisePDFs}
+                  style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                >
+                  Dealer Wise (PDFs)
+                </Button>
+                <Button
+                  icon={<FileExcelOutlined />}
+                  onClick={handleExportDealerWiseExcel}
+                  style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
+                >
+                  Dealer Wise (Excel)
+                </Button>
+              </Space>
+            </div>
+          }
+          className='mb-4'
+        />
+      )}
+
       <Table
         columns={columns}
-        dataSource={dispatchEntries}
+        dataSource={filteredEntries}
         rowKey='id'
         loading={loading}
         scroll={{ x: 1400 }}
@@ -893,19 +1097,41 @@ const DispatchEntriesView = () => {
         }}
       />
 
-      <div className='mt-4 p-4 bg-blue-50 rounded-lg'>
-        <h3 className='font-semibold mb-2'>📌 Information</h3>
-        <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
-          <li>
-            These entries have stock available and are awaiting your approval
-          </li>
-          <li>Stock has already been reserved for these entries</li>
-          <li>
-            Click "Dispatch" to approve and move the entry to entry_master
-          </li>
-          <li>Once dispatched, the entry will be finalized in the system</li>
-        </ul>
-      </div>
+      {activeTab === 'awaiting_approval' && (
+        <div className='mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
+          <h3 className='font-semibold mb-2'>📌 Step 1: Export & Print</h3>
+          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
+            <li>Click <strong>"Export Today (PDF)"</strong> to generate a printable list</li>
+            <li>Print the document and send it to the dispatch department</li>
+            <li>After printing, click <strong>"Send for Dispatch"</strong> on each entry to move it to Step 2</li>
+            <li>Stock has already been reserved for these entries</li>
+          </ul>
+        </div>
+      )}
+
+      {activeTab === 'sent_for_dispatch' && (
+        <div className='mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+          <h3 className='font-semibold mb-2'>📌 Step 2: Awaiting Physical Dispatch</h3>
+          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
+            <li>These entries have been printed and sent to the dispatch team</li>
+            <li>Wait for physical items to be dispatched from the warehouse</li>
+            <li>Once dispatched, click <strong>"Item Dispatched"</strong> to confirm and complete the entry</li>
+            <li>Entry will then move to the "Dispatched" tab</li>
+          </ul>
+        </div>
+      )}
+
+      {activeTab === 'approved' && (
+        <div className='mt-4 p-4 bg-green-50 border border-green-200 rounded-lg'>
+          <h3 className='font-semibold mb-2'>📌 Step 3: Dispatch Completed</h3>
+          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
+            <li>These entries have been physically dispatched</li>
+            <li>Click <strong>"Dealer Wise (PDFs)"</strong> to download individual PDFs for each dealer</li>
+            <li>Send these PDFs as invoices/delivery notes to the respective dealers</li>
+            <li>Entries are finalized in the system - stock has been deducted</li>
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
