@@ -195,23 +195,24 @@ const DispatchEntriesView = () => {
   }
 
   const handleExportTodayEntries = () => {
-    const today = moment().format('YYYY-MM-DD')
+    const targetDate = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+    const displayDate = selectedDate ? selectedDate.format('DD MMM YYYY') : dayjs().format('DD MMM YYYY')
 
-    // Filter entries for today (using IST) and only awaiting_approval status
-    const todayEntries = dispatchEntries.filter(entry => {
+    // Filter entries for selected date (using IST) and only awaiting_approval status
+    const dateEntries = dispatchEntries.filter(entry => {
       // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      const isToday = entryDate.format('YYYY-MM-DD') === today
+      const matchesDate = entryDate.format('YYYY-MM-DD') === targetDate
       const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
-      return isToday && isAwaitingApproval
+      return matchesDate && isAwaitingApproval
     })
 
-    if (todayEntries.length === 0) {
-      message.warning('No awaiting approval entries found for today')
+    if (dateEntries.length === 0) {
+      message.warning(`No awaiting approval entries found for ${displayDate}`)
       return
     }
 
-    exportToPDF(todayEntries, `Today's Dispatch Entries`)
+    exportToPDF(dateEntries, `Dispatch Entries - ${displayDate}`)
   }
 
   const handleExportExcelDispatchEntries = () => {
@@ -224,23 +225,24 @@ const DispatchEntriesView = () => {
   }
 
   const handleExportExcelTodayEntries = () => {
-    const today = moment().format('YYYY-MM-DD')
+    const targetDate = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
+    const displayDate = selectedDate ? selectedDate.format('DD MMM YYYY') : dayjs().format('DD MMM YYYY')
 
-    // Filter entries for today (using IST) and only awaiting_approval status
-    const todayEntries = dispatchEntries.filter(entry => {
+    // Filter entries for selected date (using IST) and only awaiting_approval status
+    const dateEntries = dispatchEntries.filter(entry => {
       // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      const isToday = entryDate.format('YYYY-MM-DD') === today
+      const matchesDate = entryDate.format('YYYY-MM-DD') === targetDate
       const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
-      return isToday && isAwaitingApproval
+      return matchesDate && isAwaitingApproval
     })
 
-    if (todayEntries.length === 0) {
-      message.warning('No awaiting approval entries found for today')
+    if (dateEntries.length === 0) {
+      message.warning(`No awaiting approval entries found for ${displayDate}`)
       return
     }
 
-    exportToExcel(todayEntries, `Today's Dispatch Entries`)
+    exportToExcel(dateEntries, `Dispatch Entries - ${displayDate}`)
   }
 
   const handleExportDealerWiseExcel = async () => {
@@ -1015,7 +1017,7 @@ const DispatchEntriesView = () => {
           type='info'
           showIcon
           icon={<PrinterOutlined />}
-          message="Export & Print Today's Entries"
+          message={`Export & Print Entries for ${selectedDate.format('DD MMM YYYY')}`}
           description={
             <div className='flex items-center justify-between'>
               <span>Export entries to print and send to the dispatch department. After printing, click "Send for Dispatch" on each entry.</span>
@@ -1025,14 +1027,14 @@ const DispatchEntriesView = () => {
                   icon={<ExportOutlined />}
                   onClick={handleExportTodayEntries}
                 >
-                  Export Today (PDF)
+                  Export (PDF)
                 </Button>
                 <Button
                   icon={<FileExcelOutlined />}
                   onClick={handleExportExcelTodayEntries}
                   style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
                 >
-                  Export Today (Excel)
+                  Export (Excel)
                 </Button>
               </Space>
             </div>
