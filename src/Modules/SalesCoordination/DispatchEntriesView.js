@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Table, Button, Tag, message, Space, Popconfirm, Tabs, Badge, Steps, Card, Alert, DatePicker } from 'antd'
+import { Table, Button, Tag, message, Space, Popconfirm, Tabs, Badge, Steps, Card, Alert, DatePicker, Input, Select } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -10,7 +10,8 @@ import {
   SendOutlined,
   PrinterOutlined,
   CarOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  SearchOutlined
 } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
@@ -33,17 +34,69 @@ const DispatchEntriesView = () => {
   const [deletingId, setDeletingId] = useState(null)
   const [activeTab, setActiveTab] = useState('awaiting_approval')
   const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [searchText, setSearchText] = useState('')
+  const [selectedDealer, setSelectedDealer] = useState(null)
 
-  // Filter entries based on active tab and selected date
+  // Get unique dealers for the dropdown filter (based on active tab's entries with date filtering)
+  const dealerOptions = useMemo(() => {
+    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
+
+    // Filter entries by active tab AND apply same date logic as filteredEntries
+    const tabEntries = dispatchEntries.filter(entry => {
+      const matchesStatus = entry.dispatchStatus === activeTab
+      if (!matchesStatus) return false
+
+      // Sent for dispatch - show ALL entries regardless of date
+      if (activeTab === 'sent_for_dispatch') return true
+
+      // Filter by date if selected
+      if (selectedDateStr) {
+        // For dispatched entries, use processedAt
+        if (activeTab === 'approved' && entry.processedAt) {
+          const processedDate = moment(entry.processedAt).format('YYYY-MM-DD')
+          return processedDate === selectedDateStr
+        }
+        // For awaiting_approval, use dateIST
+        if (entry.dateIST) {
+          const entryDate = moment(entry.dateIST).format('YYYY-MM-DD')
+          return entryDate === selectedDateStr
+        }
+      }
+
+      return true
+    })
+
+    const dealers = [...new Set(tabEntries.map(e => e.dealerName).filter(Boolean))]
+    return dealers.sort().map(dealer => ({ label: dealer, value: dealer }))
+  }, [dispatchEntries, activeTab, selectedDate])
+
+  // Filter entries based on active tab, selected date, search text, and dealer
   // - 'awaiting_approval': filter by dateIST (entry creation date)
   // - 'sent_for_dispatch': show ALL entries regardless of date (pending backlog)
   // - 'approved' (dispatched): filter by processedAt (when item was dispatched)
   const filteredEntries = useMemo(() => {
     const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
+    const searchLower = searchText.toLowerCase().trim()
 
     return dispatchEntries.filter(entry => {
       // Filter by status (tab)
       const matchesStatus = entry.dispatchStatus === activeTab
+
+      // Filter by dealer if selected
+      if (selectedDealer && entry.dealerName !== selectedDealer) {
+        return false
+      }
+
+      // Filter by search text (searches in dealer name, product name, entry ID)
+      if (searchLower) {
+        const matchesSearch =
+          (entry.dealerName && entry.dealerName.toLowerCase().includes(searchLower)) ||
+          (entry.productName && entry.productName.toLowerCase().includes(searchLower)) ||
+          (entry.id && entry.id.toString().includes(searchLower))
+        if (!matchesSearch) {
+          return false
+        }
+      }
 
       // Sent for dispatch - show ALL entries regardless of date (pending backlog)
       if (activeTab === 'sent_for_dispatch') {
@@ -66,7 +119,7 @@ const DispatchEntriesView = () => {
 
       return matchesStatus
     })
-  }, [dispatchEntries, activeTab, selectedDate])
+  }, [dispatchEntries, activeTab, selectedDate, searchText, selectedDealer])
 
   // Count entries by status (filtered by selected date where applicable)
   // - awaiting_approval: filter by dateIST
@@ -939,6 +992,24 @@ const DispatchEntriesView = () => {
           </p>
         </div>
         <Space>
+          <Input
+            placeholder="Search entries..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            style={{ width: 200 }}
+          />
+          <Select
+            placeholder="Filter by Dealer"
+            value={selectedDealer}
+            onChange={setSelectedDealer}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={dealerOptions}
+            style={{ width: 200 }}
+          />
           <DatePicker
             value={selectedDate}
             onChange={(date) => setSelectedDate(date || dayjs())}
@@ -979,7 +1050,11 @@ const DispatchEntriesView = () => {
 
       <Tabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={(tab) => {
+          setActiveTab(tab)
+          setSearchText('')
+          setSelectedDealer(null)
+        }}
         items={[
           {
             key: 'awaiting_approval',
