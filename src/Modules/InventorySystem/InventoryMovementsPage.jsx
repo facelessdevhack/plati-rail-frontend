@@ -415,7 +415,17 @@ const InventoryMovementsPage = () => {
       title: 'Quantity Change',
       key: 'quantity',
       render: (record) => {
-        const isPositive = record.movementType === 'in' || record.quantityChange > 0;
+        // Determine if movement is positive based on movement type
+        // 'in' movements are positive, 'out' movements are negative
+        // Handle both cases: when backend sends negative values OR absolute values
+        const isOutMovement = record.movementType === 'out';
+        const isPositive = record.movementType === 'in' ||
+          (!isOutMovement && record.quantityChange > 0);
+
+        // Get absolute quantity and apply sign based on movement type
+        const absQuantity = Math.abs(record.quantityChange);
+        const displayQuantity = isOutMovement ? -absQuantity : absQuantity;
+
         return (
           <div>
             <div style={{
@@ -423,7 +433,7 @@ const InventoryMovementsPage = () => {
               fontWeight: 'bold',
               color: isPositive ? '#52c41a' : '#ff4d4f'
             }}>
-              {isPositive ? '+' : ''}{record.quantityChange}
+              {isPositive ? '+' : ''}{displayQuantity}
             </div>
             <div style={{ fontSize: '11px', color: '#666' }}>
               {record.previousQuantity} → {record.newQuantity}
