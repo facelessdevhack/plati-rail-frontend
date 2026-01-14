@@ -116,7 +116,9 @@ const InventoryMovementsPage = () => {
         params.append('referenceType', filters.referenceType);
       }
 
-      params.append('page', pagination.current);
+      // Backend expects 'offset' not 'page', calculate offset from page number
+      const offset = (pagination.current - 1) * pagination.pageSize;
+      params.append('offset', offset);
       params.append('limit', pagination.pageSize);
 
       const response = await client.get(`/inventory/internal/movements?${params.toString()}`);
