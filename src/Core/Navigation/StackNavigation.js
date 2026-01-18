@@ -33,6 +33,7 @@ import AddChargesEntry from '../../Modules/DataEntry/AddChargesEntry'
 import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
 import { dataUserSiderRoutes } from '../../Modules/Layout/Routes/dataUserSiderRoutes'
 import { saleCoSidebarRoutes } from '../../Modules/Layout/Routes/saleCoSidebarRoutes'
+import { superadminSiderRoutes } from '../../Modules/Layout/Routes/superadminSiderRoutes'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
 import DealerMetrics from '../../Modules/Admin/DealerMetrics'
 import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
@@ -80,13 +81,26 @@ import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
-import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage } from '../../Modules/CostManagement';
+import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage, PLDashboardPage, CEODashboard } from '../../Modules/CostManagement';
 import { MoldManagementDashboard } from '../../Modules/Ordering';
+import TempCostingView from '../../Modules/Admin/TempCostingView';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Helper function to get sidebar routes based on roleId
+  const getSidebarRoutes = (roleId) => {
+    const id = Number(roleId)
+    if (id === 999) return superadminSiderRoutes // Superadmin - all access
+    if (id === 5) return adminSiderRoutes // Admin
+    if (id === 6) return dataUserSiderRoutes // Production/Data user
+    if (id === 3) return entrySiderRoutes // Entry user
+    if (id === 7) return saleCoSidebarRoutes // Sales coordinator
+    if (id === 1) return dataUserSiderRoutes // Inventory user
+    return adminSiderRoutes // Default fallback
+  }
 
   useEffect(() => {
     if (loggedIn && user) {
@@ -94,7 +108,9 @@ const StackNavigation = () => {
 
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
-        if (roleId === 5) {
+        if (roleId === 999) {
+          navigate('/admin-dashboard') // Superadmin goes to admin dashboard
+        } else if (roleId === 5) {
           navigate('/admin-dashboard')
         } else if (roleId === 7) {
           navigate('/sales-coordinator-dashboard')
@@ -122,7 +138,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-daily-entry-dealers'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='Daily Entry Dealers'
               content={<AdminDailyEntryDealersPage />}
@@ -133,7 +149,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-daily-entry'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout title='Daily Entry' content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
@@ -141,7 +157,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-dealers/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminDealerDetails />
           </PrivateRoute>
         }
@@ -160,10 +176,10 @@ const StackNavigation = () => {
       <Route
         path='/entry-dashboard'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<EntryDashboard />}
             />
           </PrivateRoute>
@@ -172,10 +188,10 @@ const StackNavigation = () => {
       <Route
         path='/add-stock'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddStock />}
             />
           </PrivateRoute>
@@ -184,10 +200,10 @@ const StackNavigation = () => {
       <Route
         path='/add-daily-entry'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyEntry />}
             />
           </PrivateRoute>
@@ -196,10 +212,10 @@ const StackNavigation = () => {
       <Route
         path='/add-daily-entry-alloys'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyEntryALLOYS />}
             />
           </PrivateRoute>
@@ -208,10 +224,10 @@ const StackNavigation = () => {
       <Route
         path='/add-daily-entry-tyres'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyEntryTYRES />}
             />
           </PrivateRoute>
@@ -220,10 +236,10 @@ const StackNavigation = () => {
       <Route
         path='/add-daily-entry-caps'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyEntryCAP />}
             />
           </PrivateRoute>
@@ -232,10 +248,10 @@ const StackNavigation = () => {
       <Route
         path='/add-daily-entry-ppf'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <AdminLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyEntryPPF />}
             />
           </PrivateRoute>
@@ -246,10 +262,10 @@ const StackNavigation = () => {
       <Route
         path='add-payment-entry'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddPMEntry />}
             />
           </PrivateRoute>
@@ -258,10 +274,10 @@ const StackNavigation = () => {
       <Route
         path='add-charges-entry'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddChargesEntry />}
             />
           </PrivateRoute>
@@ -270,10 +286,10 @@ const StackNavigation = () => {
       <Route
         path='add-inwards-entry'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddDailyPurchaseEntry />}
             />
           </PrivateRoute>
@@ -282,10 +298,10 @@ const StackNavigation = () => {
       <Route
         path='add-cap-stock'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddCapStock />}
             />
           </PrivateRoute>
@@ -294,10 +310,10 @@ const StackNavigation = () => {
       <Route
         path='add-finish'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddFinish />}
             />
           </PrivateRoute>
@@ -306,10 +322,10 @@ const StackNavigation = () => {
       <Route
         path='add-model'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AddModel />}
             />
           </PrivateRoute>
@@ -318,9 +334,9 @@ const StackNavigation = () => {
       <Route
         path='/entry-daily-entry-dealers'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               title='Daily Entry Dealers'
               content={<AdminDailyEntryDealersPage />}
             />
@@ -330,9 +346,9 @@ const StackNavigation = () => {
       <Route
         path='/admin-dealer-metrics'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               title='Select Dealer For Metrics'
               content={<DealerMetrics />}
             />
@@ -342,9 +358,9 @@ const StackNavigation = () => {
       <Route
         path='/admin-dealer-metrics-for-size'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               title='Select Dealer For Metrics'
               content={<DealerMetricsForSize />}
             />
@@ -354,10 +370,10 @@ const StackNavigation = () => {
       <Route
         path='/dealer-metrics'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Dealer Performance Metrics'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DealerMetrics />}
             />
           </PrivateRoute>
@@ -366,7 +382,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-dealer-metrics-details/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <DealerMetricsDetails />
           </PrivateRoute>
         }
@@ -374,7 +390,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-dealer-metrics-by-size/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <DealerMetricsDetailsBySize />
           </PrivateRoute>
         }
@@ -382,7 +398,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-orders-dashboard/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminOrderDashboard />
           </PrivateRoute>
         }
@@ -391,10 +407,10 @@ const StackNavigation = () => {
       <Route
         path='/stock-management'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='Stock Management Dashboard'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<StockManagementDashboard />}
             />
           </PrivateRoute>
@@ -404,7 +420,7 @@ const StackNavigation = () => {
       <Route
         path='/bulk-stock-analysis'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <BulkStockAnalysis />
           </PrivateRoute>
         }
@@ -412,10 +428,10 @@ const StackNavigation = () => {
       <Route
         path='/admin-dashboard'
         element={
-          <PrivateRoute allowedRoles={[5]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <AdminLayout
               title='Admin Sales Dashboard'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AdminSalesDashboard />}
             />
           </PrivateRoute>
@@ -424,10 +440,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-coordinator-dashboard'
         element={
-          <PrivateRoute allowedRoles={[1, 2, 3, 4, 5, 6, 7]}>
+          <PrivateRoute allowedRoles={[1, 2, 3, 4, 5, 6, 7, 999]}>
             <AdminLayout
               title='📊 Sales Coordinator Dashboard'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 1 ? dataUserSiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes))}
+              items={getSidebarRoutes(user?.roleId)}
               content={<SalesCoordinatorDashboard />}
             />
           </PrivateRoute>
@@ -436,10 +452,10 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='Dealer Warranty Registrations'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DealerWarrantyList />}
             />
           </PrivateRoute>
@@ -448,10 +464,10 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty/edit/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='Edit Warranty Registration'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DealerWarrantyDetail />}
             />
           </PrivateRoute>
@@ -460,7 +476,7 @@ const StackNavigation = () => {
       <Route
         path='/dealers-list'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <EntryLayout
               title='Dealers List'
               content={<DealersList />}
@@ -471,7 +487,7 @@ const StackNavigation = () => {
       <Route
         path='/add-dealer'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <EntryLayout title='Add Dealer' content={<AddDealer />} />
           </PrivateRoute>
         }
@@ -479,7 +495,7 @@ const StackNavigation = () => {
       <Route
         path='/edit-dealer'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <EntryLayout title='Edit Dealer' content={<EditDealer />} />
           </PrivateRoute>
         }
@@ -490,10 +506,10 @@ const StackNavigation = () => {
       <Route
         path='/entry-inventory-system'
         element={
-          <PrivateRoute allowedRoles={[3]}>
+          <PrivateRoute allowedRoles={[3, 999]}>
             <EntryLayout
               title='Inventory Management'
-              items={entrySiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryManagement />}
             />
           </PrivateRoute>
@@ -504,10 +520,10 @@ const StackNavigation = () => {
       <Route
         path='/inventory-management-v2'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Inventory Management'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryManagement />}
             />
           </PrivateRoute>
@@ -518,10 +534,10 @@ const StackNavigation = () => {
       <Route
         path='/stock-logs'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Stock Logs'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<StockLogViewer />}
             />
           </PrivateRoute>
@@ -530,10 +546,10 @@ const StackNavigation = () => {
       <Route
         path='/stock-reconciliation'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Stock Reconciliation'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<StockReconciliation />}
             />
           </PrivateRoute>
@@ -544,10 +560,10 @@ const StackNavigation = () => {
       <Route
         path='/inventory-locations'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Inventory Locations'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryLocationsPage />}
             />
           </PrivateRoute>
@@ -556,10 +572,10 @@ const StackNavigation = () => {
       <Route
         path='/inventory-locations/:locationId'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Location Details'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryLocationDetailsPage />}
             />
           </PrivateRoute>
@@ -568,10 +584,10 @@ const StackNavigation = () => {
       <Route
         path='/inventory-movements'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Inventory Movements'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryMovementsPage />}
             />
           </PrivateRoute>
@@ -582,10 +598,10 @@ const StackNavigation = () => {
       <Route
         path='/production-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Production Dashboard'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<ProductionDashboard />}
             />
           </PrivateRoute>
@@ -594,10 +610,10 @@ const StackNavigation = () => {
       <Route
         path='/production-plans'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Production Plans'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<ProductionListing />}
             />
           </PrivateRoute>
@@ -606,10 +622,10 @@ const StackNavigation = () => {
       <Route
         path='/production-plans-v2'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Production Plans V2'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<ProductionListingV2 />}
             />
           </PrivateRoute>
@@ -618,7 +634,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plans-modern'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <ProductionListingModern />
           </PrivateRoute>
         }
@@ -626,7 +642,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plan/:planId'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <ProductionPlanDetailsPage />
           </PrivateRoute>
         }
@@ -634,10 +650,10 @@ const StackNavigation = () => {
       <Route
         path='/production-alloys'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Alloy Selection'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<AlloySelection />}
             />
           </PrivateRoute>
@@ -646,10 +662,10 @@ const StackNavigation = () => {
       <Route
         path='/production-presets'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Preset Management'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<PresetManagement />}
             />
           </PrivateRoute>
@@ -658,10 +674,10 @@ const StackNavigation = () => {
        <Route
          path='/rejected-stock'
          element={
-           <PrivateRoute allowedRoles={[4, 5, 6]}>
+           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
              <AdminLayout
                title='Rejected Stock Management'
-               items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+               items={getSidebarRoutes(user?.roleId)}
                content={<RejectedStockManagement />}
              />
            </PrivateRoute>
@@ -670,10 +686,10 @@ const StackNavigation = () => {
       <Route
         path='/dispatch-to-sales'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Dispatch to Sales - Ready Units'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DispatchToSales />}
             />
           </PrivateRoute>
@@ -682,10 +698,10 @@ const StackNavigation = () => {
       <Route
         path='/discarded-stock-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Discarded Stock Management'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DiscardedStockManagement />}
             />
           </PrivateRoute>
@@ -694,10 +710,10 @@ const StackNavigation = () => {
       <Route
         path='/smart-production'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Smart Production Dashboard'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<SmartProductionDashboard />}
             />
           </PrivateRoute>
@@ -706,10 +722,10 @@ const StackNavigation = () => {
       <Route
         path='/production-planner-v2'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Production Planner V2'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<ProductionPlannerV2 />}
             />
           </PrivateRoute>
@@ -718,10 +734,10 @@ const StackNavigation = () => {
           <Route
         path='/job-cards'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 6]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
             <AdminLayout
               title='Job Cards'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : (user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<JobCardListing />}
             />
           </PrivateRoute>
@@ -730,10 +746,10 @@ const StackNavigation = () => {
           <Route
         path='/inventory-requests'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Inventory Requests'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InventoryRequests />}
             />
           </PrivateRoute>
@@ -743,8 +759,8 @@ const StackNavigation = () => {
       {/* <Route
         path="/entry-daily-entry"
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
-            <AdminLayout items={entrySiderRoutes} title="Daily Entry" content={<DailyEntryAdmin />} />
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
+            <AdminLayout items={getSidebarRoutes(user?.roleId)} title="Daily Entry" content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
       /> */}
@@ -753,10 +769,10 @@ const StackNavigation = () => {
       <Route
         path='/purchase-orders'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <AdminLayout
               title='Purchase Orders'
-              items={user?.roleId === 6 ? dataUserSiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<PurchaseDashboard />}
             />
           </PrivateRoute>
@@ -765,7 +781,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase-orders/smart-purchasing'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
             <SmartPurchasing />
           </PrivateRoute>
         }
@@ -775,10 +791,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-pending-entries'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
             <AdminLayout
               title='⏳ Pending Entries - Sales Coordination'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<PendingEntriesView />}
             />
           </PrivateRoute>
@@ -787,10 +803,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-inprod-entries'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
             <AdminLayout
               title='🔄 In-Production Entries - Sales Coordination'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<InProductionEntriesView />}
             />
           </PrivateRoute>
@@ -799,10 +815,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-dispatch-entries'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
             <AdminLayout
               title='📦 Dispatch Entries - Sales Coordination'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<DispatchEntriesView />}
             />
           </PrivateRoute>
@@ -811,10 +827,10 @@ const StackNavigation = () => {
       <Route
         path='/data-entry-pricing'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='💰 Pricing Entries - Data Entry'
-              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<PricingEntriesView />}
             />
           </PrivateRoute>
@@ -823,10 +839,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-create-order'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
             <AdminLayout
               title='📋 Create Order - Sales Coordination'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<CreateOrderView />}
             />
           </PrivateRoute>
@@ -835,10 +851,10 @@ const StackNavigation = () => {
       <Route
         path='/sales-create-order-alloys'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 7]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
             <AdminLayout
               title='🔩 Create Alloys Order - Sales Coordination'
-              items={user?.roleId === 3 ? entrySiderRoutes : (user?.roleId === 7 ? saleCoSidebarRoutes : adminSiderRoutes)}
+              items={getSidebarRoutes(user?.roleId)}
               content={<CreateOrderAlloys />}
             />
           </PrivateRoute>
@@ -849,10 +865,10 @@ const StackNavigation = () => {
       <Route
         path='/user-production-steps'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='👥 User Production Step Assignments'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<UserProductionSteps />}
             />
           </PrivateRoute>
@@ -863,10 +879,10 @@ const StackNavigation = () => {
       <Route
         path='/equipment-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='🔧 Equipment Management'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<EquipmentManagement />}
             />
           </PrivateRoute>
@@ -877,10 +893,10 @@ const StackNavigation = () => {
       <Route
         path='/step-position-mapping'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='📍 Step-Position Mapping'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<StepPositionMapping />}
             />
           </PrivateRoute>
@@ -891,10 +907,10 @@ const StackNavigation = () => {
       <Route
         path='/price-lists'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='💰 Price Lists Management'
-              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<PriceListPage />}
             />
           </PrivateRoute>
@@ -905,10 +921,10 @@ const StackNavigation = () => {
       <Route
         path='/price-lists/edit/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <AdminLayout
               title='⚙️ Edit Price List'
-              items={user?.roleId === 3 ? entrySiderRoutes : adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<EditPriceListPage />}
             />
           </PrivateRoute>
@@ -919,10 +935,10 @@ const StackNavigation = () => {
       <Route
         path='/cost-categories'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Cost Categories'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<CostCategoriesPage />}
             />
           </PrivateRoute>
@@ -931,10 +947,10 @@ const StackNavigation = () => {
       <Route
         path='/monthly-overheads'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Monthly Overheads'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<MonthlyOverheadsPage />}
             />
           </PrivateRoute>
@@ -943,11 +959,35 @@ const StackNavigation = () => {
       <Route
         path='/profit-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Profit Dashboard'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<ProfitDashboardPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/pnl-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
+            <AdminLayout
+              title='P&L Dashboard'
+              items={getSidebarRoutes(user?.roleId)}
+              content={<PLDashboardPage />}
+            />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/ceo-dashboard'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
+            <AdminLayout
+              title='CEO Dashboard'
+              items={getSidebarRoutes(user?.roleId)}
+              content={<CEODashboard />}
             />
           </PrivateRoute>
         }
@@ -957,11 +997,25 @@ const StackNavigation = () => {
       <Route
         path='/mold-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
             <AdminLayout
               title='Mold Management'
-              items={adminSiderRoutes}
+              items={getSidebarRoutes(user?.roleId)}
               content={<MoldManagementDashboard />}
+            />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Temp Costing View - Restricted to userId 4 only */}
+      <Route
+        path='/temp-costing'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 999]}>
+            <AdminLayout
+              title='Product Costing Management'
+              items={getSidebarRoutes(user?.roleId)}
+              content={<TempCostingView />}
             />
           </PrivateRoute>
         }
