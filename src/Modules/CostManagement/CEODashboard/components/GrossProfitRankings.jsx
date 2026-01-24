@@ -58,14 +58,14 @@ const GrossProfitRankings = ({
   const [productSearch, setProductSearch] = useState('')
   const [dealerSearch, setDealerSearch] = useState('')
 
-  // Sort all products by gross profit (highest to lowest)
+  // Sort all products by units/volume (highest to lowest)
   const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => (b.grossProfit || 0) - (a.grossProfit || 0))
+    return [...products].sort((a, b) => (b.volume || 0) - (a.volume || 0))
   }, [products])
 
-  // Sort all dealers by gross profit (highest to lowest)
+  // Sort all dealers by units/totalQuantity (highest to lowest)
   const sortedDealers = useMemo(() => {
-    return [...dealers].sort((a, b) => (b.grossProfit || 0) - (a.grossProfit || 0))
+    return [...dealers].sort((a, b) => (b.totalQuantity || 0) - (a.totalQuantity || 0))
   }, [dealers])
 
   // Filter products based on search
@@ -115,12 +115,12 @@ const GrossProfitRankings = ({
 
   // Export dealers to CSV
   const handleExportDealers = () => {
-    const headers = ['#', 'Dealer Name', 'District', 'Products', 'Revenue', 'COGS', 'Gross Profit', 'Margin %']
+    const headers = ['#', 'Dealer Name', 'District', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'Margin %']
     const rows = filteredDealers.map((d, i) => [
       i + 1,
       d.dealerName || '-',
       d.district || '-',
-      d.productCount || 0,
+      d.totalQuantity || 0,
       d.revenue || 0,
       (d.revenue || 0) - (d.grossProfit || 0),
       d.grossProfit || 0,
@@ -178,6 +178,7 @@ const GrossProfitRankings = ({
       width: 80,
       align: 'right',
       sorter: (a, b) => (a.volume || 0) - (b.volume || 0),
+      defaultSortOrder: 'descend',
       render: (value) => <Text style={{ fontSize: 12 }}>{(value || 0).toLocaleString()}</Text>
     },
     {
@@ -207,7 +208,6 @@ const GrossProfitRankings = ({
       width: 120,
       align: 'right',
       sorter: (a, b) => (a.grossProfit || 0) - (b.grossProfit || 0),
-      defaultSortOrder: 'descend',
       render: (value) => (
         <Text strong style={{ color: getProfitColor(value), fontSize: 12 }}>
           {formatCurrency(value)}
@@ -264,13 +264,14 @@ const GrossProfitRankings = ({
       )
     },
     {
-      title: 'Products',
-      dataIndex: 'productCount',
-      key: 'productCount',
+      title: 'Units',
+      dataIndex: 'totalQuantity',
+      key: 'totalQuantity',
       width: 80,
-      align: 'center',
-      sorter: (a, b) => (a.productCount || 0) - (b.productCount || 0),
-      render: (value) => <Text style={{ fontSize: 12 }}>{value}</Text>
+      align: 'right',
+      sorter: (a, b) => (a.totalQuantity || 0) - (b.totalQuantity || 0),
+      defaultSortOrder: 'descend',
+      render: (value) => <Text style={{ fontSize: 12 }}>{(value || 0).toLocaleString()}</Text>
     },
     {
       title: 'Revenue',
@@ -299,7 +300,6 @@ const GrossProfitRankings = ({
       width: 120,
       align: 'right',
       sorter: (a, b) => (a.grossProfit || 0) - (b.grossProfit || 0),
-      defaultSortOrder: 'descend',
       render: (value) => (
         <Text strong style={{ color: getProfitColor(value), fontSize: 12 }}>
           {formatCurrency(value)}
@@ -364,7 +364,7 @@ const GrossProfitRankings = ({
     const totalRevenue = pageData.reduce((sum, r) => sum + (r.revenue || 0), 0)
     const totalProfit = pageData.reduce((sum, r) => sum + (r.grossProfit || 0), 0)
     const totalCogs = totalRevenue - totalProfit
-    const totalProducts = pageData.reduce((sum, r) => sum + (r.productCount || 0), 0)
+    const totalUnits = pageData.reduce((sum, r) => sum + (r.totalQuantity || 0), 0)
     const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
 
     return (
@@ -373,8 +373,8 @@ const GrossProfitRankings = ({
           <Table.Summary.Cell index={0} colSpan={2}>
             <Text strong>Page Total ({pageData.length} dealers)</Text>
           </Table.Summary.Cell>
-          <Table.Summary.Cell index={2} align="center">
-            <Text strong>{totalProducts}</Text>
+          <Table.Summary.Cell index={2} align="right">
+            <Text strong>{totalUnits.toLocaleString()}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={3} align="right">
             <Text strong style={{ color: '#1890ff' }}>{formatCurrency(totalRevenue)}</Text>
@@ -398,12 +398,12 @@ const GrossProfitRankings = ({
   if (loading) {
     return (
       <div>
-        <Card title="Products by Gross Profit" style={{ borderRadius: 12, marginBottom: 16 }}>
+        <Card title="Products by Units" style={{ borderRadius: 12, marginBottom: 16 }}>
           <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Spin size="large" />
           </div>
         </Card>
-        <Card title="Dealers by Gross Profit" style={{ borderRadius: 12 }}>
+        <Card title="Dealers by Units" style={{ borderRadius: 12 }}>
           <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Spin size="large" />
           </div>
@@ -418,7 +418,7 @@ const GrossProfitRankings = ({
       <Card
         title={
           <span>
-            Products by Gross Profit
+            Products by Units
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedProducts.length} products)
             </Text>
@@ -483,7 +483,7 @@ const GrossProfitRankings = ({
       <Card
         title={
           <span>
-            Dealers by Gross Profit
+            Dealers by Units
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedDealers.length} dealers)
             </Text>

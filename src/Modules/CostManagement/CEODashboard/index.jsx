@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Layout, Row, Col, DatePicker, Button, Space, Typography, Divider, Breadcrumb, message } from 'antd'
-import { ReloadOutlined, HomeOutlined, DashboardOutlined, PrinterOutlined } from '@ant-design/icons'
+import { Layout, Row, Col, DatePicker, Button, Space, Typography, Divider, Breadcrumb, message, Segmented } from 'antd'
+import { ReloadOutlined, HomeOutlined, DashboardOutlined, PrinterOutlined, CalendarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 // Components
@@ -14,6 +14,7 @@ import useCEODashboardData from './hooks/useCEODashboardData'
 
 const { Content } = Layout
 const { Title, Text } = Typography
+const { RangePicker } = DatePicker
 
 /**
  * CEO Product P&L Dashboard
@@ -21,6 +22,8 @@ const { Title, Text } = Typography
  */
 const CEODashboard = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [dateMode, setDateMode] = useState('month') // 'month' or 'range'
+  const [selectedRange, setSelectedRange] = useState(null)
 
   // Fetch dashboard data
   const {
@@ -32,14 +35,33 @@ const CEODashboard = () => {
     profitabilityMatrix,
     period,
     refresh,
-    setPeriod
+    setPeriod,
+    setCustomDateRange
   } = useCEODashboardData(selectedDate.year(), selectedDate.month() + 1)
 
-  // Handle date change
+  // Handle month picker change
   const handleDateChange = (date) => {
     if (date) {
       setSelectedDate(date)
+      setSelectedRange(null)
       setPeriod(date.year(), date.month() + 1)
+    }
+  }
+
+  // Handle date range change
+  const handleRangeChange = (dates) => {
+    if (dates && dates[0] && dates[1]) {
+      setSelectedRange(dates)
+      setCustomDateRange(dates)
+    }
+  }
+
+  // Handle date mode change
+  const handleDateModeChange = (mode) => {
+    setDateMode(mode)
+    if (mode === 'month') {
+      setSelectedRange(null)
+      setPeriod(selectedDate.year(), selectedDate.month() + 1)
     }
   }
 
@@ -91,14 +113,40 @@ const CEODashboard = () => {
             </Col>
             <Col>
               <Space>
-                <DatePicker
-                  picker="month"
-                  value={selectedDate}
-                  onChange={handleDateChange}
-                  format="MMMM YYYY"
-                  allowClear={false}
-                  style={{ width: 180 }}
+                <Segmented
+                  options={[
+                    { label: 'Month', value: 'month', icon: <CalendarOutlined /> },
+                    { label: 'Date Range', value: 'range', icon: <CalendarOutlined /> }
+                  ]}
+                  value={dateMode}
+                  onChange={handleDateModeChange}
                 />
+                {dateMode === 'month' ? (
+                  <DatePicker
+                    picker="month"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    format="MMMM YYYY"
+                    allowClear={false}
+                    style={{ width: 180 }}
+                  />
+                ) : (
+                  <RangePicker
+                    value={selectedRange}
+                    onChange={handleRangeChange}
+                    format="DD MMM YYYY"
+                    style={{ width: 280 }}
+                    presets={[
+                      { label: 'Last 7 Days', value: [dayjs().subtract(7, 'day'), dayjs()] },
+                      { label: 'Last 30 Days', value: [dayjs().subtract(30, 'day'), dayjs()] },
+                      { label: 'Last 90 Days', value: [dayjs().subtract(90, 'day'), dayjs()] },
+                      { label: 'This Month', value: [dayjs().startOf('month'), dayjs()] },
+                      { label: 'Last Month', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+                      { label: 'This Quarter', value: [dayjs().startOf('quarter'), dayjs()] },
+                      { label: 'This Year', value: [dayjs().startOf('year'), dayjs()] },
+                    ]}
+                  />
+                )}
                 <Button
                   icon={<ReloadOutlined spin={loading} />}
                   onClick={refresh}
@@ -118,8 +166,11 @@ const CEODashboard = () => {
 
           {period && (
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-              Data Period: {period.monthName} {period.year}
-              {period.compareWith && ` (Compared with ${period.compareWith.monthName} ${period.compareWith.year})`}
+              Data Period: {period.isCustomRange
+                ? `${dayjs(period.startDate).format('DD MMM YYYY')} - ${dayjs(period.endDate).format('DD MMM YYYY')}`
+                : `${period.monthName} ${period.year}`
+              }
+              {period.compareWith && ` (Compared with ${dayjs(period.compareWith.startDate).format('DD MMM')} - ${dayjs(period.compareWith.endDate).format('DD MMM YYYY')})`}
             </Text>
           )}
         </div>

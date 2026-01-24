@@ -5,8 +5,8 @@ import dayjs from 'dayjs'
 
 /**
  * Custom hook for fetching CEO Dashboard data
- * @param {number} initialYear - Initial year for data
- * @param {number} initialMonth - Initial month for data
+ * @param {number} initialYear - Initial year for data (legacy mode)
+ * @param {number} initialMonth - Initial month for data (legacy mode)
  */
 const useCEODashboardData = (
   initialYear = dayjs().year(),
@@ -17,19 +17,30 @@ const useCEODashboardData = (
   const [data, setData] = useState(null)
   const [year, setYear] = useState(initialYear)
   const [month, setMonth] = useState(initialMonth)
+  // Date range state (null means use year/month mode)
+  const [dateRange, setDateRange] = useState(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const response = await client.get('/cost-management/ceo/product-pl', {
-        params: {
-          year,
-          month,
-          compareWithPrevious: true
-        }
-      })
+      // Build params based on mode (date range vs month)
+      const params = {
+        compareWithPrevious: true
+      }
+
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        // Custom date range mode
+        params.startDate = dateRange[0].format('YYYY-MM-DD')
+        params.endDate = dateRange[1].format('YYYY-MM-DD')
+      } else {
+        // Legacy month mode
+        params.year = year
+        params.month = month
+      }
+
+      const response = await client.get('/cost-management/ceo/product-pl', { params })
 
       if (response.data.success) {
         setData(response.data.data)
@@ -43,9 +54,9 @@ const useCEODashboardData = (
     } finally {
       setLoading(false)
     }
-  }, [year, month])
+  }, [year, month, dateRange])
 
-  // Fetch data on mount and when year/month changes
+  // Fetch data on mount and when year/month/dateRange changes
   useEffect(() => {
     fetchData()
   }, [fetchData])
@@ -55,10 +66,16 @@ const useCEODashboardData = (
     fetchData()
   }, [fetchData])
 
-  // Helper function to change period
+  // Helper function to change period (legacy month mode)
   const setPeriod = useCallback((newYear, newMonth) => {
+    setDateRange(null) // Clear date range when switching to month mode
     setYear(newYear)
     setMonth(newMonth)
+  }, [])
+
+  // Helper function to set custom date range
+  const setCustomDateRange = useCallback((range) => {
+    setDateRange(range)
   }, [])
 
   return {
@@ -67,9 +84,11 @@ const useCEODashboardData = (
     data,
     year,
     month,
+    dateRange,
     setYear,
     setMonth,
     setPeriod,
+    setCustomDateRange,
     refresh,
     // Destructured data for convenience
     summary: data?.summary || null,
