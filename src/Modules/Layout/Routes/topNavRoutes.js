@@ -11,11 +11,9 @@ export const topNavSections = [
   {
     key: 'production',
     label: 'Production',
-    defaultPath: '/production-dashboard',
+    defaultPath: '/production-plans-v2',
     allowedRoles: [4, 5, 6, 999],
     subNav: [
-      { key: 'prod-dashboard', label: 'Dashboard', path: '/production-dashboard', icon: 'dashboard' },
-      { key: 'prod-plans', label: 'Production Plans', path: '/production-plans', icon: 'file' },
       { key: 'prod-plans-v2', label: 'Plans V2', path: '/production-plans-v2', icon: 'file' },
       { key: 'prod-smart', label: 'Smart Planner', path: '/smart-production', icon: 'rocket' },
       { key: 'prod-job-cards', label: 'Job Cards', path: '/job-cards', icon: 'tool' },
