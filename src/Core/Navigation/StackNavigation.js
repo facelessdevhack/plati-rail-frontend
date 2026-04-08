@@ -7,6 +7,7 @@ import InventoryInForm from '../../Modules/Inventory/InventoryInForm'
 import AdminSalesDashboard from '../../Modules/Admin/AdminSalesDashboard'
 import { MissingRoute } from './MissingRoute'
 import AdminLayout from '../../Modules/Layout/adminLayout'
+import TopNavLayout from '../../Modules/Layout/TopNavLayout'
 import EntryDashboard from '../../Modules/DataEntry/EntryDashboard'
 import { entrySiderRoutes } from '../../Modules/Layout/Routes/entrySiderRoutes'
 import AddStock from '../../Modules/Stock/AddStock'
@@ -34,6 +35,23 @@ import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
 import { dataUserSiderRoutes } from '../../Modules/Layout/Routes/dataUserSiderRoutes'
 import { saleCoSidebarRoutes } from '../../Modules/Layout/Routes/saleCoSidebarRoutes'
 import { superadminSiderRoutes } from '../../Modules/Layout/Routes/superadminSiderRoutes'
+import { storeManagerSiderRoutes } from '../../Modules/Layout/Routes/storeManagerSiderRoutes'
+import { purchaseManagerSiderRoutes } from '../../Modules/Layout/Routes/purchaseManagerSiderRoutes'
+import { purchaseCoordinatorSiderRoutes } from '../../Modules/Layout/Routes/purchaseCoordinatorSiderRoutes'
+import CreateRequisition from '../../Modules/Purchase/CreateRequisition'
+import RequisitionList from '../../Modules/Purchase/RequisitionList'
+import RequisitionDetails from '../../Modules/Purchase/RequisitionDetails'
+import IndentList from '../../Modules/Purchase/IndentList'
+import CreateIndent from '../../Modules/Purchase/CreateIndent'
+import IndentDetails from '../../Modules/Purchase/IndentDetails'
+import ItemsMaster from '../../Modules/Purchase/ItemsMaster'
+import ItemCategories from '../../Modules/Purchase/ItemCategories'
+import POList from '../../Modules/Purchase/POList'
+import CreatePO from '../../Modules/Purchase/CreatePO'
+import PODetails from '../../Modules/Purchase/PODetails'
+import GRNList from '../../Modules/Purchase/GRNList'
+import CreateGRN from '../../Modules/Purchase/CreateGRN'
+import GRNDetails from '../../Modules/Purchase/GRNDetails'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
 import DealerMetrics from '../../Modules/Admin/DealerMetrics'
 import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
@@ -99,6 +117,9 @@ const StackNavigation = () => {
     if (id === 3) return entrySiderRoutes // Entry user
     if (id === 7) return saleCoSidebarRoutes // Sales coordinator
     if (id === 1) return dataUserSiderRoutes // Inventory user
+    if (id === 8) return storeManagerSiderRoutes // Store Manager
+    if (id === 9) return purchaseManagerSiderRoutes // Purchase Manager
+    if (id === 10) return purchaseCoordinatorSiderRoutes // Purchase Coordinator
     return adminSiderRoutes // Default fallback
   }
 
@@ -120,6 +141,12 @@ const StackNavigation = () => {
           navigate('/production-dashboard')
         } else if (roleId === 1) {
           navigate('/inventory-dashboard')
+        } else if (roleId === 8) {
+          navigate('/purchase/indents')
+        } else if (roleId === 9) {
+          navigate('/purchase/requisitions')
+        } else if (roleId === 10) {
+          navigate('/purchase/indents')
         } else {
           navigate('/dealer-warranty')
         }
@@ -139,10 +166,7 @@ const StackNavigation = () => {
         path='/admin-daily-entry-dealers'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='Daily Entry Dealers'
-              content={<AdminDailyEntryDealersPage />}
-            />
+            <TopNavLayout content={<AdminDailyEntryDealersPage />} />
           </PrivateRoute>
         }
       />
@@ -150,7 +174,7 @@ const StackNavigation = () => {
         path='/admin-daily-entry'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout title='Daily Entry' content={<DailyEntryAdmin />} />
+            <TopNavLayout content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
       />
@@ -158,7 +182,7 @@ const StackNavigation = () => {
         path='/admin-dealers/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminDealerDetails />
+            <TopNavLayout content={<AdminDealerDetails />} />
           </PrivateRoute>
         }
       />
@@ -167,7 +191,7 @@ const StackNavigation = () => {
         path='/admin-stock-list'
         element={
           <PrivateRoute allowedRoles={[4]}>
-            <AdminLayout title='Stock List' content={<StockList />} />
+            <TopNavLayout content={<StockList />} />
           </PrivateRoute>
         }
       /> */}
@@ -177,11 +201,7 @@ const StackNavigation = () => {
         path='/entry-dashboard'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<EntryDashboard />}
-            />
+            <TopNavLayout content={<EntryDashboard />} />
           </PrivateRoute>
         }
       />
@@ -189,11 +209,7 @@ const StackNavigation = () => {
         path='/add-stock'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddStock />}
-            />
+            <TopNavLayout content={<AddStock />} />
           </PrivateRoute>
         }
       />
@@ -201,11 +217,7 @@ const StackNavigation = () => {
         path='/add-daily-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyEntry />}
-            />
+            <TopNavLayout content={<AddDailyEntry />} />
           </PrivateRoute>
         }
       />
@@ -213,11 +225,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-alloys'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyEntryALLOYS />}
-            />
+            <TopNavLayout content={<AddDailyEntryALLOYS />} />
           </PrivateRoute>
         }
       />
@@ -225,11 +233,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-tyres'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyEntryTYRES />}
-            />
+            <TopNavLayout content={<AddDailyEntryTYRES />} />
           </PrivateRoute>
         }
       />
@@ -237,11 +241,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-caps'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyEntryCAP />}
-            />
+            <TopNavLayout content={<AddDailyEntryCAP />} />
           </PrivateRoute>
         }
       />
@@ -249,11 +249,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-ppf'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <AdminLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyEntryPPF />}
-            />
+            <TopNavLayout content={<AddDailyEntryPPF />} />
           </PrivateRoute>
         }
       />
@@ -263,11 +259,7 @@ const StackNavigation = () => {
         path='add-payment-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddPMEntry />}
-            />
+            <TopNavLayout content={<AddPMEntry />} />
           </PrivateRoute>
         }
       />
@@ -275,11 +267,7 @@ const StackNavigation = () => {
         path='add-charges-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddChargesEntry />}
-            />
+            <TopNavLayout content={<AddChargesEntry />} />
           </PrivateRoute>
         }
       />
@@ -287,11 +275,7 @@ const StackNavigation = () => {
         path='add-inwards-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddDailyPurchaseEntry />}
-            />
+            <TopNavLayout content={<AddDailyPurchaseEntry />} />
           </PrivateRoute>
         }
       />
@@ -299,11 +283,7 @@ const StackNavigation = () => {
         path='add-cap-stock'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddCapStock />}
-            />
+            <TopNavLayout content={<AddCapStock />} />
           </PrivateRoute>
         }
       />
@@ -311,11 +291,7 @@ const StackNavigation = () => {
         path='add-finish'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddFinish />}
-            />
+            <TopNavLayout content={<AddFinish />} />
           </PrivateRoute>
         }
       />
@@ -323,11 +299,7 @@ const StackNavigation = () => {
         path='add-model'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title={`Welcome, ${user.firstName || ''} ${user.lastName || ''}`}
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AddModel />}
-            />
+            <TopNavLayout content={<AddModel />} />
           </PrivateRoute>
         }
       />
@@ -335,11 +307,7 @@ const StackNavigation = () => {
         path='/entry-daily-entry-dealers'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              items={getSidebarRoutes(user?.roleId)}
-              title='Daily Entry Dealers'
-              content={<AdminDailyEntryDealersPage />}
-            />
+            <TopNavLayout content={<AdminDailyEntryDealersPage />} />
           </PrivateRoute>
         }
       />
@@ -347,11 +315,7 @@ const StackNavigation = () => {
         path='/admin-dealer-metrics'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              items={getSidebarRoutes(user?.roleId)}
-              title='Select Dealer For Metrics'
-              content={<DealerMetrics />}
-            />
+            <TopNavLayout content={<DealerMetrics />} />
           </PrivateRoute>
         }
       />
@@ -359,11 +323,7 @@ const StackNavigation = () => {
         path='/admin-dealer-metrics-for-size'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              items={getSidebarRoutes(user?.roleId)}
-              title='Select Dealer For Metrics'
-              content={<DealerMetricsForSize />}
-            />
+            <TopNavLayout content={<DealerMetricsForSize />} />
           </PrivateRoute>
         }
       />
@@ -371,11 +331,7 @@ const StackNavigation = () => {
         path='/dealer-metrics'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Dealer Performance Metrics'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DealerMetrics />}
-            />
+            <TopNavLayout content={<DealerMetrics />} />
           </PrivateRoute>
         }
       />
@@ -383,7 +339,7 @@ const StackNavigation = () => {
         path='/admin-dealer-metrics-details/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <DealerMetricsDetails />
+            <TopNavLayout content={<DealerMetricsDetails />} />
           </PrivateRoute>
         }
       />
@@ -391,7 +347,7 @@ const StackNavigation = () => {
         path='/admin-dealer-metrics-by-size/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <DealerMetricsDetailsBySize />
+            <TopNavLayout content={<DealerMetricsDetailsBySize />} />
           </PrivateRoute>
         }
       />
@@ -399,7 +355,7 @@ const StackNavigation = () => {
         path='/admin-orders-dashboard/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminOrderDashboard />
+            <TopNavLayout content={<AdminOrderDashboard />} />
           </PrivateRoute>
         }
       />
@@ -408,11 +364,7 @@ const StackNavigation = () => {
         path='/stock-management'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='Stock Management Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<StockManagementDashboard />}
-            />
+            <TopNavLayout content={<StockManagementDashboard />} />
           </PrivateRoute>
         }
       />
@@ -421,7 +373,7 @@ const StackNavigation = () => {
         path='/bulk-stock-analysis'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <BulkStockAnalysis />
+            <TopNavLayout content={<BulkStockAnalysis />} />
           </PrivateRoute>
         }
       />
@@ -429,11 +381,7 @@ const StackNavigation = () => {
         path='/admin-dashboard'
         element={
           <PrivateRoute allowedRoles={[5, 999]}>
-            <AdminLayout
-              title='Admin Sales Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AdminSalesDashboard />}
-            />
+            <TopNavLayout content={<AdminSalesDashboard />} />
           </PrivateRoute>
         }
       />
@@ -441,11 +389,7 @@ const StackNavigation = () => {
         path='/sales-coordinator-dashboard'
         element={
           <PrivateRoute allowedRoles={[1, 2, 3, 4, 5, 6, 7, 999]}>
-            <AdminLayout
-              title='📊 Sales Coordinator Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<SalesCoordinatorDashboard />}
-            />
+            <TopNavLayout content={<SalesCoordinatorDashboard />} />
           </PrivateRoute>
         }
       />
@@ -453,11 +397,7 @@ const StackNavigation = () => {
         path='/dealer-warranty'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='Dealer Warranty Registrations'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DealerWarrantyList />}
-            />
+            <TopNavLayout content={<DealerWarrantyList />} />
           </PrivateRoute>
         }
       />
@@ -465,11 +405,7 @@ const StackNavigation = () => {
         path='/dealer-warranty/edit/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='Edit Warranty Registration'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DealerWarrantyDetail />}
-            />
+            <TopNavLayout content={<DealerWarrantyDetail />} />
           </PrivateRoute>
         }
       />
@@ -477,10 +413,7 @@ const StackNavigation = () => {
         path='/dealers-list'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <EntryLayout
-              title='Dealers List'
-              content={<DealersList />}
-            />
+            <TopNavLayout content={<DealersList />} />
           </PrivateRoute>
         }
       />
@@ -488,7 +421,7 @@ const StackNavigation = () => {
         path='/add-dealer'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <EntryLayout title='Add Dealer' content={<AddDealer />} />
+            <TopNavLayout content={<AddDealer />} />
           </PrivateRoute>
         }
       />
@@ -496,7 +429,7 @@ const StackNavigation = () => {
         path='/edit-dealer'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <EntryLayout title='Edit Dealer' content={<EditDealer />} />
+            <TopNavLayout content={<EditDealer />} />
           </PrivateRoute>
         }
       />
@@ -507,11 +440,7 @@ const StackNavigation = () => {
         path='/entry-inventory-system'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <EntryLayout
-              title='Inventory Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryManagement />}
-            />
+            <TopNavLayout content={<InventoryManagement />} />
           </PrivateRoute>
         }
       />
@@ -521,11 +450,7 @@ const StackNavigation = () => {
         path='/inventory-management-v2'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Inventory Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryManagement />}
-            />
+            <TopNavLayout content={<InventoryManagement />} />
           </PrivateRoute>
         }
       />
@@ -535,11 +460,7 @@ const StackNavigation = () => {
         path='/stock-logs'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Stock Logs'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<StockLogViewer />}
-            />
+            <TopNavLayout content={<StockLogViewer />} />
           </PrivateRoute>
         }
       />
@@ -547,11 +468,7 @@ const StackNavigation = () => {
         path='/stock-reconciliation'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Stock Reconciliation'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<StockReconciliation />}
-            />
+            <TopNavLayout content={<StockReconciliation />} />
           </PrivateRoute>
         }
       />
@@ -561,11 +478,7 @@ const StackNavigation = () => {
         path='/inventory-locations'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Inventory Locations'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryLocationsPage />}
-            />
+            <TopNavLayout content={<InventoryLocationsPage />} />
           </PrivateRoute>
         }
       />
@@ -573,11 +486,7 @@ const StackNavigation = () => {
         path='/inventory-locations/:locationId'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Location Details'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryLocationDetailsPage />}
-            />
+            <TopNavLayout content={<InventoryLocationDetailsPage />} />
           </PrivateRoute>
         }
       />
@@ -585,11 +494,7 @@ const StackNavigation = () => {
         path='/inventory-movements'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Inventory Movements'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryMovementsPage />}
-            />
+            <TopNavLayout content={<InventoryMovementsPage />} />
           </PrivateRoute>
         }
       />
@@ -599,11 +504,7 @@ const StackNavigation = () => {
         path='/production-dashboard'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Production Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<ProductionDashboard />}
-            />
+            <TopNavLayout content={<ProductionDashboard />} />
           </PrivateRoute>
         }
       />
@@ -611,11 +512,7 @@ const StackNavigation = () => {
         path='/production-plans'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Production Plans'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<ProductionListing />}
-            />
+            <TopNavLayout content={<ProductionListing />} />
           </PrivateRoute>
         }
       />
@@ -623,11 +520,7 @@ const StackNavigation = () => {
         path='/production-plans-v2'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Production Plans V2'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<ProductionListingV2 />}
-            />
+            <TopNavLayout content={<ProductionListingV2 />} />
           </PrivateRoute>
         }
       />
@@ -635,7 +528,7 @@ const StackNavigation = () => {
         path='/production-plans-modern'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <ProductionListingModern />
+            <TopNavLayout content={<ProductionListingModern />} />
           </PrivateRoute>
         }
       />
@@ -643,7 +536,7 @@ const StackNavigation = () => {
         path='/production-plan/:planId'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <ProductionPlanDetailsPage />
+            <TopNavLayout content={<ProductionPlanDetailsPage />} />
           </PrivateRoute>
         }
       />
@@ -651,11 +544,7 @@ const StackNavigation = () => {
         path='/production-alloys'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Alloy Selection'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<AlloySelection />}
-            />
+            <TopNavLayout content={<AlloySelection />} />
           </PrivateRoute>
         }
       />
@@ -663,11 +552,7 @@ const StackNavigation = () => {
         path='/production-presets'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Preset Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PresetManagement />}
-            />
+            <TopNavLayout content={<PresetManagement />} />
           </PrivateRoute>
         }
       />
@@ -675,11 +560,7 @@ const StackNavigation = () => {
          path='/rejected-stock'
          element={
            <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-             <AdminLayout
-               title='Rejected Stock Management'
-               items={getSidebarRoutes(user?.roleId)}
-               content={<RejectedStockManagement />}
-             />
+             <TopNavLayout content={<RejectedStockManagement />} />
            </PrivateRoute>
          }
        />
@@ -687,11 +568,7 @@ const StackNavigation = () => {
         path='/dispatch-to-sales'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Dispatch to Sales - Ready Units'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DispatchToSales />}
-            />
+            <TopNavLayout content={<DispatchToSales />} />
           </PrivateRoute>
         }
       />
@@ -699,11 +576,7 @@ const StackNavigation = () => {
         path='/discarded-stock-management'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Discarded Stock Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DiscardedStockManagement />}
-            />
+            <TopNavLayout content={<DiscardedStockManagement />} />
           </PrivateRoute>
         }
       />
@@ -711,11 +584,7 @@ const StackNavigation = () => {
         path='/smart-production'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Smart Production Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<SmartProductionDashboard />}
-            />
+            <TopNavLayout content={<SmartProductionDashboard />} />
           </PrivateRoute>
         }
       />
@@ -723,11 +592,7 @@ const StackNavigation = () => {
         path='/production-planner-v2'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Production Planner V2'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<ProductionPlannerV2 />}
-            />
+            <TopNavLayout content={<ProductionPlannerV2 />} />
           </PrivateRoute>
         }
       />
@@ -735,11 +600,7 @@ const StackNavigation = () => {
         path='/job-cards'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 6, 999]}>
-            <AdminLayout
-              title='Job Cards'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<JobCardListing />}
-            />
+            <TopNavLayout content={<JobCardListing />} />
           </PrivateRoute>
         }
       />
@@ -747,11 +608,7 @@ const StackNavigation = () => {
         path='/inventory-requests'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Inventory Requests'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InventoryRequests />}
-            />
+            <TopNavLayout content={<InventoryRequests />} />
           </PrivateRoute>
         }
       />
@@ -760,7 +617,7 @@ const StackNavigation = () => {
         path="/entry-daily-entry"
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout items={getSidebarRoutes(user?.roleId)} title="Daily Entry" content={<DailyEntryAdmin />} />
+            <TopNavLayout content={<DailyEntryAdmin />} />
           </PrivateRoute>
         }
       /> */}
@@ -770,11 +627,7 @@ const StackNavigation = () => {
         path='/purchase-orders'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <AdminLayout
-              title='Purchase Orders'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PurchaseDashboard />}
-            />
+            <TopNavLayout content={<PurchaseDashboard />} />
           </PrivateRoute>
         }
       />
@@ -782,7 +635,7 @@ const StackNavigation = () => {
         path='/purchase-orders/smart-purchasing'
         element={
           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
-            <SmartPurchasing />
+            <TopNavLayout content={<SmartPurchasing />} />
           </PrivateRoute>
         }
       />
@@ -792,11 +645,7 @@ const StackNavigation = () => {
         path='/sales-pending-entries'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
-            <AdminLayout
-              title='⏳ Pending Entries - Sales Coordination'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PendingEntriesView />}
-            />
+            <TopNavLayout content={<PendingEntriesView />} />
           </PrivateRoute>
         }
       />
@@ -804,11 +653,7 @@ const StackNavigation = () => {
         path='/sales-inprod-entries'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
-            <AdminLayout
-              title='🔄 In-Production Entries - Sales Coordination'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<InProductionEntriesView />}
-            />
+            <TopNavLayout content={<InProductionEntriesView />} />
           </PrivateRoute>
         }
       />
@@ -816,11 +661,7 @@ const StackNavigation = () => {
         path='/sales-dispatch-entries'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
-            <AdminLayout
-              title='📦 Dispatch Entries - Sales Coordination'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<DispatchEntriesView />}
-            />
+            <TopNavLayout content={<DispatchEntriesView />} />
           </PrivateRoute>
         }
       />
@@ -828,11 +669,7 @@ const StackNavigation = () => {
         path='/data-entry-pricing'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='💰 Pricing Entries - Data Entry'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PricingEntriesView />}
-            />
+            <TopNavLayout content={<PricingEntriesView />} />
           </PrivateRoute>
         }
       />
@@ -840,11 +677,7 @@ const StackNavigation = () => {
         path='/sales-create-order'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
-            <AdminLayout
-              title='📋 Create Order - Sales Coordination'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<CreateOrderView />}
-            />
+            <TopNavLayout content={<CreateOrderView />} />
           </PrivateRoute>
         }
       />
@@ -852,11 +685,7 @@ const StackNavigation = () => {
         path='/sales-create-order-alloys'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 7, 999]}>
-            <AdminLayout
-              title='🔩 Create Alloys Order - Sales Coordination'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<CreateOrderAlloys />}
-            />
+            <TopNavLayout content={<CreateOrderAlloys />} />
           </PrivateRoute>
         }
       />
@@ -866,11 +695,7 @@ const StackNavigation = () => {
         path='/user-production-steps'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='👥 User Production Step Assignments'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<UserProductionSteps />}
-            />
+            <TopNavLayout content={<UserProductionSteps />} />
           </PrivateRoute>
         }
       />
@@ -880,11 +705,7 @@ const StackNavigation = () => {
         path='/equipment-management'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='🔧 Equipment Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<EquipmentManagement />}
-            />
+            <TopNavLayout content={<EquipmentManagement />} />
           </PrivateRoute>
         }
       />
@@ -894,11 +715,7 @@ const StackNavigation = () => {
         path='/step-position-mapping'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='📍 Step-Position Mapping'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<StepPositionMapping />}
-            />
+            <TopNavLayout content={<StepPositionMapping />} />
           </PrivateRoute>
         }
       />
@@ -908,11 +725,7 @@ const StackNavigation = () => {
         path='/price-lists'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='💰 Price Lists Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PriceListPage />}
-            />
+            <TopNavLayout content={<PriceListPage />} />
           </PrivateRoute>
         }
       />
@@ -922,11 +735,7 @@ const StackNavigation = () => {
         path='/price-lists/edit/:id'
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
-            <AdminLayout
-              title='⚙️ Edit Price List'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<EditPriceListPage />}
-            />
+            <TopNavLayout content={<EditPriceListPage />} />
           </PrivateRoute>
         }
       />
@@ -936,11 +745,7 @@ const StackNavigation = () => {
         path='/cost-categories'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Cost Categories'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<CostCategoriesPage />}
-            />
+            <TopNavLayout content={<CostCategoriesPage />} />
           </PrivateRoute>
         }
       />
@@ -948,11 +753,7 @@ const StackNavigation = () => {
         path='/monthly-overheads'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Monthly Overheads'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<MonthlyOverheadsPage />}
-            />
+            <TopNavLayout content={<MonthlyOverheadsPage />} />
           </PrivateRoute>
         }
       />
@@ -960,11 +761,7 @@ const StackNavigation = () => {
         path='/profit-dashboard'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Profit Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<ProfitDashboardPage />}
-            />
+            <TopNavLayout content={<ProfitDashboardPage />} />
           </PrivateRoute>
         }
       />
@@ -972,11 +769,7 @@ const StackNavigation = () => {
         path='/pnl-dashboard'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='P&L Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<PLDashboardPage />}
-            />
+            <TopNavLayout content={<PLDashboardPage />} />
           </PrivateRoute>
         }
       />
@@ -984,11 +777,7 @@ const StackNavigation = () => {
         path='/ceo-dashboard'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='CEO Dashboard'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<CEODashboard />}
-            />
+            <TopNavLayout content={<CEODashboard />} />
           </PrivateRoute>
         }
       />
@@ -998,11 +787,7 @@ const StackNavigation = () => {
         path='/mold-management'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Mold Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<MoldManagementDashboard />}
-            />
+            <TopNavLayout content={<MoldManagementDashboard />} />
           </PrivateRoute>
         }
       />
@@ -1012,11 +797,135 @@ const StackNavigation = () => {
         path='/temp-costing'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
-            <AdminLayout
-              title='Product Costing Management'
-              items={getSidebarRoutes(user?.roleId)}
-              content={<TempCostingView />}
-            />
+            <TopNavLayout content={<TempCostingView />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* ============================================================ */}
+      {/* PURCHASE SYSTEM V2 ROUTES                                    */}
+      {/* ============================================================ */}
+
+      {/* Submit Purchase Requisition — any logged-in user */}
+      <Route
+        path='/purchase/requisitions/create'
+        element={
+          <PrivateRoute allowedRoles={[1, 3, 5, 6, 7, 8, 9, 10, 999]}>
+            <TopNavLayout content={<CreateRequisition />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Purchase Requisitions */}
+      <Route
+        path='/purchase/requisitions'
+        element={
+          <PrivateRoute allowedRoles={[9, 5, 999]}>
+            <TopNavLayout content={<RequisitionList />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/requisitions/:id'
+        element={
+          <PrivateRoute allowedRoles={[9, 5, 999]}>
+            <TopNavLayout content={<RequisitionDetails />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Purchase Indents */}
+      <Route
+        path='/purchase/indents'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<IndentList />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/indents/create'
+        element={
+          <PrivateRoute allowedRoles={[8, 5, 999]}>
+            <TopNavLayout content={<CreateIndent />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/indents/:id'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<IndentDetails />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Items Master */}
+      <Route
+        path='/purchase/items'
+        element={
+          <PrivateRoute allowedRoles={[9, 10, 5, 999]}>
+            <TopNavLayout content={<ItemsMaster />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/item-categories'
+        element={
+          <PrivateRoute allowedRoles={[9, 5, 999]}>
+            <TopNavLayout content={<ItemCategories />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Purchase Orders */}
+      <Route
+        path='/purchase/po'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<POList />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/po/create'
+        element={
+          <PrivateRoute allowedRoles={[10, 5, 999]}>
+            <TopNavLayout content={<CreatePO />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/po/:id'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<PODetails />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* GRN */}
+      <Route
+        path='/purchase/grn'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<GRNList />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/grn/create'
+        element={
+          <PrivateRoute allowedRoles={[8, 5, 999]}>
+            <TopNavLayout content={<CreateGRN />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/purchase/grn/:id'
+        element={
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+            <TopNavLayout content={<GRNDetails />} />
           </PrivateRoute>
         }
       />

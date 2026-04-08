@@ -820,198 +820,100 @@ const PresetManagement = () => {
     }
   ]
 
-  return (
-    <Layout>
-      <div className='min-h-screen bg-gray-50'>
-        {/* Clean Header Section */}
-        <div className='bg-white border-b border-gray-200'>
-          <div className='max-w-7xl mx-auto px-8 py-8'>
-            <div className='flex items-center justify-between'>
-              <div className='flex-1'>
-                <div className='flex items-center gap-4 mb-3'>
-                  <div className='p-3 bg-blue-50 rounded-xl border border-blue-200'>
-                    <SettingOutlined className='text-3xl text-blue-600' />
-                  </div>
-                  <div>
-                    <Title
-                      level={2}
-                      className='text-gray-800 mb-0 flex items-center gap-3'
-                    >
-                      Production Step Presets
-                      <span className='inline-flex items-center px-3 py-1 bg-blue-50 rounded-full text-sm font-medium text-blue-700 border border-blue-200'>
-                        Workflow Templates
-                      </span>
-                    </Title>
-                  </div>
-                </div>
-                <Text className='text-gray-600 text-lg block'>
-                  Manage and customize workflow templates for production plans
-                </Text>
-                <div className='flex items-center gap-6 mt-4'>
-                  <div className='flex items-center gap-2'>
-                    <div className='w-3 h-3 bg-green-500 rounded-full'></div>
-                    <span className='text-gray-600 text-sm'>
-                      Active:{' '}
-                      {
-                        (stepPresets || []).filter(p => p.isActive !== false)
-                          .length
-                      }
-                    </span>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    <div className='w-3 h-3 bg-gray-400 rounded-full'></div>
-                    <span className='text-gray-600 text-sm'>
-                      Inactive:{' '}
-                      {
-                        (stepPresets || []).filter(p => p.isActive === false)
-                          .length
-                      }
-                    </span>
-                  </div>
-                </div>
-              </div>
+  const activeCount = (stepPresets || []).filter(p => p.isActive !== false).length
+  const inactiveCount = (stepPresets || []).filter(p => p.isActive === false).length
 
-              <div className='text-center ml-8'>
-                <div className='bg-gray-50 rounded-2xl p-6 border border-gray-200'>
-                  <Statistic
-                    title={
-                      <span className='text-gray-600 font-medium'>
-                        Total Presets
-                      </span>
-                    }
-                    value={stepPresets?.length || 0}
-                    valueStyle={{
-                      color: '#1f2937',
-                      fontSize: '42px',
-                      fontWeight: 'bold'
-                    }}
-                  />
-                  <div className='mt-2'>
-                    <Progress
-                      percent={(stepPresets?.length || 0) > 0 ? 100 : 0}
-                      showInfo={false}
-                      strokeColor={{
-                        '0%': '#10b981',
-                        '100%': '#3b82f6'
-                      }}
-                      className='w-24 mx-auto'
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+  return (
+    <div style={{ width: '100%' }}>
+      <div className='min-h-screen'>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h1 style={{ fontFamily: "'Staff Wide Test', serif", fontSize: 42, fontWeight: 400, color: '#1a1a1a', margin: '0 0 8px', lineHeight: '30px' }}>
+            Production Step Presets
+          </h1>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+            <span style={{ background: '#d9fae6', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+              {activeCount} Active
+            </span>
+            <span style={{ background: '#f3f3f5', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+              {inactiveCount} Inactive
+            </span>
+            <span style={{ background: '#dbeafe', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+              {stepPresets?.length || 0} Total
+            </span>
           </div>
         </div>
 
-        {/* Enhanced Controls Section with better styling */}
-        <div className='bg-white shadow-lg border-b border-gray-100'>
-          <div className='max-w-7xl mx-auto px-6 py-5'>
-            <div className='flex items-center justify-between'>
-              {/* Search and Filters */}
-              <div className='flex items-center gap-4'>
-                <div className='relative'>
-                  <Input.Search
-                    placeholder='Search presets by name or description...'
-                    allowClear
-                    onChange={e => setSearchText(e.target.value)}
-                    style={{ width: 350 }}
-                    size='large'
-                    className='shadow-sm hover:shadow-md transition-shadow duration-200'
-                    prefix={<SearchOutlined className='text-gray-400' />}
-                  />
-                </div>
-              </div>
+        {/* Filter Bar */}
+        <div style={{
+          background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+          padding: '12px 32px', marginBottom: 16,
+          boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="text" placeholder="Search presets by name or description..."
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }}
+            />
 
-              {/* Action Buttons */}
-              <div className='flex items-center gap-3'>
-                <div className='bg-gray-50 rounded-lg p-1 flex'>
-                  <Button
-                    icon={<AppstoreOutlined />}
-                    type={viewMode === 'grid' ? 'primary' : 'text'}
-                    onClick={() => setViewMode('grid')}
-                    className={
-                      viewMode === 'grid' ? 'shadow-sm' : 'hover:bg-gray-100'
-                    }
-                  >
-                    <span className='hidden sm:inline'>Grid</span>
-                  </Button>
-                  <Button
-                    icon={<BarsOutlined />}
-                    type={viewMode === 'table' ? 'primary' : 'text'}
-                    onClick={() => setViewMode('table')}
-                    className={
-                      viewMode === 'table' ? 'shadow-sm' : 'hover:bg-gray-100'
-                    }
-                  >
-                    <span className='hidden sm:inline'>Table</span>
-                  </Button>
-                </div>
-
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadData}
-                  loading={loading}
-                  size='large'
-                  className='shadow-sm hover:shadow-md transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
-                >
-                  <span className='hidden sm:inline'>Refresh</span>
-                </Button>
-
-                <Button
-                  type='primary'
-                  icon={<PlusOutlined />}
-                  onClick={() => setCreateDrawerVisible(true)}
-                  size='large'
-                  className='bg-gradient-to-r from-blue-500 to-purple-600 border-0 hover:from-blue-600 hover:to-purple-700 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200'
-                >
-                  Create Preset
-                </Button>
-              </div>
+            {/* View Mode Toggle */}
+            <div style={{ display: 'flex', background: '#f3f3f5', borderRadius: 123, padding: 2 }}>
+              <button onClick={() => setViewMode('grid')} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 14px', borderRadius: 123, fontSize: 13, fontWeight: 500,
+                fontFamily: "'Inter', sans-serif", border: 'none', cursor: 'pointer',
+                background: viewMode === 'grid' ? 'white' : 'transparent',
+                color: viewMode === 'grid' ? '#1a1a1a' : '#6b7280',
+                boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+              }}>
+                <AppstoreOutlined /> Grid
+              </button>
+              <button onClick={() => setViewMode('table')} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 14px', borderRadius: 123, fontSize: 13, fontWeight: 500,
+                fontFamily: "'Inter', sans-serif", border: 'none', cursor: 'pointer',
+                background: viewMode === 'table' ? 'white' : 'transparent',
+                color: viewMode === 'table' ? '#1a1a1a' : '#6b7280',
+                boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+              }}>
+                <BarsOutlined /> Table
+              </button>
             </div>
 
-            {/* Results summary */}
-            <div className='mt-4 flex items-center justify-between'>
-              <div className='text-sm text-gray-600'>
-                Showing{' '}
-                <span className='font-medium text-gray-900'>
-                  {filteredPresets.length}
-                </span>{' '}
-                of{' '}
-                <span className='font-medium text-gray-900'>
-                  {stepPresets?.length || 0}
-                </span>{' '}
-                presets
-                {searchText && (
-                  <span className='ml-2 text-blue-600'>
-                    (filtered by search)
-                  </span>
-                )}
-              </div>
+            <button onClick={loadData} disabled={loading} style={{
+              display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center',
+              background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400,
+              fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer', flexShrink: 0,
+            }}>
+              <ReloadOutlined spin={loading} style={{ fontSize: 14 }} /> Refresh
+            </button>
 
-              {filteredPresets.length > 0 && (
-                <div className='flex items-center gap-4 text-sm'>
-                  <div className='flex items-center gap-2'>
-                    <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                    <span className='text-gray-600'>
-                      Active:{' '}
-                      {filteredPresets.filter(p => p.isActive !== false).length}
-                    </span>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    <div className='w-2 h-2 bg-gray-400 rounded-full'></div>
-                    <span className='text-gray-600'>
-                      Inactive:{' '}
-                      {filteredPresets.filter(p => p.isActive === false).length}
-                    </span>
-                  </div>
-                </div>
-              )}
+            <button onClick={() => setCreateDrawerVisible(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px',
+              background: '#4a90ff', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500,
+              fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
+            }}>
+              <PlusOutlined style={{ fontSize: 14 }} /> Create Preset
+            </button>
+          </div>
+
+          {/* Results summary */}
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#6b7280' }}>
+            <span>
+              Showing <strong style={{ color: '#1a1a1a' }}>{filteredPresets.length}</strong> of <strong style={{ color: '#1a1a1a' }}>{stepPresets?.length || 0}</strong> presets
+              {searchText && <span style={{ color: '#4a90ff', marginLeft: 8 }}>(filtered)</span>}
+            </span>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ecb71' }} /> Active: {filteredPresets.filter(p => p.isActive !== false).length}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#9ca3af' }} /> Inactive: {filteredPresets.filter(p => p.isActive === false).length}</span>
             </div>
           </div>
         </div>
 
         {/* Content Section */}
-        <div className='max-w-7xl mx-auto p-6'>
+        <div className='p-0'>
           {loading ? (
             <div className='text-center py-12'>
               <Spin size='large' />
@@ -1093,21 +995,80 @@ const PresetManagement = () => {
               ))}
             </Row>
           ) : (
-            <Card>
-              <Table
-                columns={columns}
-                dataSource={filteredPresets}
-                rowKey='presetName'
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} presets`
-                }}
-                scroll={{ x: 1200 }}
-              />
-            </Card>
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      {['Preset', 'Steps', 'Active Plans', 'Status', 'Actions'].map((h, i) => (
+                        <th key={h} style={{
+                          background: '#f3f3f5', padding: '12px 16px',
+                          textAlign: ['Steps', 'Active Plans', 'Status', 'Actions'].includes(h) ? 'center' : 'left',
+                          fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                          fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                          whiteSpace: 'nowrap', lineHeight: '20px',
+                          paddingLeft: i === 0 ? 32 : undefined,
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPresets.map((record, idx) => (
+                      <tr key={record.presetName} style={{ borderBottom: '1px solid #f3f4f6' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', paddingLeft: 32 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                              width: 40, height: 40, borderRadius: 12,
+                              background: record.isActive !== false ? '#4a90ff' : '#d9d9d9',
+                              color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 700, fontSize: 16, flexShrink: 0,
+                            }}>{record.stepCount || 0}</div>
+                            <div>
+                              <div style={{ fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{record.presetName}</div>
+                              <div style={{ fontSize: 12, color: '#9ca3af' }}>{record.presetDescription || 'No description'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <span style={{ background: '#d9fae6', color: '#15803d', fontWeight: 600, fontSize: 13, padding: '4px 10px', borderRadius: 1234 }}>{record.stepCount || 0}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontWeight: 500, color: (record.activeUsage || 0) > 0 ? '#15803d' : '#9ca3af' }}>
+                          {record.activeUsage || 0}
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
+                            fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
+                            background: record.isActive !== false ? '#d9fae6' : '#f3f3f5',
+                            border: `1px solid ${record.isActive !== false ? 'rgba(78,203,113,0.2)' : 'rgba(160,160,168,0.3)'}`,
+                          }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: record.isActive !== false ? '#4ecb71' : '#9ca3af' }} />
+                            {record.isActive !== false ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <button onClick={() => handlePreviewPreset(record)} title="Preview" style={{ background: 'none', border: '1px solid #e5e5e5', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', fontSize: 14 }}><EyeOutlined /></button>
+                            <button onClick={() => handleEditPreset(record)} title="Edit" style={{ background: 'none', border: '1px solid #e5e5e5', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', fontSize: 14 }}><EditOutlined /></button>
+                            <button onClick={() => handleDuplicatePreset(record)} title="Duplicate" style={{ background: 'none', border: '1px solid #e5e5e5', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', fontSize: 14 }}><CopyOutlined /></button>
+                            <Popconfirm title={`Delete "${record.presetName}"?`} onConfirm={() => handleDeletePreset(record.presetName)} okText="Delete" okType="danger">
+                              <button title="Delete" style={{ background: 'none', border: '1px solid #e5e5e5', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#dc2626', fontSize: 14 }}><DeleteOutlined /></button>
+                            </Popconfirm>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
 
@@ -1707,7 +1668,7 @@ const PresetManagement = () => {
           </div>
         </Modal>
       </div>
-    </Layout>
+    </div>
   )
 }
 

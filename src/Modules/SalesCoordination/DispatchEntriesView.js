@@ -1,18 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Table, Button, Tag, message, Space, Popconfirm, Tabs, Badge, Steps, Card, Alert, DatePicker, Input, Select } from 'antd'
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  DeleteOutlined,
-  ExportOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  SendOutlined,
-  PrinterOutlined,
-  CarOutlined,
-  DownloadOutlined,
-  SearchOutlined
-} from '@ant-design/icons'
+import { message } from 'antd'
+import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
 import {
   getDispatchEntriesAPI,
   sendForDispatchAPI,
@@ -25,6 +13,47 @@ import moment from 'moment'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 
+import PageTitle from '../../Core/Components/PageTitle'
+import TabBar from '../../Core/Components/TabBar'
+import StepBanner from '../../Core/Components/StepBanner'
+import FilterBar from '../../Core/Components/FilterBar'
+import DataTable from '../../Core/Components/DataTable'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
+
+const TABS = [
+  { key: 'awaiting_approval', label: 'Export & Approve for Dispatch' },
+  { key: 'sent_for_dispatch', label: 'Send for Physical Dispatch' },
+  { key: 'approved', label: 'Dispatched & Complete' }
+]
+
+const STEP_GUIDANCE = {
+  awaiting_approval: {
+    title: 'Step 1: Awaiting Approval',
+    steps: [
+      'Step 1: Export entries and print for dispatch department',
+      'Step 2: Review and approve each entry individually',
+      'Step 3: Send approved entries for physical dispatch',
+    ],
+  },
+  sent_for_dispatch: {
+    title: 'Step 2: Send for Dispatch',
+    steps: [
+      'Step 1: Coordinate with Warehouse - Contact team',
+      'Step 2: Receive Confirmation - Wait for physical dispatch notification',
+      'Step 3: Mark Dispatched - Confirm each order individually',
+    ],
+  },
+  approved: {
+    title: 'Step 3: Dispatched & Complete',
+    steps: [
+      'Step 1: All entries have been physically dispatched',
+      'Step 2: Export dealer-wise PDFs for invoices/delivery notes',
+      'Step 3: Send documents to respective dealers',
+    ],
+  },
+}
+
 const DispatchEntriesView = () => {
   const dispatch = useDispatch()
   const [dispatchEntries, setDispatchEntries] = useState([])
@@ -33,137 +62,76 @@ const DispatchEntriesView = () => {
   const [processingId, setProcessingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [activeTab, setActiveTab] = useState('awaiting_approval')
-  const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'))
   const [searchText, setSearchText] = useState('')
   const [selectedDealer, setSelectedDealer] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  // Get unique dealers for the dropdown filter (based on active tab's entries with date filtering)
+  // ─── Derived Data ───
+
   const dealerOptions = useMemo(() => {
-    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
-
-    // Filter entries by active tab AND apply same date logic as filteredEntries
+    const selectedDateStr = selectedDate || null
     const tabEntries = dispatchEntries.filter(entry => {
-      const matchesStatus = entry.dispatchStatus === activeTab
-      if (!matchesStatus) return false
-
-      // Sent for dispatch - show ALL entries regardless of date
+      if (entry.dispatchStatus !== activeTab) return false
       if (activeTab === 'sent_for_dispatch') return true
-
-      // Filter by date if selected
       if (selectedDateStr) {
-        // For dispatched entries, use processedAt
-        if (activeTab === 'approved' && entry.processedAt) {
-          const processedDate = moment(entry.processedAt).format('YYYY-MM-DD')
-          return processedDate === selectedDateStr
-        }
-        // For awaiting_approval, use dateIST
-        if (entry.dateIST) {
-          const entryDate = moment(entry.dateIST).format('YYYY-MM-DD')
-          return entryDate === selectedDateStr
-        }
+        if (activeTab === 'approved' && entry.processedAt)
+          return moment(entry.processedAt).format('YYYY-MM-DD') === selectedDateStr
+        if (entry.dateIST)
+          return moment(entry.dateIST).format('YYYY-MM-DD') === selectedDateStr
       }
-
       return true
     })
-
     const dealers = [...new Set(tabEntries.map(e => e.dealerName).filter(Boolean))]
-    return dealers.sort().map(dealer => ({ label: dealer, value: dealer }))
+    return dealers.sort().map(d => ({ label: d, value: d }))
   }, [dispatchEntries, activeTab, selectedDate])
 
-  // Filter entries based on active tab, selected date, search text, and dealer
-  // - 'awaiting_approval': filter by dateIST (entry creation date)
-  // - 'sent_for_dispatch': show ALL entries regardless of date (pending backlog)
-  // - 'approved' (dispatched): filter by processedAt (when item was dispatched)
   const filteredEntries = useMemo(() => {
-    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
+    const selectedDateStr = selectedDate || null
     const searchLower = searchText.toLowerCase().trim()
-
     return dispatchEntries.filter(entry => {
-      // Filter by status (tab)
-      const matchesStatus = entry.dispatchStatus === activeTab
-
-      // Filter by dealer if selected
-      if (selectedDealer && entry.dealerName !== selectedDealer) {
-        return false
-      }
-
-      // Filter by search text (searches in dealer name, product name, entry ID)
+      if (entry.dispatchStatus !== activeTab) return false
+      if (selectedDealer && entry.dealerName !== selectedDealer) return false
       if (searchLower) {
-        const matchesSearch =
+        const matches =
           (entry.dealerName && entry.dealerName.toLowerCase().includes(searchLower)) ||
           (entry.productName && entry.productName.toLowerCase().includes(searchLower)) ||
           (entry.id && entry.id.toString().includes(searchLower))
-        if (!matchesSearch) {
-          return false
-        }
+        if (!matches) return false
       }
-
-      // Sent for dispatch - show ALL entries regardless of date (pending backlog)
-      if (activeTab === 'sent_for_dispatch') {
-        return matchesStatus
-      }
-
-      // Filter by date if selected
+      if (activeTab === 'sent_for_dispatch') return true
       if (selectedDateStr) {
-        // For dispatched entries, use processedAt (when item was dispatched)
-        if (activeTab === 'approved' && entry.processedAt) {
-          const processedDate = moment(entry.processedAt).format('YYYY-MM-DD')
-          return matchesStatus && processedDate === selectedDateStr
-        }
-        // For awaiting_approval, use dateIST (entry creation date)
-        if (entry.dateIST) {
-          const entryDate = moment(entry.dateIST).format('YYYY-MM-DD')
-          return matchesStatus && entryDate === selectedDateStr
-        }
+        if (activeTab === 'approved' && entry.processedAt)
+          return moment(entry.processedAt).format('YYYY-MM-DD') === selectedDateStr
+        if (entry.dateIST)
+          return moment(entry.dateIST).format('YYYY-MM-DD') === selectedDateStr
       }
-
-      return matchesStatus
+      return true
     })
   }, [dispatchEntries, activeTab, selectedDate, searchText, selectedDealer])
 
-  // Count entries by status (filtered by selected date where applicable)
-  // - awaiting_approval: filter by dateIST
-  // - sent_for_dispatch: NO date filter (show total backlog count)
-  // - approved: filter by processedAt
   const statusCounts = useMemo(() => {
-    const selectedDateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : null
-
-    const filterByDateIST = (entries) => {
+    const selectedDateStr = selectedDate || null
+    const filterDate = (entries, field) => {
       if (!selectedDateStr) return entries
-      return entries.filter(e => {
-        if (e.dateIST) {
-          const entryDate = moment(e.dateIST).format('YYYY-MM-DD')
-          return entryDate === selectedDateStr
-        }
-        return false
-      })
+      return entries.filter(e => e[field] && moment(e[field]).format('YYYY-MM-DD') === selectedDateStr)
     }
-
-    const filterByProcessedAt = (entries) => {
-      if (!selectedDateStr) return entries
-      return entries.filter(e => {
-        if (e.processedAt) {
-          const processedDate = moment(e.processedAt).format('YYYY-MM-DD')
-          return processedDate === selectedDateStr
-        }
-        return false
-      })
-    }
-
-    const awaitingApproval = dispatchEntries.filter(e => e.dispatchStatus === 'awaiting_approval')
-    const sentForDispatch = dispatchEntries.filter(e => e.dispatchStatus === 'sent_for_dispatch')
-    const approved = dispatchEntries.filter(e => e.dispatchStatus === 'approved')
-
     return {
-      awaiting_approval: filterByDateIST(awaitingApproval).length,
-      sent_for_dispatch: sentForDispatch.length,  // Show total count (no date filter - pending backlog)
-      approved: filterByProcessedAt(approved).length  // Use processedAt for dispatched entries
+      awaiting_approval: filterDate(dispatchEntries.filter(e => e.dispatchStatus === 'awaiting_approval'), 'dateIST').length,
+      sent_for_dispatch: dispatchEntries.filter(e => e.dispatchStatus === 'sent_for_dispatch').length,
+      approved: filterDate(dispatchEntries.filter(e => e.dispatchStatus === 'approved'), 'processedAt').length,
     }
   }, [dispatchEntries, selectedDate])
 
-  useEffect(() => {
-    fetchDispatchEntries()
-  }, [])
+  const paginatedEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredEntries.slice(start, start + pageSize)
+  }, [filteredEntries, currentPage, pageSize])
+
+  // ─── API Handlers ───
+
+  useEffect(() => { fetchDispatchEntries() }, [])
 
   const fetchDispatchEntries = async () => {
     setLoading(true)
@@ -171,192 +139,80 @@ const DispatchEntriesView = () => {
       const response = await dispatch(getDispatchEntriesAPI()).unwrap()
       setDispatchEntries(response.dispatchEntries || [])
     } catch (error) {
-      console.error('Error fetching dispatch entries:', error)
       message.error('Failed to load dispatch entries')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSendForDispatch = async entryId => {
+  const handleSendForDispatch = async (entryId) => {
     setSendingId(entryId)
     try {
-      const response = await sendForDispatchAPI({
-        dispatchEntryId: entryId
-      })
-      if (response.status === 200) {
-        message.success('Entry sent for dispatch!')
-        fetchDispatchEntries() // Refresh the list
-      } else {
-        message.error(response.data?.message || 'Failed to send for dispatch')
-      }
-    } catch (error) {
-      console.error('Error sending for dispatch:', error)
-      message.error('Error sending for dispatch')
-    } finally {
-      setSendingId(null)
-    }
+      const response = await sendForDispatchAPI({ dispatchEntryId: entryId })
+      if (response.status === 200) { message.success('Entry sent for dispatch!'); fetchDispatchEntries() }
+      else message.error(response.data?.message || 'Failed to send for dispatch')
+    } catch (error) { message.error('Error sending for dispatch') }
+    finally { setSendingId(null) }
   }
 
-  const handleProcessEntry = async entryId => {
+  const handleProcessEntry = async (entryId) => {
     setProcessingId(entryId)
     try {
-      const response = await processDispatchEntryAPI({
-        dispatchEntryId: entryId
-      })
-      if (response.status === 200) {
-        message.success('Entry dispatched successfully!')
-        fetchDispatchEntries() // Refresh the list
-      } else {
-        message.error(response.data?.message || 'Failed to process entry')
-      }
-    } catch (error) {
-      console.error('Error processing dispatch entry:', error)
-      message.error('Error processing dispatch entry')
-    } finally {
-      setProcessingId(null)
-    }
+      const response = await processDispatchEntryAPI({ dispatchEntryId: entryId })
+      if (response.status === 200) { message.success('Entry dispatched successfully!'); fetchDispatchEntries() }
+      else message.error(response.data?.message || 'Failed to process entry')
+    } catch (error) { message.error('Error processing dispatch entry') }
+    finally { setProcessingId(null) }
   }
 
-  const handleDeleteEntry = async entryId => {
+  const handleDeleteEntry = async (entryId) => {
     setDeletingId(entryId)
     try {
-      const response = await deleteDispatchEntryAPI({
-        dispatchEntryId: entryId
-      })
-      if (response.status === 200) {
-        message.success('Entry deleted and stock restored!')
-        fetchDispatchEntries() // Refresh the list
-      } else {
-        message.error(response.data?.message || 'Failed to delete entry')
-      }
-    } catch (error) {
-      console.error('Error deleting dispatch entry:', error)
-      message.error('Error deleting dispatch entry')
-    } finally {
-      setDeletingId(null)
-    }
+      const response = await deleteDispatchEntryAPI({ dispatchEntryId: entryId })
+      if (response.status === 200) { message.success('Entry deleted and stock restored!'); fetchDispatchEntries() }
+      else message.error(response.data?.message || 'Failed to delete entry')
+    } catch (error) { message.error('Error deleting dispatch entry') }
+    finally { setDeletingId(null) }
   }
 
-  const handleExportDispatchEntries = () => {
-    if (dispatchEntries.length === 0) {
-      message.warning('No dispatch entries to export')
-      return
-    }
-
-    exportToPDF(dispatchEntries, 'Dispatch Entries Report')
-  }
+  // ─── Export Functions ───
 
   const handleExportTodayEntries = () => {
-    const targetDate = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-    const displayDate = selectedDate ? selectedDate.format('DD MMM YYYY') : dayjs().format('DD MMM YYYY')
-
-    // Filter entries for selected date (using IST) and only awaiting_approval status
+    const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
+    const displayDate = moment(targetDate).format('DD MMM YYYY')
     const dateEntries = dispatchEntries.filter(entry => {
-      // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      const matchesDate = entryDate.format('YYYY-MM-DD') === targetDate
-      const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
-      return matchesDate && isAwaitingApproval
+      return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
     })
-
-    if (dateEntries.length === 0) {
-      message.warning(`No awaiting approval entries found for ${displayDate}`)
-      return
-    }
-
+    if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
     exportToPDF(dateEntries, `Dispatch Entries - ${displayDate}`)
   }
 
-  const handleExportExcelDispatchEntries = () => {
-    if (dispatchEntries.length === 0) {
-      message.warning('No dispatch entries to export')
-      return
-    }
-
-    exportToExcel(dispatchEntries, 'Dispatch Entries Report')
-  }
-
   const handleExportExcelTodayEntries = () => {
-    const targetDate = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-    const displayDate = selectedDate ? selectedDate.format('DD MMM YYYY') : dayjs().format('DD MMM YYYY')
-
-    // Filter entries for selected date (using IST) and only awaiting_approval status
+    const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
+    const displayDate = moment(targetDate).format('DD MMM YYYY')
     const dateEntries = dispatchEntries.filter(entry => {
-      // Use IST date from backend if available, otherwise convert to IST
       const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
-      const matchesDate = entryDate.format('YYYY-MM-DD') === targetDate
-      const isAwaitingApproval = entry.dispatchStatus === 'awaiting_approval'
-      return matchesDate && isAwaitingApproval
+      return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
     })
-
-    if (dateEntries.length === 0) {
-      message.warning(`No awaiting approval entries found for ${displayDate}`)
-      return
-    }
-
+    if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
     exportToExcel(dateEntries, `Dispatch Entries - ${displayDate}`)
-  }
-
-  const handleExportDealerWiseExcel = async () => {
-    try {
-      message.loading({ content: 'Fetching today\'s processed entries...', key: 'dealerExport' })
-
-      // Fetch today's processed entries from entry_master
-      const response = await dispatch(getDailyEntry({})).unwrap()
-      const processedEntries = response.data || []
-
-      if (processedEntries.length === 0) {
-        message.warning({ content: 'No processed entries found for today', key: 'dealerExport' })
-        return
-      }
-
-      message.loading({ content: 'Generating dealer-wise Excel...', key: 'dealerExport' })
-      exportDealerWiseToExcel(processedEntries, `Today's Processed Entries`)
-      message.success({ content: 'Export completed!', key: 'dealerExport' })
-    } catch (error) {
-      console.error('Error fetching processed entries:', error)
-      message.error({ content: 'Failed to fetch processed entries', key: 'dealerExport' })
-    }
   }
 
   const handleExportDealerWisePDFs = async () => {
     try {
-      const dateStr = selectedDate ? selectedDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')
-      message.loading({ content: `Generating dealer-wise PDFs for ${selectedDate.format('DD MMM YYYY')}...`, key: 'dealerPdfExport' })
-
-      // Download ZIP file from backend API with date parameter
+      const dateStr = selectedDate || dayjs().format('YYYY-MM-DD')
+      message.loading({ content: 'Generating dealer-wise PDFs...', key: 'dealerPdfExport' })
       const response = await fetch(`${process.env.REACT_APP_API_URL}/export/dispatch-approved-entries?date=${dateStr}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        method: 'GET', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       })
-
       if (!response.ok) {
-        // Try to parse error message from JSON response
         let errorMessage = 'Failed to export PDFs'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorMessage
-        } catch (parseError) {
-          // Response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage
-        }
+        try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage } catch (e) {}
         throw new Error(errorMessage)
       }
-
-      // Check content type - be lenient as proxies may modify headers
-      const contentType = response.headers.get('content-type') || ''
-      console.log('Response Content-Type:', contentType)
-
-      // Create blob and download
       const blob = await response.blob()
-
-      if (blob.size === 0) {
-        throw new Error('Downloaded file is empty')
-      }
-
+      if (blob.size === 0) throw new Error('Downloaded file is empty')
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -365,850 +221,188 @@ const DispatchEntriesView = () => {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-
-      message.success({ content: 'PDFs downloaded successfully!', key: 'dealerPdfExport' })
+      message.success({ content: 'PDFs downloaded!', key: 'dealerPdfExport' })
     } catch (error) {
-      console.error('Error exporting dealer-wise PDFs:', error)
-      message.error({ content: error.message || 'Failed to export dealer-wise PDFs', key: 'dealerPdfExport' })
+      message.error({ content: error.message || 'Failed to export PDFs', key: 'dealerPdfExport' })
+    }
+  }
+
+  const handleExportDealerWiseExcel = async () => {
+    try {
+      message.loading({ content: 'Fetching entries...', key: 'dealerExport' })
+      const response = await dispatch(getDailyEntry({})).unwrap()
+      const processedEntries = response.data || []
+      if (processedEntries.length === 0) { message.warning({ content: 'No entries found', key: 'dealerExport' }); return }
+      exportDealerWiseToExcel(processedEntries, `Today's Processed Entries`)
+      message.success({ content: 'Export completed!', key: 'dealerExport' })
+    } catch (error) {
+      message.error({ content: 'Failed to fetch entries', key: 'dealerExport' })
     }
   }
 
   const exportToPDF = (entries, reportTitle) => {
-    try {
-      // Group entries by dealer
-      const groupedByDealer = entries.reduce((groups, entry) => {
-        const dealerName = entry.dealerName || 'Unknown Dealer'
-        if (!groups[dealerName]) {
-          groups[dealerName] = []
-        }
-        groups[dealerName].push(entry)
-        return groups
-      }, {})
-
-      // Create HTML content for PDF with proper tables
-      let htmlContent = `
-        <html>
-          <head>
-            <title>${reportTitle} - ${moment().format('DD MMM YYYY')}</title>
-            <style>
-              @page {
-                size: A4;
-                margin: 10mm;
-                orientation: portrait;
-              }
-              body {
-                font-family: Arial, sans-serif;
-                font-size: 26px;
-                margin: 0;
-                padding: 8px;
-                color: #000;
-                width: 100%;
-                max-width: 100%;
-                box-sizing: border-box;
-              }
-              h1 {
-                text-align: center;
-                margin-bottom: 12px;
-                font-size: 26px;
-                color: #333;
-                font-weight: bold;
-              }
-              .dealer-section {
-                margin-bottom: 20px;
-                page-break-inside: avoid;
-              }
-              .dealer-title {
-                font-weight: bold;
-                font-size: 22px;
-                margin-bottom: 8px;
-                text-align: center;
-                background-color: #f5f5f5;
-                padding: 6px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 12px;
-                font-size: 18px;
-                table-layout: fixed;
-              }
-              th, td {
-                border: 1px solid #ddd;
-                padding: 4px 6px;
-                text-align: left;
-                word-wrap: break-word;
-              }
-              th {
-                background-color: #f8f9fa;
-                font-weight: bold;
-                color: #333;
-                font-size: 16px;
-              }
-              tr:nth-child(even) {
-                background-color: #f9f9f9;
-              }
-              .date-col {
-                width: 20%;
-              }
-              .product-col {
-                width: 45%;
-              }
-              .quantity-col {
-                width: 15%;
-                text-align: center;
-                font-weight: bold;
-              }
-              .stock-col {
-                width: 15%;
-                text-align: center;
-                font-weight: bold;
-              }
-              .transport-col {
-                width: 5%;
-                text-align: center;
-                font-weight: bold;
-              }
-              .no-entries {
-                text-align: center;
-                font-style: italic;
-                color: #666;
-                padding: 5px;
-              }
-              @media print {
-                * {
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-
-                body {
-                  font-size: 16px !important;
-                  line-height: 1.4 !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                h1 {
-                  font-size: 21px !important;
-                  margin-bottom: 10px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                .dealer-title {
-                  font-size: 18px !important;
-                  padding: 8px !important;
-                  margin-bottom: 8px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                th, td {
-                  padding: 6px 8px !important;
-                  font-size: 13px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                th {
-                  font-size: 13px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                .dealer-section {
-                  margin-bottom: 12px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <h1>${reportTitle} - ${moment().format('DD MMM YYYY')}</h1>
-      `
-
-      Object.keys(groupedByDealer).forEach(dealerName => {
-        htmlContent += `
-              <div class="dealer-section">
-                <div class="dealer-title">${dealerName}</div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th class="date-col">Date</th>
-                      <th class="product-col">Product</th>
-                      <th class="quantity-col">Quantity</th>
-                      <th class="transport-col"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-        `
-
-        if (groupedByDealer[dealerName].length === 0) {
-          htmlContent += `
-                    <tr>
-                      <td colspan="6" class="no-entries">No entries found</td>
-                    </tr>
-          `
-        } else {
-          groupedByDealer[dealerName].forEach(entry => {
-            // Use IST date from backend if available, otherwise convert to IST
-            const formattedDate = entry.dateIST
-              ? moment(entry.dateIST).format('DD MMM YYYY HH:mm')
-              : (entry.date ? moment.utc(entry.date).format('DD MMM YYYY HH:mm') : 'N/A')
-            const product = entry.productName || 'N/A'
-            const quantity = entry.quantity || 0
-            const transportPaid = entry.isTransportPaid ? 'Paid' : 'To Pay'
-
-            htmlContent += `
-                      <tr>
-                        <td>${formattedDate}</td>
-                        <td>${product}</td>
-                        <td>${quantity}</td>
-                        <td style="color: ${
-                          entry.isTransportPaid ? '#52c41a' : '#ff4d4f'
-                        }; font-weight: bold;">${transportPaid}</td>
-                      </tr>
-            `
-          })
-        }
-
-        htmlContent += `
-                  </tbody>
-                </table>
-              </div>
-        `
+    const groupedByDealer = entries.reduce((g, e) => { const d = e.dealerName || 'Unknown'; if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
+    let html = `<html><head><title>${reportTitle}</title><style>body{font-family:Arial,sans-serif;padding:8px}h1{text-align:center;font-size:22px}.dealer-title{font-weight:bold;font-size:18px;background:#f5f5f5;padding:6px;border:1px solid #ddd;border-radius:6px;margin:12px 0 6px}table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:12px}th,td{border:1px solid #ddd;padding:4px 6px}th{background:#f8f9fa;font-weight:bold}tr:nth-child(even){background:#f9f9f9}@media print{body{font-size:12px}}</style></head><body><h1>${reportTitle} - ${moment().format('DD MMM YYYY')}</h1>`
+    Object.keys(groupedByDealer).forEach(dealer => {
+      html += `<div class="dealer-title">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Transport</th></tr></thead><tbody>`
+      groupedByDealer[dealer].forEach(e => {
+        const date = e.dateIST ? moment(e.dateIST).format('DD MMM YYYY HH:mm') : 'N/A'
+        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td style="color:${e.isTransportPaid ? '#52c41a' : '#ff4d4f'};font-weight:bold">${e.isTransportPaid ? 'Paid' : 'To Pay'}</td></tr>`
       })
-
-      htmlContent += `
-          </body>
-        </html>
-      `
-
-      // Create a temporary iframe to print the content
-      const printWindow = window.open('', '_blank', 'width=800,height=600')
-      printWindow.document.write(htmlContent)
-      printWindow.document.title = `${reportTitle} - ${moment().format(
-        'DD MMM YYYY'
-      )}`
-      printWindow.document.close()
-
-      // Wait for the content to load, then trigger print
-      printWindow.onload = () => {
-        printWindow.print()
-      }
-
-      message.success(
-        'PDF export dialog opened. Please choose "Save as PDF" in the print dialog.'
-      )
-    } catch (error) {
-      console.error('Error exporting dispatch entries to PDF:', error)
-      message.error('Failed to export dispatch entries to PDF')
-    }
+      html += '</tbody></table>'
+    })
+    html += '</body></html>'
+    const w = window.open('', '_blank', 'width=800,height=600')
+    w.document.write(html); w.document.close(); w.onload = () => w.print()
+    message.success('PDF export dialog opened.')
   }
 
   const exportToExcel = (entries, reportTitle) => {
-    try {
-      // Sort entries by date (newest first)
-      const sortedEntries = [...entries].sort((a, b) => {
-        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at)
-        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at)
-        return bDate.valueOf() - aDate.valueOf()
-      })
-
-      // Prepare data for Excel
-      const excelData = sortedEntries.map((entry, index) => {
-        const entryDate = entry.dateIST
-          ? moment(entry.dateIST).format('DD MMM YYYY hh:mm A')
-          : (entry.date ? moment.utc(entry.date).format('DD MMM YYYY hh:mm A') : 'N/A')
-
-        return {
-          'S.No': index + 1,
-          'Entry ID': entry.id,
-          'Date': entryDate,
-          'Dealer': entry.dealerName || 'N/A',
-          'Product': entry.productName || 'N/A',
-          'Quantity': entry.quantity || 0,
-          'Price': `₹${(entry.price || 0).toFixed(2)}`,
-          'Total Price': `₹${((entry.price || 0) * (entry.quantity || 0)).toFixed(2)}`,
-          'Transport': entry.isTransportPaid ? 'Paid' : 'To Pay',
-          'Claim': entry.isClaim ? 'Yes' : 'No',
-          'Status': 'Awaiting Approval'
-        }
-      })
-
-      // Create workbook and worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData)
-
-      // Set column widths
-      const colWidths = [
-        { wch: 8 },   // S.No
-        { wch: 12 },  // Entry ID
-        { wch: 20 },  // Date
-        { wch: 25 },  // Dealer
-        { wch: 30 },  // Product
-        { wch: 10 },  // Quantity
-        { wch: 12 },  // Price
-        { wch: 15 },  // Total Price
-        { wch: 12 },  // Transport
-        { wch: 8 },   // Claim
-        { wch: 15 }   // Status
-      ]
-      ws['!cols'] = colWidths
-
-      // Create workbook
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Entries')
-
-      // Generate filename with date
-      const fileName = `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY_HH-mm')}.xlsx`
-
-      // Download the file
-      XLSX.writeFile(wb, fileName)
-
-      message.success(`Excel exported successfully: ${fileName}`)
-    } catch (error) {
-      console.error('Error exporting dispatch entries to Excel:', error)
-      message.error('Failed to export dispatch entries to Excel')
-    }
+    const sorted = [...entries].sort((a, b) => moment(b.dateIST || b.date).valueOf() - moment(a.dateIST || a.date).valueOf())
+    const data = sorted.map((e, i) => ({
+      'S.No': i + 1, 'Entry ID': e.id,
+      Date: e.dateIST ? moment(e.dateIST).format('DD MMM YYYY hh:mm A') : 'N/A',
+      Dealer: e.dealerName || 'N/A', Product: e.productName || 'N/A',
+      Quantity: e.quantity || 0, Transport: e.isTransportPaid ? 'Paid' : 'To Pay',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [{ wch: 6 }, { wch: 10 }, { wch: 20 }, { wch: 25 }, { wch: 35 }, { wch: 10 }, { wch: 12 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Entries')
+    XLSX.writeFile(wb, `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY')}.xlsx`)
+    message.success('Excel exported!')
   }
 
   const exportDealerWiseToExcel = (entries, reportTitle) => {
-    try {
-      // Helper to get dealer name (handles both camelCase and snake_case)
-      const getDealerName = (entry) => entry.dealerName || entry.dealer_name || 'Unknown Dealer'
-      // Helper to get product name
-      const getProductName = (entry) => entry.productName || entry.product_name || 'N/A'
-      // Helper to get transport status (dispatch_entries uses isTransportPaid, entry_master uses isTransport)
-      const getTransportStatus = (entry) => {
-        if (entry.isTransportPaid !== undefined) return entry.isTransportPaid ? 'Paid' : 'To Pay'
-        if (entry.isTransport !== undefined) return entry.isTransport === 1 ? 'Paid' : 'To Pay'
-        return 'N/A'
-      }
-      // Helper to get date
-      const getFormattedDate = (entry) => {
-        if (entry.dateIST) return moment(entry.dateIST).format('DD MMM YYYY HH:mm')
-        if (entry.date) return moment(entry.date).format('DD MMM YYYY HH:mm')
-        if (entry.createdAt) return moment(entry.createdAt).format('DD MMM YYYY HH:mm')
-        if (entry.created_at) return moment(entry.created_at).format('DD MMM YYYY HH:mm')
-        return 'N/A'
-      }
-
-      // Group entries by dealer (same grouping as PDF export)
-      const groupedByDealer = entries.reduce((groups, entry) => {
-        const dealerName = getDealerName(entry)
-        if (!groups[dealerName]) {
-          groups[dealerName] = []
-        }
-        groups[dealerName].push(entry)
-        return groups
-      }, {})
-
-      // Sort dealer names alphabetically
-      const sortedDealerNames = Object.keys(groupedByDealer).sort()
-
-      // Create workbook
-      const wb = XLSX.utils.book_new()
-
-      // Create a summary sheet with all dealers
-      const summaryData = []
-      let serialNo = 1
-
-      sortedDealerNames.forEach(dealerName => {
-        const dealerEntries = groupedByDealer[dealerName]
-
-        // Add dealer header row
-        summaryData.push({
-          'S.No': '',
-          'Date': dealerName,
-          'Product': '',
-          'Quantity': '',
-          'Transport': ''
-        })
-
-        // Add entries for this dealer
-        dealerEntries.forEach(entry => {
-          summaryData.push({
-            'S.No': serialNo++,
-            'Date': getFormattedDate(entry),
-            'Product': getProductName(entry),
-            'Quantity': entry.quantity || 0,
-            'Transport': getTransportStatus(entry)
-          })
-        })
-
-        // Add dealer total row
-        const totalQuantity = dealerEntries.reduce((sum, e) => sum + (e.quantity || 0), 0)
-        summaryData.push({
-          'S.No': '',
-          'Date': '',
-          'Product': `Total for ${dealerName}`,
-          'Quantity': totalQuantity,
-          'Transport': ''
-        })
-
-        // Add empty row for spacing between dealers
-        summaryData.push({
-          'S.No': '',
-          'Date': '',
-          'Product': '',
-          'Quantity': '',
-          'Transport': ''
-        })
+    const getName = e => e.dealerName || e.dealer_name || 'Unknown'
+    const grouped = entries.reduce((g, e) => { const d = getName(e); if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
+    const wb = XLSX.utils.book_new()
+    const summaryData = []
+    let sn = 1
+    Object.keys(grouped).sort().forEach(dealer => {
+      grouped[dealer].forEach(e => {
+        summaryData.push({ 'S.No': sn++, Dealer: dealer, Product: e.productName || e.product_name || 'N/A', Quantity: e.quantity || 0, Transport: e.isTransportPaid !== undefined ? (e.isTransportPaid ? 'Paid' : 'To Pay') : 'N/A' })
       })
-
-      // Create summary worksheet
-      const summaryWs = XLSX.utils.json_to_sheet(summaryData)
-
-      // Set column widths for summary sheet
-      summaryWs['!cols'] = [
-        { wch: 8 },   // S.No
-        { wch: 25 },  // Date / Dealer Name
-        { wch: 40 },  // Product
-        { wch: 12 },  // Quantity
-        { wch: 12 }   // Transport
-      ]
-
-      XLSX.utils.book_append_sheet(wb, summaryWs, 'All Dealers')
-
-      // Create individual sheets for each dealer
-      sortedDealerNames.forEach(dealerName => {
-        const dealerEntries = groupedByDealer[dealerName]
-
-        // Prepare data for dealer sheet (matching PDF format)
-        const dealerData = dealerEntries.map((entry, index) => {
-          return {
-            'S.No': index + 1,
-            'Date': getFormattedDate(entry),
-            'Product': getProductName(entry),
-            'Quantity': entry.quantity || 0,
-            'Transport': getTransportStatus(entry)
-          }
-        })
-
-        // Add total row
-        const totalQuantity = dealerEntries.reduce((sum, e) => sum + (e.quantity || 0), 0)
-        dealerData.push({
-          'S.No': '',
-          'Date': '',
-          'Product': 'TOTAL',
-          'Quantity': totalQuantity,
-          'Transport': ''
-        })
-
-        // Create worksheet for this dealer
-        const dealerWs = XLSX.utils.json_to_sheet(dealerData)
-
-        // Set column widths
-        dealerWs['!cols'] = [
-          { wch: 8 },   // S.No
-          { wch: 22 },  // Date
-          { wch: 40 },  // Product
-          { wch: 12 },  // Quantity
-          { wch: 12 }   // Transport
-        ]
-
-        // Truncate sheet name to max 31 characters (Excel limit)
-        const sheetName = dealerName.length > 31 ? dealerName.substring(0, 28) + '...' : dealerName
-        XLSX.utils.book_append_sheet(wb, dealerWs, sheetName)
-      })
-
-      // Generate filename with date
-      const fileName = `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY_HH-mm')}.xlsx`
-
-      // Download the file
-      XLSX.writeFile(wb, fileName)
-    } catch (error) {
-      console.error('Error exporting dealer-wise entries to Excel:', error)
-      message.error('Failed to export dealer-wise entries to Excel')
-    }
+    })
+    const ws = XLSX.utils.json_to_sheet(summaryData)
+    ws['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 40 }, { wch: 10 }, { wch: 12 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'All Dealers')
+    XLSX.writeFile(wb, `${reportTitle.replace(/\s+/g, '_')}_${moment().format('DD-MM-YYYY')}.xlsx`)
   }
+
+  // ─── Table Columns ───
 
   const columns = [
     {
-      title: 'Entry ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      fixed: 'left'
+      key: 'id', dataIndex: 'id', title: 'Entry ID',
+      render: (val) => <span style={{ fontWeight: 500 }}>{val}</span>,
     },
     {
-      title: 'Date',
-      dataIndex: 'dateIST',
-      key: 'dateIST',
-      width: 150,
-      render: (date, record) => {
-        if (!date) return 'N/A'
-        // Use IST date from backend if available, otherwise convert to IST
-        const istDate = moment(date).format('DD MMM YYYY HH:mm')
-        return istDate
-      }
-    },
-    {
-      title: 'Dealer',
-      dataIndex: 'dealerName',
-      key: 'dealerName',
-      width: 200
-    },
-    {
-      title: 'Product',
-      dataIndex: 'productName',
-      key: 'productName',
-      width: 250
-    },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 100,
-      align: 'center'
-    },
-    {
-      title: 'Transport Paid',
-      dataIndex: 'isTransportPaid',
-      key: 'isTransportPaid',
-      width: 120,
-      align: 'center',
-      render: isTransportPaid => {
-        return (
-          <span
-            style={{
-              color: isTransportPaid ? '#52c41a' : '#ff4d4f',
-              fontWeight: 'bold'
-            }}
-          >
-            {isTransportPaid ? 'Paid' : 'To Pay'}
-          </span>
-        )
-      }
-    },
-    {
-      title: 'Status',
-      dataIndex: 'dispatchStatus',
-      key: 'dispatchStatus',
-      width: 150,
-      render: status => {
-        if (status === 'approved') {
-          return (
-            <Tag icon={<CheckCircleOutlined />} color='success'>
-              Approved
-            </Tag>
-          )
-        }
-        if (status === 'sent_for_dispatch') {
-          return (
-            <Tag icon={<SendOutlined />} color='blue'>
-              Sent for Dispatch
-            </Tag>
-          )
-        }
-        return (
-          <Tag icon={<ClockCircleOutlined />} color='warning'>
-            Awaiting Approval
-          </Tag>
-        )
-      }
-    },
-    // Only show Processed At column for dispatched entries
-    ...(activeTab === 'approved' ? [{
-      title: 'Dispatched At',
-      dataIndex: 'processedAt',
-      key: 'processedAt',
-      width: 160,
-      render: (processedAt) => {
-        if (!processedAt) return 'N/A'
-        return moment(processedAt).format('DD MMM YYYY HH:mm')
-      }
-    }] : []),
-    {
-      title: 'Action',
-      key: 'action',
-      width: 250,
-      fixed: 'right',
+      key: 'date', dataIndex: 'dateIST', title: 'Date & Time',
       render: (_, record) => {
-        // Approved entries - no actions available
-        if (record.dispatchStatus === 'approved') {
-          return (
-            <Tag color='success'>Completed</Tag>
-          )
-        }
-
+        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at)
         return (
-          <Space>
-            {record.dispatchStatus === 'awaiting_approval' ? (
-              <Button
-                type='default'
-                size='small'
-                icon={<SendOutlined />}
-                loading={sendingId === record.id}
-                onClick={() => handleSendForDispatch(record.id)}
-              >
-                Send for Dispatch
-              </Button>
-            ) : (
-              <Button
-                type='primary'
-                size='small'
-                icon={<CheckCircleOutlined />}
-                loading={processingId === record.id}
-                onClick={() => handleProcessEntry(record.id)}
-              >
-                Item Dispatched
-              </Button>
-            )}
-            <Popconfirm
-              title='Delete this entry?'
-              description='Stock will be restored. This action cannot be undone.'
-              onConfirm={() => handleDeleteEntry(record.id)}
-              okText='Yes, Delete'
-              cancelText='Cancel'
-              okButtonProps={{ danger: true }}
-            >
-              <Button
-                danger
-                size='small'
-                icon={<DeleteOutlined />}
-                loading={deletingId === record.id}
-              >
-                Delete
-              </Button>
-            </Popconfirm>
-          </Space>
+          <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+            {date.format('DD MMM YYYY')}<br />
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>{date.format('hh:mm A')}</span>
+          </div>
         )
-      }
-    }
+      },
+    },
+    { key: 'dealer', dataIndex: 'dealerName', title: 'Dealers' },
+    { key: 'product', dataIndex: 'productName', title: 'Product' },
+    {
+      key: 'quantity', dataIndex: 'quantity', title: 'Quantity', align: 'center',
+    },
+    {
+      key: 'transport', dataIndex: 'isTransportPaid', title: 'Transport', align: 'center',
+      render: (_, record) => (
+        <StatusBadge
+          variant={record.isTransportPaid ? 'paid' : 'unpaid'}
+          subText={record.isTransportPaid && record.transportAmount > 0 ? `Rs. ${record.transportAmount}` : undefined}
+        >
+          {record.isTransportPaid ? 'Paid' : 'Not Paid'}
+        </StatusBadge>
+      ),
+    },
+    {
+      key: 'actions', title: 'Actions', align: 'center',
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          {record.dispatchStatus === 'approved' ? (
+            <StatusBadge variant="dispatched">Completed</StatusBadge>
+          ) : (
+            <ProcessButton
+              onClick={() => record.dispatchStatus === 'awaiting_approval'
+                ? handleSendForDispatch(record.id)
+                : handleProcessEntry(record.id)
+              }
+              loading={sendingId === record.id || processingId === record.id}
+            />
+          )}
+          <DeleteButton
+            onConfirm={() => handleDeleteEntry(record.id)}
+            loading={deletingId === record.id}
+            description="Stock will be restored."
+          />
+        </div>
+      ),
+    },
   ]
 
-  // Get current step based on active tab
-  const getCurrentStep = () => {
-    if (activeTab === 'awaiting_approval') return 0
-    if (activeTab === 'sent_for_dispatch') return 1
-    return 2
-  }
+  // ─── Export Menu ───
+
+  const exportMenuItems = [
+    { key: 'pdf', label: 'Export PDF', icon: <FilePdfOutlined />, onClick: handleExportTodayEntries },
+    { key: 'excel', label: 'Export Excel', icon: <FileExcelOutlined />, onClick: handleExportExcelTodayEntries },
+    ...(activeTab === 'approved' ? [
+      { key: 'dealer-pdf', label: 'Dealer Wise (PDF)', icon: <FilePdfOutlined />, onClick: handleExportDealerWisePDFs },
+      { key: 'dealer-excel', label: 'Dealer Wise (Excel)', icon: <FileExcelOutlined />, onClick: handleExportDealerWiseExcel },
+    ] : []),
+  ]
+
+  // ─── Render ───
+
+  const guidance = STEP_GUIDANCE[activeTab]
 
   return (
-    <div className='p-6'>
-      <div className='mb-6 flex justify-between items-center'>
-        <div>
-          <h2 className='text-2xl font-bold'>📦 Dispatch Entries</h2>
-          <p className='text-gray-600 mt-1'>
-            Manage dispatch workflow - approve, send for dispatch, and track entries
-          </p>
-        </div>
-        <Space>
-          <Input
-            placeholder="Search entries..."
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-            style={{ width: 200 }}
-          />
-          <Select
-            placeholder="Filter by Dealer"
-            value={selectedDealer}
-            onChange={setSelectedDealer}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={dealerOptions}
-            style={{ width: 200 }}
-          />
-          <DatePicker
-            value={selectedDate}
-            onChange={(date) => setSelectedDate(date || dayjs())}
-            format="DD MMM YYYY"
-            allowClear={false}
-            style={{ width: 150 }}
-          />
-          <Button onClick={fetchDispatchEntries} loading={loading}>
-            Refresh
-          </Button>
-        </Space>
-      </div>
+    <div style={{ width: '100%' }}>
+      <PageTitle>Dispatch Orders</PageTitle>
 
-      {/* Workflow Steps Banner */}
-      <Card className='mb-6' styles={{ body: { padding: '16px 24px' } }}>
-        <Steps
-          current={getCurrentStep()}
-          size='small'
-          items={[
-            {
-              title: 'Step 1: Export & Print',
-              description: "Export today's entries and print",
-              icon: <PrinterOutlined />
-            },
-            {
-              title: 'Step 2: Send for Dispatch',
-              description: 'Mark printed entries as sent',
-              icon: <CarOutlined />
-            },
-            {
-              title: 'Step 3: Item Dispatched',
-              description: 'Confirm physical dispatch & export',
-              icon: <DownloadOutlined />
-            }
-          ]}
-        />
-      </Card>
-
-      <Tabs
+      <TabBar
+        tabs={TABS}
         activeKey={activeTab}
-        onChange={(tab) => {
-          setActiveTab(tab)
-          setSearchText('')
-          setSelectedDealer(null)
-        }}
-        items={[
-          {
-            key: 'awaiting_approval',
-            label: (
-              <span>
-                <ClockCircleOutlined /> Step 1: Awaiting Approval{' '}
-                <Badge count={statusCounts.awaiting_approval} overflowCount={9999} style={{ backgroundColor: '#faad14' }} />
-              </span>
-            )
-          },
-          {
-            key: 'sent_for_dispatch',
-            label: (
-              <span>
-                <SendOutlined /> Step 2: Sent for Dispatch{' '}
-                <Badge count={statusCounts.sent_for_dispatch} overflowCount={9999} style={{ backgroundColor: '#1890ff' }} />
-              </span>
-            )
-          },
-          {
-            key: 'approved',
-            label: (
-              <span>
-                <CheckCircleOutlined /> Step 3: Dispatched{' '}
-                <Badge count={statusCounts.approved} overflowCount={9999} style={{ backgroundColor: '#52c41a' }} />
-              </span>
-            )
-          }
-        ]}
+        onChange={(key) => { setActiveTab(key); setSearchText(''); setSelectedDealer(null); setCurrentPage(1) }}
+        counts={statusCounts}
       />
 
-      {/* Tab-specific action bar and helper */}
-      {activeTab === 'awaiting_approval' && (
-        <Alert
-          type='info'
-          showIcon
-          icon={<PrinterOutlined />}
-          message={`Export & Print Entries for ${selectedDate.format('DD MMM YYYY')}`}
-          description={
-            <div className='flex items-center justify-between'>
-              <span>Export entries to print and send to the dispatch department. After printing, click "Send for Dispatch" on each entry.</span>
-              <Space className='ml-4'>
-                <Button
-                  type='primary'
-                  icon={<ExportOutlined />}
-                  onClick={handleExportTodayEntries}
-                >
-                  Export (PDF)
-                </Button>
-                <Button
-                  icon={<FileExcelOutlined />}
-                  onClick={handleExportExcelTodayEntries}
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
-                >
-                  Export (Excel)
-                </Button>
-              </Space>
-            </div>
-          }
-          className='mb-4'
-        />
-      )}
+      <StepBanner title={guidance.title} steps={guidance.steps} />
 
-      {activeTab === 'sent_for_dispatch' && (
-        <Alert
-          type='warning'
-          showIcon
-          icon={<CarOutlined />}
-          message='Awaiting Physical Dispatch'
-          description='These entries have been sent to dispatch. Once the items are physically dispatched, click "Item Dispatched" to complete the process.'
-          className='mb-4'
-        />
-      )}
-
-      {activeTab === 'approved' && (
-        <Alert
-          type='success'
-          showIcon
-          icon={<CheckCircleOutlined />}
-          message='Dispatch Completed - Export Dealer-wise PDFs'
-          description={
-            <div className='flex items-center justify-between'>
-              <span>These entries have been dispatched. Export dealer-wise PDFs to send invoices/delivery notes to dealers.</span>
-              <Space className='ml-4'>
-                <Button
-                  type='primary'
-                  icon={<FilePdfOutlined />}
-                  onClick={handleExportDealerWisePDFs}
-                  style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
-                >
-                  Dealer Wise (PDFs)
-                </Button>
-                <Button
-                  icon={<FileExcelOutlined />}
-                  onClick={handleExportDealerWiseExcel}
-                  style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
-                >
-                  Dealer Wise (Excel)
-                </Button>
-              </Space>
-            </div>
-          }
-          className='mb-4'
-        />
-      )}
-
-      <Table
-        columns={columns}
-        dataSource={filteredEntries}
-        rowKey='id'
+      <FilterBar
+        searchText={searchText}
+        onSearchChange={(val) => { setSearchText(val); setCurrentPage(1) }}
+        selectedDealer={selectedDealer}
+        onDealerChange={(val) => { setSelectedDealer(val); setCurrentPage(1) }}
+        dealerOptions={dealerOptions}
+        selectedDate={selectedDate}
+        onDateChange={(val) => { setSelectedDate(val); setCurrentPage(1) }}
+        onRefresh={fetchDispatchEntries}
         loading={loading}
-        scroll={{ x: 1400 }}
-        pagination={{
-          pageSize: 20,
-          showSizeChanger: true,
-          showTotal: total => `Total ${total} entries`
-        }}
+        exportMenuItems={exportMenuItems}
       />
 
-      {activeTab === 'awaiting_approval' && (
-        <div className='mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
-          <h3 className='font-semibold mb-2'>📌 Step 1: Export & Print</h3>
-          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
-            <li>Click <strong>"Export Today (PDF)"</strong> to generate a printable list</li>
-            <li>Print the document and send it to the dispatch department</li>
-            <li>After printing, click <strong>"Send for Dispatch"</strong> on each entry to move it to Step 2</li>
-            <li>Stock has already been reserved for these entries</li>
-          </ul>
-        </div>
-      )}
-
-      {activeTab === 'sent_for_dispatch' && (
-        <div className='mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-          <h3 className='font-semibold mb-2'>📌 Step 2: Awaiting Physical Dispatch</h3>
-          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
-            <li>These entries have been printed and sent to the dispatch team</li>
-            <li>Wait for physical items to be dispatched from the warehouse</li>
-            <li>Once dispatched, click <strong>"Item Dispatched"</strong> to confirm and complete the entry</li>
-            <li>Entry will then move to the "Dispatched" tab</li>
-          </ul>
-        </div>
-      )}
-
-      {activeTab === 'approved' && (
-        <div className='mt-4 p-4 bg-green-50 border border-green-200 rounded-lg'>
-          <h3 className='font-semibold mb-2'>📌 Step 3: Dispatch Completed</h3>
-          <ul className='list-disc list-inside text-sm text-gray-700 space-y-1'>
-            <li>These entries have been physically dispatched</li>
-            <li>Click <strong>"Dealer Wise (PDFs)"</strong> to download individual PDFs for each dealer</li>
-            <li>Send these PDFs as invoices/delivery notes to the respective dealers</li>
-            <li>Entries are finalized in the system - stock has been deducted</li>
-          </ul>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={paginatedEntries}
+        rowKey="id"
+        loading={loading}
+        emptyText="No entries found"
+        currentPage={currentPage}
+        pageSize={pageSize}
+        totalItems={filteredEntries.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+      />
     </div>
   )
 }

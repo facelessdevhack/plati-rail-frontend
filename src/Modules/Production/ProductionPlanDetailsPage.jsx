@@ -38,7 +38,8 @@ import {
   getJobCardStepProgress,
   initializeJobCardSteps,
   processStepProgress,
-  createInventoryRequest
+  createInventoryRequest,
+  getProductionPlansWithQuantities
 } from '../../redux/api/productionAPI'
 import JobCardDetailsModal from './JobCardDetailsModal'
 import StepManagementView from './StepManagementView'
@@ -88,6 +89,10 @@ const ProductionPlanDetailsPage = () => {
   const [selectedStepForInventory, setSelectedStepForInventory] = useState(null)
   const [inventoryRequestSubmitting, setInventoryRequestSubmitting] = useState(false)
 
+  // Rework traceability states
+  const [childReworkPlans, setChildReworkPlans] = useState([])
+  const [childReworkPlansLoading, setChildReworkPlansLoading] = useState(false)
+
   // Get selected plan from Redux if available
   const { selectedPlan, productionPlans } = useSelector(state => state.productionDetails)
 
@@ -111,6 +116,27 @@ const ProductionPlanDetailsPage = () => {
       loadJobCards()
     }
   }, [planId, productionPlans, selectedPlan])
+
+  // Load child rework plans when we have plan details (only for non-rework plans)
+  useEffect(() => {
+    if (planDetails?.id && !planDetails?.isRework) {
+      loadChildReworkPlans(planDetails.id)
+    }
+  }, [planDetails?.id, planDetails?.isRework])
+
+  const loadChildReworkPlans = async (id) => {
+    setChildReworkPlansLoading(true)
+    try {
+      const result = await dispatch(
+        getProductionPlansWithQuantities({ parentPlanId: id, limit: 50, page: 1 })
+      ).unwrap()
+      setChildReworkPlans(result.productionPlans || [])
+    } catch (e) {
+      setChildReworkPlans([])
+    } finally {
+      setChildReworkPlansLoading(false)
+    }
+  }
 
   const loadPlanDetails = async () => {
     setLoading(true)
@@ -692,6 +718,33 @@ const ProductionPlanDetailsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Rework Banner - shown if this plan is a rework plan */}
+      {planDetails.isRework && planDetails.parentPlanId && (
+        <div className="max-w-screen-2xl mx-auto px-6 pt-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
+            <RefreshCw className="h-5 w-5 text-purple-600 flex-shrink-0" />
+            <div className="flex-1">
+              <span className="font-semibold text-purple-800">This is a Rework Plan</span>
+              <span className="text-purple-600 ml-2">
+                Created from rejected units of{' '}
+                <button
+                  className="underline font-semibold hover:text-purple-900"
+                  onClick={() => navigate(`/production/plans/${planDetails.parentPlanId}`)}
+                >
+                  Plan #{planDetails.parentPlanId}
+                </button>
+              </span>
+            </div>
+            <button
+              className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1"
+              onClick={() => navigate(`/production/plans/${planDetails.parentPlanId}`)}
+            >
+              View Parent Plan <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-6">
@@ -1344,6 +1397,57 @@ const ProductionPlanDetailsPage = () => {
             </h3>
             <div className="bg-slate-50 rounded-lg p-4">
               <p className="text-slate-700">{planDetails.note}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Child Rework Plans - shown for original plans that have rework plans */}
+        {!planDetails.isRework && (childReworkPlansLoading || childReworkPlans.length > 0) && (
+          <div className="bg-white rounded-xl shadow-sm border border-purple-200 overflow-hidden">
+            <div className="bg-purple-50 px-6 py-4 border-b border-purple-200 flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-purple-800">
+                Rework Plans
+              </h3>
+              {!childReworkPlansLoading && (
+                <span className="ml-auto text-sm text-purple-600">{childReworkPlans.length} plan{childReworkPlans.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <div className="p-6">
+              {childReworkPlansLoading ? (
+                <div className="text-center py-4 text-slate-500">Loading rework plans...</div>
+              ) : (
+                <div className="space-y-3">
+                  {childReworkPlans.map(rp => {
+                    const rpPending = rp.quantityTracking?.inProgressQuantity || 0
+                    const rpAccepted = rp.quantityTracking?.dispatchAcceptedQuantity || 0
+                    const rpRejected = rp.quantityTracking?.rejectedQuantity || 0
+                    return (
+                      <div key={rp.id} className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-lg p-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-purple-800">Plan #{rp.id}</span>
+                            {rp.urgent === 1 && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">URGENT</span>}
+                          </div>
+                          <div className="text-sm text-slate-600">{rp.targetProduct || rp.sourceProduct}</div>
+                          <div className="text-xs text-slate-500 mt-1 flex gap-4">
+                            <span>Total: <strong>{rp.quantity}</strong></span>
+                            <span>Pending: <strong>{rpPending}</strong></span>
+                            <span className="text-green-600">Accepted: <strong>{rpAccepted}</strong></span>
+                            {rpRejected > 0 && <span className="text-red-600">Rejected: <strong>{rpRejected}</strong></span>}
+                          </div>
+                        </div>
+                        <button
+                          className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1 ml-4"
+                          onClick={() => navigate(`/production/plans/${rp.id}`)}
+                        >
+                          View Plan <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

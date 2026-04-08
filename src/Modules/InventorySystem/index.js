@@ -4,3 +4,4 @@ export { default as InventoryMovementsPage } from './InventoryMovementsPage';
 export { default as AddInventoryToLocationModal } from './AddInventoryToLocationModal';
 export { default as TransferInventoryModal } from './TransferInventoryModal';
 export { default as ManageStorageAreasModal } from './ManageStorageAreasModal';
+export { default as InventorySuggestionsPage } from './InventorySuggestionsPage';

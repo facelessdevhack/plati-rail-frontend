@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
+import { client } from '../../Utils/axiosClient'
 import {
   Card,
   Table,
@@ -34,7 +35,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   BuildOutlined,
-  RocketOutlined
+  RocketOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import {
   useInventory,
@@ -72,6 +74,9 @@ const InventoryManagement = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [productionRequestLoading, setProductionRequestLoading] =
     useState(false)
+  const [suggestionsModalVisible, setSuggestionsModalVisible] = useState(false)
+  const [suggestionsData, setSuggestionsData] = useState(null)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
 
   // Filter and search state
   const [searchText, setSearchText] = useState('')
@@ -282,6 +287,21 @@ const InventoryManagement = () => {
       setAnalysisModalVisible(true)
     } catch (error) {
       console.error('Bulk analysis failed:', error)
+    }
+  }
+
+  // Fetch minimum inventory suggestions
+  const handleFetchSuggestions = async () => {
+    setSuggestionsLoading(true)
+    try {
+      const response = await client.get('/inventory-suggestions?maxQuantity=1500&safetyFactor=1.5&months=3')
+      setSuggestionsData(response.data.data)
+      setSuggestionsModalVisible(true)
+    } catch (error) {
+      console.error('Failed to fetch suggestions:', error)
+      message.error('Failed to fetch inventory suggestions')
+    } finally {
+      setSuggestionsLoading(false)
     }
   }
 

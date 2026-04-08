@@ -1,52 +1,61 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, message, Space, Modal, Form, InputNumber, Radio, Checkbox, Popconfirm } from 'antd';
-import { DollarOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getPricingPendingEntriesAPI, addPricingToEntryAPI, deletePricingPendingEntryAPI } from '../../redux/api/entriesAPI';
-import { useDispatch } from 'react-redux';
-import moment from 'moment';
+import React, { useEffect, useState, useMemo } from 'react'
+import { message, Modal, Form, InputNumber, Radio, Checkbox, Space, Button as AntButton } from 'antd'
+import { DollarOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { getPricingPendingEntriesAPI, addPricingToEntryAPI, deletePricingPendingEntryAPI } from '../../redux/api/entriesAPI'
+import { useDispatch } from 'react-redux'
+import moment from 'moment'
+
+import PageTitle from '../../Core/Components/PageTitle'
+import DataTable from '../../Core/Components/DataTable'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
+import InfoBox from '../../Core/Components/InfoBox'
 
 const PricingEntriesView = () => {
-  const dispatch = useDispatch();
-  const [pricingEntries, setPricingEntries] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [pricingModalVisible, setPricingModalVisible] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useDispatch()
+  const [pricingEntries, setPricingEntries] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [pricingModalVisible, setPricingModalVisible] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState(null)
+  const [form] = Form.useForm()
+  const [submitting, setSubmitting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  useEffect(() => {
-    fetchPricingEntries();
-  }, []);
+  useEffect(() => { fetchPricingEntries() }, [])
 
   const fetchPricingEntries = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await dispatch(getPricingPendingEntriesAPI()).unwrap();
-      setPricingEntries(response.pricingEntries || []);
+      const response = await dispatch(getPricingPendingEntriesAPI()).unwrap()
+      setPricingEntries(response.pricingEntries || [])
     } catch (error) {
-      console.error('Error fetching pricing entries:', error);
-      message.error('Failed to load pricing entries');
+      message.error('Failed to load pricing entries')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  const paginatedEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return pricingEntries.slice(start, start + pageSize)
+  }, [pricingEntries, currentPage, pageSize])
 
   const handleOpenPricingModal = (entry) => {
-    setSelectedEntry(entry);
-    setPricingModalVisible(true);
-    form.resetFields();
-  };
+    setSelectedEntry(entry)
+    setPricingModalVisible(true)
+    form.resetFields()
+  }
 
   const handleClosePricingModal = () => {
-    setPricingModalVisible(false);
-    setSelectedEntry(null);
-    form.resetFields();
-  };
+    setPricingModalVisible(false)
+    setSelectedEntry(null)
+    form.resetFields()
+  }
 
   const handleSubmitPricing = async (values) => {
-    if (!selectedEntry) return;
-
-    setSubmitting(true);
+    if (!selectedEntry) return
+    setSubmitting(true)
     try {
       const response = await addPricingToEntryAPI({
         pricingEntryId: selectedEntry.id,
@@ -54,177 +63,141 @@ const PricingEntriesView = () => {
         transportationCharges: values.transportationCharges || 0,
         transportationType: values.transportationType || 0,
         isClaim: values.isClaim ? 1 : 0,
-        isRepair: values.isRepair ? 1 : 0
-      });
-
+        isRepair: values.isRepair ? 1 : 0,
+      })
       if (response.status === 200) {
-        message.success('Pricing added successfully! Entry moved to entry_master.');
-        handleClosePricingModal();
-        fetchPricingEntries(); // Refresh the list
+        message.success('Pricing added! Entry moved to entry_master.')
+        handleClosePricingModal()
+        fetchPricingEntries()
       } else {
-        message.error(response.data?.message || 'Failed to add pricing');
+        message.error(response.data?.message || 'Failed to add pricing')
       }
     } catch (error) {
-      console.error('Error adding pricing:', error);
-      message.error('Error adding pricing to entry');
+      message.error('Error adding pricing to entry')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   const handleDeleteEntry = async (entry) => {
     try {
-      const response = await deletePricingPendingEntryAPI(entry.id);
-
+      const response = await deletePricingPendingEntryAPI(entry.id)
       if (response.status === 200) {
-        message.success(
-          `Entry deleted successfully! Stock restored: ${response.data.restoredQuantity} units`
-        );
-        fetchPricingEntries(); // Refresh the list
+        message.success(`Entry deleted! Stock restored: ${response.data.restoredQuantity} units`)
+        fetchPricingEntries()
       } else {
-        message.error(response.data?.message || 'Failed to delete entry');
+        message.error(response.data?.message || 'Failed to delete entry')
       }
     } catch (error) {
-      console.error('Error deleting pricing entry:', error);
-      message.error('Error deleting pricing entry');
+      message.error('Error deleting pricing entry')
     }
-  };
+  }
 
   const columns = [
     {
-      title: 'Entry ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      fixed: 'left',
+      key: 'id', dataIndex: 'id', title: 'Entry ID',
+      render: (val) => <span style={{ fontWeight: 500 }}>{val}</span>,
     },
     {
-      title: 'Date',
-      dataIndex: 'date',
-      key: 'date',
-      width: 150,
-      render: (date) => moment(date).format('DD MMM YYYY HH:mm'),
+      key: 'date', dataIndex: 'date', title: 'Date & Time',
+      render: (_, record) => {
+        const date = moment(record.date)
+        return (
+          <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+            {date.format('DD MMM YYYY')}<br />
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>{date.format('hh:mm A')}</span>
+          </div>
+        )
+      },
+    },
+    { key: 'dealer', dataIndex: 'dealerName', title: 'Dealers' },
+    { key: 'product', dataIndex: 'productName', title: 'Product' },
+    { key: 'quantity', dataIndex: 'quantity', title: 'Quantity', align: 'center' },
+    {
+      key: 'status', dataIndex: 'pricingStatus', title: 'Status', align: 'center',
+      render: () => <StatusBadge variant="pending">Awaiting Pricing</StatusBadge>,
     },
     {
-      title: 'Dealer',
-      dataIndex: 'dealerName',
-      key: 'dealerName',
-      width: 200,
+      key: 'approvedBy', dataIndex: 'approvedBy', title: 'Approved By', align: 'center',
+      render: (val) => val || '-',
     },
     {
-      title: 'Product',
-      dataIndex: 'productName',
-      key: 'productName',
-      width: 250,
-    },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 100,
-      align: 'center',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'pricingStatus',
-      key: 'pricingStatus',
-      width: 150,
-      render: (status) => (
-        <Tag icon={<DollarOutlined />} color="warning">
-          {status === 'awaiting_pricing' ? 'Awaiting Pricing' : status}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Approved By',
-      dataIndex: 'approvedBy',
-      key: 'approvedBy',
-      width: 120,
-      align: 'center',
-    },
-    {
-      title: 'Approved At',
-      dataIndex: 'approvedAt',
-      key: 'approvedAt',
-      width: 150,
-      render: (date) => date ? moment(date).format('DD MMM HH:mm') : '-',
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 200,
-      fixed: 'right',
+      key: 'actions', title: 'Actions', align: 'center',
       render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<DollarOutlined />}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <button
             onClick={() => handleOpenPricingModal(record)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: '#4a90ff', border: 'none', borderRadius: 12,
+              padding: 8, fontSize: 14, fontWeight: 400,
+              fontFamily: "'Inter', sans-serif", color: 'white',
+              cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: '20px',
+            }}
           >
-            Add Pricing
-          </Button>
-          <Popconfirm
-            title="Delete Entry"
-            description="Are you sure you want to delete this entry? Stock will be restored."
+            <DollarOutlined /> Add Pricing
+          </button>
+          <DeleteButton
             onConfirm={() => handleDeleteEntry(record)}
-            okText="Yes, Delete"
-            cancelText="Cancel"
-          >
-            <Button
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-            >
-              Delete
-            </Button>
-          </Popconfirm>
-        </Space>
+            description="Stock will be restored."
+          />
+        </div>
       ),
     },
-  ];
+  ]
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">💰 Pricing Entries</h2>
-          <p className="text-gray-600 mt-1">
-            Approved dispatch entries awaiting price entry
-          </p>
-        </div>
-        <Space>
-          <Button onClick={fetchPricingEntries} loading={loading}>
-            Refresh
-          </Button>
-          <Tag color="orange" style={{ fontSize: '14px', padding: '4px 12px' }}>
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+        <PageTitle>Pricing Entries</PageTitle>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+          <button
+            onClick={fetchPricingEntries}
+            disabled={loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#f3f3f5', border: 'none', borderRadius: 123,
+              padding: '6px 16px', fontSize: 14, fontWeight: 400,
+              fontFamily: "'Inter', sans-serif", color: '#1a1a1a',
+              cursor: 'pointer', height: 32,
+            }}
+          >
+            <span style={{ fontSize: 16 }}>↻</span> Refresh
+          </button>
+          <span style={{
+            background: '#f7d6ca', color: '#1a1a1a',
+            fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+            fontSize: 12, fontWeight: 600,
+            padding: '6px 12px', borderRadius: 1234,
+            display: 'flex', alignItems: 'center', height: 32,
+          }}>
             {pricingEntries.length} Awaiting Pricing
-          </Tag>
-        </Space>
+          </span>
+        </div>
       </div>
 
-      <Table
+      <DataTable
         columns={columns}
-        dataSource={pricingEntries}
+        data={paginatedEntries}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 1400 }}
-        pagination={{
-          pageSize: 20,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} entries`,
-        }}
+        emptyText="No pricing entries found"
+        currentPage={currentPage}
+        pageSize={pageSize}
+        totalItems={pricingEntries.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
       />
 
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold mb-2">📌 Information</h3>
-        <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-          <li>These entries have been approved by sales coordinator</li>
-          <li>Stock has already been reserved for these entries</li>
-          <li>Add price and transportation charges to finalize the entry</li>
-          <li>Once priced, the entry will be moved to entry_master and dealer balance updated</li>
-        </ul>
-      </div>
+      <InfoBox
+        title="Information"
+        items={[
+          'These entries have been approved by sales coordinator',
+          'Stock has already been reserved for these entries',
+          'Add price and transportation charges to finalize the entry',
+          'Once priced, the entry will be moved to entry_master and dealer balance updated',
+        ]}
+      />
 
       {/* Pricing Modal */}
       <Modal
@@ -235,57 +208,33 @@ const PricingEntriesView = () => {
         width={500}
       >
         {selectedEntry && (
-          <div className="mb-4 p-4 bg-gray-50 rounded">
-            <h4 className="font-semibold mb-2">Entry Details</h4>
-            <p><strong>Dealer:</strong> {selectedEntry.dealerName}</p>
-            <p><strong>Product:</strong> {selectedEntry.productName}</p>
-            <p><strong>Quantity:</strong> {selectedEntry.quantity}</p>
-            <p><strong>Date:</strong> {moment(selectedEntry.date).format('DD MMM YYYY HH:mm')}</p>
+          <div style={{ marginBottom: 16, padding: 16, background: '#f9fafb', borderRadius: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, fontFamily: "'Inter', sans-serif" }}>Entry Details</div>
+            <div style={{ fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#374151', lineHeight: 1.8 }}>
+              <div><strong>Dealer:</strong> {selectedEntry.dealerName}</div>
+              <div><strong>Product:</strong> {selectedEntry.productName}</div>
+              <div><strong>Quantity:</strong> {selectedEntry.quantity}</div>
+              <div><strong>Date:</strong> {moment(selectedEntry.date).format('DD MMM YYYY HH:mm')}</div>
+            </div>
           </div>
         )}
 
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmitPricing}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSubmitPricing}>
           <Form.Item
-            label="Price (₹)"
-            name="price"
-            rules={[
-              { required: true, message: 'Please enter the price' },
-              { type: 'number', min: 0, message: 'Price must be positive' }
-            ]}
+            label="Price (₹)" name="price"
+            rules={[{ required: true, message: 'Please enter the price' }, { type: 'number', min: 0, message: 'Price must be positive' }]}
           >
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder="Enter price"
-              min={0}
-              precision={0}
-            />
+            <InputNumber style={{ width: '100%' }} placeholder="Enter price" min={0} precision={0} />
           </Form.Item>
 
           <Form.Item
-            label="Transportation Charges (₹)"
-            name="transportationCharges"
-            initialValue={0}
-            rules={[
-              { type: 'number', min: 0, message: 'Charges must be positive' }
-            ]}
+            label="Transportation Charges (₹)" name="transportationCharges" initialValue={0}
+            rules={[{ type: 'number', min: 0, message: 'Charges must be positive' }]}
           >
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder="Enter transportation charges"
-              min={0}
-              precision={0}
-            />
+            <InputNumber style={{ width: '100%' }} placeholder="Enter transportation charges" min={0} precision={0} />
           </Form.Item>
 
-          <Form.Item
-            label="Transportation Type"
-            name="transportationType"
-            initialValue={0}
-          >
+          <Form.Item label="Transportation Type" name="transportationType" initialValue={0}>
             <Radio.Group>
               <Radio value={0}>None</Radio>
               <Radio value={1}>Transport</Radio>
@@ -303,23 +252,16 @@ const PricingEntriesView = () => {
 
           <Form.Item>
             <Space className="w-full justify-end">
-              <Button onClick={handleClosePricingModal}>
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                icon={<CheckCircleOutlined />}
-                loading={submitting}
-              >
+              <AntButton onClick={handleClosePricingModal}>Cancel</AntButton>
+              <AntButton type="primary" htmlType="submit" icon={<CheckCircleOutlined />} loading={submitting}>
                 Submit Pricing
-              </Button>
+              </AntButton>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default PricingEntriesView;
+export default PricingEntriesView

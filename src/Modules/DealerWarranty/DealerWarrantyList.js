@@ -1,677 +1,296 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Table,
-  Card,
-  Image,
-  Tag,
-  Space,
-  Button,
-  Input,
-  Select,
-  DatePicker,
-  message,
-  Modal
-} from 'antd'
-import {
-  SearchOutlined,
-  EyeOutlined,
-  ReloadOutlined,
-  EditOutlined,
-  ExportOutlined
-} from '@ant-design/icons'
+import { Image, DatePicker, message, Modal } from 'antd'
+import { EditOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { warrantyService } from './services/warrantyService'
 import moment from 'moment'
 import * as XLSX from 'xlsx'
 
-const { Option } = Select
-const { RangePicker } = DatePicker
+import PageTitle from '../../Core/Components/PageTitle'
+import FilterBar from '../../Core/Components/FilterBar'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import DataTablePagination from '../../Core/Components/DataTablePagination'
 
 const DealerWarrantyList = () => {
   const navigate = useNavigate()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  })
-  const [filters, setFilters] = useState({
-    dealerId: '',
-    searchText: '',
-    productType: '',
-    registerStatus: '',
-    dateRange: null
-  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [searchText, setSearchText] = useState('')
+  const [selectedDealer, setSelectedDealer] = useState(null)
+  const [dateRange, setDateRange] = useState(null)
   const [dealers, setDealers] = useState([])
   const [previewImage, setPreviewImage] = useState('')
   const [previewVisible, setPreviewVisible] = useState(false)
   const [previewTitle, setPreviewTitle] = useState('')
 
-  // Fetch dealers for filter dropdown
+  // ─── Data ───
+
+  useEffect(() => { fetchDealers(); fetchWarrantyData() }, [])
+
   const fetchDealers = async () => {
     try {
       const response = await warrantyService.getDealers()
-      // Handle both success response and direct data response
-      if (response) {
-        if (response.success && response.data) {
-          setDealers(Array.isArray(response.data) ? response.data : [])
-        } else if (Array.isArray(response)) {
-          setDealers(response)
-        } else if (response.data && Array.isArray(response.data)) {
-          setDealers(response.data)
-        } else {
-          setDealers([])
-        }
-      }
+      let dealerList = []
+      if (response?.success && response.data) dealerList = Array.isArray(response.data) ? response.data : []
+      else if (Array.isArray(response)) dealerList = response
+      else if (response?.data && Array.isArray(response.data)) dealerList = response.data
+      setDealers(dealerList)
     } catch (error) {
-      console.error('Error fetching dealers:', error)
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch dealers'
-      message.error(errorMessage)
+      console.error('Error fetching dealers for filter:', error)
       setDealers([])
     }
   }
 
-  // Fetch warranty registrations
   const fetchWarrantyData = async () => {
     setLoading(true)
     try {
-      const response = await warrantyService.getAllProductRegistrations(
-        filters.dealerId
-      )
-
-      // Handle both success response and direct data response
+      const response = await warrantyService.getAllProductRegistrations(selectedDealer || '')
       let responseData = []
-      if (response) {
-        if (response.success && response.data) {
-          responseData = Array.isArray(response.data) ? response.data : []
-        } else if (Array.isArray(response)) {
-          responseData = response
-        } else if (response.data && Array.isArray(response.data)) {
-          responseData = response.data
-        }
-      }
-
-      let filteredData = responseData
-
-      // Apply client-side filters
-      if (filters.searchText) {
-        const searchLower = filters.searchText.toLowerCase().trim()
-        filteredData = filteredData.filter(
-          item => {
-            // Safely convert all fields to strings before lowercase
-            const customerName = String(item.customerName || '').toLowerCase()
-            const warrantyCardNo = String(item.warrantyCardNo || '').toLowerCase()
-            const vehicleNo = String(item.vehicleNo || '').toLowerCase()
-            const mobileNo = String(item.mobileNo || '').toLowerCase()
-            const dealerName = String(item.dealerName || '').toLowerCase()
-            const vehicleModel = String(item.vehicleModel || '').toLowerCase()
-            const emailAddress = String(item.emailAddress || '').toLowerCase()
-            const alloyModelName = String(item.alloyModelName || '').toLowerCase()
-            const finishName = String(item.finishName || '').toLowerCase()
-            
-            return (
-              customerName.includes(searchLower) ||
-              warrantyCardNo.includes(searchLower) ||
-              vehicleNo.includes(searchLower) ||
-              mobileNo.includes(searchLower) ||
-              dealerName.includes(searchLower) ||
-              vehicleModel.includes(searchLower) ||
-              emailAddress.includes(searchLower) ||
-              alloyModelName.includes(searchLower) ||
-              finishName.includes(searchLower)
-            )
-          }
-        )
-      }
-
-      if (filters.productType) {
-        filteredData = filteredData.filter(
-          item => item.productType === filters.productType
-        )
-      }
-
-      if (filters.registerStatus) {
-        filteredData = filteredData.filter(
-          item => item.registerStatus === filters.registerStatus
-        )
-      }
-
-      if (filters.dateRange && filters.dateRange.length === 2) {
-        const [startDate, endDate] = filters.dateRange
-        filteredData = filteredData.filter(item => {
-          const itemDate = moment(item.dop)
-          return itemDate.isBetween(startDate, endDate, 'day', '[]')
-        })
-      }
-
-      setData(filteredData)
-      setPagination(prev => ({
-        ...prev,
-        total: filteredData.length
-      }))
+      if (response?.success && response.data) responseData = Array.isArray(response.data) ? response.data : []
+      else if (Array.isArray(response)) responseData = response
+      else if (response?.data && Array.isArray(response.data)) responseData = response.data
+      setData(responseData)
     } catch (error) {
-      console.error('Error fetching warranty data:', error)
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch warranty data'
-      message.error(errorMessage)
+      message.error('Failed to fetch warranty data')
       setData([])
-      setPagination(prev => ({
-        ...prev,
-        total: 0
-      }))
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchDealers()
-    fetchWarrantyData()
-  }, [])
+  useEffect(() => { fetchWarrantyData() }, [selectedDealer])
 
-  useEffect(() => {
-    fetchWarrantyData()
-  }, [filters])
+  const filteredData = useMemo(() => {
+    let filtered = [...data]
+    if (searchText) {
+      const s = searchText.toLowerCase().trim()
+      filtered = filtered.filter(item =>
+        [item.customerName, item.warrantyCardNo, item.vehicleNo, item.mobileNo, item.dealerName, item.alloyModelName, item.finishName]
+          .some(f => String(f || '').toLowerCase().includes(s))
+      )
+    }
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      filtered = filtered.filter(item => {
+        const d = moment(item.dop)
+        return d.isBetween(dateRange[0], dateRange[1], 'day', '[]')
+      })
+    }
+    return filtered
+  }, [data, searchText, dateRange])
 
-  const handleTableChange = paginationInfo => {
-    setPagination(paginationInfo)
-  }
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredData.slice(start, start + pageSize)
+  }, [filteredData, currentPage, pageSize])
 
-  const handlePreview = (imageUrl, title) => {
-    setPreviewImage(imageUrl)
-    setPreviewTitle(title)
-    setPreviewVisible(true)
-  }
+  const dealerOptions = useMemo(() =>
+    dealers.map(d => ({ label: d.buyer_name || d.dealerName || d.name, value: d.id })),
+  [dealers])
 
-  const handlePreviewCancel = () => {
-    setPreviewVisible(false)
-    setPreviewImage('')
-    setPreviewTitle('')
-  }
+  // ─── Handlers ───
 
-  const handleEditWarranty = record => {
-    navigate(`/dealer-warranty/edit/${record.id}`)
-  }
+  const handlePreview = (url, title) => { setPreviewImage(url); setPreviewTitle(title); setPreviewVisible(true) }
+  const handleEditWarranty = (record) => { navigate(`/dealer-warranty/edit/${record.id}`) }
 
   const handleExportToExcel = () => {
-    try {
-      // Prepare data for Excel export
-      const excelData = data.map((record, index) => ({
-        'S.No': index + 1,
-        'Warranty Card No': record.warrantyCardNo || 'N/A',
-        'Vehicle No': record.vehicleNo || 'N/A',
-        'Vehicle Model': record.vehicleModel || 'N/A',
-        'Customer Name': record.customerName || 'N/A',
-        'Mobile No': record.mobileNo || 'N/A',
-        'Email Address': record.emailAddress || 'N/A',
-        'Alloy Model': record.alloyModelName || 'N/A',
-        PCD: record.pcdName || 'N/A',
-        Inches: record.inchesName || 'N/A',
-        Finish: record.finishName || 'N/A',
-        'Dealer Name': record.dealerName || 'N/A',
-        'Purchase Date': record.dop
-          ? moment(record.dop).format('DD/MM/YYYY')
-          : 'N/A',
-        'Registration Status': record.registerStatus || 'Unknown',
-        'OTP Status':
-          record.otpVerified === 'NotVerified' ? 'OTP Pending' : 'OTP Verified',
-        Amount: record.amount
-          ? `₹${parseFloat(record.amount).toLocaleString('en-IN')}`
-          : 'N/A',
-        'Entered By': record.enteredAt || 'N/A',
-        'Entry Date': record.enteredDateGmt
-          ? moment(record.enteredDateGmt).format('DD/MM/YYYY hh:mm A')
-          : 'N/A'
-      }))
-
-      // Create workbook and worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Warranty Registrations')
-
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 8 }, // S.No
-        { wch: 20 }, // Warranty Card No
-        { wch: 15 }, // Vehicle No
-        { wch: 15 }, // Vehicle Model
-        { wch: 20 }, // Customer Name
-        { wch: 15 }, // Mobile No
-        { wch: 25 }, // Email Address
-        { wch: 15 }, // Alloy Model
-        { wch: 10 }, // PCD
-        { wch: 10 }, // Inches
-        { wch: 15 }, // Finish
-        { wch: 20 }, // Dealer Name
-        { wch: 15 }, // Purchase Date
-        { wch: 15 }, // Registration Status
-        { wch: 15 }, // OTP Status
-        { wch: 15 }, // Amount
-        { wch: 15 }, // Entered By
-        { wch: 20 } // Entry Date
-      ]
-      ws['!cols'] = colWidths
-
-      // Generate filename with current date and applied filters
-      let filename = 'Dealer_Warranty_Registrations'
-
-      if (filters.dealerId) {
-        const selectedDealer = dealers.find(d => d.id === filters.dealerId)
-        if (selectedDealer) {
-          filename += `_${
-            selectedDealer.buyer_name ||
-            selectedDealer.dealerName ||
-            selectedDealer.name
-          }`
-        }
-      }
-
-      if (filters.productType) {
-        filename += `_${filters.productType}`
-      }
-
-      if (filters.registerStatus) {
-        filename += `_${filters.registerStatus}`
-      }
-
-      if (filters.dateRange && filters.dateRange.length === 2) {
-        const startDate = filters.dateRange[0].format('DD-MM-YYYY')
-        const endDate = filters.dateRange[1].format('DD-MM-YYYY')
-        filename += `_${startDate}_to_${endDate}`
-      }
-
-      filename += `_${moment().format('DD-MM-YYYY')}.xlsx`
-
-      // Download the file
-      XLSX.writeFile(wb, filename)
-
-      message.success(
-        `Excel file exported successfully! Total records: ${excelData.length}`
-      )
-    } catch (error) {
-      console.error('Error exporting to Excel:', error)
-      message.error('Failed to export data to Excel')
-    }
+    if (filteredData.length === 0) { message.warning('No data to export'); return }
+    const excelData = filteredData.map((r, i) => ({
+      'S.No': i + 1, 'Warranty Card No': r.warrantyCardNo || 'N/A', 'Vehicle No': r.vehicleNo || 'N/A',
+      'Customer Name': r.customerName || 'N/A', 'Mobile No': r.mobileNo || 'N/A',
+      'Alloy Model': r.alloyModelName || 'N/A', 'Finish': r.finishName || 'N/A',
+      'Dealer': r.dealerName || 'N/A', 'Purchase Date': r.dop ? moment(r.dop).format('DD/MM/YYYY') : 'N/A',
+      'OTP Status': r.otpVerified === 'NotVerified' ? 'OTP Pending' : 'OTP Verified',
+      'Amount': r.amount ? `₹${parseFloat(r.amount).toLocaleString('en-IN')}` : 'N/A',
+    }))
+    const ws = XLSX.utils.json_to_sheet(excelData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Warranty Registrations')
+    XLSX.writeFile(wb, `Warranty_Registrations_${moment().format('DD-MM-YYYY')}.xlsx`)
+    message.success(`Exported ${excelData.length} records`)
   }
 
-  const getStatusColor = status => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-      case 'verified':
-        return 'green'
-      case 'pending':
-        return 'orange'
-      case 'draft':
-        return 'blue'
-      case 'inactive':
-      case 'rejected':
-        return 'red'
-      default:
-        return 'default'
-    }
-  }
+  const exportMenuItems = [
+    { key: 'excel', label: 'Export Excel', icon: <FileExcelOutlined />, onClick: handleExportToExcel },
+  ]
 
-
-  const getOtpStatusColor = status => {
-    switch (status?.toLowerCase()) {
-      case 'verified':
-        return 'green'
-      case 'notverified':
-        return 'red'
-      default:
-        return 'orange'
-    }
-  }
+  // ─── Table Columns ───
 
   const columns = [
     {
-      title: 'S.No',
-      key: 'serial',
-      width: 60,
-      render: (_, __, index) =>
-        (pagination.current - 1) * pagination.pageSize + index + 1
+      key: 'date', title: 'Purchase Date',
+      render: (record) => (
+        <div style={{ whiteSpace: 'nowrap', fontSize: 14, fontFamily: "'Inter', sans-serif" }}>
+          {record.dop ? moment(record.dop).format('DD MMM YYYY') : 'N/A'}<br />
+          <span style={{ color: '#9ca3af', fontSize: 13 }}>{record.enteredDateGmt ? moment(record.enteredDateGmt).format('hh:mm A') : ''}</span>
+        </div>
+      ),
     },
     {
-      title: 'Warranty Card',
-      dataIndex: 'warrantyCardImage',
-      key: 'warrantyCardImage',
-      width: 120,
-      render: (imageUrl, record) => (
-        <div className='flex flex-col items-center space-y-2'>
-          {imageUrl ? (
-            <div
-              className='cursor-pointer'
-              onClick={() =>
-                handlePreview(
-                  imageUrl,
-                  `Warranty Card - ${record.warrantyCardNo}`
-                )
-              }
-            >
-              <Image
-                width={80}
-                height={60}
-                src={imageUrl}
-                alt='Warranty Card'
-                style={{ objectFit: 'cover', borderRadius: '4px' }}
-                preview={false}
-              />
-            </div>
-          ) : (
-            <div className='w-20 h-15 bg-gray-200 flex items-center justify-center rounded text-xs text-gray-500'>
-              No Image
-            </div>
-          )}
-          <div className='text-xs text-center'>
-            <div className='font-medium'>{record.warrantyCardNo}</div>
+      key: 'dealer', title: 'Dealers',
+      render: (record) => <span style={{ fontWeight: 500, fontSize: 14, fontFamily: "'Inter', sans-serif" }}>{record.dealerName || 'N/A'}</span>,
+    },
+    {
+      key: 'warranty', title: 'Warranty & Vehicle Info.',
+      render: (record) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {record.warrantyCardImage ? (
+              <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => handlePreview(record.warrantyCardImage, `Warranty Card - ${record.warrantyCardNo}`)}>
+                <img src={record.warrantyCardImage} alt="" style={{ width: 40, height: 40, borderRadius: 20, objectFit: 'cover', border: '1px solid #e5e5e5' }} />
+              </div>
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 20, background: '#f3f3f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>N/A</div>
+            )}
+            <div style={{ fontWeight: 400, fontSize: 14, color: '#1a1a1a', fontFamily: "'Inter', sans-serif" }}>{record.warrantyCardNo || 'N/A'}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {record.vehicleImage ? (
+              <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => handlePreview(record.vehicleImage, `Vehicle - ${record.vehicleNo}`)}>
+                <img src={record.vehicleImage} alt="" style={{ width: 40, height: 40, borderRadius: 20, objectFit: 'cover', border: '1px solid #e5e5e5' }} />
+              </div>
+            ) : (
+              <div style={{ width: 40, height: 40, borderRadius: 20, background: '#f3f3f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>N/A</div>
+            )}
+            <div style={{ fontWeight: 400, fontSize: 14, color: '#1a1a1a', fontFamily: "'Inter', sans-serif" }}>{record.vehicleNo || 'N/A'}</div>
           </div>
         </div>
-      )
+      ),
     },
     {
-      title: 'Vehicle Image',
-      dataIndex: 'vehicleImage',
-      key: 'vehicleImage',
-      width: 120,
-      render: (imageUrl, record) => (
-        <div className='flex flex-col items-center space-y-2'>
-          {imageUrl ? (
-            <div
-              className='cursor-pointer'
-              onClick={() =>
-                handlePreview(imageUrl, `Vehicle - ${record.vehicleNo}`)
-              }
-            >
-              <Image
-                width={80}
-                height={60}
-                src={imageUrl}
-                alt='Vehicle'
-                style={{ objectFit: 'cover', borderRadius: '4px' }}
-                preview={false}
-              />
-            </div>
-          ) : (
-            <div className='w-20 h-15 bg-gray-200 flex items-center justify-center rounded text-xs text-gray-500'>
-              No Image
-            </div>
-          )}
-          <div className='text-xs text-center'>
-            <div className='font-medium'>{record.vehicleNo}</div>
-            <div className='text-gray-500'>{record.vehicleModel}</div>
-          </div>
+      key: 'customer', title: 'Customer Details',
+      render: (record) => (
+        <div>
+          <div style={{ fontWeight: 500, fontSize: 14, fontFamily: "'Inter', sans-serif", color: '#1a1a1a' }}>{record.customerName || 'N/A'}</div>
+          <div style={{ fontSize: 14, color: '#1a1a1a', fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>{record.mobileNo || ''}</div>
+          <StatusBadge variant={record.otpVerified === 'NotVerified' ? 'outofstock' : 'paid'}>
+            {record.otpVerified === 'NotVerified' ? 'OTP Pending' : 'OTP Verified'}
+          </StatusBadge>
         </div>
-      )
+      ),
     },
     {
-      title: 'Customer Details',
-      key: 'customer_details',
-      width: 200,
-      render: (_, record) => (
-        <div className='space-y-1'>
-          <div className='font-medium text-gray-900'>{record.customerName}</div>
-          <div className='text-sm text-gray-600'>{record.mobileNo}</div>
-          {record.emailAddress && (
-            <div className='text-sm text-gray-600'>{record.emailAddress}</div>
-          )}
+      key: 'product', title: 'Product Info',
+      render: (record) => (
+        <div style={{ fontSize: 14, fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Price:</span> <span style={{ color: '#1a1a1a', fontWeight: 500 }}>{record.amount ? `₹${parseFloat(record.amount).toLocaleString('en-IN')}` : 'N/A'}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Model:</span> <span style={{ color: '#1a1a1a' }}>{record.alloyModelName || 'N/A'}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Alloy Size:</span> <span style={{ color: '#1a1a1a' }}>{record.inchesName || 'N/A'}{record.pcdName ? ` ${record.pcdName}` : ''}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Finish:</span> <span style={{ color: '#1a1a1a' }}>{record.finishName || 'N/A'}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Quantity (units):</span> <span style={{ color: '#1a1a1a' }}>{record.noOfAlloys || record.quantity || 'N/A'}</span></div>
         </div>
-      )
+      ),
     },
     {
-      title: 'Product Info',
-      key: 'product_info',
-      width: 200,
-      render: (_, record) => (
-        <div className='space-y-2'>
-          <div className='text-sm'>
-            {record.warrantyCardNo && (
-              <div className='flex justify-between items-center'>
-                <strong>Warranty Card No:</strong> {record.warrantyCardNo}
-              </div>
-            )}
-            {record.alloyModelName && (
-              <div className='flex justify-between items-center'>
-                <strong>Model:</strong> {record.alloyModelName}
-              </div>
-            )}
-            {record.pcdName > 0 && (
-              <div className='flex justify-between items-center'>
-                <strong>PCD:</strong> {record.pcdName}
-              </div>
-            )}
-            {record.inchesName > 0 && (
-              <div className='flex justify-between items-center'>
-                <strong>Inch:</strong> {record.inchesName}
-              </div>
-            )}
-            {record.finishName && (
-              <div className='flex justify-between items-center'>
-                <strong>Finish:</strong> {record.finishName}
-              </div>
-            )}
-          </div>
-        </div>
-      )
+      key: 'actions', title: 'Actions', align: 'center',
+      render: (record) => (
+        <button onClick={() => handleEditWarranty(record)} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: '#4a90ff', border: 'none', borderRadius: 12,
+          padding: '10px 16px', fontSize: 14, fontWeight: 400,
+          fontFamily: "'Inter', sans-serif", color: 'white',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+        }}>
+          <EditOutlined /> Edit
+        </button>
+      ),
     },
-    {
-      title: 'Dealer',
-      dataIndex: 'dealerName',
-      key: 'dealerName',
-      width: 150,
-      render: dealerName => (
-        <div className='font-medium text-gray-900'>{dealerName}</div>
-      )
-    },
-    {
-      title: 'Purchase Date',
-      dataIndex: 'dop',
-      key: 'dop',
-      width: 120,
-      render: date => (
-        <div className='text-sm'>
-          {date ? moment(date).format('DD/MM/YYYY') : 'N/A'}
-        </div>
-      )
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      width: 120,
-      render: (_, record) => (
-        <div className='space-y-1'>
-          <Tag color={getStatusColor(record.registerStatus)}>
-            {record.registerStatus || 'Unknown'}
-          </Tag>
-          <Tag color={getOtpStatusColor(record.otpVerified)} size='small'>
-            {record.otpVerified === 'NotVerified'
-              ? 'OTP Pending'
-              : 'OTP Verified'}
-          </Tag>
-        </div>
-      )
-    },
-    {
-      title: 'Amount',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 100,
-      render: amount => (
-        <div className='font-medium'>
-          {amount ? `₹${parseFloat(amount).toLocaleString('en-IN')}` : 'N/A'}
-        </div>
-      )
-    },
-    {
-      title: 'Entry Details',
-      key: 'entry_details',
-      width: 150,
-      render: (_, record) => (
-        <div className='text-sm space-y-1'>
-          <div>
-            <strong>By:</strong> {record.enteredAt}
-          </div>
-          <div>
-            {record.enteredDateGmt
-              ? moment(record.enteredDateGmt).format('DD/MM/YYYY hh:mm A')
-              : 'N/A'}
-          </div>
-        </div>
-      )
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      fixed: 'right',
-      render: (_, record) => (
-        <Space size='middle'>
-          <Button
-            type='primary'
-            icon={<EditOutlined />}
-            size='small'
-            onClick={() => handleEditWarranty(record)}
-            title='Edit Warranty'
-          >
-            Edit
-          </Button>
-        </Space>
-      )
-    }
   ]
 
+  // ─── Render ───
+
   return (
-    <div className='p-6'>
-      <Card>
-        <div className='mb-6'>
-          <h2 className='text-2xl font-bold text-gray-800 mb-4'>
-            Dealer Warranty Registrations
-          </h2>
+    <div style={{ width: '100%' }}>
+      <PageTitle>Dealer Warranty Registrations</PageTitle>
 
-          {/* Filters */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4'>
-            <Input
-              placeholder='Search customer, warranty card, vehicle...'
-              prefix={<SearchOutlined />}
-              value={filters.searchText}
-              onChange={e =>
-                setFilters(prev => ({ ...prev, searchText: e.target.value }))
-              }
-              allowClear
-            />
+      <FilterBar
+        searchText={searchText}
+        onSearchChange={(val) => { setSearchText(val); setCurrentPage(1) }}
+        selectedDealer={selectedDealer}
+        onDealerChange={(val) => { setSelectedDealer(val); setCurrentPage(1) }}
+        dealerOptions={dealerOptions}
+        dateRange={dateRange}
+        onDateRangeChange={(dates) => { setDateRange(dates); setCurrentPage(1) }}
+        onRefresh={fetchWarrantyData}
+        loading={loading}
+        exportMenuItems={exportMenuItems}
+      />
 
-            <Select
-              placeholder='Select Dealer'
-              value={filters.dealerId}
-              onChange={value =>
-                setFilters(prev => ({ ...prev, dealerId: value }))
-              }
-              allowClear
-              showSearch
-              optionFilterProp='children'
-            >
-              {dealers.map(dealer => (
-                <Option key={dealer.id} value={dealer.id}>
-                  {dealer.buyer_name || dealer.dealerName || dealer.name}
-                </Option>
-              ))}
-            </Select>
-
-            <Select
-              placeholder='Product Type'
-              value={filters.productType}
-              onChange={value =>
-                setFilters(prev => ({ ...prev, productType: value }))
-              }
-              allowClear
-            >
-              <Option value='Alloy'>Alloy</Option>
-              <Option value='Tyres'>Tyres</Option>
-              <Option value='Caps'>Caps</Option>
-              <Option value='PPF'>PPF</Option>
-            </Select>
-
-            <Select
-              placeholder='Status'
-              value={filters.registerStatus}
-              onChange={value =>
-                setFilters(prev => ({ ...prev, registerStatus: value }))
-              }
-              allowClear
-            >
-              <Option value='Draft'>Draft</Option>
-              <Option value='Active'>Active</Option>
-              <Option value='Pending'>Pending</Option>
-              <Option value='Inactive'>Inactive</Option>
-              <Option value='Verified'>Verified</Option>
-            </Select>
-
-            <RangePicker
-              value={filters.dateRange}
-              onChange={dates =>
-                setFilters(prev => ({ ...prev, dateRange: dates }))
-              }
-              format='DD/MM/YYYY'
-              placeholder={['Start Date', 'End Date']}
-            />
-          </div>
-
-          <div className='flex justify-between items-center'>
-            <div className='text-sm text-gray-600'>
-              Total Records: {data.length}
-            </div>
-            <Space>
-              <Button
-                type='default'
-                icon={<ExportOutlined />}
-                onClick={handleExportToExcel}
-                disabled={data.length === 0}
-              >
-                Export to Excel
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => fetchWarrantyData()}
-                loading={loading}
-              >
-                Refresh
-              </Button>
-            </Space>
-          </div>
+      {/* Table */}
+      <div style={{
+        background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+        overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                {columns.map((col, i) => (
+                  <th key={col.key} style={{
+                    background: '#f3f3f5', padding: '12px 16px',
+                    textAlign: col.align || 'left',
+                    fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                    fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                    whiteSpace: 'nowrap', lineHeight: '20px',
+                    paddingLeft: i === 0 ? 32 : undefined,
+                  }}>{col.title}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={columns.length} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+              ) : paginatedData.length === 0 ? (
+                <tr><td colSpan={columns.length} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No warranty registrations found</td></tr>
+              ) : (
+                paginatedData.map((record, idx) => (
+                  <tr key={record.id || idx} style={{ borderBottom: '1px solid #f3f4f6' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {columns.map((col, i) => (
+                      <td key={col.key} style={{
+                        padding: '14px 16px', color: '#1a1a1a', verticalAlign: 'middle',
+                        fontSize: 14, fontFamily: "'Inter', sans-serif", lineHeight: '20px',
+                        textAlign: col.align,
+                        paddingLeft: i === 0 ? 32 : undefined,
+                      }}>
+                        {col.render(record)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey='id'
-          loading={loading}
-          pagination={{
-            ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} items`
-          }}
-          onChange={handleTableChange}
-          scroll={{ x: 1500, y: 600 }}
-          size='small'
-          bordered
+        <DataTablePagination
+          currentPage={currentPage}
+          totalItems={filteredData.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
         />
-      </Card>
+      </div>
 
       {/* Image Preview Modal */}
       <Modal
         open={previewVisible}
-        title={previewTitle}
+        title={<span style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}>{previewTitle}</span>}
         footer={null}
-        onCancel={handlePreviewCancel}
-        width={800}
+        onCancel={() => { setPreviewVisible(false); setPreviewImage('') }}
+        width={540}
         centered
+        styles={{ body: { padding: '24px 32px 32px' } }}
       >
-        <img
-          alt='Preview'
-          style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-          src={previewImage}
-        />
+        <div style={{ background: '#f3f3f5', borderRadius: 16, overflow: 'hidden', padding: 0 }}>
+          <img
+            alt="Preview"
+            style={{ width: '100%', display: 'block', borderRadius: 16, objectFit: 'contain' }}
+            src={previewImage}
+          />
+        </div>
       </Modal>
     </div>
   )

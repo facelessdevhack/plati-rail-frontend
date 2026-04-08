@@ -52,6 +52,7 @@ import {
   getAllOffsets
 } from '../../redux/api/stockAPI'
 import CustomSelect from '../../Core/Components/CustomSelect'
+import PlatiFormStyles from '../../Core/Components/FormStyles'
 import moment from 'moment'
 
 const { Title, Text } = Typography
@@ -73,6 +74,7 @@ const DealerWarrantyDetail = () => {
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [previewImage, setPreviewImage] = useState('')
   const [previewVisible, setPreviewVisible] = useState(false)
+  const [activeFormTab, setActiveFormTab] = useState('customer')
   const [previewTitle, setPreviewTitle] = useState('')
 
   // Get dropdown options from Redux store
@@ -544,651 +546,311 @@ const DealerWarrantyDetail = () => {
   }
 
   return (
-    <div className='p-6 max-w-7xl mx-auto'>
+    <div style={{ width: '100%' }}>
       {/* Header */}
-      <div className='mb-6'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/dealer-warranty')}
-              size='large'
-            >
-              Back to List
-            </Button>
-            <div>
-              <Title level={2} className='mb-0'>
-                Edit Warranty Registration
-              </Title>
-              <Text type='secondary'>Warranty Card: {data.warrantyCardNo}</Text>
-            </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Staff Wide Test', serif", fontSize: 42, fontWeight: 400, color: '#1a1a1a', margin: '0 0 8px', lineHeight: '30px' }}>
+            Edit Warranty Registration
+          </h1>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 18, fontWeight: 500, color: '#1a1a1a', marginTop: 4 }}>
+            Dealer - {data.dealerName || 'N/A'}
           </div>
-
-          <div className='flex items-center space-x-3'>
-            <Tag
-              color={getStatusColor(data.register_status)}
-              className='text-sm px-3 py-1'
-            >
-              {data.registerStatus || 'Unknown'}
-            </Tag>
-            <Tag
-              color={getOtpStatusColor(data.otpVerified)}
-              className='text-sm px-3 py-1'
-            >
-              {data.otpVerified === 'NotVerified'
-                ? 'OTP Pending'
-                : 'OTP Verified'}
-            </Tag>
-
-            {data.otpVerified === 'NotVerified' && (
-              <Button
-                type='primary'
-                icon={<SendOutlined />}
-                onClick={handleSendOtp}
-                loading={sendingOtp}
-                className='bg-orange-500 hover:bg-orange-600 border-orange-500'
-              >
-                Send OTP
-              </Button>
-            )}
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: 'rgba(26,26,26,0.5)', marginTop: 2 }}>
+            Warranty Card: {data.warrantyCardNo}
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8, alignItems: 'center' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
+            fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
+            background: data.registerStatus === 'Active' || data.registerStatus === 'Verified' ? '#d9fae6' : data.registerStatus === 'Pending' ? '#fff7ed' : '#f3f3f5',
+            border: `1px solid ${data.registerStatus === 'Active' || data.registerStatus === 'Verified' ? 'rgba(78,203,113,0.2)' : data.registerStatus === 'Pending' ? 'rgba(242,108,45,0.2)' : 'rgba(160,160,168,0.3)'}`,
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: data.registerStatus === 'Active' || data.registerStatus === 'Verified' ? '#4ecb71' : data.registerStatus === 'Pending' ? '#f26c2d' : '#9ca3af' }} />
+            {data.registerStatus || 'Unknown'}
+          </span>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
+            fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
+            background: data.otpVerified === 'NotVerified' ? '#fef2f2' : '#d9fae6',
+            border: `1px solid ${data.otpVerified === 'NotVerified' ? 'rgba(229,62,62,0.2)' : 'rgba(78,203,113,0.2)'}`,
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: data.otpVerified === 'NotVerified' ? '#e53e3e' : '#4ecb71' }} />
+            {data.otpVerified === 'NotVerified' ? 'OTP Pending' : 'OTP Verified'}
+          </span>
+          {data.otpVerified === 'NotVerified' && (
+            <button onClick={handleSendOtp} disabled={sendingOtp} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: '#f26c2d', border: 'none', borderRadius: 123,
+              padding: '6px 16px', fontSize: 14, fontWeight: 500,
+              fontFamily: "'Inter', sans-serif", color: 'white',
+              cursor: 'pointer', height: 32,
+            }}>
+              <SendOutlined style={{ fontSize: 14 }} /> {sendingOtp ? 'Sending...' : 'Send OTP'}
+            </button>
+          )}
+          <button onClick={() => navigate('/dealer-warranty')} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: '#f3f3f5', border: 'none', borderRadius: 123,
+            padding: '6px 16px', fontSize: 14, fontWeight: 400,
+            fontFamily: "'Inter', sans-serif", color: '#1a1a1a',
+            cursor: 'pointer', height: 32,
+          }}>
+            <ArrowLeftOutlined style={{ fontSize: 14 }} /> Back to List
+          </button>
         </div>
       </div>
 
-      <Row gutter={[24, 24]}>
-        {/* Left Column - Dealer Info (Read-only) */}
-        <Col xs={24} lg={8}>
-          {/* Dealer Information Card */}
-          <Card
-            className='mb-6 shadow-lg border-0 rounded-xl'
-            title={
-              <div className='flex items-center space-x-2'>
-                <div className='w-2 h-8 bg-purple-500 rounded-full'></div>
-                <span className='text-lg font-semibold'>
-                  Dealer Information
-                </span>
-                <Text type='secondary' className='text-sm'>
-                  (Read-only)
-                </Text>
-              </div>
-            }
-            bordered={false}
-          >
-            <div className='p-4 bg-gray-50 rounded-lg'>
-              <div className='flex items-center space-x-3'>
-                <div className='w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center'>
-                  <ShopOutlined className='text-purple-600' />
-                </div>
-                <div>
-                  <Text strong className='text-lg'>
-                    {data.dealerName || 'Loading...'}
-                  </Text>
-                  <br />
-                  <Text type='secondary' className='text-sm'>
-                    Authorized Dealer
-                  </Text>
-                </div>
-              </div>
-            </div>
-          </Card>
+      {/* Tabs */}
+      {(() => {
+        const FORM_TABS = [
+          { key: 'customer', label: 'Customer & Warranty' },
+          { key: 'product', label: 'Product Information' },
+          { key: 'purchase', label: 'Purchase & Vehicle' },
+          { key: 'images', label: 'Images & Documents' },
+        ]
 
-          {/* Vehicle Information Card */}
-          <Card
-            className='mb-6 shadow-lg border-0 rounded-xl'
-            title={
-              <div className='flex items-center space-x-2'>
-                <div className='w-2 h-8 bg-green-500 rounded-full'></div>
-                <span className='text-lg font-semibold'>Vehicle Images</span>
-              </div>
-            }
-            bordered={false}
-          >
-            <div className='space-y-4'>
-              {data.vehicleImage && (
-                <div>
-                  <Text strong>Vehicle Image:</Text>
-                  <div
-                    className='mt-2 cursor-pointer'
-                    onClick={() =>
-                      handlePreview(
-                        data.vehicleImage,
-                        `Vehicle - ${data.vehicleNo}`
-                      )
-                    }
-                  >
-                    <Image
-                      width='100%'
-                      height={150}
-                      src={data.vehicleImage}
-                      alt='Vehicle'
-                      style={{ objectFit: 'cover', borderRadius: '8px' }}
-                      preview={false}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {data.warrantyCardImage && (
-                <div>
-                  <Text strong>Warranty Card Image:</Text>
-                  <div
-                    className='mt-2 cursor-pointer'
-                    onClick={() =>
-                      handlePreview(
-                        data.warrantyCardImage,
-                        `Warranty Card - ${data.warrantyCardNo}`
-                      )
-                    }
-                  >
-                    <Image
-                      width='100%'
-                      height={150}
-                      src={data.warrantyCardImage}
-                      alt='Warranty Card'
-                      style={{ objectFit: 'cover', borderRadius: '8px' }}
-                      preview={false}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        </Col>
-
-        {/* Right Column - Editable Form */}
-        <Col xs={24} lg={16}>
-          <Card
-            className='shadow-lg border-0 rounded-xl'
-            title={
-              <div className='flex items-center space-x-2'>
-                <div className='w-2 h-8 bg-yellow-500 rounded-full'></div>
-                <span className='text-lg font-semibold'>Warranty Details</span>
-                <EditOutlined className='text-gray-500' />
-              </div>
-            }
-            bordered={false}
-          >
-            <Form form={form} layout='vertical' className='space-y-6'>
-              {/* Form Data Debug Info (Development only) */}
-              {process.env.NODE_ENV === 'development' && data && (
-                <div className='bg-yellow-100 p-4 rounded-lg mb-4 text-xs'>
-                  <Text strong>Debug - API Response Sample:</Text>
-                  <pre className='mt-2 whitespace-pre-wrap overflow-auto max-h-40'>
-                    {JSON.stringify(
-                      {
-                        customerName: data.customerName,
-                        mobileNo: data.mobileNo,
-                        emailAddress: data.emailAddress,
-                        warrantyCardNo: data.warrantyCardNo,
-                        registerStatus: data.registerStatus,
-                        productType: data.productType,
-                        vehicleNo: data.vehicleNo,
-                        dealerName: data.dealerName,
-                        amount: data.amount,
-                        otpVerified: data.otpVerified
-                      },
-                      null,
-                      2
-                    )}
-                  </pre>
-                </div>
-              )}
-
-              {/* Customer Information Section - Mixed (Name read-only, Mobile editable) */}
-              <div className='bg-blue-50 p-6 rounded-lg'>
-                <Title
-                  level={4}
-                  className='text-blue-800 mb-4 flex items-center'
-                >
-                  <UserOutlined className='mr-2' />
-                  Customer Information
-                  {data && (
-                    <Text type='secondary' className='ml-2 text-sm'>
-                      ({data.customerName ? '✓ Data Loaded' : '⚠ No Data'})
-                    </Text>
-                  )}
-                </Title>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item label='Customer Name'>
-                      <Input
-                        value={data?.customerName || 'Loading...'}
-                        disabled
-                        className='bg-gray-100'
-                        suffix={
-                          <Text type='secondary' className='text-xs'>
-                            Read-only
-                          </Text>
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Mobile Number'
-                      name='mobileNo'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Please enter mobile number'
-                        },
-                        {
-                          pattern: /^[0-9]{10}$/,
-                          message: 'Mobile number must be exactly 10 digits'
-                        }
-                      ]}
-                    >
-                      <Input
-                        placeholder='Enter 10-digit mobile number'
-                        maxLength={10}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Email Address'
-                      name='emailAddress'
-                      rules={[
-                        {
-                          type: 'email',
-                          message: 'Please enter a valid email address'
-                        }
-                      ]}
-                    >
-                      <Input placeholder='Enter email address' />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* Warranty Card Section */}
-              <div className='bg-indigo-50 p-6 rounded-lg'>
-                <Title
-                  level={4}
-                  className='text-indigo-800 mb-4 flex items-center'
-                >
-                  <CreditCardOutlined className='mr-2' />
-                  Warranty Card Information
-                </Title>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Warranty Card Number'
-                      name='warrantyCardNo'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Please enter warranty card number'
-                        }
-                      ]}
-                    >
-                      <Input placeholder='Enter warranty card number' />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Registration Status'
-                      name='registerStatus'
-                      rules={[
-                        { required: true, message: 'Please select status' }
-                      ]}
-                    >
-                      <Select placeholder='Select status'>
-                        <Option value='Draft'>Draft</Option>
-                        <Option value='Active'>Active</Option>
-                        <Option value='Pending'>Pending</Option>
-                        <Option value='Verified'>Verified</Option>
-                        <Option value='Inactive'>Inactive</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* Product Information Section */}
-              <div className='bg-green-50 p-6 rounded-lg'>
-                <Title level={4} className='text-green-800 mb-4'>
-                  Product Information
-                </Title>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Product Type'
-                      name='productType'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Please select product type'
-                        }
-                      ]}
-                    >
-                      <Select placeholder='Select product type'>
-                        <Option value='Alloy'>Alloy Wheels</Option>
-                        <Option value='Tyre'>Tyres</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-
-                  {/* Alloy-specific fields */}
-                  <Col xs={24} md={12}>
-                    <Form.Item label='Wheel Size (Inches)' name='inchesId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allSizes || []}
-                        placeholder='Select wheel size'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='PCD (Pitch Circle Diameter)' name='pcdId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allPcd || []}
-                        placeholder='Select PCD'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Number of Holes' name='holesId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allHoles || []}
-                        placeholder='Select holes'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Finish Type' name='finishId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allFinishes || []}
-                        placeholder='Select finish'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Alloy Model' name='alloyModel'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allModels || []}
-                        placeholder='Select model'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Number of Alloys' name='noOfAlloys'>
-                      <InputNumber
-                        placeholder='Enter number of alloys'
-                        style={{ width: '100%' }}
-                        min={1}
-                        max={10}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Center Bore (CB)' name='cbId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allCbs || []}
-                        placeholder='Select center bore'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Offset' name='offsetId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allOffsets || []}
-                        placeholder='Select offset'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Width' name='widthId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allWidths || []}
-                        placeholder='Select width'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  {/* Tyre-specific fields */}
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Tyre Pattern' name='patternId'>
-                      <InputNumber
-                        placeholder='Enter pattern ID'
-                        style={{ width: '100%' }}
-                        min={0}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Tyre Width' name='widthId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allWidths || []}
-                        placeholder='Select width'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Tyre Profile' name='profileId'>
-                      <InputNumber
-                        placeholder='Enter profile ID'
-                        style={{ width: '100%' }}
-                        min={0}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Tyre Size (Diameter)' name='sizeId'>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allSizes || []}
-                        placeholder='Select size'
-                        allowClear
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={8}>
-                    <Form.Item label='Number of Tyres' name='noOfTyres'>
-                      <InputNumber
-                        placeholder='Enter number of tyres'
-                        style={{ width: '100%' }}
-                        min={1}
-                        max={10}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* Purchase Information Section */}
-              <div className='bg-yellow-50 p-6 rounded-lg'>
-                <Title
-                  level={4}
-                  className='text-yellow-800 mb-4 flex items-center'
-                >
-                  <CalendarOutlined className='mr-2' />
-                  Purchase Information
-                </Title>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Date of Purchase'
-                      name='dop'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Please select purchase date'
-                        }
-                      ]}
-                    >
-                      <DatePicker
-                        style={{ width: '100%' }}
-                        format='DD/MM/YYYY'
-                        placeholder='Select purchase date'
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Amount'
-                      name='amount'
-                      rules={[
-                        { required: false, message: 'Please enter amount' }
-                      ]}
-                    >
-                      <InputNumber
-                        placeholder='Enter amount'
-                        style={{ width: '100%' }}
-                        min={0}
-                        formatter={value =>
-                          `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-                        }
-                        parser={value => value.replace(/₹\s?|(,*)/g, '')}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item label='Meter Reading' name='meterReading'>
-                      <InputNumber
-                        placeholder='Enter meter reading'
-                        style={{ width: '100%' }}
-                        min={0}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* Vehicle Details Section */}
-              <div className='bg-cyan-50 p-6 rounded-lg'>
-                <Title
-                  level={4}
-                  className='text-cyan-800 mb-4 flex items-center'
-                >
-                  <CarOutlined className='mr-2' />
-                  Vehicle Details
-                </Title>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label='Vehicle Number'
-                      name='vehicleNo'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Please enter vehicle number'
-                        }
-                      ]}
-                    >
-                      <Input placeholder='Enter vehicle number' />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={12}>
-                    <Form.Item label='Vehicle Model' name='vehicleModel'>
-                      <Input placeholder='Enter vehicle model' />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-
-              {/* Notes Section */}
-              <div className='bg-gray-50 p-6 rounded-lg'>
-                <Title level={4} className='text-gray-800 mb-4'>
-                  Additional Notes
-                </Title>
-
-                <Form.Item label='Notes' name='notes'>
-                  <TextArea
-                    rows={4}
-                    placeholder='Enter any additional notes...'
-                  />
-                </Form.Item>
-              </div>
-
-              {/* Action Buttons */}
-              <div className='flex justify-end space-x-4 pt-6 border-t'>
-                <Button
-                  size='large'
-                  onClick={() => navigate('/dealer-warranty')}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type='primary'
-                  size='large'
-                  loading={saving}
-                  icon={<SaveOutlined />}
-                  className='bg-blue-600 hover:bg-blue-700'
-                  onClick={async () => {
-                    console.log('💡 Save Changes button clicked!')
-                    try {
-                      // Validate form fields first
-                      const values = await form.validateFields()
-                      console.log('✅ Form validation passed:', values)
-
-                      // Call handleSave with validated values
-                      await handleSave(values)
-                    } catch (error) {
-                      console.error('❌ Form validation failed:', error)
-                      message.error(
-                        'Please fill in all required fields correctly'
-                      )
-                    }
+        return (
+          <>
+            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #a0a0a8', marginBottom: 16 }}>
+              {FORM_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveFormTab(tab.key)}
+                  style={{
+                    background: 'none', border: 'none',
+                    borderBottom: activeFormTab === tab.key ? '2px solid #f55e34' : '1px solid transparent',
+                    marginBottom: -1, padding: '12px 24px',
+                    fontFamily: "'Inter', sans-serif", fontSize: 16,
+                    fontWeight: activeFormTab === tab.key ? 600 : 400,
+                    color: '#1a1a1a', cursor: 'pointer',
+                    whiteSpace: 'nowrap', lineHeight: '24px',
                   }}
-                >
-                  Save Changes
-                </Button>
-              </div>
-            </Form>
-          </Card>
-        </Col>
-      </Row>
+                >{tab.label}</button>
+              ))}
+            </div>
+
+            <PlatiFormStyles />
+            <div className="plati-form" style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, padding: 32, boxShadow: '0px 1px 2px rgba(0,0,0,0.05)' }}>
+              <Form form={form} layout='vertical'>
+
+                {/* ─── TAB: Customer & Warranty ─── */}
+                {activeFormTab === 'customer' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div>
+                      <h3 className="plati-form-section-title">
+                        <UserOutlined style={{ color: '#4a90ff' }} /> Customer Information
+                      </h3>
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Customer Name'>
+                            <Input value={data?.customerName || ''} disabled style={{ background: '#f9fafb', borderRadius: 12 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Mobile Number' name='mobileNo' rules={[{ required: true, message: 'Required' }, { pattern: /^[0-9]{10}$/, message: '10 digits required' }]}>
+                            <Input placeholder='Enter 10-digit mobile' maxLength={10} />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Email Address' name='emailAddress' rules={[{ type: 'email', message: 'Invalid email' }]}>
+                            <Input placeholder='Enter email' />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Divider style={{ margin: 0 }} />
+
+                    <div>
+                      <h3 className="plati-form-section-title">
+                        <CreditCardOutlined style={{ color: '#4a90ff' }} /> Warranty Card Information
+                      </h3>
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Warranty Card Number' name='warrantyCardNo' rules={[{ required: true, message: 'Required' }]}>
+                            <Input placeholder='Enter warranty card number' />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Registration Status' name='registerStatus' rules={[{ required: true, message: 'Required' }]}>
+                            <Select placeholder='Select status'>
+                              <Option value='Draft'>Draft</Option>
+                              <Option value='Active'>Active</Option>
+                              <Option value='Pending'>Pending</Option>
+                              <Option value='Verified'>Verified</Option>
+                              <Option value='Inactive'>Inactive</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── TAB: Product Information ─── */}
+                {activeFormTab === 'product' && (
+                  <div>
+                    <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a', marginBottom: 16 }}>
+                      Product Information
+                    </h3>
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} md={12}>
+                        <Form.Item label='Product Type' name='productType' rules={[{ required: true, message: 'Required' }]}>
+                          <Select placeholder='Select type'><Option value='Alloy'>Alloy Wheels</Option><Option value='Tyre'>Tyres</Option></Select>
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={12}>
+                        <Form.Item label='Wheel Size (Inches)' name='inchesId'>
+                          <CustomSelect showSearch className='w-full' options={allSizes || []} placeholder='Select size' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='PCD' name='pcdId'>
+                          <CustomSelect showSearch className='w-full' options={allPcd || []} placeholder='Select PCD' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Number of Holes' name='holesId'>
+                          <CustomSelect showSearch className='w-full' options={allHoles || []} placeholder='Select holes' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Finish Type' name='finishId'>
+                          <CustomSelect showSearch className='w-full' options={allFinishes || []} placeholder='Select finish' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Alloy Model' name='alloyModel'>
+                          <CustomSelect showSearch className='w-full' options={allModels || []} placeholder='Select model' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Number of Alloys' name='noOfAlloys'>
+                          <InputNumber placeholder='Qty' style={{ width: '100%' }} min={1} max={10} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Center Bore (CB)' name='cbId'>
+                          <CustomSelect showSearch className='w-full' options={allCbs || []} placeholder='Select CB' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Offset' name='offsetId'>
+                          <CustomSelect showSearch className='w-full' options={allOffsets || []} placeholder='Select offset' allowClear />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Form.Item label='Width' name='widthId'>
+                          <CustomSelect showSearch className='w-full' options={allWidths || []} placeholder='Select width' allowClear />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </div>
+                )}
+
+                {/* ─── TAB: Purchase & Vehicle ─── */}
+                {activeFormTab === 'purchase' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div>
+                      <h3 className="plati-form-section-title">
+                        <CalendarOutlined style={{ color: '#4a90ff' }} /> Purchase Information
+                      </h3>
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Date of Purchase' name='dop' rules={[{ required: true, message: 'Required' }]}>
+                            <DatePicker style={{ width: '100%', borderRadius: 12 }} format='DD/MM/YYYY' placeholder='Select date' />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Amount' name='amount'>
+                            <InputNumber placeholder='Enter amount' style={{ width: '100%' }} min={0} formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/₹\s?|(,*)/g, '')} />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Meter Reading' name='meterReading'>
+                            <InputNumber placeholder='Enter reading' style={{ width: '100%' }} min={0} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Divider style={{ margin: 0 }} />
+
+                    <div>
+                      <h3 className="plati-form-section-title">
+                        <CarOutlined style={{ color: '#4a90ff' }} /> Vehicle Details
+                      </h3>
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Vehicle Number' name='vehicleNo' rules={[{ required: true, message: 'Required' }]}>
+                            <Input placeholder='Enter vehicle number' />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item label='Vehicle Model' name='vehicleModel'>
+                            <Input placeholder='Enter vehicle model' />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Divider style={{ margin: 0 }} />
+
+                    <div>
+                      <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a', marginBottom: 16 }}>Additional Notes</h3>
+                      <Form.Item label='Notes' name='notes'>
+                        <TextArea rows={4} placeholder='Enter any additional notes...' />
+                      </Form.Item>
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── TAB: Images & Documents ─── */}
+                {activeFormTab === 'images' && (
+                  <div>
+                    <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a', marginBottom: 16 }}>Images & Documents</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                      <div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Vehicle Image</div>
+                        {data.vehicleImage ? (
+                          <div style={{ cursor: 'pointer', borderRadius: 16, overflow: 'hidden', border: '1px solid #e5e5e5' }} onClick={() => handlePreview(data.vehicleImage, `Vehicle - ${data.vehicleNo}`)}>
+                            <img src={data.vehicleImage} alt='Vehicle' style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }} />
+                          </div>
+                        ) : (
+                          <div style={{ height: 200, background: '#f3f3f5', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 14 }}>No vehicle image</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Warranty Card Image</div>
+                        {data.warrantyCardImage ? (
+                          <div style={{ cursor: 'pointer', borderRadius: 16, overflow: 'hidden', border: '1px solid #e5e5e5' }} onClick={() => handlePreview(data.warrantyCardImage, `Warranty Card - ${data.warrantyCardNo}`)}>
+                            <img src={data.warrantyCardImage} alt='Warranty Card' style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }} />
+                          </div>
+                        ) : (
+                          <div style={{ height: 200, background: '#f3f3f5', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 14 }}>No warranty card image</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 24, borderTop: '1px solid #e5e5e5', marginTop: 24 }}>
+                  <button onClick={() => navigate('/dealer-warranty')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f3f3f5', border: 'none', borderRadius: 123, padding: '10px 24px', fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}>Cancel</button>
+                  <button disabled={saving} onClick={async () => { try { const values = await form.validateFields(); await handleSave(values) } catch (error) { message.error('Please fill in all required fields') } }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#4a90ff', border: 'none', borderRadius: 123, padding: '10px 24px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.5 : 1 }}>
+                    <SaveOutlined style={{ fontSize: 14 }} /> {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </Form>
+            </div>
+          </>
+        )
+      })()}
+
 
       {/* OTP Verification Modal */}
       <Modal
@@ -1268,13 +930,16 @@ const DealerWarrantyDetail = () => {
       {/* Image Preview Modal */}
       <Modal
         open={previewVisible}
-        title={previewTitle}
+        title={<span style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}>{previewTitle}</span>}
         footer={null}
         onCancel={() => setPreviewVisible(false)}
-        width='80%'
+        width={540}
         centered
+        styles={{ body: { padding: '24px 32px 32px' } }}
       >
-        <img alt='preview' style={{ width: '100%' }} src={previewImage} />
+        <div style={{ background: '#f3f3f5', borderRadius: 16, overflow: 'hidden' }}>
+          <img alt='preview' style={{ width: '100%', display: 'block', borderRadius: 16, objectFit: 'contain' }} src={previewImage} />
+        </div>
       </Modal>
     </div>
   )

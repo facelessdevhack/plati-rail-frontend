@@ -10,6 +10,7 @@ import productionSlice from './slices/production.slice';
 import internalInventorySlice from './slices/internal-inventory.slice';
 import purchaseSystemSlice from './slices/purchaseSystem.slice';
 import moldManagementSlice from './slices/moldManagement.slice';
+import purchaseV2Slice from './slices/purchaseV2.slice';
 
 const rootReducer = combineReducers({
   userDetails: userSlice,
@@ -20,7 +21,8 @@ const rootReducer = combineReducers({
   productionDetails: productionSlice,
   internalInventory: internalInventorySlice,
   purchaseSystem: purchaseSystemSlice,
-  moldManagement: moldManagementSlice
+  moldManagement: moldManagementSlice,
+  purchaseV2: purchaseV2Slice
 });
 
 console.log('🔍 Root reducer created:', Object.keys(rootReducer));
