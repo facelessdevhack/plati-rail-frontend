@@ -62,6 +62,8 @@ import { useNavigate } from 'react-router-dom'
 import moment from 'moment'
 
 import Layout from '../Layout/layout'
+import KpiCard from '../../Core/Components/KpiCard'
+import DataTablePagination from '../../Core/Components/DataTablePagination'
 import JobCardCreationModal from './JobCardCreationModal'
 import JobCardDetailsModal from './JobCardDetailsModal'
 import StepProgressModal from './StepProgressModal'
@@ -2108,85 +2110,37 @@ const JobCardListing = () => {
       )
     },
     {
-      title: (
-        <div className='flex items-center gap-2'>
-          <DashboardOutlined />
-          <span>Job Card</span>
-        </div>
-      ),
+      title: 'Job Card',
       key: 'jobCard',
       width: 360,
       fixed: 'left',
       render: (_, record) => (
-        <div className='py-3 px-2'>
-          <div className='flex items-start gap-3'>
-            {/* Visual indicator */}
-            <div className='mt-1'>
-              <Avatar
-                size={40}
-                style={{
-                  backgroundColor: record.isUrgent ? '#ff4d4f' : '#1890ff',
-                  fontSize: '18px',
-                  fontWeight: 'bold'
-                }}
-              >
-                {record.jobCardId}
-              </Avatar>
+        <div style={{ padding: '8px 4px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: record.isUrgent ? '#e53e3e' : '#4a90ff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
+            {record.jobCardId}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 14, fontFamily: "'Inter', sans-serif" }}>Job Card #{record.jobCardId}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: '#dbeafe', color: '#4a90ff' }}>Plan #{record.prodPlanId}</span>
+              {record.isUrgent && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: '#fef2f2', color: '#e53e3e' }}><FireOutlined /> URGENT</span>}
             </div>
-
-            {/* Card info */}
-            <div className='flex-1'>
-              <div className='flex items-center gap-2 mb-1'>
-                <Text className='font-semibold text-base'>
-                  Job Card #{record.jobCardId}
-                </Text>
-                <Tag color='geekblue'>Plan #{record.prodPlanId}</Tag>
-                {record.isUrgent && (
-                  <Tag color='red' icon={<FireOutlined />}>
-                    URGENT
-                  </Tag>
-                )}
-              </div>
-              {console.log(record, 'RECORD')}
-              <div className='text-sm text-gray-600 mb-2'>
-                <span className='font-medium'>{record.sourceProductName}</span>
-                <ArrowRightOutlined className='mx-2 text-xs' />
-                <span className='font-medium'>{record.targetProductName}</span>
-              </div>
-
-              <div className='flex items-center gap-4'>
-                <div className='flex items-center gap-1'>
-                  <TeamOutlined className='text-gray-400' />
-                  <Text className='text-xs text-gray-500'>
-                    {record.createdBy}
-                  </Text>
-                </div>
-                <div className='flex items-center gap-1'>
-                  <CalendarOutlined className='text-gray-400' />
-                  <Text className='text-xs text-gray-500'>
-                    {moment(record.createdAt).format('MMM DD')}
-                  </Text>
-                </div>
-                {record.presetName && (
-                  <Tooltip title={record.presetName}>
-                    <Tag color='blue' className='text-xs'>
-                      <SettingOutlined /> Preset
-                    </Tag>
-                  </Tooltip>
-                )}
-              </div>
+            <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
+              <span style={{ fontWeight: 500 }}>{record.sourceProductName}</span>
+              <span style={{ margin: '0 6px', color: '#9ca3af' }}>→</span>
+              <span style={{ fontWeight: 500 }}>{record.targetProductName}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#9ca3af' }}>
+              <span><TeamOutlined style={{ marginRight: 4 }} />{record.createdBy}</span>
+              <span><CalendarOutlined style={{ marginRight: 4 }} />{moment(record.createdAt).format('MMM DD')}</span>
+              {record.presetName && <Tooltip title={record.presetName}><span style={{ display: 'inline-flex', padding: '1px 6px', borderRadius: 6, fontSize: 10, background: '#dbeafe', color: '#4a90ff' }}><SettingOutlined style={{ marginRight: 3 }} />Preset</span></Tooltip>}
             </div>
           </div>
         </div>
       )
     },
     {
-      title: (
-        <div className='flex items-center gap-2'>
-          <ThunderboltOutlined />
-          <span>Progress</span>
-        </div>
-      ),
+      title: 'Progress',
       key: 'progress',
       width: 320,
       render: (_, record) => {
@@ -2196,44 +2150,19 @@ const JobCardListing = () => {
         const isCompleted = record.prodStep >= totalSteps
 
         return (
-          <div className='py-2'>
-            <div className='mb-3'>
-              <div className='flex items-center justify-between mb-2'>
-                <div className='flex items-center gap-2'>
-                  <Badge
-                    status={
-                      isCompleted
-                        ? 'success'
-                        : record.prodStep > 1
-                        ? 'processing'
-                        : 'warning'
-                    }
-                    text={
-                      <Text
-                        strong
-                        className={isCompleted ? 'text-green-600' : ''}
-                      >
-                        {stepInfo.name}
-                      </Text>
-                    }
-                  />
-                </div>
-                <Text className='text-sm text-gray-500'>
-                  Step {record.prodStep}/{totalSteps}
-                </Text>
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontWeight: 500, fontSize: 13, color: isCompleted ? '#15803d' : '#1a1a1a', fontFamily: "'Inter', sans-serif" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isCompleted ? '#4ecb71' : record.prodStep > 1 ? '#4a90ff' : '#f26c2d', display: 'inline-block', marginRight: 6 }} />
+                  {stepInfo.name}
+                </span>
+                <span style={{ fontSize: 12, color: '#9ca3af' }}>Step {record.prodStep}/{totalSteps}</span>
               </div>
-
-              <Progress
-                percent={overallProgress}
-                size='small'
-                strokeColor={{
-                  '0%': '#108ee9',
-                  '100%': '#87d068'
-                }}
-                format={percent => (
-                  <span className='text-xs font-medium'>{percent}%</span>
-                )}
-              />
+              <div style={{ width: '100%', height: 6, background: '#f3f4f6', borderRadius: 3 }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${overallProgress}%`, background: `linear-gradient(90deg, #4a90ff, ${overallProgress >= 100 ? '#4ecb71' : '#87d068'})`, transition: 'width 0.3s' }} />
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{overallProgress}%</div>
             </div>
 
             {/* Mini step indicators */}
@@ -2285,66 +2214,41 @@ const JobCardListing = () => {
       }
     },
     {
-      title: (
-        <div className='flex items-center gap-2'>
-          <InfoCircleOutlined />
-          <span>Quantities</span>
-        </div>
-      ),
+      title: 'Quantities',
       key: 'quantities',
       width: 200,
       render: (_, record) => (
-        <div className='py-2'>
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between'>
-              <Text className='text-gray-500'>Total:</Text>
-              <Text strong className='text-lg'>
-                {record.quantity?.toLocaleString()}
-              </Text>
-            </div>
-
-            {(record.acceptedQuantity > 0 || record.rejectedQuantity > 0) && (
-              <>
-                <div className='flex items-center justify-between'>
-                  <Text className='text-gray-500'>Accepted:</Text>
-                  <Text className='text-green-600'>
-                    {record.acceptedQuantity?.toLocaleString() || 0}
-                  </Text>
-                </div>
-                {record.rejectedQuantity > 0 && (
-                  <div className='flex items-center justify-between'>
-                    <Text className='text-gray-500'>Rejected:</Text>
-                    <Text className='text-red-600'>
-                      {record.rejectedQuantity?.toLocaleString()}
-                    </Text>
-                  </div>
-                )}
-              </>
-            )}
-
-            {record.allocationPercentage > 0 && (
-              <Tooltip
-                title={`This job card represents ${record.allocationPercentage}% of the production plan`}
-              >
-                <Progress
-                  percent={record.allocationPercentage}
-                  size='small'
-                  showInfo={false}
-                  strokeColor='#52c41a'
-                />
-              </Tooltip>
-            )}
+        <div style={{ padding: '4px 0', fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ color: '#6b7280' }}>Total:</span>
+            <span style={{ fontWeight: 700, fontSize: 16 }}>{record.quantity?.toLocaleString()}</span>
           </div>
+          {(record.acceptedQuantity > 0 || record.rejectedQuantity > 0) && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span style={{ color: '#6b7280' }}>Accepted:</span>
+                <span style={{ color: '#15803d', fontWeight: 500 }}>{record.acceptedQuantity?.toLocaleString() || 0}</span>
+              </div>
+              {record.rejectedQuantity > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span style={{ color: '#6b7280' }}>Rejected:</span>
+                  <span style={{ color: '#dc2626', fontWeight: 500 }}>{record.rejectedQuantity?.toLocaleString()}</span>
+                </div>
+              )}
+            </>
+          )}
+          {record.allocationPercentage > 0 && (
+            <Tooltip title={`${record.allocationPercentage}% of plan`}>
+              <div style={{ width: '100%', height: 4, background: '#f3f4f6', borderRadius: 2, marginTop: 6 }}>
+                <div style={{ height: '100%', borderRadius: 2, width: `${record.allocationPercentage}%`, background: '#4ecb71' }} />
+              </div>
+            </Tooltip>
+          )}
         </div>
       )
     },
     {
-      title: (
-        <div className='flex items-center gap-2'>
-          <ToolOutlined />
-          <span>Actions</span>
-        </div>
-      ),
+      title: 'Actions',
       key: 'actions',
       width: 150,
       fixed: 'right',
@@ -2353,51 +2257,20 @@ const JobCardListing = () => {
         const isCompleted = record.prodStep >= totalSteps
 
         return (
-          <div className='flex items-center gap-2'>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Tooltip title='View Details'>
-              <Button
-                type='default'
-                icon={<EyeOutlined />}
-                onClick={() => handleViewDetails(record)}
-                shape='circle'
-              />
+              <button onClick={() => handleViewDetails(record)} style={{ background: '#4a90ff', border: 'none', borderRadius: 10, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize: 14 }}><EyeOutlined /></button>
             </Tooltip>
-
-            <Tooltip title={isCompleted ? 'Completed' : 'Move to Next Step'}>
-              <Button
-                type='primary'
-                icon={<ArrowRightOutlined />}
-                onClick={() => handleMoveToNextStep(record)}
-                disabled={isCompleted}
-                shape='circle'
-                className={
-                  !isCompleted
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 border-0'
-                    : ''
-                }
-              />
+            <Tooltip title={isCompleted ? 'Completed' : 'Next Step'}>
+              <button onClick={() => handleMoveToNextStep(record)} disabled={isCompleted} style={{ background: isCompleted ? '#f3f3f5' : '#4a90ff', border: 'none', borderRadius: 10, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isCompleted ? 'not-allowed' : 'pointer', color: isCompleted ? '#9ca3af' : 'white', fontSize: 14, opacity: isCompleted ? 0.5 : 1 }}><ArrowRightOutlined /></button>
             </Tooltip>
-
             <Dropdown
               menu={{
                 items: [
-                  {
-                    key: 'edit',
-                    icon: <EditOutlined />,
-                    label: 'Edit Job Card'
-                  },
-                  {
-                    key: 'export',
-                    icon: <ExportOutlined />,
-                    label: 'Export Report'
-                  },
+                  { key: 'edit', icon: <EditOutlined />, label: 'Edit Job Card' },
+                  { key: 'export', icon: <ExportOutlined />, label: 'Export Report' },
                   { type: 'divider' },
-                  {
-                    key: 'delete',
-                    icon: <DeleteOutlined />,
-                    label: 'Delete',
-                    danger: true
-                  }
+                  { key: 'delete', icon: <DeleteOutlined />, label: 'Delete', danger: true }
                 ],
                 onClick: ({ key }) => {
                   if (key === 'delete') {
@@ -2405,24 +2278,10 @@ const JobCardListing = () => {
                       title: 'Delete Job Card',
                       icon: <DeleteOutlined />,
                       content: `Are you sure you want to delete Job Card #${record.jobCardId}?`,
-                      okText: 'Yes, Delete',
-                      okType: 'danger',
-                      cancelText: 'Cancel',
+                      okText: 'Yes, Delete', okType: 'danger', cancelText: 'Cancel',
                       onOk: async () => {
-                        try {
-                          await dispatch(deleteJobCard(record.id)).unwrap()
-                          notification.success({
-                            message: 'Job Card Deleted',
-                            description: `Job Card #${record.jobCardId} has been deleted successfully`
-                          })
-                          loadJobCards()
-                        } catch (error) {
-                          notification.error({
-                            message: 'Delete Failed',
-                            description:
-                              error.message || 'Failed to delete job card'
-                          })
-                        }
+                        try { await dispatch(deleteJobCard(record.id)).unwrap(); notification.success({ message: 'Job Card Deleted', description: `Job Card #${record.jobCardId} deleted` }); loadJobCards() }
+                        catch (error) { notification.error({ message: 'Delete Failed', description: error.message || 'Failed to delete' }) }
                       }
                     })
                   }
@@ -2430,7 +2289,7 @@ const JobCardListing = () => {
               }}
               trigger={['click']}
             >
-              <Button icon={<MoreOutlined />} shape='circle' />
+              <button style={{ background: 'rgba(26,26,26,0.2)', border: 'none', borderRadius: 10, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#1a1a1a', fontSize: 14 }}><MoreOutlined /></button>
             </Dropdown>
           </div>
         )
@@ -2624,286 +2483,100 @@ const JobCardListing = () => {
   }
 
   return (
-    <Layout>
-      <div className='min-h-screen bg-gradient-to-br from-gray-50 to-gray-100'>
-        {/* Modern Header */}
-        <div className='bg-white shadow-sm border-b'>
-          <div className='px-6 py-4'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-4'>
-                <div className='p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg'>
-                  <RocketOutlined className='text-white text-2xl' />
-                </div>
-                <div>
-                  <Title level={3} className='mb-0'>
-                    Job Card Management
-                  </Title>
-                  <Text className='text-gray-600'>
-                    Track and manage production workflow efficiently
-                  </Text>
-                </div>
-              </div>
-
-              <Space size='middle'>
-                <Segmented
-                  options={[
-                    { label: <BarsOutlined />, value: 'table' },
-                    { label: <AppstoreOutlined />, value: 'cards' }
-                  ]}
-                  value={viewMode}
-                  onChange={setViewMode}
-                />
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={loadJobCards}
-                  loading={loading}
-                >
-                  Refresh
-                </Button>
-                <Dropdown menu={{ items: exportMenuItems }} trigger={['click']}>
-                  <Button
-                    icon={
-                      exportLoading || detailedExportLoading ? (
-                        <DownloadOutlined spin />
-                      ) : (
-                        <DownloadOutlined />
-                      )
-                    }
-                    loading={exportLoading || detailedExportLoading}
-                  >
-                    {exportLoading
-                      ? 'Exporting...'
-                      : detailedExportLoading
-                      ? 'Creating Detailed PDF...'
-                      : 'Export All'}
-                  </Button>
-                </Dropdown>
-                <Button
-                  icon={<PlusOutlined />}
-                  type='primary'
-                  size='large'
-                  onClick={() => setCreateModalVisible(true)}
-                  className='bg-gradient-to-r from-blue-500 to-purple-500 border-0'
-                >
-                  Create Job Card
-                </Button>
-              </Space>
+    <div style={{ width: '100%' }}>
+      <div>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <h1 style={{ fontFamily: "'Staff Wide Test', serif", fontSize: 42, fontWeight: 400, color: '#1a1a1a', margin: '0 0 4px', lineHeight: '30px' }}>Job Card Management</h1>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: 'rgba(26,26,26,0.6)' }}>Track and manage production workflow</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 8, flexWrap: 'wrap' }}>
+            {/* View Toggle */}
+            <div style={{ display: 'flex', background: '#f3f3f5', borderRadius: 123, padding: 2 }}>
+              <button onClick={() => setViewMode('table')} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 123, fontSize: 13, fontWeight: 500, fontFamily: "'Inter', sans-serif", border: 'none', cursor: 'pointer', background: viewMode === 'table' ? 'white' : 'transparent', color: viewMode === 'table' ? '#1a1a1a' : '#6b7280', boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }}><BarsOutlined /> Table</button>
+              <button onClick={() => setViewMode('cards')} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 123, fontSize: 13, fontWeight: 500, fontFamily: "'Inter', sans-serif", border: 'none', cursor: 'pointer', background: viewMode === 'cards' ? 'white' : 'transparent', color: viewMode === 'cards' ? '#1a1a1a' : '#6b7280', boxShadow: viewMode === 'cards' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }}><AppstoreOutlined /> Cards</button>
             </div>
+            <button onClick={loadJobCards} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}><ReloadOutlined spin={loading} style={{ fontSize: 14 }} /> Refresh</button>
+            <Dropdown menu={{ items: exportMenuItems }} trigger={['click']}>
+              <button style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#1a1a1a', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer' }}><ExportOutlined style={{ fontSize: 14 }} /> Export</button>
+            </Dropdown>
+            <button onClick={() => setCreateModalVisible(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#4a90ff', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}><PlusOutlined style={{ fontSize: 14 }} /> Create Job Card</button>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className='px-6 py-6'>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <Statistic
-                  title={
-                    <span className='text-gray-600 flex items-center gap-2'>
-                      <DashboardOutlined />
-                      Total Cards
-                    </span>
-                  }
-                  value={statistics.total}
-                  valueStyle={{ color: '#1890ff', fontSize: '28px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <Statistic
-                  title={
-                    <span className='text-gray-600 flex items-center gap-2'>
-                      <SyncOutlined spin />
-                      In Progress
-                    </span>
-                  }
-                  value={statistics.inProgress}
-                  valueStyle={{ color: '#faad14', fontSize: '28px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <Statistic
-                  title={
-                    <span className='text-gray-600 flex items-center gap-2'>
-                      <CheckCircleOutlined />
-                      Completed
-                    </span>
-                  }
-                  value={statistics.completed}
-                  valueStyle={{ color: '#52c41a', fontSize: '28px' }}
-                  suffix={
-                    <span className='text-sm text-gray-500'>
-                      ({statistics.completionRate}%)
-                    </span>
-                  }
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <Statistic
-                  title={
-                    <span className='text-gray-600 flex items-center gap-2'>
-                      <FireOutlined />
-                      Urgent
-                    </span>
-                  }
-                  value={statistics.urgent}
-                  valueStyle={{ color: '#ff4d4f', fontSize: '28px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <Statistic
-                  title={
-                    <span className='text-gray-600 flex items-center gap-2'>
-                      <CheckCircleOutlined />
-                      QA Ready
-                    </span>
-                  }
-                  value={statistics.qaReady}
-                  valueStyle={{ color: '#722ed1', fontSize: '28px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={6} lg={4}>
-              <Card className='border-0 shadow-md hover:shadow-lg transition-shadow'>
-                <div className='text-center'>
-                  <div className='text-gray-600 mb-2 flex items-center justify-center gap-2'>
-                    <ThunderboltOutlined />
-                    <span>Efficiency</span>
-                  </div>
-                  <Progress
-                    type='circle'
-                    percent={statistics.completionRate}
-                    width={60}
-                    strokeColor={{
-                      '0%': '#108ee9',
-                      '100%': '#87d068'
-                    }}
-                  />
-                </div>
-              </Card>
-            </Col>
-          </Row>
+        {/* KPI Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
+          <KpiCard title="Total Cards" value={statistics.total} icon={<DashboardOutlined />} accentColor="blue" />
+          <KpiCard title="In Progress" value={statistics.inProgress} icon={<SyncOutlined />} accentColor="orange" />
+          <KpiCard title="Completed" value={statistics.completed} icon={<CheckCircleOutlined />} accentColor="green" subMetric={{ label: 'Rate:', value: `${statistics.completionRate}%` }} />
+          <KpiCard title="Urgent" value={statistics.urgent} icon={<FireOutlined />} accentColor="red" />
+          <KpiCard title="QA Ready" value={statistics.qaReady} icon={<CheckCircleOutlined />} accentColor="purple" />
+          <KpiCard title="Efficiency" value={`${statistics.completionRate}%`} icon={<ThunderboltOutlined />} accentColor="blue" />
         </div>
 
-        {/* Enhanced Filters */}
-        <div className='px-6 mb-6'>
-          <Card className='border-0 shadow-md'>
-            <Row gutter={[16, 16]} align='middle'>
-              <Col xs={24} md={8} lg={6}>
-                <Search
-                  placeholder='Search job cards...'
-                  allowClear
-                  onSearch={handleSearch}
-                  size='large'
-                  prefix={<SearchOutlined className='text-gray-400' />}
-                />
-              </Col>
-              <Col xs={12} md={4}>
-                <Select
-                  placeholder='Step'
-                  value={selectedStep}
-                  onChange={value => setSelectedStep(value)}
-                  style={{ width: '100%' }}
-                  size='large'
-                >
-                  <Option value='all'>All Steps</Option>
-                  {uniqueStepNames.map(stepName => (
-                    <Option key={stepName} value={stepName}>
-                      {stepName}
-                    </Option>
-                  ))}
-                </Select>
-              </Col>
-              <Col xs={12} md={4}>
-                <Select
-                  placeholder='Priority'
-                  value={selectedPriority}
-                  onChange={value => setSelectedPriority(value)}
-                  style={{ width: '100%' }}
-                  size='large'
-                >
-                  <Option value='all'>All Priorities</Option>
-                  <Option value='urgent'>
-                    <span className='text-red-500'>🔥 Urgent Only</span>
-                  </Option>
-                  <Option value='normal'>Normal Only</Option>
-                </Select>
-              </Col>
-              <Col xs={24} md={6}>
-                <RangePicker
-                  value={dateRange}
-                  onChange={setDateRange}
-                  style={{ width: '100%' }}
-                  size='large'
-                />
-              </Col>
-              <Col xs={24} md={2}>
-                <Button
-                  icon={<FilterOutlined />}
-                  onClick={handleClearFilters}
-                  size='large'
-                  block
-                  danger
-                >
-                  Clear
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+        {/* Filter Bar */}
+        <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, padding: '12px 32px', marginBottom: 16, boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input type="text" placeholder="Search job cards..." onKeyDown={e => e.key === 'Enter' && handleSearch(e.target.value)} style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }} />
+            <Select placeholder="Step" value={selectedStep} onChange={v => setSelectedStep(v)} style={{ width: 160, height: 40 }} className="plati-filter-dealer"
+              options={[{ value: 'all', label: 'All Steps' }, ...uniqueStepNames.map(s => ({ value: s, label: s }))]} />
+            <Select placeholder="Priority" value={selectedPriority} onChange={v => setSelectedPriority(v)} style={{ width: 150, height: 40 }} className="plati-filter-dealer"
+              options={[{ value: 'all', label: 'All Priorities' }, { value: 'urgent', label: '🔥 Urgent' }, { value: 'normal', label: 'Normal' }]} />
+            <DatePicker.RangePicker value={dateRange} onChange={setDateRange} format="DD MMM YYYY" placeholder={['Start Date', 'End Date']} className="plati-filter-daterange" style={{ height: 40, borderRadius: 123, borderColor: '#a0a0a8', minWidth: 240 }} />
+            <button onClick={handleClearFilters} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 40, padding: '0 14px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}>Clear</button>
+          </div>
         </div>
 
         {/* Main Content Area */}
-        <div className='px-6 pb-6'>
+        <div>
           {viewMode === 'table' ? (
-            <Card className='border-0 shadow-md'>
-              <Table
-                columns={columns}
-                dataSource={jobCards}
-                rowKey='id'
-                loading={loading}
-                pagination={{
-                  current: currentPage,
-                  pageSize: pageSize,
-                  total: totalCount,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} job cards`,
-                  onChange: (page, size) => {
-                    setCurrentPage(page)
-                    setPageSize(size)
-                  }
-                }}
-                scroll={{ x: 1200 }}
-                rowClassName={record =>
-                  record.isUrgent
-                    ? 'bg-red-50 hover:bg-red-100'
-                    : 'hover:bg-gray-50'
-                }
-                locale={{
-                  emptyText: (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description='No job cards found'
-                    >
-                      <Button
-                        type='primary'
-                        onClick={() => setCreateModalVisible(true)}
+            <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 1100 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ background: '#f3f3f5', padding: '12px 16px', textAlign: 'center', fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', width: 50 }}>
+                        <input type='checkbox' checked={selectedJobCardIds.length === jobCards.length && jobCards.length > 0} onChange={handleSelectAll} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                      </th>
+                      {['Job Card', 'Progress', 'Quantities', 'Actions'].map(h => (
+                        <th key={h} style={{ background: '#f3f3f5', padding: '12px 16px', textAlign: h === 'Actions' ? 'center' : 'left', fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+                    ) : !jobCards || jobCards.length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40 }}>
+                        <div style={{ color: '#f55e34', fontWeight: 500, marginBottom: 12 }}>No job cards found</div>
+                        <button onClick={() => setCreateModalVisible(true)} style={{ background: '#4a90ff', border: 'none', borderRadius: 12, padding: '8px 20px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer' }}>Create First Job Card</button>
+                      </td></tr>
+                    ) : jobCards.map(record => (
+                      <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6', background: record.isUrgent ? '#fef8f8' : 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = record.isUrgent ? '#fef2f2' : '#fafafa'}
+                        onMouseLeave={e => e.currentTarget.style.background = record.isUrgent ? '#fef8f8' : 'transparent'}
                       >
-                        Create First Job Card
-                      </Button>
-                    </Empty>
-                  )
-                }}
+                        <td style={{ padding: '12px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <input type='checkbox' checked={selectedJobCardIds.includes(record.jobCardId || record.id)} onChange={() => handleSelectJobCard(record.jobCardId || record.id)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                        </td>
+                        <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>{columns.find(c => c.key === 'jobCard').render(null, record)}</td>
+                        <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>{columns.find(c => c.key === 'progress').render(null, record)}</td>
+                        <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>{columns.find(c => c.key === 'quantities').render(null, record)}</td>
+                        <td style={{ padding: '12px 16px', verticalAlign: 'middle', textAlign: 'center' }}>{columns.find(c => c.key === 'actions').render(null, record)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <DataTablePagination
+                currentPage={currentPage}
+                totalItems={totalCount}
+                pageSize={pageSize}
+                onPageChange={(page) => setCurrentPage(page)}
+                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
               />
-            </Card>
+            </div>
           ) : (
             <div>
               {loading ? (
@@ -3146,7 +2819,7 @@ const JobCardListing = () => {
           </div>
         </Modal>
       </div>
-    </Layout>
+    </div>
   )
 }
 
