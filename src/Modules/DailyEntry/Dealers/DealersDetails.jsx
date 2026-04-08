@@ -21,7 +21,7 @@ import {
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { 
-  DownloadOutlined, 
+  DownloadOutlined,
   UserOutlined,
   WalletOutlined,
   ReloadOutlined,
@@ -30,7 +30,8 @@ import {
   SearchOutlined,
   CalendarOutlined,
   ArrowLeftOutlined,
-  DollarOutlined
+  DollarOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import CustomTable from '../../../Core/Components/CustomTable'
 import CustomInput from '../../../Core/Components/CustomInput'
@@ -43,7 +44,8 @@ import {
   getMiddleDealers,
   getPaymentEntries,
   checkMultipleEntriesAPI,
-  deletePaymentEntryAPI
+  deletePaymentEntryAPI,
+  getAllDealersOrders
 } from '../../../redux/api/entriesAPI'
 
 import Button from '../../../Core/Components/CustomButton'
@@ -56,6 +58,7 @@ import { client } from '../../../Utils/axiosClient'
 import moment from 'moment'
 import CustomSelect from '../../../Core/Components/CustomSelect'
 import { getAllProducts } from '../../../redux/api/stockAPI'
+import DataTablePagination from '../../../Core/Components/DataTablePagination'
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -100,7 +103,9 @@ const AdminDealerDetails = () => {
     spinLoader,
     allMiddleDealers,
     adminPaymentMethods,
-    allAdminPaymentMethods
+    allAdminPaymentMethods,
+    allDealersOrders,
+    dealersOrdersCount
   } = useSelector(state => state.entryDetails)
   const { allProducts } = useSelector(state => state.stockDetails)
 
@@ -144,6 +149,7 @@ const AdminDealerDetails = () => {
       })
     )
     dispatch(getMiddleDealers({}))
+    dispatch(getAllDealersOrders({ id, page: currentPage, limit: pageSize }))
     dispatch(getAdminPaymentMethods({}))
     dispatch(getAllPaymentMethods({}))
     getDealerInfo()
@@ -912,84 +918,180 @@ const AdminDealerDetails = () => {
                 </div>
               </div>
             )}
-            <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
-              <div className='flex-1 max-w-md'>
-                <Search
-                  placeholder='Search entries...'
-                  allowClear
-                  size='large'
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              padding: '12px 32px', marginBottom: 16,
+              boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type='text'
+                  placeholder='Search...'
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  prefix={<SearchOutlined />}
+                  style={{
+                    flex: 1, minWidth: 200, height: 40,
+                    border: '1px solid #a0a0a8', borderRadius: 123,
+                    padding: '0 16px', fontSize: 16,
+                    fontFamily: "'Inter', sans-serif", color: '#1a1a1a',
+                    outline: 'none', background: 'white',
+                  }}
                 />
-              </div>
-              <div className='flex items-center gap-3'>
-                <Tooltip title='Check Orders'>
-                  <AntButton
-                    icon={<FileTextOutlined />}
-                    onClick={handleOrderDashboard}
-                    size='large'
-                    className='hover:bg-blue-50 hover:border-blue-300'
-                  >
-                    Orders
-                  </AntButton>
-                </Tooltip>
-                {isAdmin && (
-                  <Tooltip title='Add Payment Entry'>
-                    <AntButton
-                      type='primary'
-                      icon={<PlusOutlined />}
-                      onClick={showPaymentModalFunction}
-                      size='large'
-                      className='bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700'
-                    >
-                      Add Payment
-                    </AntButton>
-                  </Tooltip>
-                )}
-                <Tooltip title='Recalculate Balance'>
-                  <AntButton
-                    icon={<ReloadOutlined />}
-                    onClick={handleRecalculateBalance}
-                    size='large'
-                    className='hover:bg-orange-50 hover:border-orange-300'
-                  >
-                    Recalculate
-                  </AntButton>
-                </Tooltip>
-                <Tooltip title='Export Report'>
-                  <AntButton
-                    icon={<DownloadOutlined />}
-                    onClick={showDownloadModal}
-                    size='large'
-                    className='hover:bg-gray-50 hover:border-gray-300'
-                  >
-                    Export
-                  </AntButton>
-                </Tooltip>
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
-                  size='large'
-                  className='min-w-[280px]'
+                  format='DD MMM YYYY'
                   placeholder={['Start Date', 'End Date']}
-                  suffixIcon={<CalendarOutlined />}
+                  className='plati-filter-daterange'
+                  style={{
+                    height: 40, borderRadius: 123,
+                    borderColor: '#a0a0a8', minWidth: 280,
+                  }}
                 />
+                <button
+                  onClick={handleRecalculateBalance}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    height: 40, padding: '0 16px', minWidth: 100,
+                    justifyContent: 'center', background: '#f3f3f5',
+                    border: 'none', borderRadius: 123, fontSize: 14,
+                    fontWeight: 400, fontFamily: "'Inter', sans-serif",
+                    color: '#1a1a1a', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  <ReloadOutlined style={{ fontSize: 14 }} /> Recalculate
+                </button>
+                <button
+                  onClick={showDownloadModal}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    height: 40, padding: '0 16px', minWidth: 100,
+                    justifyContent: 'center', background: '#1a1a1a',
+                    border: 'none', borderRadius: 123, fontSize: 14,
+                    fontWeight: 500, fontFamily: "'Inter', sans-serif",
+                    color: 'white', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  <DownloadOutlined style={{ fontSize: 14 }} /> Export
+                </button>
               </div>
             </div>
-            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden'>
-              <CustomTable
-                isAdmin={isAdmin}
-                editFunction={showEditModalFunction}
-                data={sortedFilteredDealers}
-                titleOnTop={false}
-                position='bottomRight'
-                columns={columns}
-                expandable={false}
-                totalCount={searchQuery ? filteredDealers?.length : dealerEntriesPagination?.total || dealerEntryCount}
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      {isAdmin && (
+                        <th style={{ background: '#f3f3f5', padding: '12px 16px', textAlign: 'center', fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', width: 48, paddingLeft: 32 }}>
+                          <input
+                            type='checkbox'
+                            checked={selectedEntries.length > 0 && selectedEntries.length === filteredDealers?.filter(e => e.isChecked === 0).length}
+                            onChange={handleSelectAllUncheckedEntries}
+                            disabled={!filteredDealers?.filter(e => e.isChecked === 0).length}
+                            style={{ cursor: 'pointer', width: 18, height: 18 }}
+                          />
+                        </th>
+                      )}
+                      {['Date', 'Product', 'Quantity', 'Amount', 'Entry Type', 'Status', 'Balance after Entry', 'Actions'].map((h, i) => (
+                        <th key={h} style={{
+                          background: '#f3f3f5', padding: '12px 16px',
+                          textAlign: ['Quantity', 'Amount', 'Status', 'Actions'].includes(h) ? 'center' : 'left',
+                          fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                          fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                          whiteSpace: 'nowrap', lineHeight: '20px',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!sortedFilteredDealers || sortedFilteredDealers.length === 0 ? (
+                      <tr><td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No entries found</td></tr>
+                    ) : (
+                      sortedFilteredDealers.map((record, idx) => {
+                        const statusText = record.paymentStatus === 1 ? 'Pending' : record.paymentStatus === 2 ? 'Partial' : record.paymentStatus === 3 ? 'Paid' : '-'
+                        const statusVariant = record.paymentStatus === 1 ? 'outofstock' : record.paymentStatus === 2 ? 'pending' : record.paymentStatus === 3 ? 'paid' : 'paid'
+                        const balVal = record?.entryCurrentBal || record?.currentBal
+                        return (
+                          <tr key={record.entryId || idx} style={{ borderBottom: '1px solid #f3f4f6' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            {isAdmin && (
+                              <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', paddingLeft: 32 }}>
+                                <input
+                                  type='checkbox'
+                                  checked={selectedEntries.includes(record.entryId)}
+                                  onChange={() => {
+                                    if (selectedEntries.includes(record.entryId)) setSelectedEntries(selectedEntries.filter(id => id !== record.entryId))
+                                    else setSelectedEntries([...selectedEntries, record.entryId])
+                                  }}
+                                  disabled={record.isChecked === 1}
+                                  style={{ cursor: 'pointer', width: 18, height: 18 }}
+                                />
+                              </td>
+                            )}
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 13, whiteSpace: 'nowrap' }}>
+                              {moment(record.date).format('DD MMM YYYY')}<br />
+                              <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.date).format('dddd')}</span>
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>{record.productName || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.quantity || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.isClaim === 1 ? 'Claimed' : formatINR(record.price)}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>{record.source || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
+                                fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
+                                background: statusVariant === 'paid' ? '#d9fae6' : statusVariant === 'pending' ? '#fff7ed' : '#fef2f2',
+                                border: `1px solid ${statusVariant === 'paid' ? 'rgba(78,203,113,0.2)' : statusVariant === 'pending' ? 'rgba(242,108,45,0.2)' : 'rgba(229,62,62,0.2)'}`,
+                              }}>
+                                <span style={{
+                                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                                  background: statusVariant === 'paid' ? '#4ecb71' : statusVariant === 'pending' ? '#f26c2d' : '#e53e3e',
+                                }} />
+                                {statusText}
+                              </span>
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: balVal < 0 ? '#dc2626' : '#15803d' }}>
+                              {balVal !== null && balVal !== undefined ? formatINR(balVal) : '₹0'}
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => {
+                                    if (record.source === 'Purchase') handleCheckPurchaseEntry(record.entryId)
+                                    else if (record.sourceType == 4) handleCheckChargesEntry(record.entryId)
+                                    else handleCheckEntry(record.entryId)
+                                  }}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '8px 16px', borderRadius: 12, fontSize: 14,
+                                    fontWeight: 400, fontFamily: "'Inter', sans-serif",
+                                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    background: record.isChecked === 1 ? '#4a90ff' : '#f3f3f5',
+                                    color: record.isChecked === 1 ? 'white' : '#1a1a1a',
+                                  }}
+                                >
+                                  {record.isChecked === 1 ? '✓ Checked' : 'Unchecked'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <DataTablePagination
                 currentPage={currentPage}
-                handlePageChange={handlePages}
-                currentPageSize={pageSize}
-                showSort={true}
+                totalItems={searchQuery ? filteredDealers?.length : dealerEntriesPagination?.total || dealerEntryCount || 0}
+                pageSize={pageSize}
+                onPageChange={(page) => handlePages(page, pageSize)}
+                onPageSizeChange={(size) => { handlePages(1, size) }}
               />
             </div>
           </div>
@@ -1001,97 +1103,228 @@ const AdminDealerDetails = () => {
         return (
           <div className='pt-6'>
             {isAdmin && selectedPayments.length > 0 && (
-              <div className='mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <span className='text-green-800 font-medium'>
-                    {selectedPayments.length} payment{selectedPayments.length > 1 ? 's' : ''} selected
-                  </span>
-                  <AntButton
-                    type='primary'
-                    size='small'
-                    onClick={handleCheckMultiplePayments}
-                    className='bg-green-600 border-green-600 hover:bg-green-700'
-                  >
-                    Check Selected
-                  </AntButton>
-                  <AntButton
-                    size='small'
-                    onClick={() => setSelectedPayments([])}
-                  >
-                    Clear Selection
-                  </AntButton>
-                </div>
+              <div style={{ marginBottom: 16, padding: '12px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: '#15803d', fontWeight: 500, fontFamily: "'Inter', sans-serif", fontSize: 14 }}>
+                  {selectedPayments.length} payment{selectedPayments.length > 1 ? 's' : ''} selected
+                </span>
+                <button onClick={handleCheckMultiplePayments} style={{ background: '#4a90ff', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Check Selected</button>
+                <button onClick={() => setSelectedPayments([])} style={{ background: '#f3f3f5', color: '#1a1a1a', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Clear</button>
               </div>
             )}
-            <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6'>
-              <div className='flex-1 max-w-md'>
-                <Search
-                  placeholder='Search payments...'
-                  allowClear
-                  size='large'
+
+            {/* Filter Bar */}
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              padding: '12px 32px', marginBottom: 16,
+              boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type='text' placeholder='Search payments...'
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  prefix={<SearchOutlined />}
+                  style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }}
                 />
-              </div>
-              <div className='flex items-center gap-3'>
-                {isAdmin && (
-                  <Tooltip title='Add Payment Entry'>
-                    <AntButton
-                      type='primary'
-                      icon={<PlusOutlined />}
-                      onClick={showPaymentModalFunction}
-                      size='large'
-                      className='bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700'
-                    >
-                      Add Payment
-                    </AntButton>
-                  </Tooltip>
-                )}
-                {isAdmin && (
-                  <Tooltip title='Recalculate Balance'>
-                    <AntButton
-                      icon={<ReloadOutlined />}
-                      onClick={handleRecalculateBalance}
-                      size='large'
-                      className='hover:bg-orange-50 hover:border-orange-300'
-                    >
-                      Recalculate
-                    </AntButton>
-                  </Tooltip>
-                )}
-                <Tooltip title='Export Report'>
-                  <AntButton
-                    icon={<DownloadOutlined />}
-                    onClick={showDownloadModal}
-                    size='large'
-                    className='hover:bg-gray-50 hover:border-gray-300'
-                  >
-                    Export
-                  </AntButton>
-                </Tooltip>
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
-                  size='large'
-                  className='min-w-[280px]'
+                  format='DD MMM YYYY'
                   placeholder={['Start Date', 'End Date']}
-                  suffixIcon={<CalendarOutlined />}
+                  className='plati-filter-daterange'
+                  style={{ height: 40, borderRadius: 123, borderColor: '#a0a0a8', minWidth: 280 }}
                 />
+                {isAdmin && (
+                  <button onClick={showPaymentModalFunction} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', background: '#15803d', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                    <PlusOutlined style={{ fontSize: 14 }} /> Add Payment
+                  </button>
+                )}
+                <button onClick={showDownloadModal} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center', background: '#1a1a1a', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', flexShrink: 0 }}>
+                  <DownloadOutlined style={{ fontSize: 14 }} /> Export
+                </button>
               </div>
             </div>
-            <div className='bg-white rounded-lg border border-gray-200 overflow-hidden'>
-              <CustomTable
-                isAdmin={isAdmin}
-                editFunction={showEditModalFunction}
-                data={sortedFilteredPayments}
-                titleOnTop={false}
-                position='bottomRight'
-                columns={paymentColumns}
-                expandable={false}
-                totalCount={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount}
+
+            {/* Payments Table */}
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      {isAdmin && (
+                        <th style={{ background: '#f3f3f5', padding: '12px 16px', textAlign: 'center', fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', width: 48, paddingLeft: 32 }}>
+                          <input type='checkbox'
+                            checked={selectedPayments.length > 0 && selectedPayments.length === filteredPayments?.filter(p => p.isPaid === 0).length}
+                            onChange={handleSelectAllUncheckedPayments}
+                            disabled={!filteredPayments?.filter(p => p.isPaid === 0).length}
+                            style={{ cursor: 'pointer', width: 18, height: 18 }}
+                          />
+                        </th>
+                      )}
+                      {['Date', 'Description', 'Amount', 'Mode of Payment', 'Transport Charges', 'Balance after Entry', ...(isAdmin ? ['Actions', 'Checked'] : [])].map(h => (
+                        <th key={h} style={{
+                          background: '#f3f3f5', padding: '12px 16px',
+                          textAlign: ['Amount', 'Transport Charges', 'Actions', 'Checked'].includes(h) ? 'center' : 'left',
+                          fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                          fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                          whiteSpace: 'nowrap', lineHeight: '20px',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!sortedFilteredPayments || sortedFilteredPayments.length === 0 ? (
+                      <tr><td colSpan={isAdmin ? 9 : 6} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No payment entries found</td></tr>
+                    ) : (
+                      sortedFilteredPayments.map((record, idx) => {
+                        const balVal = record?.entryCurrentBal || record?.currentBal
+                        return (
+                          <tr key={record.id || idx} style={{ borderBottom: '1px solid #f3f4f6' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            {isAdmin && (
+                              <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', paddingLeft: 32 }}>
+                                <input type='checkbox'
+                                  checked={selectedPayments.includes(record.id)}
+                                  onChange={() => {
+                                    if (selectedPayments.includes(record.id)) setSelectedPayments(selectedPayments.filter(i => i !== record.id))
+                                    else setSelectedPayments([...selectedPayments, record.id])
+                                  }}
+                                  disabled={record.isPaid === 1}
+                                  style={{ cursor: 'pointer', width: 18, height: 18 }}
+                                />
+                              </td>
+                            )}
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 13, whiteSpace: 'nowrap' }}>
+                              {moment(record.paymentDate).format('DD MMM YYYY')}<br />
+                              <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.paymentDate).format('dddd')}</span>
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>{record.description || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: '#15803d' }}>{formatINR(record.amount)}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>{getPaymentMethodLabel(record.paymentMethod)}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.transportationCharges || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: balVal < 0 ? '#dc2626' : '#15803d' }}>
+                              {balVal !== null && balVal !== undefined ? formatINR(balVal) : '₹0'}
+                            </td>
+                            {isAdmin && (
+                              <>
+                                <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                                  <button onClick={() => handleDeletePaymentEntry(record)} style={{
+                                    background: 'rgba(26,26,26,0.2)', border: 'none', borderRadius: 12,
+                                    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', color: '#1a1a1a', fontSize: 16, margin: '0 auto',
+                                  }}>
+                                    <DeleteOutlined />
+                                  </button>
+                                </td>
+                                <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                                  <button onClick={() => handleCheckPaymentEntry(record.id)} style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '8px 16px', borderRadius: 12, fontSize: 14,
+                                    fontWeight: 400, fontFamily: "'Inter', sans-serif",
+                                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    background: record.isPaid === 1 ? '#4a90ff' : '#f3f3f5',
+                                    color: record.isPaid === 1 ? 'white' : '#1a1a1a',
+                                  }}>
+                                    {record.isPaid === 1 ? '✓ Checked' : 'Unchecked'}
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <DataTablePagination
                 currentPage={currentPage}
-                handlePageChange={handlePages}
-                currentPageSize={pageSize}
+                totalItems={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount || 0}
+                pageSize={pageSize}
+                onPageChange={(page) => handlePages(page, pageSize)}
+                onPageSizeChange={(size) => { handlePages(1, size) }}
+              />
+            </div>
+          </div>
+        )
+      case 3:
+        const orders = allDealersOrders || []
+        return (
+          <div className='pt-6'>
+            <div style={{
+              background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+              overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      {['Order Date', 'Payment Status', 'Total Amount', 'Pending Amount', 'Payment Date'].map(h => (
+                        <th key={h} style={{
+                          background: '#f3f3f5', padding: '12px 16px',
+                          textAlign: ['Total Amount', 'Pending Amount'].includes(h) ? 'center' : 'left',
+                          fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                          fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                          whiteSpace: 'nowrap', lineHeight: '20px',
+                          paddingLeft: h === 'Order Date' ? 32 : undefined,
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No orders found</td></tr>
+                    ) : (
+                      orders.map((record, idx) => {
+                        const statusConfig = { 1: { dot: '#e53e3e', text: 'Pending' }, 2: { dot: '#f26c2d', text: 'Partial' }, 3: { dot: '#4ecb71', text: 'Completed' } }
+                        const status = statusConfig[record.paymentStatus] || statusConfig[1]
+                        const pendingAmt = record.paymentStatus === 1 ? record.totalAmount : record.pendingAmount
+                        return (
+                          <tr key={record.id || idx} style={{ borderBottom: '1px solid #f3f4f6' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 13, whiteSpace: 'nowrap', paddingLeft: 32 }}>
+                              {moment(record.orderDate).format('DD MMM YYYY')}<br />
+                              <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.orderDate).format('dddd')}</span>
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
+                                fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
+                                background: record.paymentStatus === 3 ? '#d9fae6' : record.paymentStatus === 2 ? '#fff7ed' : '#fef2f2',
+                                border: `1px solid ${record.paymentStatus === 3 ? 'rgba(78,203,113,0.2)' : record.paymentStatus === 2 ? 'rgba(242,108,45,0.2)' : 'rgba(229,62,62,0.2)'}`,
+                              }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: status.dot }} />
+                                {status.text}
+                              </span>
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 600 }}>
+                              {formatINR(record.totalAmount)}
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: pendingAmt > 0 ? '#dc2626' : '#9ca3af' }}>
+                              {formatINR(pendingAmt)}
+                            </td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 13, color: record.paymentDate ? '#1a1a1a' : '#9ca3af' }}>
+                              {record.paymentDate ? moment(record.paymentDate).format('DD MMM YYYY') : 'Not received'}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <DataTablePagination
+                currentPage={currentPage}
+                totalItems={dealersOrdersCount || orders.length || 0}
+                pageSize={pageSize}
+                onPageChange={(page) => handlePages(page, pageSize)}
+                onPageSizeChange={(size) => { handlePages(1, size) }}
               />
             </div>
           </div>
@@ -1103,8 +1336,23 @@ const AdminDealerDetails = () => {
 
   // Determine the color class based on the balance
 
+  const uncheckedEntries = allDealerEntries?.filter(entry => entry.isChecked === 0).length || 0
+  const uncheckedPayments = allPMEntries?.filter(entry => entry.isPaid === 0).length || 0
+  const overdueAmount = dealerInfo?.overdueAmount || 0
+
+  const TABS_CONFIG = [
+    { key: 'entries', label: 'Entries', tabKey: 1 },
+    { key: 'payments', label: 'Payments', tabKey: 2 },
+    { key: 'orders', label: 'Orders', tabKey: 3 },
+  ]
+
+  const tabCounts = {
+    entries: uncheckedEntries,
+    payments: uncheckedPayments,
+  }
+
   return (
-    <div className='layout-container min-h-screen bg-gradient-to-br from-secondary-50/30 via-white to-primary-50/20 p-6'>
+    <div style={{ width: '100%' }}>
       {(loader || spinLoader) && (
         <Spin
           size='large'
@@ -1112,131 +1360,93 @@ const AdminDealerDetails = () => {
           className='fixed inset-0 z-50 bg-white/80 backdrop-blur-sm'
         />
       )}
-      
-      {/* Header Section */}
-      <div className='content-section mb-6'>
-        <div className='flex items-start justify-between mb-6'>
-          {/* Back Button and Title */}
-          <div className='flex items-center space-x-4'>
-            <Tooltip title='Back to Dealers'>
-              <AntButton 
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/admin-daily-entry-dealers')}
-                className='hover:bg-gray-50 hover:border-gray-300'
-                size='large'
-              />
-            </Tooltip>
-            <div className='flex items-center space-x-4'>
-              <Avatar 
-                size={64} 
-                icon={<UserOutlined />} 
-                className='bg-primary-100 text-primary-600 border-2 border-primary-200'
-              />
-              <div>
-                <Title level={2} className='mb-1'>{state?.name}</Title>
-                <Text type='secondary' className='text-base'>Dealer ID: {id}</Text>
-              </div>
-            </div>
-          </div>
-          
-          {/* Balance Card */}
-          <Card className='min-w-[200px] shadow-lg border-l-4' style={{ borderLeftColor: dealerInfo?.currentBal < 0 ? '#EF4444' : '#10B981' }}>
-            <Statistic
-              title={
-                <div className='flex items-center space-x-2'>
-                  <WalletOutlined className='text-gray-500' />
-                  <span>Current Balance</span>
-                </div>
-              }
-              value={dealerInfo?.currentBal || 0}
-              formatter={(value) => (
-                <span className={getBalanceColor(value)}>
-                  {formatINR(value)}
-                </span>
-              )}
-              precision={0}
-            />
-          </Card>
-        </div>
-        
-        {/* Quick Stats */}
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={6}>
-            <Card className='text-center hover:shadow-md transition-shadow'>
-              <Statistic
-                title='Total Entries'
-                value={dealerEntryCount || 0}
-                prefix={<FileTextOutlined />}
-                valueStyle={{ color: '#374151' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card className='text-center hover:shadow-md transition-shadow'>
-              <Statistic
-                title='Payment Entries'
-                value={pmEntryCount || 0}
-                prefix={<DollarOutlined />}
-                valueStyle={{ color: '#374151' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card className='text-center hover:shadow-md transition-shadow'>
-              <Statistic
-                title='Unchecked Entries'
-                value={allDealerEntries?.filter(entry => entry.isChecked === 0).length || 0}
-                valueStyle={{ color: '#DC2626' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Card className='text-center hover:shadow-md transition-shadow'>
-              <Statistic
-                title='Unchecked Payments'
-                value={allPMEntries?.filter(entry => entry.isPaid === 0).length || 0}
-                valueStyle={{ color: '#DC2626' }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </div>
-      
-      {/* Main Content */}
-      <div className='content-section'>
-        <Tabs
-          activeKey={activeTab.toString()}
-          onChange={(key) => {
-            setActiveTab(parseInt(key))
-            setSelectedEntries([])
-            setSelectedPayments([])
-          }}
-          size='large'
-          className='professional-tabs'
-          items={[
-            {
-              key: '1',
-              label: (
-                <div className='flex items-center space-x-2'>
-                  <FileTextOutlined />
-                  <span>Entries</span>
-                </div>
-              ),
-              children: renderTabContent(1)
-            },
-            {
-              key: '2', 
-              label: (
-                <div className='flex items-center space-x-2'>
-                  <DollarOutlined />
-                  <span>Payments</span>
-                </div>
-              ),
-              children: renderTabContent(2)
-            }
-          ]}
-        />
 
+      {/* Header: Dealer Name + Balance Card */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div>
+          <h1 style={{
+            fontFamily: "'Staff Wide Test', serif",
+            fontSize: 42, fontWeight: 400, color: '#1a1a1a',
+            margin: '0 0 8px', lineHeight: '30px',
+          }}>
+            {state?.name}
+          </h1>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: 'rgba(26,26,26,0.6)', lineHeight: '20px' }}>
+            Dealer ID: {id} {dealerInfo?.region ? `(${dealerInfo.region})` : ''}
+          </div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: 'rgba(26,26,26,0.5)', marginTop: 2 }}>
+            {dealerInfo?.salesPerson ? `Assigned To: ${dealerInfo.salesPerson}` : ''}
+          </div>
+        </div>
+
+        {/* Balance Card */}
+        <div style={{
+          background: 'white', border: '1px solid #e5e5e5', borderRadius: 16,
+          padding: '16px 24px', minWidth: 200, textAlign: 'right',
+          boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
+        }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,26,26,0.6)', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginBottom: 4 }}>
+            <WalletOutlined /> Current Balance
+          </div>
+          {(() => {
+            const bal = dealerInfo?.currentBal ?? allDealerEntries?.[0]?.entryCurrentBal ?? allDealerEntries?.[0]?.currentBal ?? 0
+            const overdue = dealerInfo?.overdueAmount || overdueAmount || 0
+            return (
+              <>
+                <div style={{
+                  fontSize: 28, fontWeight: 700, fontFamily: "'Inter', sans-serif",
+                  color: bal < 0 ? '#dc2626' : '#15803d',
+                  lineHeight: 1.2,
+                }}>
+                  {formatINR(bal)}
+                </div>
+                {overdue > 0 && (
+                  <div style={{ fontSize: 12, color: '#f55e34', marginTop: 4, fontFamily: "'Inter', sans-serif" }}>
+                    Overdue · ₹{Math.abs(overdue).toLocaleString('en-IN')}
+                  </div>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #a0a0a8', marginBottom: 16, marginTop: 24 }}>
+        {TABS_CONFIG.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setActiveTab(tab.tabKey); setSelectedEntries([]); setSelectedPayments([]) }}
+            style={{
+              background: 'none', border: 'none',
+              borderBottom: activeTab === tab.tabKey ? '2px solid #f55e34' : '1px solid transparent',
+              marginBottom: -1, padding: '12px 24px',
+              fontFamily: "'Inter', sans-serif", fontSize: 16,
+              fontWeight: activeTab === tab.tabKey ? 600 : 400,
+              color: '#1a1a1a', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 10,
+              whiteSpace: 'nowrap', lineHeight: '24px',
+            }}
+          >
+            {tab.label}
+            {tabCounts[tab.key] > 0 && (
+              <span style={{
+                background: '#f7d6ca', color: '#f55e34',
+                fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+                fontSize: 12, fontWeight: 600,
+                padding: '4px 8px', borderRadius: 1234,
+                minWidth: 24, textAlign: 'center', lineHeight: '16px',
+              }}>
+                {tabCounts[tab.key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div>
+        {renderTabContent(activeTab)}
       </div>
       
       {/* Download Report Modal */}

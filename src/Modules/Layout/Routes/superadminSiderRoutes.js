@@ -32,7 +32,11 @@ import {
   FileSearchOutlined,
   AppstoreOutlined,
   UserOutlined,
-  CrownOutlined
+  CrownOutlined,
+  TagsOutlined,
+  UnorderedListOutlined,
+  PlusCircleOutlined,
+  FormOutlined
 } from '@ant-design/icons'
 
 function getItemLayout (label, key, icon, children) {
@@ -241,12 +245,56 @@ export const superadminSiderRoutes = [
   // ============ MANUFACTURING SYSTEM ============
   getItemLayout('Manufacturing System', 'manufacturing-system-menu', <ShopOutlined style={{ fontSize: '16px' }} />, [
     getItemLayout(
-      <Link to='/purchase-orders'><ShopOutlined style={{ marginRight: '8px' }} />Purchase Orders</Link>,
+      <Link to='/purchase-orders'><ShopOutlined style={{ marginRight: '8px' }} />Purchase Orders (Legacy)</Link>,
       'purchase-orders'
     ),
     getItemLayout(
       <Link to='/mold-management'><ToolOutlined style={{ marginRight: '8px' }} />Mold Management</Link>,
       'mold-management'
+    )
+  ]),
+
+  // ============ PURCHASE SYSTEM V2 ============
+  getItemLayout('Purchase System', 'purchase-system-menu', <ShopOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/purchase/requisitions/create'><FormOutlined style={{ marginRight: '8px' }} />Submit Request</Link>,
+      'purchase-req-create'
+    ),
+    getItemLayout(
+      <Link to='/purchase/requisitions'><AuditOutlined style={{ marginRight: '8px' }} />Requisitions</Link>,
+      'purchase-requisitions'
+    ),
+    getItemLayout(
+      <Link to='/purchase/indents'><UnorderedListOutlined style={{ marginRight: '8px' }} />Indents</Link>,
+      'purchase-indents'
+    ),
+    getItemLayout(
+      <Link to='/purchase/indents/create'><PlusCircleOutlined style={{ marginRight: '8px' }} />Create Indent</Link>,
+      'purchase-indents-create'
+    ),
+    getItemLayout(
+      <Link to='/purchase/po'><FileTextOutlined style={{ marginRight: '8px' }} />Purchase Orders</Link>,
+      'purchase-po-list'
+    ),
+    getItemLayout(
+      <Link to='/purchase/po/create'><PlusCircleOutlined style={{ marginRight: '8px' }} />Create PO</Link>,
+      'purchase-po-create'
+    ),
+    getItemLayout(
+      <Link to='/purchase/grn'><InboxOutlined style={{ marginRight: '8px' }} />GRN List</Link>,
+      'purchase-grn-list'
+    ),
+    getItemLayout(
+      <Link to='/purchase/grn/create'><ImportOutlined style={{ marginRight: '8px' }} />Create GRN</Link>,
+      'purchase-grn-create'
+    ),
+    getItemLayout(
+      <Link to='/purchase/items'><AppstoreOutlined style={{ marginRight: '8px' }} />Items Master</Link>,
+      'purchase-items'
+    ),
+    getItemLayout(
+      <Link to='/purchase/item-categories'><TagsOutlined style={{ marginRight: '8px' }} />Item Categories</Link>,
+      'purchase-item-categories'
     )
   ]),
 

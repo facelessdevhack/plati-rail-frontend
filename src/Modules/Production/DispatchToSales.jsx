@@ -1,46 +1,21 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
-  Table,
-  Card,
-  Typography,
-  Tag,
-  Button,
-  Space,
-  Statistic,
-  Row,
-  Col,
-  Input,
-  Select,
-  DatePicker,
-  message,
-  Badge,
-  Progress,
-  Modal,
-  InputNumber,
-  Checkbox
+  Table, Tag, Space, Input, Select, DatePicker, message, Modal, InputNumber, Checkbox, Progress, Badge
 } from 'antd'
+import { Button as AntButton } from 'antd'
 import {
-  ReloadOutlined,
-  SearchOutlined,
-  ClearOutlined,
-  RocketOutlined,
-  CheckCircleOutlined,
-  WarningOutlined,
-  TruckOutlined,
-  DownOutlined,
-  RightOutlined,
-  FilePdfOutlined,
-  ExportOutlined
+  ReloadOutlined, CheckCircleOutlined, WarningOutlined, DownOutlined, RightOutlined, FilePdfOutlined, ExportOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
 
-const { Title, Text } = Typography
-const { Search } = Input
-const { Option } = Select
-const { RangePicker } = DatePicker
+import PageTitle from '../../Core/Components/PageTitle'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import { ProcessButton } from '../../Core/Components/ActionButton'
+import DataTablePagination from '../../Core/Components/DataTablePagination'
+import InfoBox from '../../Core/Components/InfoBox'
 
 const DispatchToSales = () => {
   const [loading, setLoading] = useState(false)
@@ -48,1060 +23,418 @@ const DispatchToSales = () => {
   const [searchText, setSearchText] = useState('')
   const [urgentFilter, setUrgentFilter] = useState('')
   const [dateRange, setDateRange] = useState(null)
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  })
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
   const [expandedRowKeys, setExpandedRowKeys] = useState([])
-  const [jobCardsData, setJobCardsData] = useState({}) // { planId: jobCards[] }
+  const [jobCardsData, setJobCardsData] = useState({})
   const [loadingJobCards, setLoadingJobCards] = useState({})
-
-  // Accept quantity modal
   const [acceptModalVisible, setAcceptModalVisible] = useState(false)
   const [selectedJobCard, setSelectedJobCard] = useState(null)
   const [acceptQuantity, setAcceptQuantity] = useState(0)
-
-  // Export modal
   const [exportModalVisible, setExportModalVisible] = useState(false)
   const [todayDispatchedItems, setTodayDispatchedItems] = useState([])
   const [selectedExportItems, setSelectedExportItems] = useState([])
   const [loadingExport, setLoadingExport] = useState(false)
 
-  const fetchDispatchReadyPlans = async (
-    page = 1,
-    search = searchText,
-    urgent = urgentFilter,
-    range = dateRange
-  ) => {
+  // ─── Data Fetching ───
+
+  const fetchDispatchReadyPlans = async (page = 1, search = searchText, urgent = urgentFilter, range = dateRange) => {
     setLoading(true)
     try {
-      const params = {
-        page,
-        limit: pagination.pageSize,
-        search,
-        urgent,
-        dispatchPending: 'true' // Server-side filter for plans with pending quantities at step 11
-      }
-
-      if (range && range[0] && range[1]) {
-        params.startDate = range[0].format('YYYY-MM-DD')
-        params.endDate = range[1].format('YYYY-MM-DD')
-      }
-
-      const response = await client.get('/production/plans-with-quantities', {
-        params
-      })
-
-      // Backend returns productionPlans array and pagination object
+      const params = { page, limit: pagination.pageSize, search, urgent, dispatchPending: 'true' }
+      if (range && range[0] && range[1]) { params.startDate = range[0].format('YYYY-MM-DD'); params.endDate = range[1].format('YYYY-MM-DD') }
+      const response = await client.get('/production/plans-with-quantities', { params })
       if (response.data.productionPlans) {
         setData(response.data.productionPlans)
-        setPagination({
-          ...pagination,
-          current: page,
-          total:
-            response.data.pagination?.totalCount ||
-            response.data.productionPlans.length
-        })
+        setPagination({ ...pagination, current: page, total: response.data.pagination?.totalCount || response.data.productionPlans.length })
       }
-    } catch (error) {
-      console.error('Error fetching dispatch-ready plans:', error)
-      message.error('Failed to fetch dispatch-ready production plans')
-    } finally {
-      setLoading(false)
-    }
+    } catch (error) { message.error('Failed to fetch dispatch-ready plans') }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    fetchDispatchReadyPlans()
-  }, [])
+  useEffect(() => { fetchDispatchReadyPlans() }, [])
 
-  const handleSearch = value => {
-    setSearchText(value)
-    fetchDispatchReadyPlans(1, value, urgentFilter, dateRange)
-  }
-
-  const handleUrgentChange = value => {
-    setUrgentFilter(value)
-    fetchDispatchReadyPlans(1, searchText, value, dateRange)
-  }
-
-  const handleDateChange = range => {
-    setDateRange(range)
-    fetchDispatchReadyPlans(1, searchText, urgentFilter, range)
-  }
-
-  const handleClearFilters = () => {
-    setSearchText('')
-    setUrgentFilter('')
-    setDateRange(null)
-    fetchDispatchReadyPlans(1, '', '', null)
-  }
-
-  // Fetch job cards for a production plan when row is expanded
-  const fetchJobCardsForPlan = async prodPlanId => {
+  const fetchJobCardsForPlan = async (prodPlanId) => {
     setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: true }))
     try {
-      const res = await client.get(
-        `/production/plan/${prodPlanId}/dispatch-job-cards`
-      )
+      const res = await client.get(`/production/plan/${prodPlanId}/dispatch-job-cards`)
       setJobCardsData(prev => ({ ...prev, [prodPlanId]: res.data.jobCards }))
-    } catch (error) {
-      console.error('Error fetching job cards:', error)
-      message.error('Failed to fetch job cards')
-    } finally {
-      setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: false }))
-    }
+    } catch (error) { message.error('Failed to fetch job cards') }
+    finally { setLoadingJobCards(prev => ({ ...prev, [prodPlanId]: false })) }
   }
 
-  // Handle row expand/collapse
   const handleExpand = (expanded, record) => {
-    if (expanded) {
-      setExpandedRowKeys([...expandedRowKeys, record.id])
-      if (!jobCardsData[record.id]) {
-        fetchJobCardsForPlan(record.id)
-      }
-    } else {
-      setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.id))
-    }
+    if (expanded) { setExpandedRowKeys([...expandedRowKeys, record.id]); if (!jobCardsData[record.id]) fetchJobCardsForPlan(record.id) }
+    else { setExpandedRowKeys(expandedRowKeys.filter(k => k !== record.id)) }
   }
 
-  // Show accept quantity modal
-  const showAcceptModal = jobCard => {
-    setSelectedJobCard(jobCard)
-    setAcceptQuantity(jobCard.pendingQuantity) // Default to all pending
-    setAcceptModalVisible(true)
-  }
+  // ─── Handlers ───
 
-  // Accept job card quantities
+  const showAcceptModal = (jc) => { setSelectedJobCard(jc); setAcceptQuantity(jc.pendingQuantity); setAcceptModalVisible(true) }
+
   const handleAcceptJobCard = async () => {
     if (!selectedJobCard) return
-
-    if (
-      acceptQuantity <= 0 ||
-      acceptQuantity > selectedJobCard.pendingQuantity
-    ) {
-      message.error(
-        `Please enter a valid quantity between 1 and ${selectedJobCard.pendingQuantity}`
-      )
-      return
-    }
-
+    if (acceptQuantity <= 0 || acceptQuantity > selectedJobCard.pendingQuantity) { message.error(`Enter 1-${selectedJobCard.pendingQuantity}`); return }
     try {
-      const res = await client.post(
-        `/production/step-progress/${selectedJobCard.stepProgressId}/accept-dispatch`,
-        { acceptedQuantity: acceptQuantity }
-      )
-
+      const res = await client.post(`/production/step-progress/${selectedJobCard.stepProgressId}/accept-dispatch`, { acceptedQuantity: acceptQuantity })
       message.success(`Accepted ${acceptQuantity} units`)
-
-      if (res.data.data.planCompleted) {
-        message.success('Production plan completed!')
-      }
-
-      // Close modal and refresh data
-      setAcceptModalVisible(false)
-      setSelectedJobCard(null)
-      setAcceptQuantity(0)
+      if (res.data.data.planCompleted) message.success('Production plan completed!')
+      setAcceptModalVisible(false); setSelectedJobCard(null); setAcceptQuantity(0)
       await fetchJobCardsForPlan(selectedJobCard.prodPlanId)
       await fetchDispatchReadyPlans(pagination.current)
-    } catch (error) {
-      console.error('Error accepting job card:', error)
-      message.error(error.response?.data?.message || 'Failed to accept')
-    }
+    } catch (error) { message.error(error.response?.data?.message || 'Failed to accept') }
   }
 
-  // Fetch today's dispatched items for export
+  // ─── Export ───
+
   const fetchTodayDispatchedItems = async () => {
     setLoadingExport(true)
     try {
-      const today = moment().format('YYYY-MM-DD')
-      const response = await client.get('/production/today-dispatched', {
-        params: { date: today }
-      })
-
-      if (response.data.dispatchedItems) {
-        setTodayDispatchedItems(response.data.dispatchedItems)
-        setSelectedExportItems([]) // Reset selection
-      }
-    } catch (error) {
-      console.error('Error fetching today dispatched items:', error)
-      message.error('Failed to fetch dispatched items')
-    } finally {
-      setLoadingExport(false)
-    }
+      const res = await client.get('/production/today-dispatched', { params: { date: moment().format('YYYY-MM-DD') } })
+      if (res.data.dispatchedItems) { setTodayDispatchedItems(res.data.dispatchedItems); setSelectedExportItems([]) }
+    } catch (error) { message.error('Failed to fetch dispatched items') }
+    finally { setLoadingExport(false) }
   }
 
-  // Show export modal
-  const showExportModal = () => {
-    fetchTodayDispatchedItems()
-    setExportModalVisible(true)
-  }
+  const showExportModal = () => { fetchTodayDispatchedItems(); setExportModalVisible(true) }
 
-  // Handle export item selection
-  const handleExportItemSelect = (itemId, checked) => {
-    if (checked) {
-      setSelectedExportItems([...selectedExportItems, itemId])
-    } else {
-      setSelectedExportItems(selectedExportItems.filter(id => id !== itemId))
-    }
-  }
-
-  // Select/Deselect all export items
-  const handleSelectAllExport = checked => {
-    if (checked) {
-      setSelectedExportItems(todayDispatchedItems.map(item => item.id))
-    } else {
-      setSelectedExportItems([])
-    }
-  }
-
-  // Export as PDF (client-side using jsPDF)
   const handleExportPdf = (exportAll = false) => {
+    const items = exportAll ? todayDispatchedItems : todayDispatchedItems.filter(item => selectedExportItems.includes(item.id))
+    if (items.length === 0) { message.warning('No items to export'); return }
+    const grouped = items.reduce((acc, item) => {
+      const name = `${item.productName} ${item.modelName} ${item.inches}" ${item.finish}`
+      if (acc[name]) acc[name].qty += item.acceptedQuantity; else acc[name] = { alloyName: name, qty: item.acceptedQuantity }
+      return acc
+    }, {})
+    const exportData = Object.values(grouped).sort((a, b) => a.alloyName.localeCompare(b.alloyName))
     try {
-      // Determine which items to export
-      const itemsToExport = exportAll
-        ? todayDispatchedItems
-        : todayDispatchedItems.filter(item =>
-            selectedExportItems.includes(item.id)
-          )
-
-      if (itemsToExport.length === 0) {
-        message.warning(
-          exportAll
-            ? 'No items to export'
-            : 'Please select at least one item to export'
-        )
-        return
-      }
-
-      // Group by alloy name and sum quantities
-      const groupedData = itemsToExport.reduce((acc, item) => {
-        const alloyName = `${item.productName} ${item.modelName} ${item.inches}" ${item.finish}`
-        if (acc[alloyName]) {
-          acc[alloyName].quantityDispatched += item.acceptedQuantity
-        } else {
-          acc[alloyName] = {
-            alloyName,
-            quantityDispatched: item.acceptedQuantity
-          }
-        }
-        return acc
-      }, {})
-
-      // Convert to array and sort by alloy name
-      const exportData = Object.values(groupedData).sort((a, b) =>
-        a.alloyName.localeCompare(b.alloyName)
-      )
-
-      // Create PDF
       const doc = new jsPDF()
-      const today = moment().format('DD/MM/YYYY')
-
-      // Add title
-      doc.setFontSize(18)
-      doc.text('DISPATCH REPORT', doc.internal.pageSize.width / 2, 20, {
-        align: 'center'
-      })
-
-      // Add date
-      doc.setFontSize(12)
-      doc.text(`Date: ${today}`, doc.internal.pageSize.width / 2, 28, {
-        align: 'center'
-      })
-
-      // Prepare table data
-      const tableData = exportData.map((item, index) => [
-        (index + 1).toString(),
-        item.alloyName,
-        item.quantityDispatched.toString(),
-        '' // Blank for Qty Received (manual entry)
-      ])
-
-      // Add total row
-      const totalQty = exportData.reduce(
-        (sum, item) => sum + item.quantityDispatched,
-        0
-      )
+      doc.setFontSize(18); doc.text('DISPATCH REPORT', doc.internal.pageSize.width / 2, 20, { align: 'center' })
+      doc.setFontSize(12); doc.text(`Date: ${moment().format('DD/MM/YYYY')}`, doc.internal.pageSize.width / 2, 28, { align: 'center' })
+      const tableData = exportData.map((item, i) => [(i + 1).toString(), item.alloyName, item.qty.toString(), ''])
+      const totalQty = exportData.reduce((s, i) => s + i.qty, 0)
       tableData.push(['', 'TOTAL', totalQty.toString(), ''])
-
-      // Generate table using autoTable
-      doc.autoTable({
-        startY: 38,
-        head: [['S.No.', 'Alloy Name', 'Qty Dispatched', 'Qty Received']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: {
-          fillColor: [24, 144, 255],
-          textColor: 255,
-          fontSize: 11,
-          fontStyle: 'bold',
-          halign: 'center'
-        },
-        bodyStyles: {
-          fontSize: 10
-        },
-        columnStyles: {
-          0: { cellWidth: 20, halign: 'center' },
-          1: { cellWidth: 'auto', halign: 'left' },
-          2: { cellWidth: 35, halign: 'center' },
-          3: { cellWidth: 35, halign: 'center', fillColor: [245, 245, 245] }
-        },
-        margin: { left: 14, right: 14 },
-        didDrawPage: function (data) {
-          // Add signature section at the bottom of each page
-          const pageHeight = doc.internal.pageSize.height
-          const signatureY = pageHeight - 45
-
-          doc.setFontSize(10)
-          doc.setFont('helvetica', 'normal')
-
-          // Dispatched By
-          doc.text('_______________________', 30, signatureY)
-          doc.text('Dispatched By', 30, signatureY + 8)
-          doc.text('(Signature & Date)', 30, signatureY + 14)
-
-          // Received By
-          doc.text('_______________________', 120, signatureY)
-          doc.text('Received By', 120, signatureY + 8)
-          doc.text('(Signature & Date)', 120, signatureY + 14)
-        }
-      })
-
-      // Add footer with page numbers
-      const pageCount = doc.internal.getNumberOfPages()
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i)
-        doc.setFontSize(8)
-        doc.text(
-          `Generated: ${moment().format(
-            'DD/MM/YYYY HH:mm'
-          )} | Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        )
-      }
-
-      // Save PDF
-      const fileName = `Dispatch_Report_${moment().format('YYYY-MM-DD')}.pdf`
-      doc.save(fileName)
-
-      message.success(
-        `PDF exported successfully: ${exportData.length} unique alloys`
-      )
+      doc.autoTable({ startY: 38, head: [['S.No.', 'Alloy Name', 'Qty Dispatched', 'Qty Received']], body: tableData, theme: 'grid', headStyles: { fillColor: [24, 144, 255], textColor: 255, fontSize: 11, fontStyle: 'bold', halign: 'center' }, bodyStyles: { fontSize: 10 }, columnStyles: { 0: { cellWidth: 20, halign: 'center' }, 2: { cellWidth: 35, halign: 'center' }, 3: { cellWidth: 35, halign: 'center', fillColor: [245, 245, 245] } }, margin: { left: 14, right: 14 } })
+      doc.save(`Dispatch_Report_${moment().format('YYYY-MM-DD')}.pdf`)
+      message.success(`PDF exported: ${exportData.length} unique alloys`)
       setExportModalVisible(false)
-    } catch (error) {
-      message.error('Failed to export PDF')
-      console.error('Error generating PDF:', error)
-    }
+    } catch (error) { message.error('Failed to export PDF') }
   }
 
-  // Render expandable job cards table
-  const expandedRowRender = record => {
+  // ─── Stats ───
+
+  const stats = useMemo(() => ({
+    totalPlans: data.length,
+    totalPendingUnits: data.reduce((s, i) => s + (i.dispatchPendingQuantity || 0), 0),
+    urgentPlans: data.filter(i => i.isUrgent === 1).length,
+  }), [data])
+
+  // ─── Expanded Row ───
+
+  const expandedRowRender = (record) => {
     const jobCards = jobCardsData[record.id] || []
-    const loading = loadingJobCards[record.id]
-
-    const columns = [
-      {
-        title: 'Job Card ID',
-        dataIndex: 'jobCardId',
-        render: id => <Text strong>#{id}</Text>
-      },
-      {
-        title: 'Total Qty',
-        dataIndex: 'jobCardQuantity',
-        render: qty => <Text>{qty}</Text>
-      },
-      {
-        title: 'Pending',
-        dataIndex: 'pendingQuantity',
-        render: qty => (
-          <Tag color='orange' style={{ fontSize: '14px', fontWeight: 'bold' }}>
-            {qty}
-          </Tag>
-        )
-      },
-      {
-        title: 'Accepted',
-        dataIndex: 'acceptedQuantity',
-        render: qty => <Tag color='green'>{qty || 0}</Tag>
-      },
-      {
-        title: 'Action',
-        render: (_, jc) => (
-          <Button
-            type='primary'
-            size='small'
-            disabled={jc.pendingQuantity === 0}
-            onClick={() => showAcceptModal(jc)}
-          >
-            Accept Quantity
-          </Button>
-        )
-      }
-    ]
-
-    if (loading) {
-      return (
-        <div style={{ padding: 20, textAlign: 'center' }}>
-          <Text type='secondary'>Loading job cards...</Text>
-        </div>
-      )
-    }
-
-    if (!jobCards.length) {
-      return (
-        <div style={{ padding: 20, textAlign: 'center' }}>
-          <Text type='secondary'>No job cards at dispatch step</Text>
-        </div>
-      )
-    }
+    const isLoading = loadingJobCards[record.id]
+    if (isLoading) return <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>Loading job cards...</div>
+    if (!jobCards.length) return <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>No job cards at dispatch step</div>
 
     return (
-      <Table
-        columns={columns}
-        dataSource={jobCards}
-        pagination={false}
-        rowKey='jobCardId'
-        size='small'
-        style={{ margin: '0 48px' }}
-      />
+      <div style={{ margin: '0 48px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>
+              {['Job Card ID', 'Total Qty', 'Pending', 'Accepted', 'Action'].map(h => (
+                <th key={h} style={{ background: '#f9fafb', padding: '8px 12px', textAlign: h === 'Action' ? 'center' : 'left', fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 13, borderBottom: '1px solid #e5e5e5' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {jobCards.map(jc => (
+              <tr key={jc.jobCardId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <td style={{ padding: '10px 12px', fontWeight: 600 }}>#{jc.jobCardId}</td>
+                <td style={{ padding: '10px 12px' }}>{jc.jobCardQuantity}</td>
+                <td style={{ padding: '10px 12px' }}><StatusBadge variant="pending">{jc.pendingQuantity}</StatusBadge></td>
+                <td style={{ padding: '10px 12px' }}><StatusBadge variant="paid">{jc.acceptedQuantity || 0}</StatusBadge></td>
+                <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                  <ProcessButton onClick={() => showAcceptModal(jc)} disabled={jc.pendingQuantity === 0}>Accept</ProcessButton>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 
+  // ─── Main Table Columns ───
+
   const columns = [
     {
-      title: 'Plan ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      render: (text, record) => (
-        <Space direction='vertical' size={0}>
-          <Text strong>#{text}</Text>
-          {record.isUrgent === 1 && (
-            <Tag color='red' icon={<WarningOutlined />}>
-              Urgent
-            </Tag>
-          )}
-        </Space>
+      key: 'id', dataIndex: 'id', title: 'Plan ID',
+      render: (val, record) => (
+        <div>
+          <span style={{ fontWeight: 600 }}>#{val}</span>
+          {record.isUrgent === 1 && <div style={{ marginTop: 4 }}><StatusBadge variant="outofstock">Urgent</StatusBadge></div>}
+        </div>
       ),
-      sorter: (a, b) => a.id - b.id
     },
     {
-      title: 'Product Details',
-      key: 'product',
-      width: 250,
+      key: 'product', title: 'Product Details',
       render: (_, record) => (
-        <Space direction='vertical' size={2}>
-          <Text strong>{record.targetProductName || 'N/A'}</Text>
-          <Space size={4} wrap>
-            <Tag color='blue'>{record.targetModelName}</Tag>
-            <Tag color='cyan'>{record.targetInches}"</Tag>
-            <Tag color='green'>{record.targetFinish}</Tag>
-          </Space>
+        <div>
+          <div style={{ fontWeight: 500 }}>{record.targetProductName || 'N/A'}</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+            {record.targetModelName} · {record.targetInches}" · {record.targetFinish}
+          </div>
           {record.sourceProductName && (
-            <Text type='secondary' style={{ fontSize: '12px' }}>
-              From: {record.sourceProductName}
-            </Text>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>From: {record.sourceProductName}</div>
           )}
-        </Space>
-      )
+        </div>
+      ),
     },
     {
-      title: 'Dispatch Pending',
-      key: 'dispatchPending',
-      width: 150,
+      key: 'dispatchPending', title: 'Dispatch Pending', align: 'center',
       render: (_, record) => {
-        const pendingQty = record.dispatchPendingQuantity || 0
-        const totalQty = record.quantity || 0
-        const percentage = totalQty > 0 ? (pendingQty / totalQty) * 100 : 0
-
+        const pending = record.dispatchPendingQuantity || 0
+        const total = record.quantity || 0
+        const pct = total > 0 ? (pending / total) * 100 : 0
         return (
-          <Space direction='vertical' size={4} style={{ width: '100%' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <Text strong style={{ fontSize: '18px', color: '#ff9800' }}>
-                {pendingQty}
-              </Text>
-              <Text type='secondary'>/ {totalQty}</Text>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#f26c2d' }}>{pending}</span>
+            <span style={{ color: '#9ca3af', fontSize: 13 }}> / {total}</span>
+            <div style={{ width: '100%', height: 4, background: '#f3f4f6', borderRadius: 2, marginTop: 4 }}>
+              <div style={{ height: '100%', background: '#f26c2d', borderRadius: 2, width: `${Math.min(pct, 100)}%` }} />
             </div>
-            <Progress
-              percent={Number(percentage.toFixed(1))}
-              size='small'
-              strokeColor={{
-                '0%': '#ff9800',
-                '100%': '#ff5722'
-              }}
-              status='active'
-              format={percent => `${percent}%`}
-            />
-            <Text type='secondary' style={{ fontSize: '11px' }}>
-              Awaiting acceptance
-            </Text>
-          </Space>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Awaiting acceptance</div>
+          </div>
         )
       },
-      sorter: (a, b) =>
-        (a.dispatchPendingQuantity || 0) - (b.dispatchPendingQuantity || 0)
     },
     {
-      title: 'Production Progress',
-      key: 'progress',
-      width: 180,
+      key: 'progress', title: 'Production Progress', align: 'center',
       render: (_, record) => {
         const completed = record.completedQuantity || 0
         const total = record.quantity || 0
-        const percentage = total > 0 ? (completed / total) * 100 : 0
-
+        const pct = total > 0 ? (completed / total) * 100 : 0
         return (
-          <Space direction='vertical' size={4} style={{ width: '100%' }}>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text>
-                {completed} / {total}
-              </Text>
-            </Space>
-            <Progress
-              percent={Number(percentage.toFixed(1))}
-              size='small'
-              status={percentage === 100 ? 'success' : 'active'}
-            />
-            <Text type='secondary' style={{ fontSize: '11px' }}>
-              {record.completedJobCardsStatus || 0} /{' '}
-              {record.totalJobCards || 0} cards done
-            </Text>
-          </Space>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontWeight: 500 }}>{completed} / {total}</span>
+            <div style={{ width: '100%', height: 4, background: '#f3f4f6', borderRadius: 2, marginTop: 4 }}>
+              <div style={{ height: '100%', background: pct >= 100 ? '#4ecb71' : '#4a90ff', borderRadius: 2, width: `${Math.min(pct, 100)}%` }} />
+            </div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+              {record.completedJobCardsStatus || 0} / {record.totalJobCards || 0} cards done
+            </div>
+          </div>
         )
-      }
+      },
     },
     {
-      title: 'Quality',
-      key: 'quality',
-      width: 120,
+      key: 'quality', title: 'Quality', align: 'center',
       render: (_, record) => {
         const accepted = record.acceptedQuantity || 0
         const rejected = record.rejectedQuantity || 0
         const total = accepted + rejected
-        const acceptanceRate = total > 0 ? (accepted / total) * 100 : 0
-
+        const passRate = total > 0 ? (accepted / total) * 100 : 0
         return (
-          <Space direction='vertical' size={4}>
-            <Space>
-              <Badge status='success' />
-              <Text>{accepted} accepted</Text>
-            </Space>
-            {rejected > 0 && (
-              <Space>
-                <Badge status='error' />
-                <Text type='danger'>{rejected} rejected</Text>
-              </Space>
-            )}
+          <div style={{ textAlign: 'center', fontSize: 13 }}>
+            <div><span style={{ color: '#4ecb71' }}>✓ {accepted}</span>{rejected > 0 && <span style={{ color: '#dc2626', marginLeft: 8 }}>✗ {rejected}</span>}</div>
             {total > 0 && (
-              <Tag color={acceptanceRate >= 95 ? 'green' : 'orange'}>
-                {acceptanceRate.toFixed(1)}% Pass
-              </Tag>
+              <StatusBadge variant={passRate >= 95 ? 'paid' : 'pending'}>{passRate.toFixed(0)}% Pass</StatusBadge>
             )}
-          </Space>
+          </div>
         )
-      }
+      },
     },
     {
-      title: 'Timeline',
-      key: 'timeline',
-      width: 150,
+      key: 'timeline', title: 'Timeline',
       render: (_, record) => (
-        <Space direction='vertical' size={2}>
-          <Text type='secondary' style={{ fontSize: '12px' }}>
-            Created: {moment(record.createdAt).format('DD MMM YYYY')}
-          </Text>
-          {record.completedAt && (
-            <Text type='secondary' style={{ fontSize: '12px' }}>
-              Completed: {moment(record.completedAt).format('DD MMM YYYY')}
-            </Text>
-          )}
-          <Text strong style={{ fontSize: '12px' }}>
-            {moment(record.createdAt).fromNow()}
-          </Text>
-        </Space>
+        <div style={{ fontSize: 12, whiteSpace: 'nowrap', color: '#6b7280' }}>
+          <div>Created: {moment(record.createdAt).format('DD MMM YYYY')}</div>
+          {record.completedAt && <div>Done: {moment(record.completedAt).format('DD MMM YYYY')}</div>}
+          <div style={{ fontWeight: 500, color: '#1a1a1a', marginTop: 2 }}>{moment(record.createdAt).fromNow()}</div>
+        </div>
       ),
-      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix()
     },
     {
-      title: 'Current Step',
-      key: 'currentStep',
-      width: 150,
+      key: 'currentStep', title: 'Current Step', align: 'center',
       render: (_, record) => (
-        <Space direction='vertical' size={2}>
-          <Tag color='processing'>{record.currentStepName || 'N/A'}</Tag>
+        <div style={{ textAlign: 'center' }}>
+          <StatusBadge variant="inprod">{record.currentStepName || 'N/A'}</StatusBadge>
           {record.avgProgressPercentage && (
-            <Text type='secondary' style={{ fontSize: '11px' }}>
-              Avg: {Number(record.avgProgressPercentage).toFixed(0)}% complete
-            </Text>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Avg: {Number(record.avgProgressPercentage).toFixed(0)}%</div>
           )}
-        </Space>
-      )
+        </div>
+      ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 150,
-      fixed: 'right',
+      key: 'actions', title: 'Actions', align: 'center',
       render: (_, record) => (
-        <Button
-          type='primary'
-          icon={
-            expandedRowKeys.includes(record.id) ? (
-              <DownOutlined />
-            ) : (
-              <RightOutlined />
-            )
-          }
-          size='small'
-          block
-          onClick={() =>
-            handleExpand(!expandedRowKeys.includes(record.id), record)
-          }
+        <button
+          onClick={() => handleExpand(!expandedRowKeys.includes(record.id), record)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: '#4a90ff', border: 'none', borderRadius: 12,
+            padding: 8, fontSize: 14, fontWeight: 400,
+            fontFamily: "'Inter', sans-serif", color: 'white',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
         >
+          {expandedRowKeys.includes(record.id) ? <DownOutlined /> : <RightOutlined />}
           {expandedRowKeys.includes(record.id) ? 'Hide' : 'View'} Job Cards
-        </Button>
-      )
-    }
+        </button>
+      ),
+    },
   ]
 
-  // Calculate summary statistics
-  const summaryStats = {
-    totalPlans: data.length,
-    totalPendingUnits: data.reduce(
-      (sum, item) => sum + (item.dispatchPendingQuantity || 0),
-      0
-    ),
-    urgentPlans: data.filter(item => item.isUrgent === 1).length,
-    fullyPendingPlans: data.filter(
-      item =>
-        item.dispatchPendingQuantity >= item.quantity &&
-        item.dispatchPendingQuantity > 0
-    ).length
-  }
+  // ─── Render ───
 
   return (
-    <div style={{ padding: '20px' }}>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px'
-            }}
-          >
-            <Space align='center'>
-              <RocketOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-              <Title level={3} style={{ margin: 0 }}>
-                Dispatch to Sales - Pending Acceptance
-              </Title>
-            </Space>
-            <Space>
-              <Button
-                type='default'
-                icon={<ExportOutlined />}
-                onClick={showExportModal}
-              >
-                Export Today's Dispatch
-              </Button>
-              <Button
-                type='primary'
-                icon={<ReloadOutlined />}
-                onClick={() => fetchDispatchReadyPlans(pagination.current)}
-              >
-                Refresh
-              </Button>
-            </Space>
-          </div>
-        </Col>
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <PageTitle>Dispatch to Sales</PageTitle>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+          <span style={{ background: '#f7d6ca', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+            {stats.totalPlans} Plans · {stats.totalPendingUnits} Units Pending
+          </span>
+          {stats.urgentPlans > 0 && (
+            <span style={{ background: '#fef2f2', color: '#dc2626', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32, border: '1px solid rgba(229,62,62,0.2)' }}>
+              {stats.urgentPlans} Urgent
+            </span>
+          )}
+        </div>
+      </div>
 
-        {/* Summary Statistics */}
-        <Col span={24}>
-          <Card bordered={false} className='shadow-sm'>
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title='Plans Pending'
-                  value={summaryStats.totalPlans}
-                  prefix={<TruckOutlined />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title='Total Pending Units'
-                  value={summaryStats.totalPendingUnits}
-                  suffix='units'
-                  valueStyle={{ color: '#ff9800' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title='Urgent Plans'
-                  value={summaryStats.urgentPlans}
-                  prefix={<WarningOutlined />}
-                  valueStyle={{
-                    color: summaryStats.urgentPlans > 0 ? '#ff4d4f' : '#8c8c8c'
-                  }}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Statistic
-                  title='Fully At Dispatch'
-                  value={summaryStats.fullyPendingPlans}
-                  prefix={<CheckCircleOutlined />}
-                  valueStyle={{ color: '#ff9800' }}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
+      {/* Filter Bar */}
+      <div style={{
+        background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+        padding: '12px 32px', marginBottom: 16,
+        boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="text" placeholder="Search Product, Model, Finish..."
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && fetchDispatchReadyPlans(1, searchText, urgentFilter, dateRange)}
+            style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }}
+          />
+          <Select style={{ width: 160, height: 40 }} value={urgentFilter || undefined} placeholder="Priority" onChange={val => { setUrgentFilter(val || ''); fetchDispatchReadyPlans(1, searchText, val || '', dateRange) }} allowClear className="plati-filter-dealer"
+            options={[{ value: '1', label: 'Urgent Only' }, { value: '0', label: 'Normal' }]}
+          />
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={range => { setDateRange(range); fetchDispatchReadyPlans(1, searchText, urgentFilter, range) }}
+            format="DD MMM YYYY"
+            placeholder={['Start Date', 'End Date']}
+            className="plati-filter-daterange"
+            style={{ height: 40, borderRadius: 123, borderColor: '#a0a0a8', minWidth: 260 }}
+          />
+          <button onClick={() => fetchDispatchReadyPlans(pagination.current)} disabled={loading} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center',
+            background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400,
+            fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer', flexShrink: 0,
+          }}>
+            <ReloadOutlined spin={loading} style={{ fontSize: 14 }} /> Refresh
+          </button>
+          <button onClick={showExportModal} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center',
+            background: '#1a1a1a', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500,
+            fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', flexShrink: 0,
+          }}>
+            <ExportOutlined style={{ fontSize: 14 }} /> Export
+          </button>
+        </div>
+      </div>
 
-        {/* Filters */}
-        <Col span={24}>
-          <Card
-            bordered={false}
-            className='shadow-sm'
-            bodyStyle={{ padding: '16px' }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '16px',
-                alignItems: 'center'
-              }}
-            >
-              <div style={{ flex: '1 1 300px' }}>
-                <Text
-                  type='secondary'
-                  strong
-                  style={{
-                    fontSize: '12px',
-                    display: 'block',
-                    marginBottom: '4px',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  Search
-                </Text>
-                <Search
-                  placeholder='Search Product, Model, Finish...'
-                  allowClear
-                  enterButton={<SearchOutlined />}
-                  value={searchText}
-                  onChange={e => setSearchText(e.target.value)}
-                  onSearch={handleSearch}
-                  style={{ width: '100%' }}
-                />
-              </div>
+      {/* Table */}
+      <div style={{
+        background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+        overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+      }}>
+        <Table
+          columns={columns}
+          dataSource={data}
+          loading={loading}
+          rowKey="id"
+          expandable={{ expandedRowRender, expandedRowKeys, onExpand: handleExpand }}
+          pagination={false}
+          scroll={{ x: 1200 }}
+          locale={{ emptyText: <div style={{ padding: 40, textAlign: 'center', color: '#f55e34', fontWeight: 500 }}>No dispatch-ready plans found</div> }}
+          style={{ fontSize: 14 }}
+          className="plati-table"
+        />
+        <DataTablePagination
+          currentPage={pagination.current}
+          totalItems={pagination.total}
+          pageSize={pagination.pageSize}
+          onPageChange={(page) => fetchDispatchReadyPlans(page)}
+          onPageSizeChange={(size) => { setPagination(p => ({ ...p, pageSize: size })); fetchDispatchReadyPlans(1) }}
+        />
+      </div>
 
-              <div style={{ flex: '0 0 150px' }}>
-                <Text
-                  type='secondary'
-                  strong
-                  style={{
-                    fontSize: '12px',
-                    display: 'block',
-                    marginBottom: '4px',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  Priority
-                </Text>
-                <Select
-                  style={{ width: '100%' }}
-                  placeholder='All'
-                  value={urgentFilter}
-                  onChange={handleUrgentChange}
-                  allowClear
-                >
-                  <Option value='1'>Urgent Only</Option>
-                  <Option value='0'>Normal</Option>
-                </Select>
-              </div>
-
-              <div style={{ flex: '1 1 280px' }}>
-                <Text
-                  type='secondary'
-                  strong
-                  style={{
-                    fontSize: '12px',
-                    display: 'block',
-                    marginBottom: '4px',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  Date Range
-                </Text>
-                <RangePicker
-                  style={{ width: '100%' }}
-                  value={dateRange}
-                  onChange={handleDateChange}
-                  format='DD-MM-YYYY'
-                />
-              </div>
-
-              <div style={{ paddingTop: '20px' }}>
-                <Button
-                  icon={<ClearOutlined />}
-                  onClick={handleClearFilters}
-                  disabled={!searchText && !urgentFilter && !dateRange}
-                >
-                  Clear
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        {/* Table */}
-        <Col span={24}>
-          <Card bordered={false} className='shadow-sm'>
-            <Table
-              columns={columns}
-              dataSource={data}
-              loading={loading}
-              rowKey='id'
-              expandable={{
-                expandedRowRender,
-                expandedRowKeys,
-                onExpand: handleExpand
-              }}
-              pagination={{
-                ...pagination,
-                showSizeChanger: true,
-                showTotal: total => `Total ${total} dispatch-ready plans`,
-                onChange: page => fetchDispatchReadyPlans(page)
-              }}
-              scroll={{ x: 1500 }}
-              locale={{
-                emptyText: (
-                  <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <TruckOutlined
-                      style={{ fontSize: '48px', color: '#d9d9d9' }}
-                    />
-                    <div style={{ marginTop: '16px' }}>
-                      <Text type='secondary'>
-                        No production plans ready for dispatch
-                      </Text>
-                    </div>
-                  </div>
-                )
-              }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <InfoBox
+        title="Information"
+        items={[
+          'Shows production plans with units ready at the dispatch step',
+          'Expand rows to view individual job cards and accept quantities',
+          'Accepted quantities are moved to in-house stock for sales allocation',
+          'Export generates a PDF dispatch report with signature sections',
+        ]}
+      />
 
       {/* Accept Quantity Modal */}
-      <Modal
-        title='Accept Dispatch Quantity'
-        open={acceptModalVisible}
+      <Modal title="Accept Dispatch Quantity" open={acceptModalVisible}
         onOk={handleAcceptJobCard}
-        onCancel={() => {
-          setAcceptModalVisible(false)
-          setSelectedJobCard(null)
-          setAcceptQuantity(0)
-        }}
-        okText='Accept'
-        cancelText='Cancel'
+        onCancel={() => { setAcceptModalVisible(false); setSelectedJobCard(null); setAcceptQuantity(0) }}
+        okText="Accept" cancelText="Cancel"
       >
         {selectedJobCard && (
-          <Space direction='vertical' size={16} style={{ width: '100%' }}>
-            <div>
-              <Text strong>Job Card #</Text>
-              <Text>{selectedJobCard.jobCardId}</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ padding: 16, background: '#f9fafb', borderRadius: 12, fontSize: 13, fontFamily: "'Inter', sans-serif", lineHeight: 1.8 }}>
+              <div><strong>Job Card #</strong> {selectedJobCard.jobCardId}</div>
+              <div><strong>Pending:</strong> <StatusBadge variant="pending">{selectedJobCard.pendingQuantity}</StatusBadge></div>
             </div>
             <div>
-              <Text strong>Pending Quantity: </Text>
-              <Tag color='orange' style={{ fontSize: '14px' }}>
-                {selectedJobCard.pendingQuantity}
-              </Tag>
+              <div style={{ marginBottom: 8, fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>Enter Quantity to Accept:</div>
+              <InputNumber min={1} max={selectedJobCard.pendingQuantity} value={acceptQuantity} onChange={v => setAcceptQuantity(v)} style={{ width: '100%' }} size="large" />
             </div>
-            <div>
-              <Text strong>Enter Quantity to Accept:</Text>
-              <InputNumber
-                min={1}
-                max={selectedJobCard.pendingQuantity}
-                value={acceptQuantity}
-                onChange={value => setAcceptQuantity(value)}
-                style={{ width: '100%', marginTop: 8 }}
-                size='large'
-              />
-            </div>
-          </Space>
+          </div>
         )}
       </Modal>
 
       {/* Export Modal */}
-      <Modal
-        title="Export Today's Dispatch Report"
-        open={exportModalVisible}
-        onCancel={() => setExportModalVisible(false)}
-        width={800}
+      <Modal title="Export Today's Dispatch Report" open={exportModalVisible}
+        onCancel={() => setExportModalVisible(false)} width={800}
         footer={[
-          <Button key='cancel' onClick={() => setExportModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key='pdf-selected'
-            icon={<FilePdfOutlined />}
-            onClick={() => handleExportPdf(false)}
-            disabled={selectedExportItems.length === 0}
-            style={{
-              backgroundColor: '#ff4d4f',
-              borderColor: '#ff4d4f',
-              color: 'white'
-            }}
-          >
+          <AntButton key="cancel" onClick={() => setExportModalVisible(false)}>Cancel</AntButton>,
+          <AntButton key="pdf-selected" icon={<FilePdfOutlined />} onClick={() => handleExportPdf(false)} disabled={selectedExportItems.length === 0} style={{ background: '#ff4d4f', borderColor: '#ff4d4f', color: 'white' }}>
             Export PDF ({selectedExportItems.length})
-          </Button>,
-          <Button
-            key='pdf-all'
-            type='primary'
-            icon={<FilePdfOutlined />}
-            onClick={() => handleExportPdf(true)}
-            disabled={todayDispatchedItems.length === 0}
-            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
-          >
+          </AntButton>,
+          <AntButton key="pdf-all" type="primary" icon={<FilePdfOutlined />} onClick={() => handleExportPdf(true)} disabled={todayDispatchedItems.length === 0} style={{ background: '#722ed1', borderColor: '#722ed1' }}>
             Export PDF (All)
-          </Button>
+          </AntButton>,
         ]}
       >
-        <Space direction='vertical' size={16} style={{ width: '100%' }}>
-          {/* PDF Export Info */}
-          <Card
-            size='small'
-            style={{ backgroundColor: '#fff7e6', borderColor: '#ffd591' }}
-          >
-            <Space>
-              <FilePdfOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
-              <div>
-                <Text strong>PDF Export</Text>
-                <br />
-                <Text type='secondary' style={{ fontSize: '12px' }}>
-                  Exports all dispatched items with columns: Alloy Name, Qty
-                  Dispatched, Qty Received (empty for manual fill), and
-                  signature section.
-                </Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>Today's Dispatched Items ({todayDispatchedItems.length})</span>
+          <Checkbox
+            checked={selectedExportItems.length === todayDispatchedItems.length && todayDispatchedItems.length > 0}
+            indeterminate={selectedExportItems.length > 0 && selectedExportItems.length < todayDispatchedItems.length}
+            onChange={e => e.target.checked ? setSelectedExportItems(todayDispatchedItems.map(i => i.id)) : setSelectedExportItems([])}
+          >Select All</Checkbox>
+        </div>
+        <div style={{ maxHeight: 350, overflowY: 'auto' }}>
+          {loadingExport ? <div style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>Loading...</div>
+          : todayDispatchedItems.length === 0 ? <div style={{ textAlign: 'center', padding: 20, color: '#9ca3af' }}>No items dispatched today</div>
+          : todayDispatchedItems.map(item => (
+            <div key={item.id} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12, background: selectedExportItems.includes(item.id) ? '#eff6ff' : 'white' }}>
+              <Checkbox checked={selectedExportItems.includes(item.id)} onChange={e => e.target.checked ? setSelectedExportItems([...selectedExportItems, item.id]) : setSelectedExportItems(selectedExportItems.filter(id => id !== item.id))} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{item.productName} - {item.modelName} {item.inches}" {item.finish}</div>
+                <div style={{ fontSize: 12, color: '#9ca3af' }}>Accepted: {item.acceptedQuantity} units · Plan #{item.prodPlanId} · {moment(item.dispatchedAt).format('DD-MM-YYYY HH:mm')}</div>
               </div>
-            </Space>
-          </Card>
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <Text strong>
-              Today's Dispatched Items ({todayDispatchedItems.length})
-            </Text>
-            <Checkbox
-              checked={
-                selectedExportItems.length === todayDispatchedItems.length &&
-                todayDispatchedItems.length > 0
-              }
-              indeterminate={
-                selectedExportItems.length > 0 &&
-                selectedExportItems.length < todayDispatchedItems.length
-              }
-              onChange={e => handleSelectAllExport(e.target.checked)}
-            >
-              Select All (for CSV)
-            </Checkbox>
-          </div>
-
-          <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-            {loadingExport ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text type='secondary'>Loading...</Text>
-              </div>
-            ) : todayDispatchedItems.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text type='secondary'>No items dispatched today</Text>
-              </div>
-            ) : (
-              <Space direction='vertical' size={8} style={{ width: '100%' }}>
-                {todayDispatchedItems.map(item => (
-                  <Card
-                    key={item.id}
-                    size='small'
-                    style={{
-                      backgroundColor: selectedExportItems.includes(item.id)
-                        ? '#e6f7ff'
-                        : 'white'
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <Checkbox
-                        checked={selectedExportItems.includes(item.id)}
-                        onChange={e =>
-                          handleExportItemSelect(item.id, e.target.checked)
-                        }
-                      />
-                      <div style={{ flex: 1, marginLeft: 12 }}>
-                        <Space direction='vertical' size={2}>
-                          <Text strong>
-                            {item.productName} - {item.modelName} {item.inches}"{' '}
-                            {item.finish}
-                          </Text>
-                          <Text type='secondary' style={{ fontSize: '12px' }}>
-                            Accepted: {item.acceptedQuantity} units | Plan #
-                            {item.prodPlanId} | Job Card #{item.jobCardId}
-                          </Text>
-                          <Text type='secondary' style={{ fontSize: '12px' }}>
-                            {moment(item.dispatchedAt).format(
-                              'DD-MM-YYYY HH:mm'
-                            )}
-                          </Text>
-                        </Space>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </Space>
-            )}
-          </div>
-
-          {todayDispatchedItems.length > 0 && (
-            <div
-              style={{
-                backgroundColor: '#f0f2f5',
-                padding: '12px',
-                borderRadius: '4px'
-              }}
-            >
-              <Text strong>
-                Selected: {selectedExportItems.length} items | Total:{' '}
-                {todayDispatchedItems.reduce(
-                  (sum, item) => sum + item.acceptedQuantity,
-                  0
-                )}{' '}
-                units
-              </Text>
             </div>
-          )}
-        </Space>
+          ))}
+        </div>
       </Modal>
     </div>
   )

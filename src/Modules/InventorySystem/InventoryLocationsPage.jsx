@@ -1,473 +1,272 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'
+import { Modal, Form, Input, Select, message } from 'antd'
 import {
-  Card,
-  Table,
-  Button,
-  Modal,
-  Form,
-  Input,
-  Select,
-  Row,
-  Col,
-  Tag,
-  Statistic,
-  Space,
-  message,
-  Badge,
-  Tooltip,
-  Empty,
-  Typography
-} from 'antd';
-import {
-  EnvironmentOutlined,
-  PlusOutlined,
-  EditOutlined,
-  EyeOutlined,
-  BoxPlotOutlined,
-  ReloadOutlined,
-  ShopOutlined,
-  InboxOutlined,
-  DatabaseOutlined,
-  ArrowRightOutlined
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { client } from '../../Utils/axiosClient';
+  EnvironmentOutlined, PlusOutlined, EditOutlined, EyeOutlined,
+  ShopOutlined, InboxOutlined, DatabaseOutlined
+} from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { client } from '../../Utils/axiosClient'
 
-const { TextArea } = Input;
-const { Option } = Select;
-const { Title, Text } = Typography;
+import PageTitle from '../../Core/Components/PageTitle'
+import KpiCard from '../../Core/Components/KpiCard'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import DataTablePagination from '../../Core/Components/DataTablePagination'
+import PlatiFormStyles from '../../Core/Components/FormStyles'
+
+const { TextArea } = Input
+const { Option } = Select
 
 const InventoryLocationsPage = () => {
-  const navigate = useNavigate();
-  const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
-  const [form] = Form.useForm();
+  const navigate = useNavigate()
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [editingLocation, setEditingLocation] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [form] = Form.useForm()
 
   const fetchLocations = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await client.get('/inventory/internal/locations');
-      setLocations(response.data.data || []);
+      const response = await client.get('/inventory/internal/locations')
+      setLocations(response.data.data || [])
     } catch (error) {
-      message.error('Failed to fetch locations');
-      console.error('Error fetching locations:', error);
+      message.error('Failed to fetch locations')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+  useEffect(() => { fetchLocations() }, [fetchLocations])
 
-  const handleCreateLocation = async (values) => {
+  const handleSubmit = async (values) => {
     try {
-      await client.post('/inventory/internal/locations', {
-        name: values.name,
-        description: values.description,
-        address: values.address,
-        locationType: values.locationType
-      });
-      message.success('Location created successfully');
-      setModalVisible(false);
-      form.resetFields();
-      fetchLocations();
-    } catch (error) {
-      message.error('Failed to create location');
-      console.error('Error creating location:', error);
-    }
-  };
-
-  const handleUpdateLocation = async (values) => {
-    try {
-      await client.put(`/inventory/internal/locations/${editingLocation.id}`, {
-        name: values.name,
-        description: values.description,
-        address: values.address,
-        locationType: values.locationType,
-        isActive: values.isActive
-      });
-      message.success('Location updated successfully');
-      setModalVisible(false);
-      setEditingLocation(null);
-      form.resetFields();
-      fetchLocations();
-    } catch (error) {
-      message.error('Failed to update location');
-      console.error('Error updating location:', error);
-    }
-  };
-
-  const handleSubmit = (values) => {
-    if (editingLocation) {
-      handleUpdateLocation(values);
-    } else {
-      handleCreateLocation(values);
-    }
-  };
-
-  const openCreateModal = () => {
-    setEditingLocation(null);
-    form.resetFields();
-    setModalVisible(true);
-  };
+      if (editingLocation) {
+        await client.put(`/inventory/internal/locations/${editingLocation.id}`, values)
+        message.success('Location updated')
+      } else {
+        await client.post('/inventory/internal/locations', values)
+        message.success('Location created')
+      }
+      setModalVisible(false); setEditingLocation(null); form.resetFields(); fetchLocations()
+    } catch (error) { message.error('Failed to save location') }
+  }
 
   const openEditModal = (location, e) => {
-    e.stopPropagation();
-    setEditingLocation(location);
-    form.setFieldsValue({
-      name: location.name,
-      description: location.description,
-      address: location.address,
-      locationType: location.locationType,
-      isActive: location.isActive
-    });
-    setModalVisible(true);
-  };
-
-  const viewLocationDetails = (location) => {
-    navigate(`/inventory-locations/${location.id}`);
-  };
-
-  const getLocationTypeColor = (type) => {
-    const colors = {
-      'warehouse': 'blue',
-      'production': 'green',
-      'storage': 'orange'
-    };
-    return colors[type] || 'default';
-  };
-
-  const getLocationTypeIcon = (type) => {
-    const icons = {
-      'warehouse': <ShopOutlined />,
-      'production': <DatabaseOutlined />,
-      'storage': <InboxOutlined />
-    };
-    return icons[type] || <EnvironmentOutlined />;
-  };
+    e.stopPropagation()
+    setEditingLocation(location)
+    form.setFieldsValue({ name: location.name, description: location.description, address: location.address, locationType: location.locationType, isActive: location.isActive })
+    setModalVisible(true)
+  }
 
   const calculateLocationStats = (summary) => {
-    if (!summary || summary.length === 0) {
-      return { totalQuantity: 0, totalValue: 0, productCount: 0 };
-    }
+    if (!summary || summary.length === 0) return { totalQuantity: 0, totalValue: 0, productCount: 0 }
     return {
-      totalQuantity: summary.reduce((sum, item) => sum + (item.totalQuantity || 0), 0),
-      totalValue: summary.reduce((sum, item) => sum + parseFloat(item.totalValue || 0), 0),
-      productCount: summary.reduce((sum, item) => sum + (item.productCount || 0), 0)
-    };
-  };
-
-  const columns = [
-    {
-      title: 'Location',
-      key: 'location',
-      render: (record) => (
-        <div>
-          <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-            {getLocationTypeIcon(record.locationType)}
-            <span style={{ marginLeft: '8px' }}>{record.name}</span>
-          </div>
-          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-            {record.description}
-          </div>
-          {record.address && (
-            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
-              📍 {record.address}
-            </div>
-          )}
-        </div>
-      ),
-      width: 280
-    },
-    {
-      title: 'Type',
-      dataIndex: 'locationType',
-      key: 'locationType',
-      render: (type) => (
-        <Tag color={getLocationTypeColor(type)}>
-          {type?.toUpperCase()}
-        </Tag>
-      ),
-      width: 120
-    },
-    {
-      title: 'Storage Areas',
-      key: 'areas',
-      render: (record) => {
-        const areas = record.areas || [];
-        return (
-          <div>
-            <div style={{ fontWeight: 'bold' }}>
-              {areas.length} Areas
-            </div>
-            {areas.length > 0 && (
-              <div style={{ fontSize: '11px', color: '#666' }}>
-                {areas.slice(0, 2).map(area => area.areaName).join(', ')}
-                {areas.length > 2 && ` +${areas.length - 2} more`}
-              </div>
-            )}
-          </div>
-        );
-      },
-      width: 140
-    },
-    {
-      title: 'Inventory Summary',
-      key: 'inventory',
-      render: (record) => {
-        const summary = record.inventory_summary || [];
-        const stats = calculateLocationStats(summary);
-
-        return (
-          <div>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Statistic
-                  title="Total Items"
-                  value={stats.totalQuantity}
-                  valueStyle={{ fontSize: '16px', color: '#1890ff' }}
-                />
-              </Col>
-              <Col span={12}>
-                <Statistic
-                  title="Products"
-                  value={stats.productCount}
-                  valueStyle={{ fontSize: '16px', color: '#52c41a' }}
-                />
-              </Col>
-            </Row>
-          </div>
-        );
-      },
-      width: 200
-    },
-    {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Badge
-          status={isActive ? 'success' : 'error'}
-          text={isActive ? 'Active' : 'Inactive'}
-        />
-      ),
-      width: 100
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="primary"
-              icon={<EyeOutlined />}
-              onClick={() => viewLocationDetails(record)}
-            >
-              View Details
-            </Button>
-          </Tooltip>
-          <Tooltip title="Edit Location">
-            <Button
-              type="default"
-              icon={<EditOutlined />}
-              onClick={(e) => openEditModal(record, e)}
-            />
-          </Tooltip>
-        </Space>
-      ),
-      width: 200
+      totalQuantity: summary.reduce((s, i) => s + (i.totalQuantity || 0), 0),
+      totalValue: summary.reduce((s, i) => s + parseFloat(i.totalValue || 0), 0),
+      productCount: summary.reduce((s, i) => s + (i.productCount || 0), 0),
     }
-  ];
+  }
 
-  // Calculate overall stats
   const overallStats = locations.reduce((acc, loc) => {
-    const summary = loc.inventory_summary || [];
-    const stats = calculateLocationStats(summary);
+    const stats = calculateLocationStats(loc.inventory_summary || [])
     return {
       totalLocations: acc.totalLocations + 1,
       activeLocations: acc.activeLocations + (loc.isActive ? 1 : 0),
       totalItems: acc.totalItems + stats.totalQuantity,
-      totalProducts: acc.totalProducts + stats.productCount
-    };
-  }, { totalLocations: 0, activeLocations: 0, totalItems: 0, totalProducts: 0 });
+      totalProducts: acc.totalProducts + stats.productCount,
+    }
+  }, { totalLocations: 0, activeLocations: 0, totalItems: 0, totalProducts: 0 })
+
+  const paginatedLocations = locations.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  const columns = [
+    {
+      key: 'location', title: 'Location',
+      render: (record) => {
+        const icons = { warehouse: <ShopOutlined />, production: <DatabaseOutlined />, storage: <InboxOutlined /> }
+        return (
+          <div>
+            <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#4a90ff' }}>{icons[record.locationType] || <EnvironmentOutlined />}</span>
+              {record.name}
+            </div>
+            {record.description && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{record.description}</div>}
+            {record.address && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>📍 {record.address}</div>}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'type', title: 'Type', align: 'center',
+      render: (record) => {
+        const variant = record.locationType === 'warehouse' ? 'inprod' : record.locationType === 'production' ? 'paid' : 'pending'
+        return <StatusBadge variant={variant}>{record.locationType?.toUpperCase()}</StatusBadge>
+      },
+    },
+    {
+      key: 'areas', title: 'Storage Areas', align: 'center',
+      render: (record) => {
+        const areas = record.areas || []
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 600, fontSize: 16 }}>{areas.length}</div>
+            {areas.length > 0 && <div style={{ fontSize: 11, color: '#6b7280' }}>{areas.slice(0, 2).map(a => a.areaName).join(', ')}{areas.length > 2 && ` +${areas.length - 2}`}</div>}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'inventory', title: 'Inventory', align: 'center',
+      render: (record) => {
+        const stats = calculateLocationStats(record.inventory_summary || [])
+        return (
+          <div style={{ textAlign: 'center', fontSize: 13 }}>
+            <div><span style={{ fontWeight: 600, color: '#4a90ff' }}>{stats.totalQuantity}</span> items</div>
+            <div style={{ color: '#6b7280' }}>{stats.productCount} products</div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'status', title: 'Status', align: 'center',
+      render: (record) => <StatusBadge variant={record.isActive ? 'paid' : 'outofstock'}>{record.isActive ? 'Active' : 'Inactive'}</StatusBadge>,
+    },
+    {
+      key: 'actions', title: 'Actions', align: 'center',
+      render: (record) => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <button onClick={() => navigate(`/inventory-locations/${record.id}`)} style={{
+            display: 'flex', alignItems: 'center', gap: 6, background: '#4a90ff', border: 'none', borderRadius: 12,
+            padding: 8, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', whiteSpace: 'nowrap',
+          }}><EyeOutlined /> View</button>
+          <button onClick={(e) => openEditModal(record, e)} style={{
+            background: 'rgba(26,26,26,0.2)', border: 'none', borderRadius: 10, width: 32, height: 32,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#1a1a1a', fontSize: 14,
+          }}><EditOutlined /></button>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Page Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Title level={3} style={{ margin: 0 }}>
-              <EnvironmentOutlined style={{ marginRight: '12px' }} />
-              Inventory Locations
-            </Title>
-            <Text type="secondary">Manage warehouse locations and view their inventory</Text>
-          </Col>
-          <Col>
-            <Space>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchLocations}
-                loading={loading}
-              >
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreateModal}
-              >
-                Add Location
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <PageTitle>Inventory Locations</PageTitle>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+          <button onClick={fetchLocations} disabled={loading} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px',
+            background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400,
+            fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer',
+          }}><span style={{ fontSize: 16 }}>↻</span> Refresh</button>
+          <button onClick={() => { setEditingLocation(null); form.resetFields(); setModalVisible(true) }} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px',
+            background: '#4a90ff', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500,
+            fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', whiteSpace: 'nowrap',
+          }}><PlusOutlined style={{ fontSize: 14 }} /> Add Location</button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Locations"
-              value={overallStats.totalLocations}
-              prefix={<EnvironmentOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Active Locations"
-              value={overallStats.activeLocations}
-              valueStyle={{ color: '#52c41a' }}
-              prefix={<Badge status="success" />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Items in Stock"
-              value={overallStats.totalItems}
-              prefix={<BoxPlotOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Unique Products"
-              value={overallStats.totalProducts}
-              prefix={<DatabaseOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
+        <KpiCard title="Total Locations" value={overallStats.totalLocations} icon={<EnvironmentOutlined />} accentColor="blue" />
+        <KpiCard title="Active Locations" value={overallStats.activeLocations} icon={<EnvironmentOutlined />} accentColor="green" />
+        <KpiCard title="Total Items in Stock" value={overallStats.totalItems} icon={<InboxOutlined />} accentColor="orange" />
+        <KpiCard title="Unique Products" value={overallStats.totalProducts} icon={<DatabaseOutlined />} accentColor="purple" />
+      </div>
 
-      {/* Locations Table */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={locations}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} locations`
-          }}
-          locale={{
-            emptyText: <Empty description="No locations found" />
-          }}
-          onRow={(record) => ({
-            onClick: () => viewLocationDetails(record),
-            style: { cursor: 'pointer' }
-          })}
+      {/* Table */}
+      <div style={{
+        background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+        overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                {columns.map((col, i) => (
+                  <th key={col.key} style={{
+                    background: '#f3f3f5', padding: '12px 16px', textAlign: col.align || 'left',
+                    fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
+                    fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                    whiteSpace: 'nowrap', lineHeight: '20px',
+                    paddingLeft: i === 0 ? 32 : undefined,
+                  }}>{col.title}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={columns.length} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+              ) : paginatedLocations.length === 0 ? (
+                <tr><td colSpan={columns.length} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No locations found</td></tr>
+              ) : (
+                paginatedLocations.map((record) => (
+                  <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                    onClick={() => navigate(`/inventory-locations/${record.id}`)}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {columns.map((col, i) => (
+                      <td key={col.key} style={{
+                        padding: '14px 16px', color: '#1a1a1a', verticalAlign: 'middle',
+                        fontSize: 14, fontFamily: "'Inter', sans-serif", lineHeight: '20px',
+                        textAlign: col.align, paddingLeft: i === 0 ? 32 : undefined,
+                      }}>{col.render(record)}</td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <DataTablePagination
+          currentPage={currentPage}
+          totalItems={locations.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
         />
-      </Card>
+      </div>
 
-      {/* Create/Edit Location Modal */}
+      {/* Create/Edit Modal */}
+      <PlatiFormStyles />
       <Modal
-        title={editingLocation ? 'Edit Location' : 'Create New Location'}
+        title={<span style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 500, color: '#1a1a1a' }}>{editingLocation ? 'Edit Location' : 'Create New Location'}</span>}
         open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          setEditingLocation(null);
-          form.resetFields();
-        }}
-        footer={null}
-        width={600}
+        onCancel={() => { setModalVisible(false); setEditingLocation(null); form.resetFields() }}
+        footer={null} width={600}
+        styles={{ body: { padding: '16px 24px 24px' } }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-        >
-          <Form.Item
-            name="name"
-            label="Location Name"
-            rules={[{ required: true, message: 'Please enter location name' }]}
-          >
-            <Input placeholder="e.g., Main Warehouse" />
-          </Form.Item>
-
-          <Form.Item
-            name="locationType"
-            label="Location Type"
-            rules={[{ required: true, message: 'Please select location type' }]}
-          >
-            <Select placeholder="Select location type">
-              <Option value="warehouse">Warehouse</Option>
-              <Option value="production">Production Floor</Option>
-              <Option value="storage">Storage Area</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="Description"
-          >
-            <TextArea rows={3} placeholder="Enter location description" />
-          </Form.Item>
-
-          <Form.Item
-            name="address"
-            label="Address"
-          >
-            <Input placeholder="Enter address (optional)" />
-          </Form.Item>
-
-          {editingLocation && (
-            <Form.Item
-              name="isActive"
-              label="Status"
-            >
-              <Select>
-                <Option value={true}>Active</Option>
-                <Option value={false}>Inactive</Option>
-              </Select>
+        <div className="plati-form">
+          <Form form={form} layout="vertical" onFinish={handleSubmit}>
+            <Form.Item name="name" label="Location Name" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="e.g., Main Warehouse" />
             </Form.Item>
-          )}
-
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setModalVisible(false)}>
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit">
-                {editingLocation ? 'Update Location' : 'Create Location'}
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+            <Form.Item name="locationType" label="Location Type" rules={[{ required: true, message: 'Required' }]}>
+              <Select placeholder="Select type"><Option value="warehouse">Warehouse</Option><Option value="production">Production Floor</Option><Option value="storage">Storage Area</Option></Select>
+            </Form.Item>
+            <Form.Item name="description" label="Description">
+              <TextArea rows={3} placeholder="Enter description" />
+            </Form.Item>
+            <Form.Item name="address" label="Address">
+              <Input placeholder="Enter address (optional)" />
+            </Form.Item>
+            {editingLocation && (
+              <Form.Item name="isActive" label="Status">
+                <Select><Option value={true}>Active</Option><Option value={false}>Inactive</Option></Select>
+              </Form.Item>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16 }}>
+              <button type="button" onClick={() => setModalVisible(false)} style={{ background: '#e5e5e5', border: 'none', borderRadius: 12, padding: '8px 20px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}>Cancel</button>
+              <button type="submit" style={{ background: '#4a90ff', border: 'none', borderRadius: 12, padding: '8px 20px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer' }}>{editingLocation ? 'Update Location' : 'Create Location'}</button>
+            </div>
+          </Form>
+        </div>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default InventoryLocationsPage;
+export default InventoryLocationsPage

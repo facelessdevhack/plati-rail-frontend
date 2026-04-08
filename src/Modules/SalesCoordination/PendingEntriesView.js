@@ -1,509 +1,262 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Table, Button, Tag, message, Space, Input, Select, DatePicker, Card, Dropdown } from 'antd';
-import { 
-  ClockCircleOutlined, 
-  CheckCircleOutlined, 
-  DeleteOutlined, 
-  SearchOutlined, 
-  FilterOutlined, 
-  ReloadOutlined, 
-  ClearOutlined,
-  ExportOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  DownOutlined
-} from '@ant-design/icons';
-import { getPendingEntriesAPI, movePendingToMasterAPI, deletePendingEntryAPI } from '../../redux/api/entriesAPI';
-import { useDispatch } from 'react-redux';
-import moment from 'moment';
-import * as XLSX from 'xlsx';
+import React, { useEffect, useState, useMemo } from 'react'
+import { message } from 'antd'
+import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
+import { getPendingEntriesAPI, movePendingToMasterAPI, deletePendingEntryAPI } from '../../redux/api/entriesAPI'
+import { useDispatch } from 'react-redux'
+import moment from 'moment'
+import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 
-const { Search } = Input;
-const { Option } = Select;
-const { RangePicker } = DatePicker;
+import PageTitle from '../../Core/Components/PageTitle'
+import FilterBar from '../../Core/Components/FilterBar'
+import DataTable from '../../Core/Components/DataTable'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
+import InfoBox from '../../Core/Components/InfoBox'
 
 const PendingEntriesView = () => {
-  const dispatch = useDispatch();
-  const [pendingEntries, setPendingEntries] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [processingId, setProcessingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const dispatch = useDispatch()
+  const [pendingEntries, setPendingEntries] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [processingId, setProcessingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [searchText, setSearchText] = useState('')
+  const [dealerFilter, setDealerFilter] = useState(null)
+  const [dateRange, setDateRange] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  // Filter states
-  const [searchText, setSearchText] = useState('');
-  const [dealerFilter, setDealerFilter] = useState(null);
-  const [dateRange, setDateRange] = useState(null);
+  // ─── Data ───
 
-  useEffect(() => {
-    fetchPendingEntries();
-  }, []);
+  useEffect(() => { fetchPendingEntries() }, [])
 
   const fetchPendingEntries = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await dispatch(getPendingEntriesAPI()).unwrap();
-      const entries = response.pendingEntries || [];
-
-      // Sort entries: processable entries first, then by date (newest first)
-      const sortedEntries = [...entries].sort((a, b) => {
-        const aStock = a.inHouseStock || 0;
-        const aQuantity = a.quantity || 0;
-        const bStock = b.inHouseStock || 0;
-        const bQuantity = b.quantity || 0;
-
-        const aCanProcess = aStock >= aQuantity;
-        const bCanProcess = bStock >= bQuantity;
-
-        // If one can be processed and the other can't, prioritize the processable one
-        if (aCanProcess !== bCanProcess) {
-          return bCanProcess ? 1 : -1; // bCanProcess true means b should come first
-        }
-
-        // If both can be processed or both can't, sort by date (newest first, using IST)
-        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at || 0).utcOffset('+05:30');
-        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at || 0).utcOffset('+05:30');
-        return bDate - aDate; // Newest first
-      });
-
-      setPendingEntries(sortedEntries);
+      const response = await dispatch(getPendingEntriesAPI()).unwrap()
+      const entries = response.pendingEntries || []
+      const sorted = [...entries].sort((a, b) => {
+        const aCanProcess = (a.inHouseStock || 0) >= (a.quantity || 0)
+        const bCanProcess = (b.inHouseStock || 0) >= (b.quantity || 0)
+        if (aCanProcess !== bCanProcess) return bCanProcess ? 1 : -1
+        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at || 0)
+        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at || 0)
+        return bDate - aDate
+      })
+      setPendingEntries(sorted)
     } catch (error) {
-      console.error('Error fetching pending entries:', error);
-      message.error('Failed to load pending entries');
+      message.error('Failed to load pending entries')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleProcessEntry = async (entryId) => {
-    setProcessingId(entryId);
-    try {
-      const response = await movePendingToMasterAPI({ pendingEntryId: entryId });
-      if (response.status === 200) {
-        message.success('Entry processed successfully! Stock is now available.');
-        fetchPendingEntries(); // Refresh the list
-      } else {
-        message.error(response.data?.message || 'Failed to process entry');
-      }
-    } catch (error) {
-      console.error('Error processing entry:', error);
-      message.error('Insufficient stock or error processing entry');
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleDeleteEntry = async (entryId) => {
-    setDeletingId(entryId);
-    try {
-      // Show confirmation dialog
-      const confirmed = window.confirm('Are you sure you want to delete this pending entry?');
-
-      if (confirmed) {
-        // Call the real API
-        const response = await deletePendingEntryAPI({ pendingEntryId: entryId });
-
-        if (response.status === 200) {
-          message.success('Pending entry deleted successfully!');
-          fetchPendingEntries(); // Refresh the list to get updated data
-        } else {
-          message.error(response.data?.message || 'Failed to delete entry');
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-      message.error(error.response?.data?.message || 'Failed to delete entry');
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  // Extract unique dealers for the filter
   const uniqueDealers = useMemo(() => {
-    const dealers = pendingEntries.map(entry => entry.dealerName).filter(Boolean);
-    return [...new Set(dealers)].sort();
-  }, [pendingEntries]);
+    const dealers = [...new Set(pendingEntries.map(e => e.dealerName).filter(Boolean))]
+    return dealers.sort().map(d => ({ label: d, value: d }))
+  }, [pendingEntries])
 
-  // Filtering logic
   const filteredEntries = useMemo(() => {
     return pendingEntries.filter(entry => {
-      // Search text filter (Dealer or Product)
-      const matchesSearch = !searchText || 
-        (entry.dealerName?.toLowerCase().includes(searchText.toLowerCase())) ||
-        (entry.productName?.toLowerCase().includes(searchText.toLowerCase())) ||
-        (entry.id?.toString().includes(searchText));
-
-      // Dealer filter
-      const matchesDealer = !dealerFilter || entry.dealerName === dealerFilter;
-
-      // Date range filter
-      let matchesDate = true;
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset('+05:30');
-        
-        // Explicitly convert to moment and set to start/end of day to be absolutely sure
-        const startDate = moment(dateRange[0].valueOf()).startOf('day');
-        const endDate = moment(dateRange[1].valueOf()).endOf('day');
-        
-        matchesDate = entryDate.isSameOrAfter(startDate) && entryDate.isSameOrBefore(endDate);
+      const searchLower = searchText.toLowerCase().trim()
+      if (searchLower) {
+        const matches =
+          (entry.dealerName && entry.dealerName.toLowerCase().includes(searchLower)) ||
+          (entry.productName && entry.productName.toLowerCase().includes(searchLower)) ||
+          (entry.id && entry.id.toString().includes(searchLower))
+        if (!matches) return false
       }
+      if (dealerFilter && entry.dealerName !== dealerFilter) return false
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+        const start = moment(dateRange[0].valueOf()).startOf('day')
+        const end = moment(dateRange[1].valueOf()).endOf('day')
+        if (!entryDate.isSameOrAfter(start) || !entryDate.isSameOrBefore(end)) return false
+      }
+      return true
+    })
+  }, [pendingEntries, searchText, dealerFilter, dateRange])
 
-      return matchesSearch && matchesDealer && matchesDate;
-    });
-  }, [pendingEntries, searchText, dealerFilter, dateRange]);
+  const paginatedEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredEntries.slice(start, start + pageSize)
+  }, [filteredEntries, currentPage, pageSize])
 
-  const handleClearFilters = () => {
-    setSearchText('');
-    setDealerFilter(null);
-    setDateRange(null);
-    message.info('Filters cleared');
-  };
+  // ─── Handlers ───
+
+  const handleProcessEntry = async (entryId) => {
+    setProcessingId(entryId)
+    try {
+      const response = await movePendingToMasterAPI({ pendingEntryId: entryId })
+      if (response.status === 200) { message.success('Entry processed! Stock is now available.'); fetchPendingEntries() }
+      else message.error(response.data?.message || 'Failed to process entry')
+    } catch (error) { message.error('Insufficient stock or error processing entry') }
+    finally { setProcessingId(null) }
+  }
+
+  const handleDeleteEntry = async (entryId) => {
+    setDeletingId(entryId)
+    try {
+      const response = await deletePendingEntryAPI({ pendingEntryId: entryId })
+      if (response.status === 200) { message.success('Pending entry deleted!'); fetchPendingEntries() }
+      else message.error(response.data?.message || 'Failed to delete entry')
+    } catch (error) { message.error(error.response?.data?.message || 'Failed to delete entry') }
+    finally { setDeletingId(null) }
+  }
+
+  // ─── Exports ───
 
   const exportToExcel = () => {
-    if (filteredEntries.length === 0) {
-      message.warning('No entries to export');
-      return;
-    }
-
-    try {
-      const excelData = filteredEntries.map((entry, index) => ({
-        'S.No': index + 1,
-        'Entry ID': entry.id,
-        'Date': entry.dateIST ? moment(entry.dateIST).format('DD MMM YYYY hh:mm A') : (entry.date ? moment.utc(entry.date).utcOffset('+05:30').format('DD MMM YYYY hh:mm A') : 'N/A'),
-        'Dealer': entry.dealerName || 'N/A',
-        'Product': entry.productName || 'N/A',
-        'Quantity': entry.quantity || 0,
-        'Current Stock': entry.inHouseStock || 0,
-        'Status': entry.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : entry.pendingStatus
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Pending Entries');
-      XLSX.writeFile(wb, `Pending_Entries_${moment().format('DD-MM-YYYY_HHmm')}.xlsx`);
-      message.success('Excel exported successfully');
-    } catch (error) {
-      console.error('Excel Export Error:', error);
-      message.error('Failed to export Excel');
-    }
-  };
+    if (filteredEntries.length === 0) { message.warning('No entries to export'); return }
+    const data = filteredEntries.map((e, i) => ({
+      'S.No': i + 1, 'Entry ID': e.id,
+      Date: e.dateIST ? moment(e.dateIST).format('DD MMM YYYY hh:mm A') : 'N/A',
+      Dealer: e.dealerName || 'N/A', Product: e.productName || 'N/A',
+      Quantity: e.quantity || 0, 'Current Stock': e.inHouseStock || 0,
+      Status: e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus,
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Pending Entries')
+    XLSX.writeFile(wb, `Pending_Entries_${moment().format('DD-MM-YYYY_HHmm')}.xlsx`)
+    message.success('Excel exported!')
+  }
 
   const exportToPDF = () => {
-    if (filteredEntries.length === 0) {
-      message.warning('No entries to export');
-      return;
+    if (filteredEntries.length === 0) { message.warning('No entries to export'); return }
+    const grouped = filteredEntries.reduce((g, e) => { const d = e.dealerName || 'Unknown'; if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
+    let html = `<html><head><style>body{font-family:Arial,sans-serif;font-size:14px;padding:20px}h1{text-align:center;color:#333;margin-bottom:30px}.dealer-header{background:#f0f2f5;padding:10px;font-weight:bold;border:1px solid #d9d9d9;margin-bottom:5px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d9d9d9;padding:8px;text-align:left}th{background:#fafafa;font-weight:bold}@media print{@page{margin:15mm}}</style></head><body><h1>Pending Entries Report - ${moment().format('DD MMM YYYY')}</h1>`
+    Object.entries(grouped).forEach(([dealer, entries]) => {
+      html += `<div class="dealer-header">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Stock</th><th>Status</th></tr></thead><tbody>`
+      entries.forEach(e => {
+        const date = e.dateIST ? moment(e.dateIST).format('DD MMM YYYY') : 'N/A'
+        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td style="color:${(e.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${e.inHouseStock || 0}</td><td>${e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus}</td></tr>`
+      })
+      html += '</tbody></table>'
+    })
+    html += '</body></html>'
+    const w = window.open('', '_blank')
+    w.document.write(html); w.document.close(); w.onload = () => w.print()
+    message.success('PDF print dialog opened')
+  }
+
+  const exportMenuItems = [
+    { key: 'pdf', label: 'PDF Export', icon: <FilePdfOutlined />, onClick: exportToPDF },
+    { key: 'excel', label: 'Excel Export', icon: <FileExcelOutlined />, onClick: exportToExcel },
+  ]
+
+  // ─── Stock Status Helper ───
+
+  const getStockStatus = (record) => {
+    const stock = record.inHouseStock || 0
+    const qty = record.quantity || 0
+    if (stock >= qty) {
+      return <StatusBadge variant="paid" subText={`Available: ${stock}`}>In Stock</StatusBadge>
     }
-
-    try {
-      // Group by dealer
-      const groupedByDealer = filteredEntries.reduce((groups, entry) => {
-        const dealer = entry.dealerName || 'Unknown Dealer';
-        if (!groups[dealer]) groups[dealer] = [];
-        groups[dealer].push(entry);
-        return groups;
-      }, {});
-
-      let htmlContent = `
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; font-size: 14px; padding: 20px; }
-              h1 { text-align: center; color: #333; margin-bottom: 30px; }
-              .dealer-section { margin-bottom: 25px; page-break-inside: avoid; }
-              .dealer-header { background: #f0f2f5; padding: 10px; font-weight: bold; border: 1px solid #d9d9d9; margin-bottom: 5px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              th, td { border: 1px solid #d9d9d9; padding: 8px; text-align: left; }
-              th { background: #fafafa; font-weight: bold; }
-              .text-center { text-align: center; }
-              @media print {
-                @page { margin: 15mm; }
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Pending Entries Report - ${moment().format('DD MMM YYYY')}</h1>
-      `;
-
-      Object.entries(groupedByDealer).forEach(([dealer, entries]) => {
-        htmlContent += `
-          <div class="dealer-section">
-            <div class="dealer-header">${dealer}</div>
-            <table>
-              <thead>
-                <tr>
-                  <th width="15%">Date</th>
-                  <th width="45%">Product</th>
-                  <th width="10%" class="text-center">Qty</th>
-                  <th width="15%" class="text-center">Stock</th>
-                  <th width="15%">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-        `;
-
-        entries.forEach(entry => {
-          const date = entry.dateIST ? moment(entry.dateIST).format('DD MMM YYYY') : (entry.date ? moment.utc(entry.date).utcOffset('+05:30').format('DD MMM YYYY') : 'N/A');
-          htmlContent += `
-            <tr>
-              <td>${date}</td>
-              <td>${entry.productName || 'N/A'}</td>
-              <td class="text-center">${entry.quantity || 0}</td>
-              <td class="text-center" style="color: ${(entry.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${entry.inHouseStock || 0}</td>
-              <td>${entry.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : entry.pendingStatus}</td>
-            </tr>
-          `;
-        });
-
-        htmlContent += `</tbody></table></div>`;
-      });
-
-      htmlContent += `</body></html>`;
-
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-      message.success('PDF print dialog opened');
-    } catch (error) {
-      console.error('PDF Export Error:', error);
-      message.error('Failed to export PDF');
+    if (stock > 0) {
+      return <StatusBadge variant="pending" subText={`Available: ${stock}`}>Insufficient</StatusBadge>
     }
-  };
+    return <StatusBadge variant="outofstock" subText={`Available: ${stock}`}>Out of Stock</StatusBadge>
+  }
 
-  const exportMenu = {
-    items: [
-      {
-        key: 'excel',
-        label: 'Export to Excel',
-        icon: <FileExcelOutlined style={{ color: '#52c41a' }} />,
-        onClick: exportToExcel
-      },
-      {
-        key: 'pdf',
-        label: 'Export to PDF',
-        icon: <FilePdfOutlined style={{ color: '#ff4d4f' }} />,
-        onClick: exportToPDF
-      }
-    ]
-  };
+  // ─── Columns ───
 
   const columns = [
     {
-      title: 'Entry ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 100,
-      fixed: 'left',
+      key: 'id', dataIndex: 'id', title: 'Entry ID',
+      render: (val) => <span style={{ fontWeight: 500 }}>{val}</span>,
     },
     {
-      title: 'Date',
-      dataIndex: 'date',
-      key: 'date',
-      width: 150,
-      render: (date, record) => {
-        if (!date) return 'N/A'
-        // Use IST date from backend if available, otherwise convert to IST
-        const istDate = record.dateIST ? moment(record.dateIST) : moment.utc(date).utcOffset('+05:30')
-        return istDate.format('DD MMM YYYY HH:mm')
-      }
-    },
-    {
-      title: 'Dealer',
-      dataIndex: 'dealerName',
-      key: 'dealerName',
-      width: 200,
-    },
-    {
-      title: 'Product',
-      dataIndex: 'productName',
-      key: 'productName',
-      width: 250,
-    },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 100,
-      align: 'center',
-    },
-    {
-      title: 'Current Stock',
-      dataIndex: 'inHouseStock',
-      key: 'inHouseStock',
-      width: 120,
-      align: 'center',
-      render: (stock) => {
-        const stockValue = stock || 0
-        return (
-          <span style={{
-            color: stockValue > 0 ? '#52c41a' : '#ff4d4f',
-            fontWeight: 'bold'
-          }}>
-            {stockValue}
-          </span>
-        )
-      }
-    },
-    {
-      title: 'Status',
-      dataIndex: 'pendingStatus',
-      key: 'pendingStatus',
-      width: 150,
-      render: status => (
-        <Tag icon={<ClockCircleOutlined />} color='processing'>
-          {status === 'awaiting_stock' ? 'Awaiting Stock' : status}
-        </Tag>
-      )
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      width: 200,
-      fixed: 'right',
+      key: 'date', dataIndex: 'dateIST', title: 'Date & Time',
       render: (_, record) => {
-        const currentStock = record.inHouseStock || 0
-        const requiredQuantity = record.quantity || 0
-        const hasEnoughStock = currentStock >= requiredQuantity
-
+        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at)
         return (
-          <Space>
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              loading={processingId === record.id}
-              disabled={!hasEnoughStock}
-              onClick={() => handleProcessEntry(record.id)}
-              title={hasEnoughStock ? 'Process this entry' : `Insufficient stock: need ${requiredQuantity}, have ${currentStock}`}
-            >
-              Process
-            </Button>
-            <Button
-              type="primary"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              loading={deletingId === record.id}
-              onClick={() => handleDeleteEntry(record.id)}
-            >
-              Delete
-            </Button>
-          </Space>
+          <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+            {date.format('DD MMM YYYY')}<br />
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>{date.format('hh:mm A')}</span>
+          </div>
         )
       },
     },
-  ];
+    { key: 'dealer', dataIndex: 'dealerName', title: 'Dealers' },
+    { key: 'product', dataIndex: 'productName', title: 'Product' },
+    { key: 'quantity', dataIndex: 'quantity', title: 'Quantity', align: 'center' },
+    {
+      key: 'stock', title: 'Stock', align: 'center',
+      render: (_, record) => getStockStatus(record),
+    },
+    {
+      key: 'actions', title: 'Actions', align: 'center',
+      render: (_, record) => {
+        const hasEnoughStock = (record.inHouseStock || 0) >= (record.quantity || 0)
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <ProcessButton
+              onClick={() => handleProcessEntry(record.id)}
+              loading={processingId === record.id}
+              disabled={!hasEnoughStock}
+            />
+            <DeleteButton
+              onConfirm={() => handleDeleteEntry(record.id)}
+              loading={deletingId === record.id}
+            />
+          </div>
+        )
+      },
+    },
+  ]
+
+  // ─── Custom Filter Bar (with DateRange instead of single date) ───
+
+  // Uses shared FilterBar component
+
+  // ─── Render ───
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">⏳ Pending Entries</h2>
-          <p className="text-gray-600 mt-1">
-            Entries awaiting stock availability (not in production)
-          </p>
-        </div>
-        <Space wrap>
-          <Dropdown menu={exportMenu} trigger={['click']}>
-            <Button icon={<ExportOutlined />} type="default">
-              Export <DownOutlined />
-            </Button>
-          </Dropdown>
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={fetchPendingEntries} 
-            loading={loading}
-          >
-            Refresh
-          </Button>
-          <Tag color="orange" style={{ fontSize: '14px', padding: '4px 12px', borderRadius: '4px' }}>
-            {filteredEntries.length} / {pendingEntries.length} Shown
-          </Tag>
-        </Space>
+    <div style={{ width: '100%' }}>
+      <PageTitle>Pending Orders</PageTitle>
+
+      <div style={{ marginBottom: 8, fontFamily: "'Inter', sans-serif", fontSize: 14, color: '#f55e34', fontWeight: 500 }}>
+        Total {filteredEntries.length} entries
       </div>
 
-      {/* Filter Card */}
-      <Card className="mb-6 shadow-sm border-gray-200" bodyStyle={{ padding: '16px' }}>
-        <div className="flex flex-wrap gap-4 items-center">
-          <div style={{ flex: '1 1 300px' }}>
-            <span className="block text-xs font-semibold text-gray-500 uppercase mb-1">Search</span>
-            <Search
-              placeholder="Search Dealer, Product or ID..."
-              allowClear
-              enterButton={<SearchOutlined />}
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              onSearch={setSearchText}
-              style={{ width: '100%' }}
-            />
-          </div>
-          
-          <div style={{ flex: '1 1 200px' }}>
-            <span className="block text-xs font-semibold text-gray-500 uppercase mb-1">Dealer</span>
-            <Select
-              showSearch
-              placeholder="Filter by Dealer"
-              style={{ width: '100%' }}
-              value={dealerFilter}
-              onChange={setDealerFilter}
-              allowClear
-            >
-              {uniqueDealers.map(dealer => (
-                <Option key={dealer} value={dealer}>{dealer}</Option>
-              ))}
-            </Select>
-          </div>
-
-          <div style={{ flex: '1 1 280px' }}>
-            <span className="block text-xs font-semibold text-gray-500 uppercase mb-1">Date Range</span>
-            <RangePicker 
-              style={{ width: '100%' }} 
-              value={dateRange}
-              onChange={setDateRange}
-              format="DD-MM-YYYY"
-            />
-          </div>
-
-          <div className="pt-5">
-            <Button 
-              icon={<ClearOutlined />} 
-              onClick={handleClearFilters}
-              disabled={!searchText && !dealerFilter && !dateRange}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Table
-        columns={columns}
-        dataSource={filteredEntries}
-        rowKey="id"
+      <FilterBar
+        searchText={searchText}
+        onSearchChange={(val) => { setSearchText(val); setCurrentPage(1) }}
+        selectedDealer={dealerFilter}
+        onDealerChange={(val) => { setDealerFilter(val); setCurrentPage(1) }}
+        dealerOptions={uniqueDealers}
+        dateRange={dateRange}
+        onDateRangeChange={(dates) => { setDateRange(dates); setCurrentPage(1) }}
+        onRefresh={fetchPendingEntries}
         loading={loading}
-        scroll={{ x: 1600 }}
-        className="shadow-sm rounded-lg overflow-hidden"
-        pagination={{
-          pageSize: 20,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} entries`,
-        }}
+        exportMenuItems={exportMenuItems}
       />
 
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-        <h3 className="font-semibold mb-2 text-blue-800 flex items-center gap-2">
-          <FilterOutlined /> 📌 Information
-        </h3>
-        <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 ml-2">
-          <li>These entries are waiting for stock to become available</li>
-          <li>No production plans exist for these products currently</li>
-          <li>Click "Process" when stock is available to move to entry_master</li>
-          <li>System will automatically check stock availability before processing</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+      <DataTable
+        columns={columns}
+        data={paginatedEntries}
+        rowKey="id"
+        loading={loading}
+        emptyText="No pending entries found"
+        currentPage={currentPage}
+        pageSize={pageSize}
+        totalItems={filteredEntries.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+      />
 
-export default PendingEntriesView;
+      <InfoBox
+        title="Information"
+        items={[
+          'These entries are waiting for stock to become available',
+          'No production plans exist for these products currently',
+          'Click "Process" when stock is available to move to entry_master',
+          'System will automatically check stock availability before processing',
+        ]}
+      />
+    </div>
+  )
+}
+
+export default PendingEntriesView

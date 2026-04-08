@@ -1,613 +1,293 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import {
-  Card,
-  Table,
-  Tag,
-  Button,
-  Input,
-  Select,
-  Space,
-  Typography,
-  Row,
-  Col,
-  Statistic,
-  Empty,
-  message,
-  Modal,
-  Form,
-  InputNumber
-} from 'antd'
-import {
-  SearchOutlined,
-  ReloadOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ExportOutlined,
-  DeleteOutlined
-} from '@ant-design/icons'
+import { message, Modal, Form, InputNumber, Select } from 'antd'
+import { ExportOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { client } from '../../Utils/axiosClient'
 
-const { Title, Text } = Typography
-const { Option } = Select
+import PageTitle from '../../Core/Components/PageTitle'
+import DataTable from '../../Core/Components/DataTable'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
+import InfoBox from '../../Core/Components/InfoBox'
 
 const InventoryRequests = () => {
   const [loading, setLoading] = useState(false)
   const [requests, setRequests] = useState([])
-  const [filteredRequests, setFilteredRequests] = useState([])
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false)
-  const [form] = Form.useForm()
-
-  // Filter states
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [form] = Form.useForm()
 
-  useEffect(() => {
-    fetchInventoryRequests()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [searchText, statusFilter, requests])
+  useEffect(() => { fetchInventoryRequests() }, [])
 
   const fetchInventoryRequests = async () => {
     setLoading(true)
     try {
       const response = await client.get('/production/inventory-requests')
       setRequests(response.data)
-      setFilteredRequests(response.data)
     } catch (error) {
       message.error('Failed to fetch inventory requests')
-      console.error('Error fetching requests:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const applyFilters = () => {
+  const filteredRequests = useMemo(() => {
     let filtered = [...requests]
-
-    // Search filter
     if (searchText) {
       const search = searchText.toLowerCase()
-      filtered = filtered.filter(
-        req =>
-          String(req.jobCardId || '').includes(searchText) ||
-          String(req.id || '').includes(searchText) ||
-          (req.alloyName || '').toLowerCase().includes(search) ||
-          (req.productName || '').toLowerCase().includes(search)
+      filtered = filtered.filter(req =>
+        String(req.jobCardId || '').includes(searchText) ||
+        String(req.id || '').includes(searchText) ||
+        (req.alloyName || '').toLowerCase().includes(search) ||
+        (req.productName || '').toLowerCase().includes(search)
       )
     }
+    if (statusFilter !== 'all') filtered = filtered.filter(req => req.status === statusFilter)
+    return filtered
+  }, [requests, searchText, statusFilter])
 
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(req => req.status === statusFilter)
-    }
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRequests.slice(start, start + pageSize)
+  }, [filteredRequests, currentPage, pageSize])
 
-    setFilteredRequests(filtered)
-  }
+  const stats = useMemo(() => ({
+    total: requests.length,
+    pending: requests.filter(r => r.status === 'pending').length,
+    partial: requests.filter(r => r.status === 'partial').length,
+    completed: requests.filter(r => r.status === 'completed').length,
+  }), [requests])
 
-  const getStatusTag = status => {
-    const statusConfig = {
-      pending: { color: 'orange', icon: <ClockCircleOutlined /> },
-      partial: { color: 'blue', icon: <ClockCircleOutlined /> },
-      completed: { color: 'green', icon: <CheckCircleOutlined /> }
-    }
-    const config = statusConfig[status] || { color: 'default', icon: null }
-    return (
-      <Tag color={config.color} icon={config.icon}>
-        {status.toUpperCase()}
-      </Tag>
-    )
-  }
+  // ─── Handlers ───
 
-  const handleMarkAsDone = record => {
+  const handleMarkAsDone = (record) => {
     setSelectedRequest(record)
-    form.setFieldsValue({
-      receivedQuantity: record.quantityReceived || 0
-    })
+    form.setFieldsValue({ receivedQuantity: record.quantityReceived || 0 })
     setIsModalVisible(true)
   }
 
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
-      const { receivedQuantity } = values
-
-      await client.put(`/production/inventory-requests/${selectedRequest.id}`, {
-        quantityReceived: receivedQuantity
-      })
-
-      message.success(
-        `Job ${selectedRequest.jobCardId} updated - Received: ${receivedQuantity} units`
-      )
-      setIsModalVisible(false)
-      setSelectedRequest(null)
-      form.resetFields()
+      await client.put(`/production/inventory-requests/${selectedRequest.id}`, { quantityReceived: values.receivedQuantity })
+      message.success(`Job ${selectedRequest.jobCardId} updated - Received: ${values.receivedQuantity} units`)
+      setIsModalVisible(false); setSelectedRequest(null); form.resetFields()
       fetchInventoryRequests()
     } catch (error) {
       message.error('Failed to update quantity')
-      console.error('Error updating quantity:', error)
     }
   }
 
-  const handleModalCancel = () => {
-    setIsModalVisible(false)
-    setSelectedRequest(null)
-    form.resetFields()
-  }
-
-  const handleDelete = record => {
-    setSelectedRequest(record)
-    setIsDeleteModalVisible(true)
-  }
-
-  const handleDeleteConfirm = async () => {
+  const handleDelete = async (record) => {
     try {
-      await client.delete(`/production/inventory-requests/${selectedRequest.id}`)
-
-      message.success(
-        `Inventory request for Job ${selectedRequest.jobCardId} deleted successfully`
-      )
-      setIsDeleteModalVisible(false)
-      setSelectedRequest(null)
+      await client.delete(`/production/inventory-requests/${record.id}`)
+      message.success(`Request for Job ${record.jobCardId} deleted`)
       fetchInventoryRequests()
     } catch (error) {
       message.error('Failed to delete inventory request')
-      console.error('Error deleting request:', error)
     }
-  }
-
-  const handleDeleteCancel = () => {
-    setIsDeleteModalVisible(false)
-    setSelectedRequest(null)
   }
 
   const handleExportPDF = () => {
+    const incompleteRequests = requests.filter(r => r.status !== 'completed')
+    if (incompleteRequests.length === 0) { message.info('No incomplete requests to export'); return }
+    const groupedData = incompleteRequests.reduce((acc, req) => {
+      if (acc[req.alloyName]) acc[req.alloyName].quantityRequested += req.quantityRequested
+      else acc[req.alloyName] = { alloyName: req.alloyName, quantityRequested: req.quantityRequested }
+      return acc
+    }, {})
+    const exportData = Object.values(groupedData).sort((a, b) => a.alloyName.localeCompare(b.alloyName))
     try {
-      // Filter incomplete requests (not completed)
-      const incompleteRequests = requests.filter(r => r.status !== 'completed')
-
-      if (incompleteRequests.length === 0) {
-        message.info('No incomplete requests to export')
-        return
-      }
-
-      // Group by alloy name and sum quantities
-      const groupedData = incompleteRequests.reduce((acc, request) => {
-        const key = request.alloyName
-        if (acc[key]) {
-          acc[key].quantityRequested += request.quantityRequested
-        } else {
-          acc[key] = {
-            alloyName: request.alloyName,
-            quantityRequested: request.quantityRequested
-          }
-        }
-        return acc
-      }, {})
-
-      // Convert to array and sort by alloy name
-      const exportData = Object.values(groupedData).sort((a, b) =>
-        a.alloyName.localeCompare(b.alloyName)
-      )
-
-      // Create PDF
       const doc = new jsPDF()
-
-      // Add title
-      doc.setFontSize(18)
-      doc.text('Inventory Request', 14, 20)
-
-      // Add date
-      doc.setFontSize(10)
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28)
-
-      // Prepare table data
-      const tableData = exportData.map(item => [
-        item.alloyName,
-        item.quantityRequested.toString(),
-        '' // Blank for manual entry
-      ])
-
-      // Calculate column widths
-      const pageWidth = doc.internal.pageSize.getWidth()
-      const margins = 28 // 14 on each side
-      const availableWidth = pageWidth - margins
-      const alloyNameWidth = availableWidth * 0.7
-      const qtyWidth = (availableWidth * 0.3) / 2
-
-      // Generate table using autoTable
+      doc.setFontSize(18); doc.text('Inventory Request', 14, 20)
+      doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28)
+      const tableData = exportData.map(item => [item.alloyName, item.quantityRequested.toString(), ''])
       if (typeof doc.autoTable === 'function') {
-        doc.autoTable({
-          startY: 35,
-          head: [['Alloy Name', 'Qty Required', 'Qty Received']],
-          body: tableData,
-          theme: 'grid',
-          headStyles: {
-            fillColor: [24, 144, 255],
-            textColor: 255,
-            fontSize: 11,
-            fontStyle: 'bold',
-            halign: 'center'
-          },
-          bodyStyles: {
-            fontSize: 10
-          },
-          columnStyles: {
-            0: { cellWidth: alloyNameWidth, halign: 'left' },
-            1: { cellWidth: qtyWidth, halign: 'center' },
-            2: {
-              cellWidth: qtyWidth,
-              halign: 'center',
-              fillColor: [245, 245, 245]
-            }
-          },
-          margin: { left: 14, right: 14 }
-        })
-      } else {
-        // Fallback if autoTable is not available
-        console.error('autoTable is not available on jsPDF instance')
-        throw new Error('PDF table generation failed - autoTable not found')
+        doc.autoTable({ startY: 35, head: [['Alloy Name', 'Qty Required', 'Qty Received']], body: tableData, theme: 'grid', headStyles: { fillColor: [24, 144, 255], textColor: 255, fontSize: 11, fontStyle: 'bold', halign: 'center' }, bodyStyles: { fontSize: 10 }, margin: { left: 14, right: 14 } })
       }
-
-      // Add footer
-      const pageCount = doc.internal.getNumberOfPages()
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i)
-        doc.setFontSize(8)
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        )
-      }
-
-      // Save PDF
-      const fileName = `Inventory_Request_${
-        new Date().toISOString().split('T')[0]
-      }.pdf`
-      doc.save(fileName)
-
-      message.success(
-        `PDF exported successfully: ${exportData.length} unique alloys`
-      )
+      doc.save(`Inventory_Request_${new Date().toISOString().split('T')[0]}.pdf`)
+      message.success(`PDF exported: ${exportData.length} unique alloys`)
     } catch (error) {
       message.error('Failed to export PDF')
-      console.error('Error generating PDF:', error)
     }
   }
 
+  // ─── Status Helper ───
+
+  const getStatusBadge = (status) => {
+    if (status === 'completed') return <StatusBadge variant="paid">Completed</StatusBadge>
+    if (status === 'partial') return <StatusBadge variant="pending">Partial</StatusBadge>
+    return <StatusBadge variant="outofstock">Pending</StatusBadge>
+  }
+
+  // ─── Columns ───
+
   const columns = [
     {
-      title: 'Job ID',
-      dataIndex: 'jobCardId',
-      key: 'jobCardId',
-      width: 150,
-      sorter: (a, b) => a.jobCardId.localeCompare(b.jobCardId),
-      render: text => <Text strong>{text}</Text>
+      key: 'jobCardId', dataIndex: 'jobCardId', title: 'Job ID',
+      render: (val) => <span style={{ fontWeight: 600 }}>{val}</span>,
+    },
+    { key: 'alloyName', dataIndex: 'alloyName', title: 'Alloy Name' },
+    {
+      key: 'quantityRequested', dataIndex: 'quantityRequested', title: 'Qty Requested', align: 'center',
+      render: (val) => <span style={{ fontWeight: 600, color: '#4a90ff' }}>{val}</span>,
     },
     {
-      title: 'Alloy Name',
-      dataIndex: 'alloyName',
-      key: 'alloyName',
-      width: 300,
-      sorter: (a, b) => a.alloyName.localeCompare(b.alloyName),
-      render: text => <Text>{text}</Text>
-    },
-    {
-      title: 'Quantity Requested',
-      dataIndex: 'quantityRequested',
-      key: 'quantityRequested',
-      width: 150,
-      align: 'center',
-      sorter: (a, b) => a.quantityRequested - b.quantityRequested,
-      render: qty => (
-        <Text strong style={{ color: '#1890ff' }}>
-          {qty}
-        </Text>
-      )
-    },
-    {
-      title: 'Quantity Received',
-      dataIndex: 'quantityReceived',
-      key: 'quantityReceived',
-      width: 150,
-      align: 'center',
-      sorter: (a, b) => a.quantityReceived - b.quantityReceived,
-      render: (qty, record) => {
-        const percentage =
-          record.quantityRequested > 0
-            ? (qty / record.quantityRequested) * 100
-            : 0
-        const color =
-          percentage === 100
-            ? '#52c41a'
-            : percentage > 0
-            ? '#faad14'
-            : '#f5222d'
+      key: 'quantityReceived', dataIndex: 'quantityReceived', title: 'Qty Received', align: 'center',
+      render: (val, record) => {
+        const pct = record.quantityRequested > 0 ? (val / record.quantityRequested) * 100 : 0
+        const color = pct === 100 ? '#15803d' : pct > 0 ? '#f26c2d' : '#dc2626'
         return (
-          <Space direction='vertical' size={0} style={{ width: '100%' }}>
-            <Text strong style={{ color }}>
-              {qty}
-            </Text>
-            <Text type='secondary' style={{ fontSize: '12px' }}>
-              {percentage.toFixed(0)}%
-            </Text>
-          </Space>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontWeight: 600, color }}>{val}</span>
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>{pct.toFixed(0)}%</div>
+          </div>
         )
-      }
+      },
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      width: 180,
-      align: 'center',
-      fixed: 'right',
+      key: 'status', dataIndex: 'status', title: 'Status', align: 'center',
+      render: (status) => getStatusBadge(status),
+    },
+    {
+      key: 'actions', title: 'Actions', align: 'center',
       render: (_, record) => (
-        <Space>
-          <Button
-            type='primary'
-            icon={<CheckCircleOutlined />}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ProcessButton
             onClick={() => handleMarkAsDone(record)}
             disabled={record.status === 'completed'}
-            size='small'
           >
             Done
-          </Button>
+          </ProcessButton>
           {record.status !== 'completed' && (
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-              size='small'
-            >
-              Delete
-            </Button>
+            <DeleteButton onConfirm={() => handleDelete(record)} />
           )}
-        </Space>
-      )
-    }
+        </div>
+      ),
+    },
   ]
 
-  const stats = useMemo(() => {
-    const total = requests.length
-    const pending = requests.filter(r => r.status === 'pending').length
-    const partial = requests.filter(r => r.status === 'partial').length
-    const completed = requests.filter(r => r.status === 'completed').length
+  const exportMenuItems = [
+    { key: 'pdf', label: 'Export PDF', icon: <ExportOutlined />, onClick: handleExportPDF },
+  ]
 
-    return { total, pending, partial, completed }
-  }, [requests])
+  // ─── Render ───
 
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Header Statistics */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title='Total Requests'
-              value={stats.total}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title='Pending'
-              value={stats.pending}
-              valueStyle={{ color: '#faad14' }}
-              prefix={<ClockCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title='Partial'
-              value={stats.partial}
-              valueStyle={{ color: '#1890ff' }}
-              prefix={<ClockCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title='Completed'
-              value={stats.completed}
-              valueStyle={{ color: '#52c41a' }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <PageTitle>Inventory Requests</PageTitle>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+          <span style={{ background: '#f7d6ca', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+            {stats.pending} Pending
+          </span>
+          <span style={{ background: '#dbeafe', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+            {stats.partial} Partial
+          </span>
+          <span style={{ background: '#d9fae6', color: '#1a1a1a', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 1234, display: 'flex', alignItems: 'center', height: 32 }}>
+            {stats.completed} Completed
+          </span>
+        </div>
+      </div>
 
-      {/* Main Content Card */}
-      <Card
-        title={<Title level={4}>Inventory Requests</Title>}
-        extra={
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchInventoryRequests}>
-              Refresh
-            </Button>
-            <Button icon={<ExportOutlined />} onClick={handleExportPDF}>
-              Export PDF
-            </Button>
-          </Space>
-        }
-      >
-        {/* Filters */}
-        <Row gutter={16} style={{ marginBottom: '16px' }}>
-          <Col span={16}>
-            <Input
-              placeholder='Search by Job ID or Alloy Name...'
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col span={8}>
-            <Select
-              style={{ width: '100%' }}
-              placeholder='Filter by Status'
-              value={statusFilter}
-              onChange={setStatusFilter}
-            >
-              <Option value='all'>All Status</Option>
-              <Option value='pending'>Pending</Option>
-              <Option value='partial'>Partial</Option>
-              <Option value='completed'>Completed</Option>
-            </Select>
-          </Col>
-        </Row>
+      {/* Filter Bar */}
+      <div style={{
+        background: 'white', border: '1px solid #e5e5e5', borderRadius: 20,
+        padding: '12px 32px', marginBottom: 16,
+        boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1), 0px 1px 3px 0px rgba(0,0,0,0.1)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="text" placeholder="Search by Job ID or Alloy Name..."
+            value={searchText}
+            onChange={e => { setSearchText(e.target.value); setCurrentPage(1) }}
+            style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }}
+          />
+          <Select
+            style={{ width: 200, height: 40 }}
+            value={statusFilter}
+            onChange={(val) => { setStatusFilter(val); setCurrentPage(1) }}
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'partial', label: 'Partial' },
+              { value: 'completed', label: 'Completed' },
+            ]}
+            className="plati-filter-dealer"
+          />
+          <button onClick={fetchInventoryRequests} disabled={loading} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center',
+            background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400,
+            fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer', flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 16 }}>↻</span> Refresh
+          </button>
+          <button onClick={handleExportPDF} style={{
+            display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', minWidth: 100, justifyContent: 'center',
+            background: '#1a1a1a', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500,
+            fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', flexShrink: 0,
+          }}>
+            <ExportOutlined style={{ fontSize: 14 }} /> Export PDF
+          </button>
+        </div>
+      </div>
 
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredRequests}
-          loading={loading}
-          rowKey='id'
-          scroll={{ x: 1000 }}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: total => `Total ${total} requests`
-          }}
-          locale={{
-            emptyText: (
-              <Empty
-                description='No inventory requests found'
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
-            )
-          }}
-        />
-      </Card>
+      <DataTable
+        columns={columns}
+        data={paginatedRequests}
+        rowKey="id"
+        loading={loading}
+        emptyText="No inventory requests found"
+        currentPage={currentPage}
+        pageSize={pageSize}
+        totalItems={filteredRequests.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+      />
+
+      <InfoBox
+        title="Information"
+        items={[
+          'Inventory requests are created from job cards when materials are needed',
+          'Mark requests as "Done" when materials are received from inventory',
+          'Partial fulfillment is tracked automatically based on received quantity',
+          'Export PDF generates a grouped summary of pending alloy requirements',
+        ]}
+      />
 
       {/* Receive Quantity Modal */}
       <Modal
-        title='Update Received Quantity'
+        title="Update Received Quantity"
         open={isModalVisible}
         onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        okText='Save'
-        cancelText='Cancel'
-        width={500}
+        onCancel={() => { setIsModalVisible(false); setSelectedRequest(null); form.resetFields() }}
+        okText="Save" cancelText="Cancel" width={500}
       >
         {selectedRequest && (
-          <div style={{ marginBottom: '20px' }}>
-            <Row gutter={16}>
-              <Col span={24}>
-                <Text strong>Job ID: </Text>
-                <Text>{selectedRequest.jobCardId}</Text>
-              </Col>
-              <Col span={24} style={{ marginTop: '8px' }}>
-                <Text strong>Alloy: </Text>
-                <Text>{selectedRequest.alloyName}</Text>
-              </Col>
-              <Col span={24} style={{ marginTop: '8px' }}>
-                <Text strong>Quantity Requested: </Text>
-                <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
-                  {selectedRequest.quantityRequested}
-                </Text>
-              </Col>
-            </Row>
-          </div>
-        )}
-
-        <Form form={form} layout='vertical'>
-          <Form.Item
-            label='Received Quantity'
-            name='receivedQuantity'
-            rules={[
-              { required: true, message: 'Please enter received quantity' },
-              {
-                type: 'number',
-                min: 0,
-                message: 'Quantity must be greater than or equal to 0'
-              },
-              {
-                validator: (_, value) => {
-                  if (
-                    selectedRequest &&
-                    value > selectedRequest.quantityRequested
-                  ) {
-                    return Promise.reject(
-                      new Error(
-                        `Received quantity cannot exceed requested quantity (${selectedRequest.quantityRequested})`
-                      )
-                    )
-                  }
-                  return Promise.resolve()
-                }
-              }
-            ]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder='Enter received quantity'
-              min={0}
-              max={selectedRequest?.quantityRequested}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        title='Delete Inventory Request'
-        open={isDeleteModalVisible}
-        onOk={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        okText='Delete'
-        cancelText='Cancel'
-        okType='danger'
-        width={400}
-      >
-        {selectedRequest && (
-          <div>
-            <p>Are you sure you want to delete this inventory request?</p>
-            <div style={{
-              marginTop: '16px',
-              padding: '12px',
-              backgroundColor: '#fff2f0',
-              borderRadius: '6px',
-              border: '1px solid #ffccc7'
-            }}>
-              <Row gutter={8}>
-                <Col span={8}>
-                  <Text strong>Job ID:</Text>
-                </Col>
-                <Col span={16}>
-                  <Text>{selectedRequest.jobCardId}</Text>
-                </Col>
-              </Row>
-              <Row gutter={8} style={{ marginTop: '8px' }}>
-                <Col span={8}>
-                  <Text strong>Alloy:</Text>
-                </Col>
-                <Col span={16}>
-                  <Text>{selectedRequest.alloyName}</Text>
-                </Col>
-              </Row>
-              <Row gutter={8} style={{ marginTop: '8px' }}>
-                <Col span={8}>
-                  <Text strong>Quantity:</Text>
-                </Col>
-                <Col span={16}>
-                  <Text>{selectedRequest.quantityRequested}</Text>
-                </Col>
-              </Row>
+          <div style={{ marginBottom: 16, padding: 16, background: '#f9fafb', borderRadius: 12 }}>
+            <div style={{ fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#374151', lineHeight: 1.8 }}>
+              <div><strong>Job ID:</strong> {selectedRequest.jobCardId}</div>
+              <div><strong>Alloy:</strong> {selectedRequest.alloyName}</div>
+              <div><strong>Quantity Requested:</strong> <span style={{ color: '#4a90ff', fontWeight: 600 }}>{selectedRequest.quantityRequested}</span></div>
             </div>
           </div>
         )}
+        <Form form={form} layout="vertical">
+          <Form.Item label="Received Quantity" name="receivedQuantity"
+            rules={[
+              { required: true, message: 'Please enter received quantity' },
+              { type: 'number', min: 0, message: 'Must be >= 0' },
+              { validator: (_, value) => selectedRequest && value > selectedRequest.quantityRequested ? Promise.reject(`Cannot exceed ${selectedRequest.quantityRequested}`) : Promise.resolve() },
+            ]}
+          >
+            <InputNumber style={{ width: '100%' }} placeholder="Enter received quantity" min={0} max={selectedRequest?.quantityRequested} />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

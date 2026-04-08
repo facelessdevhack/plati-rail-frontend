@@ -850,9 +850,9 @@ const ProductionListingV2 = () => {
         }
       },
       {
-        title: 'Accepted/Rejected',
+        title: 'Accepted / Rework / Rejected',
         key: 'quantities',
-        width: 150,
+        width: 200,
         render: (_, jobCard) => (
           <div className='flex gap-2'>
             <div className='text-center'>
@@ -860,6 +860,12 @@ const ProductionListingV2 = () => {
                 {jobCard.acceptedQuantity || jobCard.accepted_quantity || 0}
               </div>
               <div className='text-xs text-gray-500'>Accepted</div>
+            </div>
+            <div className='text-center'>
+              <div className='font-semibold' style={{ color: '#7c3aed' }}>
+                {jobCard.reworkQuantity || jobCard.rework_quantity || 0}
+              </div>
+              <div className='text-xs text-gray-500'>Rework</div>
             </div>
             <div className='text-center'>
               <div className='text-red-600 font-semibold'>

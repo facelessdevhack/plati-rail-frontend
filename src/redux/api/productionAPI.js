@@ -9,7 +9,7 @@ const USE_MOCK_DATA = false
 export const getProductionPlansWithQuantities = createAsyncThunk(
   'production/getProductionPlansWithQuantities',
   async (
-    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null, alloyId = null, sortField = null, sortOrder = null },
+    { page = 1, limit = 10, search = '', urgent = '', status = '', dateRange = null, alloyId = null, sortField = null, sortOrder = null, parentPlanId = null },
     { rejectWithValue }
   ) => {
     try {
@@ -24,6 +24,7 @@ export const getProductionPlansWithQuantities = createAsyncThunk(
       if (alloyId) params.append('alloyId', alloyId.toString())
       if (sortField) params.append('sortField', sortField)
       if (sortOrder) params.append('sortOrder', sortOrder)
+      if (parentPlanId) params.append('parentPlanId', parentPlanId.toString())
       if (dateRange && dateRange.length === 2) {
         params.append('startDate', dateRange[0])
         params.append('endDate', dateRange[1])

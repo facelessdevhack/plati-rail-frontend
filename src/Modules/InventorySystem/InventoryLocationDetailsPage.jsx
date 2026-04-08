@@ -22,7 +22,8 @@ import {
   Modal,
   Form,
   InputNumber,
-  Radio
+  Radio,
+  Tooltip
 } from 'antd'
 import {
   EnvironmentOutlined,
@@ -43,6 +44,10 @@ import { client } from '../../Utils/axiosClient'
 import AddInventoryToLocationModal from './AddInventoryToLocationModal'
 import TransferInventoryModal from './TransferInventoryModal'
 import ManageStorageAreasModal from './ManageStorageAreasModal'
+import KpiCard from '../../Core/Components/KpiCard'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import DataTablePagination from '../../Core/Components/DataTablePagination'
+import PlatiFormStyles from '../../Core/Components/FormStyles'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -76,6 +81,12 @@ const InventoryLocationDetailsPage = () => {
   const [adjustmentLoading, setAdjustmentLoading] = useState(false)
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null)
   const [adjustmentForm] = Form.useForm()
+
+  // Tab table pagination
+  const [invPage, setInvPage] = useState(1)
+  const [invPageSize, setInvPageSize] = useState(15)
+  const [movPage, setMovPage] = useState(1)
+  const [movPageSize, setMovPageSize] = useState(15)
 
   const fetchLocationDetails = useCallback(async () => {
     setLoading(true)
@@ -500,306 +511,216 @@ const InventoryLocationDetailsPage = () => {
     )
   }
 
+  const paginatedInventory = filteredInventory.slice((invPage - 1) * invPageSize, invPage * invPageSize)
+  const paginatedMovements = movements.slice((movPage - 1) * movPageSize, movPage * movPageSize)
+
+  const renderInventoryTable = () => (
+    <div>
+      {/* Filter */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 24px' }}>
+        <input type="text" placeholder="Search product, ID, area..." value={searchText} onChange={e => setSearchText(e.target.value)}
+          style={{ flex: 1, height: 36, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 14px', fontSize: 14, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }} />
+        <Select placeholder="Product Type" allowClear value={productTypeFilter} onChange={setProductTypeFilter} style={{ width: 140, height: 36 }} className="plati-filter-dealer"
+          options={[{ value: 'alloy', label: 'Alloy' }, { value: 'tyre', label: 'Tyre' }]} />
+      </div>
+      {/* Table */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>
+              {['Product', 'Storage Location', 'Quantity', 'Reserved', 'Available', 'Cost/Unit', 'Total Value', 'Action'].map((h, i) => (
+                <th key={h} style={{
+                  background: '#f3f3f5', padding: '10px 14px', textAlign: ['Quantity', 'Reserved', 'Available', 'Action'].includes(h) ? 'center' : ['Cost/Unit', 'Total Value'].includes(h) ? 'right' : 'left',
+                  fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 13, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', whiteSpace: 'nowrap',
+                  paddingLeft: i === 0 ? 24 : undefined,
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {inventoryLoading ? (
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+            ) : paginatedInventory.length === 0 ? (
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No inventory items</td></tr>
+            ) : paginatedInventory.map(record => {
+              const details = record.productDetails || record.product_details
+              const productName = record.productType === 'alloy' ? (details?.productName || details?.product_name) : details?.brand ? `${details.brand} ${details.size || ''}`.trim() : null
+              return (
+                <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', paddingLeft: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: record.productType === 'alloy' ? '#dbeafe' : '#d9fae6', color: record.productType === 'alloy' ? '#4a90ff' : '#15803d' }}>{record.productType?.toUpperCase()}</span>
+                      <span style={{ fontSize: 12, color: '#9ca3af' }}>#{record.productId}</span>
+                    </div>
+                    {productName && <div style={{ fontWeight: 500, fontSize: 13 }}>{productName}</div>}
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
+                    {record.areaName ? <><div style={{ fontWeight: 500, fontSize: 13 }}>{record.areaName}</div>{record.positionName && <div style={{ fontSize: 11, color: '#9ca3af' }}>Position: {record.positionName}</div>}</> : <span style={{ color: '#9ca3af' }}>Default Area</span>}
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#4a90ff' }}>{record.quantity || 0}</td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 33554400, fontSize: 12, background: (record.reservedQuantity || 0) > 0 ? '#fff7ed' : '#f3f3f5', color: (record.reservedQuantity || 0) > 0 ? '#f26c2d' : '#9ca3af', border: `1px solid ${(record.reservedQuantity || 0) > 0 ? 'rgba(242,108,45,0.2)' : 'rgba(160,160,168,0.3)'}` }}>{record.reservedQuantity || 0}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 33554400, fontSize: 12, background: (record.availableQuantity || 0) > 0 ? '#d9fae6' : '#fef2f2', color: (record.availableQuantity || 0) > 0 ? '#15803d' : '#e53e3e', border: `1px solid ${(record.availableQuantity || 0) > 0 ? 'rgba(78,203,113,0.2)' : 'rgba(229,62,62,0.2)'}` }}>{record.availableQuantity || 0}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'right', fontSize: 13 }}>{record.costPerUnit ? `₹${parseFloat(record.costPerUnit).toLocaleString()}` : '-'}</td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'right', fontSize: 13, fontWeight: 500 }}>{record.totalValue ? `₹${parseFloat(record.totalValue).toLocaleString()}` : '-'}</td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                    <button onClick={() => openAdjustmentModal(record)} style={{ background: '#4a90ff', border: 'none', borderRadius: 10, padding: '5px 12px', fontSize: 12, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer' }}>Adjust</button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <DataTablePagination currentPage={invPage} totalItems={filteredInventory.length} pageSize={invPageSize} onPageChange={setInvPage} onPageSizeChange={s => { setInvPageSize(s); setInvPage(1) }} />
+    </div>
+  )
+
+  const renderMovementsTable = () => (
+    <div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>
+              {['Date/Time', 'Type', 'Product', 'Change', 'Prev → New', 'Reference', 'Notes'].map((h, i) => (
+                <th key={h} style={{
+                  background: '#f3f3f5', padding: '10px 14px', textAlign: h === 'Change' ? 'center' : 'left',
+                  fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 13, fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5', whiteSpace: 'nowrap',
+                  paddingLeft: i === 0 ? 24 : undefined,
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {movementsLoading ? (
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+            ) : paginatedMovements.length === 0 ? (
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No movements recorded</td></tr>
+            ) : paginatedMovements.map(record => {
+              const config = getMovementTypeConfig(record.movementType)
+              const isPositive = ['in', 'transfer_in', 'release'].includes(record.movementType)
+              return (
+                <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', paddingLeft: 24, whiteSpace: 'nowrap', fontSize: 12 }}>
+                    {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '-'}<br />
+                    <span style={{ color: '#9ca3af', fontSize: 11 }}>{record.createdAt ? new Date(record.createdAt).toLocaleTimeString() : ''}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 33554400, fontSize: 11, fontWeight: 500, color: '#1a1a1a',
+                      background: config.bgColor, border: `1px solid ${config.color === 'green' ? 'rgba(78,203,113,0.2)' : config.color === 'red' ? 'rgba(229,62,62,0.2)' : 'rgba(74,144,255,0.2)'}`,
+                      textTransform: 'capitalize',
+                    }}><span style={{ fontSize: 10 }}>{config.icon}</span> {config.label?.toLowerCase()}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
+                    <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: record.productType === 'alloy' ? '#dbeafe' : '#d9fae6', color: record.productType === 'alloy' ? '#4a90ff' : '#15803d' }}>{record.productType?.toUpperCase()}</span>
+                    <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4 }}>#{record.productId}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', textAlign: 'center', fontWeight: 700, fontSize: 14, color: isPositive ? '#4ecb71' : '#e53e3e' }}>
+                    {isPositive ? '+' : '-'}{Math.abs(record.quantityChange)}
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle', fontSize: 12, color: '#6b7280' }}>
+                    {record.previousQuantity} → {record.newQuantity}
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
+                    <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 500, background: '#f3f3f5', color: '#6b7280', textTransform: 'capitalize' }}>{(record.referenceType || 'N/A').replace(/_/g, ' ')}</span>
+                    {record.referenceId && <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>#{record.referenceId}</span>}
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
+                    <Tooltip title={record.notes || 'No notes'} placement="topLeft">
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 8, fontSize: 12,
+                        background: record.notes ? '#f9fafb' : 'transparent',
+                        border: record.notes ? '1px solid #e5e5e5' : 'none',
+                        color: record.notes ? '#374151' : '#d1d5db',
+                        width: '100%', overflow: 'hidden',
+                        cursor: record.notes ? 'pointer' : 'default',
+                        fontFamily: "'Inter', sans-serif",
+                      }}>
+                        {record.notes ? (
+                          <>
+                            <span style={{ flexShrink: 0 }}>📝</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.notes}</span>
+                          </>
+                        ) : '—'}
+                      </div>
+                    </Tooltip>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <DataTablePagination currentPage={movPage} totalItems={movements.length} pageSize={movPageSize} onPageChange={setMovPage} onPageSizeChange={s => { setMovPageSize(s); setMovPage(1) }} />
+    </div>
+  )
+
   const tabItems = [
-    {
-      key: 'inventory',
-      label: (
-        <span>
-          <BoxPlotOutlined />
-          Inventory ({inventory.length})
-        </span>
-      ),
-      children: (
-        <div>
-          {/* Filters */}
-          <Row gutter={16} style={{ marginBottom: '16px' }}>
-            <Col span={8}>
-              <Search
-                placeholder='Search by product name, ID, type, area...'
-                allowClear
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                prefix={<SearchOutlined />}
-              />
-            </Col>
-            <Col span={6}>
-              <Select
-                placeholder='Filter by product type'
-                allowClear
-                style={{ width: '100%' }}
-                value={productTypeFilter}
-                onChange={setProductTypeFilter}
-              >
-                <Option value='alloy'>Alloy</Option>
-                <Option value='tyre'>Tyre</Option>
-              </Select>
-            </Col>
-            <Col span={10} style={{ textAlign: 'right' }}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchInventory}
-                loading={inventoryLoading}
-              >
-                Refresh
-              </Button>
-            </Col>
-          </Row>
-
-          {/* Inventory Table */}
-          <Table
-            columns={inventoryColumns}
-            dataSource={filteredInventory}
-            rowKey='id'
-            loading={inventoryLoading}
-            pagination={{
-              pageSize: 15,
-              showSizeChanger: true,
-              showTotal: total => `Total ${total} items`
-            }}
-            locale={{
-              emptyText: (
-                <Empty description='No inventory items in this location' />
-              )
-            }}
-            size='middle'
-          />
-        </div>
-      )
-    },
-    {
-      key: 'movements',
-      label: (
-        <span>
-          <SwapOutlined />
-          Recent Movements ({movements.length})
-        </span>
-      ),
-      children: (
-        <div>
-          <Row style={{ marginBottom: '16px' }}>
-            <Col span={24} style={{ textAlign: 'right' }}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchMovements}
-                loading={movementsLoading}
-              >
-                Refresh
-              </Button>
-            </Col>
-          </Row>
-
-          <Table
-            columns={movementsColumns}
-            dataSource={movements}
-            rowKey='id'
-            loading={movementsLoading}
-            pagination={{
-              pageSize: 15,
-              showSizeChanger: true,
-              showTotal: total => `Total ${total} movements`
-            }}
-            locale={{
-              emptyText: (
-                <Empty description='No movements recorded for this location' />
-              )
-            }}
-            size='middle'
-          />
-        </div>
-      )
-    }
+    { key: 'inventory', children: renderInventoryTable() },
+    { key: 'movements', children: renderMovementsTable() },
   ]
 
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Breadcrumb */}
-      <Breadcrumb style={{ marginBottom: '16px' }}>
-        <Breadcrumb.Item>
-          <Link to='/inventory-locations'>Inventory Locations</Link>
-        </Breadcrumb.Item>
-        <Breadcrumb.Item>{location.name}</Breadcrumb.Item>
-      </Breadcrumb>
-
-      {/* Page Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Row justify='space-between' align='middle'>
-          <Col>
-            <Space align='center'>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/inventory-locations')}
-              />
-              <div>
-                <Title
-                  level={3}
-                  style={{ margin: 0, display: 'flex', alignItems: 'center' }}
-                >
-                  {getLocationTypeIcon(location.locationType)}
-                  <span style={{ marginLeft: '12px' }}>{location.name}</span>
-                  <Tag
-                    color={getLocationTypeColor(location.locationType)}
-                    style={{ marginLeft: '12px' }}
-                  >
-                    {location.locationType?.toUpperCase()}
-                  </Tag>
-                  <Badge
-                    status={location.isActive ? 'success' : 'error'}
-                    text={location.isActive ? 'Active' : 'Inactive'}
-                    style={{ marginLeft: '12px' }}
-                  />
-                </Title>
-                {location.description && (
-                  <Text
-                    type='secondary'
-                    style={{ marginTop: '4px', display: 'block' }}
-                  >
-                    {location.description}
-                  </Text>
-                )}
-                {location.address && (
-                  <Text
-                    type='secondary'
-                    style={{ fontSize: '12px', display: 'block' }}
-                  >
-                    <EnvironmentOutlined /> {location.address}
-                  </Text>
-                )}
-              </div>
-            </Space>
-          </Col>
-          <Col>
-            <Space>
-              <Button
-                type='primary'
-                icon={<PlusOutlined />}
-                onClick={() => setAddInventoryModalVisible(true)}
-              >
-                Add Inventory
-              </Button>
-              <Button
-                icon={<SwapOutlined />}
-                onClick={() => setTransferModalVisible(true)}
-                disabled={inventory.length === 0}
-              >
-                Transfer
-              </Button>
-              <Button
-                icon={<AppstoreOutlined />}
-                onClick={() => setStorageAreasModalVisible(true)}
-              >
-                Storage Areas
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => {
-                  fetchLocationDetails()
-                  fetchInventory()
-                }}
-                loading={loading}
-              >
-                Refresh
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+    <div style={{ width: '100%' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Staff Wide Test', serif", fontSize: 42, fontWeight: 400, color: '#1a1a1a', margin: '0 0 8px', lineHeight: '30px' }}>
+            {location.name}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <StatusBadge variant={location.locationType === 'warehouse' ? 'inprod' : location.locationType === 'production' ? 'paid' : 'pending'}>{location.locationType?.toUpperCase()}</StatusBadge>
+            <StatusBadge variant={location.isActive ? 'paid' : 'outofstock'}>{location.isActive ? 'Active' : 'Inactive'}</StatusBadge>
+          </div>
+          {location.description && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: 'rgba(26,26,26,0.6)' }}>{location.description}</div>}
+          {location.address && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#9ca3af', marginTop: 2 }}>📍 {location.address}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => setAddInventoryModalVisible(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', background: '#4a90ff', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}><PlusOutlined style={{ fontSize: 14 }} /> Add Inventory</button>
+          <button onClick={() => setTransferModalVisible(true)} disabled={inventory.length === 0} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer', whiteSpace: 'nowrap', opacity: inventory.length === 0 ? 0.4 : 1 }}><SwapOutlined style={{ fontSize: 14 }} /> Transfer</button>
+          <button onClick={() => setStorageAreasModalVisible(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer', whiteSpace: 'nowrap' }}><AppstoreOutlined style={{ fontSize: 14 }} /> Storage Areas</button>
+          <button onClick={() => { fetchLocationDetails(); fetchInventory() }} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}><span style={{ fontSize: 16 }}>↻</span> Refresh</button>
+          <button onClick={() => navigate('/inventory-locations')} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}><ArrowLeftOutlined style={{ fontSize: 14 }} /> Back</button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Total Items'
-              value={inventoryStats.totalItems}
-              prefix={<BoxPlotOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Available'
-              value={inventoryStats.totalAvailable}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Reserved'
-              value={inventoryStats.totalReserved}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Unique Products'
-              value={inventoryStats.uniqueProducts}
-              prefix={<DatabaseOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Alloys'
-              value={inventoryStats.alloyCount}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card size='small'>
-            <Statistic
-              title='Tyres'
-              value={inventoryStats.tyreCount}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
+        <KpiCard title="Total Items" value={inventoryStats.totalItems} icon={<BoxPlotOutlined />} accentColor="blue" />
+        <KpiCard title="Available" value={inventoryStats.totalAvailable} accentColor="green" />
+        <KpiCard title="Reserved" value={inventoryStats.totalReserved} accentColor="orange" />
+        <KpiCard title="Unique Products" value={inventoryStats.uniqueProducts} icon={<DatabaseOutlined />} accentColor="purple" />
+        <KpiCard title="Alloys" value={inventoryStats.alloyCount} accentColor="blue" />
+        <KpiCard title="Tyres" value={inventoryStats.tyreCount} accentColor="green" />
+      </div>
 
-      {/* Location Details Card */}
-      <Card size='small' style={{ marginBottom: '24px' }}>
-        <Descriptions column={4} size='small'>
-          <Descriptions.Item label='Storage Areas'>
-            {location.areas?.length || 0} areas
-          </Descriptions.Item>
-          <Descriptions.Item label='Created'>
-            {location.createdAt
-              ? new Date(location.createdAt).toLocaleDateString()
-              : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label='Last Updated'>
-            {location.updatedAt
-              ? new Date(location.updatedAt).toLocaleDateString()
-              : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label='Utilization'>
-            <Progress
-              percent={
-                inventoryStats.totalItems > 0
-                  ? Math.min(
-                      100,
-                      Math.round((inventoryStats.totalItems / 1000) * 100)
-                    )
-                  : 0
-              }
-              size='small'
-              style={{ width: '120px' }}
-            />
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
+      {/* Info Bar */}
+      <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 16, padding: '12px 24px', marginBottom: 16, display: 'flex', gap: 24, fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#6b7280' }}>
+        <span><strong>Storage Areas:</strong> {location.areas?.length || 0}</span>
+        <span><strong>Created:</strong> {location.createdAt ? new Date(location.createdAt).toLocaleDateString() : '-'}</span>
+        <span><strong>Updated:</strong> {location.updatedAt ? new Date(location.updatedAt).toLocaleDateString() : '-'}</span>
+      </div>
 
-      {/* Tabs for Inventory and Movements */}
-      <Card>
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
-      </Card>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #a0a0a8', marginBottom: 16 }}>
+        {[{ key: 'inventory', label: 'Inventory' }, { key: 'movements', label: 'Movements' }].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+            background: 'none', border: 'none', borderBottom: activeTab === tab.key ? '2px solid #f55e34' : '1px solid transparent',
+            marginBottom: -1, padding: '12px 24px', fontFamily: "'Inter', sans-serif", fontSize: 16,
+            fontWeight: activeTab === tab.key ? 600 : 400, color: '#1a1a1a', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: '24px',
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Tab Content - wrapped in card */}
+      <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)', padding: 0 }}>
+        {tabItems.find(t => t.key === activeTab)?.children}
+      </div>
 
       {/* Add Inventory Modal */}
       <AddInventoryToLocationModal
@@ -845,8 +766,9 @@ const InventoryLocationDetailsPage = () => {
       />
 
       {/* Inventory Adjustment Modal */}
+      <PlatiFormStyles />
       <Modal
-        title='Manual Inventory Adjustment'
+        title={<span style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 500, color: '#1a1a1a' }}>Manual Inventory Adjustment</span>}
         open={adjustmentModalVisible}
         onCancel={() => {
           setAdjustmentModalVisible(false)
@@ -856,7 +778,9 @@ const InventoryLocationDetailsPage = () => {
         footer={null}
         width={500}
         destroyOnClose
+        styles={{ body: { padding: '16px 24px 24px' } }}
       >
+        <div className="plati-form">
         <Form
           form={adjustmentForm}
           layout='vertical'
@@ -949,27 +873,12 @@ const InventoryLocationDetailsPage = () => {
             />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setAdjustmentModalVisible(false)
-                  adjustmentForm.resetFields()
-                  setSelectedInventoryItem(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type='primary'
-                htmlType='submit'
-                loading={adjustmentLoading}
-              >
-                Submit Adjustment
-              </Button>
-            </Space>
-          </Form.Item>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16 }}>
+            <button type="button" onClick={() => { setAdjustmentModalVisible(false); adjustmentForm.resetFields(); setSelectedInventoryItem(null) }} style={{ background: '#e5e5e5', border: 'none', borderRadius: 12, padding: '8px 20px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" style={{ background: '#4a90ff', border: 'none', borderRadius: 12, padding: '8px 20px', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', opacity: adjustmentLoading ? 0.5 : 1 }}>{adjustmentLoading ? 'Submitting...' : 'Submit Adjustment'}</button>
+          </div>
         </Form>
+        </div>
       </Modal>
     </div>
   )

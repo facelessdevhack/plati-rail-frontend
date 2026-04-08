@@ -156,6 +156,25 @@ const ProductionTable = ({
                 </Tag>
               )}
             </div>
+            {record.isRework && record.parentPlanId && (
+              <div
+                className='text-xs text-purple-600 cursor-pointer hover:underline mt-1'
+                onClick={(e) => { e.stopPropagation(); navigate(`/production/plans/${record.parentPlanId}`) }}
+              >
+                ↩ Rework of Plan #{record.parentPlanId}
+              </div>
+            )}
+            {!record.isRework && record.quantityTracking?.childReworkPlanCount > 0 && (
+              <div className='mt-1'>
+                <Tag
+                  color='purple'
+                  className='text-xs cursor-pointer'
+                  onClick={(e) => { e.stopPropagation(); navigate(`/production?parentPlanId=${record.id}`) }}
+                >
+                  🔄 {record.quantityTracking.childReworkPlanCount} Rework Plan{record.quantityTracking.childReworkPlanCount > 1 ? 's' : ''}
+                </Tag>
+              </div>
+            )}
             {record.urgent === 1 && (
               <div className='mt-1'>
                 <Tag color='#ff4d4f' size='small' className='text-xs' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
@@ -247,15 +266,16 @@ const ProductionTable = ({
     {
       title: (
         <span>
-          Pending / <span className='text-red-600'>Rejected</span> / Total
+          Pending / <span className='text-purple-600'>Rework</span> / <span className='text-red-600'>Rejected</span> / Total
         </span>
       ),
       key: 'quantity',
-      width: 200,
+      width: 220,
       render: (_, record) => {
         const inProgressQuantity =
           record.quantityTracking.inProgressQuantity || 0
         const rejectedQuantity = record.quantityTracking.rejectedQuantity || 0
+        const reworkQuantity = record.quantityTracking.reworkQuantity || 0
         const total = record.quantity || 0
         const deadlineInfo = getDeadlineStatus(record)
         console.log(record, 'RECORD')
@@ -266,11 +286,28 @@ const ProductionTable = ({
                 {inProgressQuantity.toLocaleString()}
               </span>
               <span className='text-gray-400'> / </span>
+              {reworkQuantity > 0 ? (
+                <>
+                  <span
+                    className='font-bold'
+                    style={{ color: '#7c3aed' }}
+                    title="Rework"
+                  >
+                    {reworkQuantity.toLocaleString()}
+                  </span>
+                  <span className='text-gray-400'> / </span>
+                </>
+              ) : (
+                <>
+                  <span className='text-gray-300' title="Rework">0</span>
+                  <span className='text-gray-400'> / </span>
+                </>
+              )}
               {rejectedQuantity > 0 ? (
                 <>
-                  <span 
-                    className='font-bold text-red-600' 
-                    style={{ color: '#cf1322' }} 
+                  <span
+                    className='font-bold text-red-600'
+                    style={{ color: '#cf1322' }}
                     title="Rejected"
                   >
                     {rejectedQuantity.toLocaleString()}
