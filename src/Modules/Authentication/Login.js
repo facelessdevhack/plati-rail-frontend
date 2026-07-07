@@ -2,18 +2,22 @@ import { Alert } from "antd";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { CustomInputWithController } from "../../Core/Components/CustomInput";
 import { userAuthenticate } from "../../redux/api/userAPI";
 import { updateUserData } from "../../redux/slices/user.slice";
 import GlobalLoader from "../../Core/Components/GlobalLoader";
 
 const Login = () => {
-  const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { loggedIn, tryingAuth, user, error, authError } = useSelector(
     (state) => state.userDetails
   );
+  // Set by the session-expiry redirect (Utils/session.js); any ?returnTo=
+  // alongside it is honoured by the post-login redirect in StackNavigation.
+  const sessionExpired =
+    new URLSearchParams(location.search).get("expired") === "1";
   const { handleSubmit, control, formState } = useForm({
     email: "",
     password: "",
@@ -88,6 +92,18 @@ const Login = () => {
           onSubmit={handleSubmit((e) => onSubmit(e))}
           className="login-form"
         >
+          {/* Session-expired notice (hidden once a login attempt fails) */}
+          {sessionExpired && !(authError && error) && (
+            <Alert
+              message="Session expired"
+              description="You were signed out after being away. Sign in to pick up where you left off."
+              type="warning"
+              showIcon
+              closable
+              className="login-alert"
+            />
+          )}
+
           {/* Error Alert */}
           {authError && error && (
             <Alert
@@ -109,6 +125,8 @@ const Login = () => {
                 name="email"
                 placeholder="Enter Email"
                 className="login-input"
+                autoComplete="username"
+                autoFocus
               />
             </div>
 
@@ -123,6 +141,7 @@ const Login = () => {
                   placeholder="Enter Password"
                   rules={validationForPassword}
                   className="login-input"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
