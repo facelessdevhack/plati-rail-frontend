@@ -88,7 +88,9 @@ const AssignPresetModal = ({
   // Filter presets based on search term
   const filteredPresets = (stepPresets || []).filter(preset =>
     preset.presetName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    preset.presetDescription?.toLowerCase().includes(searchTerm.toLowerCase())
+    preset.presetDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // the placeholder promises category search — deliver it
+    preset.presetCategory?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   // Handle preset preview
@@ -116,6 +118,33 @@ const AssignPresetModal = ({
         description: 'Please select a preset to assign to this production plan.'
       })
       return
+    }
+
+    // Inactive presets are shown for reference but must not be assigned —
+    // the backend treats them as not-found anyway
+    if (selectedPreset.isActive === false) {
+      notification.warning({
+        message: 'Preset is inactive',
+        description: 'Activate this preset in Preset Management before assigning it.'
+      })
+      return
+    }
+
+    // Re-assigning replaces the plan's workflow — say so instead of silently
+    // overwriting
+    const existingPreset = planData?.presetName || planData?.preset_name
+    if (existingPreset && existingPreset !== selectedPreset.presetName) {
+      const confirmed = await new Promise(resolve => {
+        Modal.confirm({
+          title: 'Replace existing workflow?',
+          content: `This plan already uses the "${existingPreset}" preset. Assigning "${selectedPreset.presetName}" will replace its workflow steps.`,
+          okText: 'Replace',
+          cancelText: 'Keep current',
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false)
+        })
+      })
+      if (!confirmed) return
     }
 
     try {
@@ -375,7 +404,9 @@ const AssignPresetModal = ({
 
       {/* Preset Preview Modal */}
       <Modal
-        title={`Preset Preview: ${previewPreset}`}
+        title={`Preset Preview: ${
+          previewPreset?.presetName || previewPreset?.preset_name || ''
+        }`}
         open={previewVisible}
         onCancel={() => {
           setPreviewVisible(false)
@@ -408,23 +439,23 @@ const AssignPresetModal = ({
         ]}
         width={600}
       >
-        {presetDetails && presetDetails.length > 0 && (
+        {presetDetails?.steps?.length > 0 && (
           <div className="mt-4">
             <div className="mb-4">
               <Text strong>Description: </Text>
               <Text>
-                {presetDetails[0]?.presetDescription || 'No description available'}
+                {presetDetails.description || 'No description available'}
               </Text>
             </div>
 
-            <Divider>Production Steps ({presetDetails.length})</Divider>
+            <Divider>Production Steps ({presetDetails.steps.length})</Divider>
 
             <div className="space-y-3 max-h-300 overflow-y-auto">
-              {[...presetDetails]
+              {[...presetDetails.steps]
                 .sort((a, b) => a.stepOrder - b.stepOrder)
                 .map((step) => (
                   <div
-                    key={step.id}
+                    key={step.stepId}
                     className="flex items-center p-3 bg-white border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center gap-4 w-full">

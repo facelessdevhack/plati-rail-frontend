@@ -23,7 +23,6 @@ import {
   UserOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  CloseCircleOutlined,
   FireOutlined,
   CalendarOutlined,
   SettingOutlined,
@@ -54,6 +53,9 @@ const ProductionPlanDetailsModal = ({
   const [selectedPlanForJobCard, setSelectedPlanForJobCard] = useState(null)
   const [qualityTrackingData, setQualityTrackingData] = useState([])
   const [qualityLoading, setQualityLoading] = useState(false)
+  // true when the details fetch failed and we're showing the listing-row
+  // summary instead — previously this fallback was silent
+  const [usedFallback, setUsedFallback] = useState(false)
 
   // Load plan details when modal opens
   useEffect(() => {
@@ -64,6 +66,7 @@ const ProductionPlanDetailsModal = ({
 
   const loadPlanData = async () => {
     setLoading(true)
+    setUsedFallback(false)
     try {
       // Try to fetch detailed plan data from API
       if (planId) {
@@ -75,11 +78,14 @@ const ProductionPlanDetailsModal = ({
       } else {
         // Fallback to planData passed from listing
         setPlanDetails(planData)
+        setUsedFallback(true)
       }
     } catch (error) {
       console.error('Error fetching plan details:', error)
-      // Fallback to planData if API fails
+      // Fallback to planData if API fails — but SAY so instead of silently
+      // presenting a stale/partial summary as the real thing
       setPlanDetails(planData)
+      setUsedFallback(true)
     } finally {
       setLoading(false)
     }
@@ -161,56 +167,57 @@ const ProductionPlanDetailsModal = ({
   }
 
   // Get status color and icon
+  // ONE status vocabulary, shared with the listing's Status column:
+  // Pending = orange, In Progress = blue, Completed = green.
+  // (The old map also carried unreachable "Quality Check"(purple)/"Cancelled"/
+  // "On Hold" entries — purple conflicted with the table where it means
+  // Rework.)
   const getStatusConfig = (status) => {
     const configs = {
-      'Pending': { 
-        color: 'orange', 
-        icon: <ClockCircleOutlined />, 
-        description: 'Plan created, waiting to start production' 
+      'Pending': {
+        color: 'orange',
+        icon: <ClockCircleOutlined />,
+        description: 'Plan created, waiting to start production'
       },
-      'In Progress': { 
-        color: 'blue', 
-        icon: <SettingOutlined />, 
-        description: 'Production is currently active' 
+      'In Progress': {
+        color: 'blue',
+        icon: <SettingOutlined />,
+        description: 'Production is currently active'
       },
-      'Quality Check': { 
-        color: 'purple', 
-        icon: <ExclamationCircleOutlined />, 
-        description: 'Under quality inspection' 
-      },
-      'Completed': { 
-        color: 'green', 
-        icon: <CheckCircleOutlined />, 
-        description: 'Production completed successfully' 
-      },
-      'Cancelled': { 
-        color: 'red', 
-        icon: <CloseCircleOutlined />, 
-        description: 'Production plan cancelled' 
-      },
-      'On Hold': { 
-        color: 'gray', 
-        icon: <ExclamationCircleOutlined />, 
-        description: 'Production temporarily paused' 
+      'Completed': {
+        color: 'green',
+        icon: <CheckCircleOutlined />,
+        description: 'Production completed successfully'
       }
     }
     return configs[status] || configs['Pending']
   }
 
-  // Calculate progress percentage
+  // Derive status from REAL fields — the API sends no `status` string, so the
+  // old `planDetails.status || 'Pending'` rendered "Pending" forever, even on
+  // completed plans
+  const getDerivedStatus = () => {
+    if (!planDetails) return 'Pending'
+    if (planDetails.isCompleted === true || planDetails.isCompleted === 1) {
+      return 'Completed'
+    }
+    if (
+      (planDetails.statistics?.completedQuantity || 0) > 0 ||
+      (planDetails.jobCards?.length || 0) > 0
+    ) {
+      return 'In Progress'
+    }
+    return 'Pending'
+  }
+
+  // Real progress from the API's statistics (was a hardcoded status→% map
+  // that always evaluated to 0)
   const calculateProgress = () => {
     if (!planDetails) return 0
-    
-    const status = planDetails.status || 'Pending'
-    const progressMap = {
-      'Pending': 0,
-      'In Progress': 50,
-      'Quality Check': 80,
-      'Completed': 100,
-      'Cancelled': 0,
-      'On Hold': 25
+    if (planDetails.isCompleted === true || planDetails.isCompleted === 1) {
+      return 100
     }
-    return progressMap[status] || 0
+    return planDetails.statistics?.completionPercentage || 0
   }
 
   // Handle job card creation
@@ -221,11 +228,14 @@ const ProductionPlanDetailsModal = ({
     }
   }
 
-  // Check if job card can be created
+  // Check if job card can be created (real completion flag — the old check
+  // read a `status` string the API never sends, so it was always true)
   const canCreateJobCard = () => {
     if (!planDetails) return false
-    const completedStatuses = ['Completed', 'Cancelled']
-    return !completedStatuses.includes(planDetails.status) && planDetails.quantity > 0
+    if (planDetails.isCompleted === true || planDetails.isCompleted === 1) {
+      return false
+    }
+    return planDetails.quantity > 0
   }
 
   // Handle job card creation success
@@ -235,19 +245,31 @@ const ProductionPlanDetailsModal = ({
     loadPlanData()
   }
 
-  // Get production steps with status (real data from API)
+  // Get production steps with REAL status derived from the aggregated
+  // job-card step progress (the old version hardcoded step 1 "completed",
+  // step 2 "in_progress" with literal fake 2025-08-22 timestamps)
   const getProductionStepsWithStatus = () => {
     if (!planDetails || !planDetails.productionSteps) return []
-    
-    return planDetails.productionSteps.map((step, index) => ({
-      id: step.id || index + 1,
-      name: step.stepName || `Step ${step.stepOrder}`,
-      status: index === 0 ? 'completed' : index === 1 ? 'in_progress' : 'pending', // Mock status for demo
-      stepOrder: step.stepOrder,
-      isRequired: step.isRequired,
-      completedAt: index === 0 ? '2025-08-22T10:00:00Z' : null,
-      startedAt: index === 1 ? '2025-08-22T16:00:00Z' : null
-    }))
+
+    return planDetails.productionSteps.map((step, index) => {
+      const agg = qualityTrackingData.find(
+        q => q.stepOrder === step.stepOrder
+      )
+      let status = 'pending'
+      if (agg && (agg.inputQuantity || 0) > 0) {
+        status =
+          (agg.pendingQuantity || 0) === 0 ? 'completed' : 'in_progress'
+      }
+      return {
+        id: step.id || index + 1,
+        name: step.stepName || `Step ${step.stepOrder}`,
+        status,
+        stepOrder: step.stepOrder,
+        isRequired: step.isRequired,
+        completedAt: null,
+        startedAt: null
+      }
+    })
   }
 
   if (!planDetails) {
@@ -267,7 +289,8 @@ const ProductionPlanDetailsModal = ({
     )
   }
 
-  const statusConfig = getStatusConfig(planDetails.status || 'Pending')
+  const derivedStatus = getDerivedStatus()
+  const statusConfig = getStatusConfig(derivedStatus)
   const progress = calculateProgress()
 
   return (
@@ -299,15 +322,22 @@ const ProductionPlanDetailsModal = ({
       onCancel={onClose}
       width={900}
       footer={[
+        // NOTE: the old "Edit Plan" primary button here had NO onClick —
+        // a dead affordance. Removed until it is actually wired up.
         <Button key="close" onClick={onClose}>
           Close
-        </Button>,
-        <Button key="edit" type="primary">
-          Edit Plan
         </Button>
       ]}
       className="production-details-modal"
     >
+      {usedFallback && (
+        <Alert
+          type="warning"
+          showIcon
+          className="mb-3"
+          message="Showing summary data from the list — full details could not be loaded."
+        />
+      )}
       <Tabs defaultActiveKey="overview" type="card">
         <TabPane tab="Overview" key="overview">
           <div className="space-y-6">
@@ -320,7 +350,7 @@ const ProductionPlanDetailsModal = ({
                   {statusConfig.icon}
                 </div>
                 <Tag color={statusConfig.color} className="mb-2">
-                  {planDetails.status || 'Pending'}
+                  {derivedStatus}
                 </Tag>
                 <div className="text-xs text-gray-500">
                   {statusConfig.description}
@@ -540,7 +570,9 @@ const ProductionPlanDetailsModal = ({
             <Col xs={12} sm={6}>
               <Statistic
                 title="Completed"
-                value={planDetails.status === 'Completed' ? planDetails.quantity : 0}
+                // real number from the API — the old read keyed on a `status`
+                // string the API never sends, so this was always 0
+                value={planDetails.statistics?.completedQuantity || 0}
                 suffix="units"
                 valueStyle={{ color: '#52c41a' }}
               />
@@ -548,7 +580,10 @@ const ProductionPlanDetailsModal = ({
             <Col xs={12} sm={6}>
               <Statistic
                 title="Remaining"
-                value={planDetails.quantity - (planDetails.inProductionQuantity || 0)}
+                value={
+                  planDetails.statistics?.remainingQuantity ??
+                  planDetails.quantity - (planDetails.inProductionQuantity || 0)
+                }
                 suffix="units"
                 valueStyle={{ color: '#fa8c16' }}
               />

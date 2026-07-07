@@ -146,12 +146,12 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
           <Tag color="volcano">Resolution Workflow</Tag>
         </Space>
       }
-      visible={visible}
+      open={visible}
       onCancel={onCancel}
       footer={null}
       width={750}
       maskClosable={false}
-      bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
+      styles={{ body: { maxHeight: '80vh', overflowY: 'auto' } }}
     >
       {rejectionRecord && (
         <Card size="small" className="bg-gray-50 mb-6" bordered={false}>
@@ -186,20 +186,26 @@ const DiscardQuantityModal = ({ visible, onCancel, onSuccess, rejectionRecord })
                 <Form.Item
                 label="Qty to Discard"
                 name="quantity"
+                extra={
+                  (rejectionRecord?.rejectedQuantity || 0) > 9
+                    ? `${rejectionRecord.rejectedQuantity} available — photo evidence is required per unit, so each request covers up to 9 units. Submit another request for the rest.`
+                    : `${rejectionRecord?.rejectedQuantity || 0} available — one photo required per unit.`
+                }
                 rules={[
                     { required: true, message: 'Required' },
-                    { 
-                    type: 'number', 
-                    min: 1, 
+                    {
+                    type: 'number',
+                    min: 1,
                     max: Math.min(rejectionRecord?.rejectedQuantity || 1, 9),
-                    message: `Max: ${Math.min(rejectionRecord?.rejectedQuantity || 1, 9)}` 
+                    message: `Max: ${Math.min(rejectionRecord?.rejectedQuantity || 1, 9)}`
                     }
                 ]}
                 >
-                <InputNumber 
-                    style={{ width: '100%' }} 
+                <InputNumber
+                    style={{ width: '100%' }}
                     size="large"
-                    max={9}
+                    min={1}
+                    max={Math.min(rejectionRecord?.rejectedQuantity || 1, 9)}
                     onChange={handleQuantityChange}
                 />
                 </Form.Item>

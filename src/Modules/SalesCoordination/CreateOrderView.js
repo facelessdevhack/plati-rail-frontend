@@ -74,7 +74,9 @@ const CreateOrderView = () => {
 
   const getAndSetTodayDate = useCallback(() => {
     const dateToSet = moment().format('YYYY-MM-DD HH:mm:ss')
-    dispatch(setEntry({ ...entry, date: dateToSet }))
+    // setEntry merges, so only set `date`. Spreading a stale `entry` (captured by
+    // this useCallback at first render, when the dealer is null) wiped the dealer.
+    dispatch(setEntry({ date: dateToSet }))
   }, [dispatch])
 
   const fetchCoordinationEntries = useCallback(async () => {
@@ -129,7 +131,8 @@ const CreateOrderView = () => {
         ...entry,
         productType: orderType,
         isTransportPaid: transportPaid,
-        transportAmount: transportPaid ? parseFloat(transportAmount) || 0 : 0,
+        // backend stores the amount in transportation_charges (not transportAmount)
+        transportationCharges: transportPaid ? parseFloat(transportAmount) || 0 : 0,
         specialInstructions: specialInstructions || null
       }
       const addEntryResponse = await addCoordinatedEntryAPI(payload)
@@ -154,8 +157,18 @@ const CreateOrderView = () => {
         setReloadAPI(prev => !prev)
       }
     } catch (error) {
-      console.error(error)
-      message.error('Error creating order. Please try again.')
+      // The form is intentionally NOT reset here, so the order is preserved and
+      // can be resubmitted — a failed create must never silently lose the order.
+      console.error('Create order failed:', error)
+      const status = error?.response?.status
+      const backendMsg = error?.response?.data?.message
+      if (status === 401) {
+        message.error('Your session expired — please log in again. Your order was NOT saved.')
+      } else if (backendMsg) {
+        message.error(`Order was NOT saved: ${backendMsg}`)
+      } else {
+        message.error('Order was NOT saved (network/server issue). Please try again — your entry is still here.')
+      }
     } finally {
       setIsCreatingOrder(false)
     }
@@ -255,9 +268,9 @@ const CreateOrderView = () => {
       return (
         <div>
           <span className='co-transport-badge paid'>Paid</span>
-          {record.transportAmount > 0 && (
+          {record.transportationCharges > 0 && (
             <div className='co-transport-amount'>
-              Rs. {record.transportAmount}
+              Rs. {record.transportationCharges}
             </div>
           )}
         </div>

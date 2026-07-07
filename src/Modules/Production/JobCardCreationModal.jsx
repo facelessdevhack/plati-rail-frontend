@@ -63,11 +63,20 @@ const JobCardCreationModal = ({
       const tracking = selectedPlan.quantityTracking || {}
       const allocInfo = {
         totalQuantity: selectedPlan.quantity || 0,
-        allocatedQuantity: tracking.totalJobCardQuantity || 0,
-        remainingQuantity: tracking.remainingQuantity || selectedPlan.quantity || 0,
+        // API key is allocatedQuantity — the old totalJobCardQuantity read
+        // didn't exist, so "Allocated" always showed 0 and the progress bar
+        // never moved
+        allocatedQuantity: tracking.allocatedQuantity || 0,
+        // ?? not || — remaining of 0 is a REAL value; the || fallback turned
+        // a fully-allocated plan back into "full quantity available", so the
+        // over-allocation warning could never fire
+        remainingQuantity:
+          tracking.remainingQuantity ?? selectedPlan.quantity ?? 0,
         completedQuantity: tracking.completedQuantity || 0,
         percentage: selectedPlan.quantity
-          ? Math.round(((tracking.totalJobCardQuantity || 0) / selectedPlan.quantity) * 100)
+          ? Math.round(
+              ((tracking.allocatedQuantity || 0) / selectedPlan.quantity) * 100
+            )
           : 0
       }
       setAllocationInfo(allocInfo)

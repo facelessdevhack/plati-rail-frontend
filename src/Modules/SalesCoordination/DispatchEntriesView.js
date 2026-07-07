@@ -131,12 +131,14 @@ const DispatchEntriesView = () => {
 
   // ─── API Handlers ───
 
-  useEffect(() => { fetchDispatchEntries() }, [])
+  // Refetch when the selected date changes so the (server-scoped) approved set
+  // reflects the chosen day.
+  useEffect(() => { fetchDispatchEntries() }, [selectedDate])
 
   const fetchDispatchEntries = async () => {
     setLoading(true)
     try {
-      const response = await dispatch(getDispatchEntriesAPI()).unwrap()
+      const response = await dispatch(getDispatchEntriesAPI({ date: selectedDate })).unwrap()
       setDispatchEntries(response.dispatchEntries || [])
     } catch (error) {
       message.error('Failed to load dispatch entries')
@@ -319,7 +321,7 @@ const DispatchEntriesView = () => {
       render: (_, record) => (
         <StatusBadge
           variant={record.isTransportPaid ? 'paid' : 'unpaid'}
-          subText={record.isTransportPaid && record.transportAmount > 0 ? `Rs. ${record.transportAmount}` : undefined}
+          subText={record.isTransportPaid && record.transportationCharges > 0 ? `Rs. ${record.transportationCharges}` : undefined}
         >
           {record.isTransportPaid ? 'Paid' : 'Not Paid'}
         </StatusBadge>

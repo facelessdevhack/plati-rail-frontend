@@ -139,8 +139,12 @@ const StackNavigation = () => {
           navigate('/entry-dashboard')
         } else if (roleId === 6) {
           navigate('/production-dashboard')
-        } else if (roleId === 1) {
-          navigate('/inventory-dashboard')
+        } else if (roleId === 4) {
+          navigate('/admin-daily-entry-dealers')
+        } else if (roleId === 1 || roleId === 2) {
+          // No dedicated dashboard for these roles; sales-coordinator-dashboard
+          // is the one route their allowedRoles include
+          navigate('/sales-coordinator-dashboard')
         } else if (roleId === 8) {
           navigate('/purchase/indents')
         } else if (roleId === 9) {

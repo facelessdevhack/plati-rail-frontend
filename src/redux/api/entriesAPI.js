@@ -554,32 +554,31 @@ export const addCoordinatedEntryAPI = async ({
   isClaim,
   transportationType,
   transportationCharges,
+  isTransportPaid,
   isRepair,
   date,
   uniqueProductId
 }) => {
-  try {
-    const response = await client.post('entries/add-coordinated-entry', {
-      dealerId,
-      dealerName,
-      productId,
-      productName,
-      productType,
-      quantity,
-      price,
-      isClaim,
-      transportationType,
-      transportationCharges,
-      date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
-      isRepair,
-      uniqueProductId
-    })
-    console.log(response, 'ADD COORDINATED ENTRY RESPONSE')
-    return response
-  } catch (e) {
-    console.log('ADD COORDINATED ENTRY ERROR: ' + e)
-    return e
-  }
+  // NOTE: throws on failure — callers must try/catch and surface the error.
+  // (Previously returned the error object, so callers' try/catch was dead and
+  // create failures were silent.)
+  const response = await client.post('entries/add-coordinated-entry', {
+    dealerId,
+    dealerName,
+    productId,
+    productName,
+    productType,
+    quantity,
+    price,
+    isClaim,
+    transportationType,
+    transportationCharges,
+    isTransportPaid,
+    date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
+    isRepair,
+    uniqueProductId
+  })
+  return response
 }
 
 /**
@@ -681,9 +680,14 @@ export const deleteInProductionEntryAPI = async ({ inProdEntryId }) => {
  */
 export const getDispatchEntriesAPI = createAsyncThunk(
   'entries/getDispatchEntries',
-  async (_, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const response = await client.get('/entries/get-dispatch-entries')
+      // `date` scopes the large approved set server-side (default: today)
+      const date = arg?.date
+      const url = date
+        ? `/entries/get-dispatch-entries?date=${encodeURIComponent(date)}`
+        : '/entries/get-dispatch-entries'
+      const response = await client.get(url)
       return response.data
     } catch (e) {
       return rejectWithValue(getError(e))

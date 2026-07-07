@@ -45,6 +45,7 @@ import {
 import { Line, Column, Pie } from '@ant-design/plots'
 import { useAdminDashboard } from '../../hooks/useAdminDashboard'
 import moment from 'moment'
+import { client } from '../../Utils/axiosClient'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -158,8 +159,8 @@ const AdminSalesDashboard = () => {
       const endDate = exportDateRange[1].format('YYYY-MM-DD')
 
       // Call API to get priced entries
-      const response = await fetch(`/api/v2/entries/priced-entries/export?startDate=${startDate}&endDate=${endDate}`)
-      const result = await response.json()
+      const response = await client.get(`/entries/priced-entries/export?startDate=${startDate}&endDate=${endDate}`)
+      const result = response.data
 
       if (result.success && result.pricedEntries.length > 0) {
         exportToPDF(result.pricedEntries, 'Priced Entries Report', startDate, endDate)

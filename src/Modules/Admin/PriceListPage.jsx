@@ -68,7 +68,7 @@ const PriceListPage = () => {
     } catch (error) { message.error('Failed to save') }
   }
 
-  const totalItems = priceLists.reduce((s, l) => s + (parseInt(l.item_count) || 0), 0)
+  const totalItems = priceLists.reduce((s, l) => s + (parseInt(l.itemCount) || 0), 0)
 
   const columns = [
     {
@@ -87,7 +87,7 @@ const PriceListPage = () => {
     {
       key: 'count', title: 'Items Count', align: 'center',
       render: (record) => {
-        const count = parseInt(record.item_count) || 0
+        const count = parseInt(record.itemCount) || 0
         return <StatusBadge variant={count > 0 ? 'paid' : 'default'}>{count} items</StatusBadge>
       },
     },
@@ -95,8 +95,8 @@ const PriceListPage = () => {
       key: 'created', title: 'Created',
       render: (record) => (
         <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-          {moment(record.created_at).format('DD MMM YYYY')}<br />
-          <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.created_at).format('hh:mm A')}</span>
+          {moment(record.createdAt).format('DD MMM YYYY')}<br />
+          <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.createdAt).format('hh:mm A')}</span>
         </div>
       ),
     },
@@ -104,8 +104,8 @@ const PriceListPage = () => {
       key: 'updated', title: 'Updated',
       render: (record) => (
         <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-          {moment(record.updated_at).format('DD MMM YYYY')}<br />
-          <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.updated_at).format('hh:mm A')}</span>
+          {moment(record.updatedAt).format('DD MMM YYYY')}<br />
+          <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.updatedAt).format('hh:mm A')}</span>
         </div>
       ),
     },

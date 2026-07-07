@@ -83,6 +83,11 @@ const initialState = {
   stepPresets: [],
   selectedPreset: null,
   presetDetails: null,
+  // separate from `loading` — details/preview fetches must not blank the list
+  detailsLoading: false,
+  // set only when the preset LIST fetch fails, so the UI can distinguish
+  // "empty database" from "load failed"
+  presetsLoadError: null,
   
   // AI Suggestions
   aiSuggestions: [],
@@ -117,7 +122,9 @@ const initialState = {
   filters: {
     urgent: "",
     finish: "",
-    status: "",
+    // default to ACTIVE (not-completed) plans — the all-time list is 3k+
+    // rows of history; pick "All Statuses" to see everything
+    status: "pending",
     dateRange: null
   },
 
@@ -250,17 +257,14 @@ const productionSlice = createSlice({
       })
       // Get Production KPIs (total dataset)
       .addCase(getProductionKPIData.pending, (state) => {
-        console.log('🔥🔥🔥 Frontend KPI - Starting fetch...');
         state.kpisLoading = true;
         state.kpisError = null;
       })
       .addCase(getProductionKPIData.fulfilled, (state, action) => {
-        console.log('🔥🔥🔥 Frontend KPI - Data received:', action.payload);
-        console.log('🔥🔥🔥 Frontend KPI - KPIs:', action.payload.data?.kpis);
-        console.log('🔥🔥🔥 Frontend KPI - Note:', action.payload.data?.note);
         state.kpisLoading = false;
-        state.totalKPIs = action.payload.data?.kpis || state.totalKPIs;
-        state.lastKPIUpdate = action.payload.data?.calculatedAt || new Date().toISOString();
+        // /production/plans-kpis returns { success, data: { ...kpis, lastUpdated } }
+        state.totalKPIs = action.payload.data || state.totalKPIs;
+        state.lastKPIUpdate = action.payload.data?.lastUpdated || new Date().toISOString();
         state.success = true;
       })
       .addCase(getProductionKPIData.rejected, (state, action) => {
@@ -496,22 +500,29 @@ const productionSlice = createSlice({
       .addCase(getStepPresets.fulfilled, (state, action) => {
         state.loading = false;
         state.stepPresets = action.payload.data || [];
+        state.presetsLoadError = null;
       })
       .addCase(getStepPresets.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        // remember the LIST failed — a failed load otherwise rendered the
+        // celebratory "No Production Presets Yet" empty-state
+        state.presetsLoadError =
+          action.payload?.message || "Failed to load presets";
       })
 
       .addCase(getPresetDetails.pending, (state) => {
-        state.loading = true;
+        // separate flag — sharing state.loading blanked the whole preset list
+        // to a spinner every time a preview/details fetch ran
+        state.detailsLoading = true;
         state.error = {};
       })
       .addCase(getPresetDetails.fulfilled, (state, action) => {
-        state.loading = false;
+        state.detailsLoading = false;
         state.presetDetails = action.payload; // API returns data directly, not wrapped in .data
       })
       .addCase(getPresetDetails.rejected, (state, action) => {
-        state.loading = false;
+        state.detailsLoading = false;
         state.error = action.payload;
       })
 

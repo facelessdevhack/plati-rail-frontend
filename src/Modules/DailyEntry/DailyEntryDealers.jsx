@@ -32,7 +32,8 @@ const AdminDailyEntryDealersPage = () => {
     setLoading(true)
     try {
       const params = { page: currentPage, limit: pageSize }
-      if (user.roleId !== 5) params.id = user.userId
+      const isAdmin = Number(user.roleId) === 5 || Number(user.roleId) === 999
+      if (!isAdmin) params.id = user.userId
       if (searchQuery) params.search = searchQuery
       await dispatch(getAllDealers(params))
     } catch (error) {

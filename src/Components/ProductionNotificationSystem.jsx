@@ -27,19 +27,18 @@ import {
 } from '@ant-design/icons'
 import { useSelector } from 'react-redux'
 import moment from 'moment'
+import { client } from '../Utils/axiosClient'
 
 const { Title, Text } = Typography
 
-// Notification Types
+// Notification Types (must match notifications_master.notification_type check constraint)
 const NOTIFICATION_TYPES = {
+  JOB_CARD_ASSIGNED: 'job_card_assigned',
   STEP_COMPLETED: 'step_completed',
-  STEP_DELAYED: 'step_delayed',
-  QUALITY_ISSUE: 'quality_issue',
-  URGENT_PLAN: 'urgent_plan',
-  BOTTLENECK_DETECTED: 'bottleneck_detected',
-  INVENTORY_REQUEST: 'inventory_request',
-  PRODUCTION_MILESTONE: 'production_milestone',
-  SYSTEM_ALERT: 'system_alert'
+  STEP_READY: 'step_ready',
+  URGENT_JOB: 'urgent_job',
+  QUALITY_REJECTION: 'quality_rejection',
+  PRODUCTION_ALERT: 'production_alert'
 }
 
 // Production Steps for reference
@@ -83,7 +82,7 @@ const ProductionNotificationSystem = () => {
     if (user?.token) {
       connectWebSocket()
     }
-    
+
     // Load existing notifications
     loadNotifications()
 
@@ -96,9 +95,14 @@ const ProductionNotificationSystem = () => {
 
   // Connect to WebSocket for real-time updates
   const connectWebSocket = useCallback(() => {
+    // Real-time updates need a dedicated WebSocket server; only connect when
+    // one is configured, otherwise the app runs on manual refresh + polling.
+    const wsUrl = process.env.REACT_APP_WS_URL
+    if (!wsUrl) {
+      setIsConnected(false)
+      return
+    }
     try {
-      // In a real implementation, this would be your WebSocket endpoint
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:3001'
       const websocket = new WebSocket(`${wsUrl}/production-notifications`)
       
       websocket.onopen = () => {
@@ -173,18 +177,14 @@ const ProductionNotificationSystem = () => {
   const shouldShowNotification = (type) => {
     switch (type) {
       case NOTIFICATION_TYPES.STEP_COMPLETED:
+      case NOTIFICATION_TYPES.STEP_READY:
+      case NOTIFICATION_TYPES.JOB_CARD_ASSIGNED:
         return notificationSettings.stepUpdates
-      case NOTIFICATION_TYPES.STEP_DELAYED:
-        return notificationSettings.stepUpdates
-      case NOTIFICATION_TYPES.QUALITY_ISSUE:
+      case NOTIFICATION_TYPES.QUALITY_REJECTION:
         return notificationSettings.qualityAlerts
-      case NOTIFICATION_TYPES.URGENT_PLAN:
+      case NOTIFICATION_TYPES.URGENT_JOB:
         return notificationSettings.urgentPlans
-      case NOTIFICATION_TYPES.BOTTLENECK_DETECTED:
-        return notificationSettings.bottleneckAlerts
-      case NOTIFICATION_TYPES.INVENTORY_REQUEST:
-        return notificationSettings.inventoryAlerts
-      case NOTIFICATION_TYPES.SYSTEM_ALERT:
+      case NOTIFICATION_TYPES.PRODUCTION_ALERT:
         return notificationSettings.systemNotifications
       default:
         return true
@@ -207,45 +207,35 @@ const ProductionNotificationSystem = () => {
   // Get notification configuration
   const getNotificationConfig = (type) => {
     const configs = {
+      [NOTIFICATION_TYPES.JOB_CARD_ASSIGNED]: {
+        type: 'info',
+        icon: <ToolOutlined style={{ color: '#1890ff' }} />,
+        duration: 5
+      },
       [NOTIFICATION_TYPES.STEP_COMPLETED]: {
         type: 'success',
         icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
         duration: 4
       },
-      [NOTIFICATION_TYPES.STEP_DELAYED]: {
-        type: 'warning',
-        icon: <ClockCircleOutlined style={{ color: '#faad14' }} />,
-        duration: 6
+      [NOTIFICATION_TYPES.STEP_READY]: {
+        type: 'info',
+        icon: <ClockCircleOutlined style={{ color: '#1890ff' }} />,
+        duration: 5
       },
-      [NOTIFICATION_TYPES.QUALITY_ISSUE]: {
-        type: 'error',
-        icon: <ExclamationCircleOutlined style={{ color: '#f5222d' }} />,
-        duration: 8
-      },
-      [NOTIFICATION_TYPES.URGENT_PLAN]: {
+      [NOTIFICATION_TYPES.URGENT_JOB]: {
         type: 'error',
         icon: <FireOutlined style={{ color: '#f5222d' }} />,
         duration: 0 // Don't auto-close urgent notifications
       },
-      [NOTIFICATION_TYPES.BOTTLENECK_DETECTED]: {
+      [NOTIFICATION_TYPES.QUALITY_REJECTION]: {
+        type: 'error',
+        icon: <ExclamationCircleOutlined style={{ color: '#f5222d' }} />,
+        duration: 8
+      },
+      [NOTIFICATION_TYPES.PRODUCTION_ALERT]: {
         type: 'warning',
-        icon: <ExclamationCircleOutlined style={{ color: '#fa8c16' }} />,
+        icon: <BellOutlined style={{ color: '#fa8c16' }} />,
         duration: 6
-      },
-      [NOTIFICATION_TYPES.INVENTORY_REQUEST]: {
-        type: 'info',
-        icon: <ToolOutlined style={{ color: '#1890ff' }} />,
-        duration: 5
-      },
-      [NOTIFICATION_TYPES.PRODUCTION_MILESTONE]: {
-        type: 'success',
-        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-        duration: 5
-      },
-      [NOTIFICATION_TYPES.SYSTEM_ALERT]: {
-        type: 'info',
-        icon: <BellOutlined style={{ color: '#722ed1' }} />,
-        duration: 4
       }
     }
 
@@ -256,20 +246,33 @@ const ProductionNotificationSystem = () => {
     }
   }
 
+  // Map a notifications_master row (camelCased by the API) to the shape the UI renders
+  const normalizeNotification = (n) => ({
+    id: n.id,
+    type: n.notificationType,
+    title: n.title,
+    message: n.body,
+    jobCardId: n.jobCardId,
+    planId: n.prodPlanId,
+    stepId: n.data?.stepId,
+    priority: n.data?.priority || 'normal',
+    timestamp: n.createdAt,
+    read: n.isRead,
+    data: n.data || {}
+  })
+
   // Load existing notifications
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      
-      const response = await fetch('/v2/production/notifications', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      })
 
-      if (response.ok) {
-        const data = await response.json()
-        setNotifications(data.notifications || [])
-        setUnreadCount(data.unreadCount || 0)
-      }
+      const [listRes, countRes] = await Promise.all([
+        client.get('/notifications/my-notifications', { silent: true }),
+        client.get('/notifications/unread-count', { silent: true })
+      ])
+
+      setNotifications((listRes.data.notifications || []).map(normalizeNotification))
+      setUnreadCount(countRes.data.unreadCount || 0)
     } catch (error) {
       console.error('Error loading notifications:', error)
     } finally {
@@ -280,17 +283,11 @@ const ProductionNotificationSystem = () => {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      const response = await fetch(`/v2/production/notifications/${notificationId}/read`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      })
-
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-        )
-        setUnreadCount(prev => Math.max(0, prev - 1))
-      }
+      await client.post(`/notifications/mark-read/${notificationId}`, null, { silent: true })
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (error) {
       console.error('Error marking notification as read:', error)
     }
@@ -299,15 +296,9 @@ const ProductionNotificationSystem = () => {
   // Mark all notifications as read
   const markAllAsRead = async () => {
     try {
-      const response = await fetch('/v2/production/notifications/mark-all-read', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      })
-
-      if (response.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-        setUnreadCount(0)
-      }
+      await client.post('/notifications/mark-all-read', null, { silent: true })
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      setUnreadCount(0)
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
     }
@@ -410,14 +401,16 @@ const ProductionNotificationSystem = () => {
               <span>Production Notifications</span>
               <Badge count={unreadCount} size="small" />
             </div>
-            <div className="flex items-center space-x-2">
-              <Tooltip title={isConnected ? 'Real-time connected' : 'Disconnected'}>
-                <Badge 
-                  status={isConnected ? 'success' : 'error'} 
-                  text={isConnected ? 'Live' : 'Offline'}
-                />
-              </Tooltip>
-            </div>
+            {process.env.REACT_APP_WS_URL && (
+              <div className="flex items-center space-x-2">
+                <Tooltip title={isConnected ? 'Real-time connected' : 'Disconnected'}>
+                  <Badge
+                    status={isConnected ? 'success' : 'error'}
+                    text={isConnected ? 'Live' : 'Offline'}
+                  />
+                </Tooltip>
+              </div>
+            )}
           </div>
         }
         placement="right"
@@ -448,8 +441,8 @@ const ProductionNotificationSystem = () => {
           </Space>
         }
       >
-        {/* Connection Status Alert */}
-        {!isConnected && (
+        {/* Connection Status Alert (only relevant when a WebSocket server is configured) */}
+        {process.env.REACT_APP_WS_URL && !isConnected && (
           <Alert
             message="Connection Lost"
             description="Real-time notifications are currently unavailable. Trying to reconnect..."

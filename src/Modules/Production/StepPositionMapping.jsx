@@ -32,7 +32,7 @@ import {
   SettingOutlined,
   NodeIndexOutlined
 } from '@ant-design/icons';
-import axios from 'axios';
+import { client } from '../../Utils/axiosClient';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -52,7 +52,7 @@ const StepPositionMapping = () => {
   const fetchStepPositions = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/v2/production/equipment/step-positions');
+      const response = await client.get('/production/equipment/step-positions');
       if (response.data.success) {
         setSteps(response.data.steps || []);
         setAvailablePositions(response.data.availablePositions || []);
@@ -77,7 +77,7 @@ const StepPositionMapping = () => {
 
     setLinkLoading(true);
     try {
-      const response = await axios.post('/api/v2/production/equipment/step-positions', {
+      const response = await client.post('/production/equipment/step-positions', {
         stepId: selectedStep.stepId,
         positionId: selectedPositionId,
         isPrimary,
@@ -103,7 +103,7 @@ const StepPositionMapping = () => {
 
   const handleUnlinkPosition = async (mappingId) => {
     try {
-      const response = await axios.delete(`/api/v2/production/equipment/step-positions/${mappingId}`);
+      const response = await client.delete(`/production/equipment/step-positions/${mappingId}`);
       if (response.data.success) {
         message.success('Position unlinked successfully');
         fetchStepPositions();
@@ -116,7 +116,7 @@ const StepPositionMapping = () => {
 
   const handleSetPrimary = async (mappingId) => {
     try {
-      const response = await axios.put(`/api/v2/production/equipment/step-positions/${mappingId}`, {
+      const response = await client.put(`/production/equipment/step-positions/${mappingId}`, {
         isPrimary: true
       });
       if (response.data.success) {

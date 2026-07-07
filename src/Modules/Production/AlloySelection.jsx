@@ -132,7 +132,9 @@ const AlloySelection = () => {
   // Handle preset preview
   const handlePreviewPreset = async presetName => {
     try {
-      await dispatch(getPresetDetails({ presetName })).unwrap()
+      // The thunk's param is presetId (backend resolves id or name); passing
+      // { presetName } sent /step-presets/undefined → failed every time.
+      await dispatch(getPresetDetails({ presetId: presetName })).unwrap()
       setPreviewPresetName(presetName)
       setPresetPreviewModalVisible(true)
     } catch (error) {
@@ -941,20 +943,19 @@ const AlloySelection = () => {
           ]}
           width={600}
         >
-          {presetDetails && presetDetails.length > 0 && (
+          {presetDetails?.steps?.length > 0 && (
             <div className='mt-4'>
               <div className='mb-4'>
                 <Text strong>Category: </Text>
-                <Tag color={getCategoryColor(presetDetails[0]?.presetCategory)}>
-                  {presetDetails[0]?.presetCategory?.toUpperCase()}
+                <Tag color={getCategoryColor(presetDetails.category)}>
+                  {presetDetails.category?.toUpperCase()}
                 </Tag>
               </div>
 
               <div className='mb-4'>
                 <Text strong>Description: </Text>
                 <Text>
-                  {presetDetails[0]?.presetDescription ||
-                    'No description available'}
+                  {presetDetails.description || 'No description available'}
                 </Text>
               </div>
 
@@ -964,20 +965,21 @@ const AlloySelection = () => {
               <div className='bg-gray-50 rounded-lg p-3 mb-4'>
                 <div className='text-sm text-gray-600'>
                   This preset contains{' '}
-                  <strong>{presetDetails.length} production steps</strong> that
-                  will be automatically added to your production plan. Each step
-                  must be completed in order before moving to the next phase.
+                  <strong>{presetDetails.steps.length} production steps</strong>{' '}
+                  that will be automatically added to your production plan. Each
+                  step must be completed in order before moving to the next
+                  phase.
                 </div>
               </div>
 
-              <Divider>Production Steps ({presetDetails.length})</Divider>
+              <Divider>Production Steps ({presetDetails.steps.length})</Divider>
 
               <div className='space-y-3 max-h-300 overflow-y-auto'>
-                {presetDetails
+                {[...presetDetails.steps]
                   .sort((a, b) => a.stepOrder - b.stepOrder)
                   .map((step) => (
                     <div
-                      key={step.id}
+                      key={step.stepId}
                       className='flex items-center p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow'
                     >
                       <div className='flex items-center gap-4 w-full'>

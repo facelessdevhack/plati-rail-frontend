@@ -23,6 +23,7 @@ import {
   FilterOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { client } from '../Utils/axiosClient'
 
 const { RangePicker } = DatePicker
 const { Option } = Select
@@ -46,8 +47,8 @@ const StockLogViewer = () => {
         ...filters
       })
 
-      const response = await fetch(`/api/v2/stock-logging/logs?${params}`)
-      const data = await response.json()
+      const response = await client.get(`/stock-logging/logs?${params}`)
+      const data = response.data
 
       if (data.success) {
         setLogs(data.data)

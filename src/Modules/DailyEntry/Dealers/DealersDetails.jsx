@@ -153,7 +153,7 @@ const AdminDealerDetails = () => {
     dispatch(getAdminPaymentMethods({}))
     dispatch(getAllPaymentMethods({}))
     getDealerInfo()
-    dispatch(getAllProducts({}))
+    dispatch(getAllProducts({ type: 1 })) // entry edits swap alloy products (alloy_master)
   }, [
     dispatch,
     currentPage,
@@ -854,7 +854,6 @@ const AdminDealerDetails = () => {
   }
 
   const handleOrderDashboard = () => {
-    console.log(id, 'RECORD')
     navigate(`/admin-orders-dashboard/${id}`, {
       state: { id: id }
     })

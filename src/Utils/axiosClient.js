@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { startRequest, endRequest } from './globalLoading'
 
 const commonHeader = {
   'Content-Type': 'application/json',
@@ -12,12 +13,27 @@ const client = axios.create({
   baseURL: process.env.REACT_APP_API_URL
 })
 
-const getError = ({ response }) => {
-  const { data } = response
+const getError = error => {
+  const response = error?.response
+  // Network failures / timeouts have no response — destructuring it threw a
+  // TypeError inside every thunk's catch, replacing the real error message.
+  if (!response) {
+    return {
+      code: 0,
+      statusText: 'Network Error',
+      message: error?.message || 'Network error — server unreachable'
+    }
+  }
+  // response.data may be a string (HTML error page) or null
+  const data =
+    response.data && typeof response.data === 'object' ? response.data : {}
   if (!data.code) {
     data.code = response.status
   }
   data.statusText = response.statusText
+  if (!data.message && typeof response.data === 'string' && response.data) {
+    data.message = response.statusText || 'Request failed'
+  }
   return { ...data }
 }
 
@@ -35,6 +51,7 @@ const setupAxiosInterceptors = () => {
 
   client.interceptors.request.use(
     async config => {
+      if (!config.silent) startRequest()
       const token = localStorage.getItem('token')
       // Merge Authorization header with existing headers
       config.headers = {
@@ -45,6 +62,8 @@ const setupAxiosInterceptors = () => {
       return config
     },
     error => {
+      // Request never left — end immediately if we had counted it.
+      if (!error?.config?.silent) endRequest()
       if (error.response) {
         error = getError(error)
       }
@@ -54,13 +73,13 @@ const setupAxiosInterceptors = () => {
 
   client.interceptors.response.use(
     res => {
+      if (!res?.config?.silent) endRequest()
       return res
     },
     async error => {
-      console.log('helllooooo', error)
-      const { status } = error.response
-
-      if (status === 401) {
+      if (!error?.config?.silent) endRequest()
+      // error.response is undefined for network errors — guard before reading status
+      if (error?.response?.status === 401) {
         handleLogOutUser()
       }
 
@@ -77,6 +96,7 @@ warrantyClient.defaults.withCredentials = false
 
 warrantyClient.interceptors.request.use(
   config => {
+    if (!config.silent) startRequest()
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -84,15 +104,18 @@ warrantyClient.interceptors.request.use(
     return config
   },
   error => {
+    if (!error?.config?.silent) endRequest()
     return Promise.reject(error)
   }
 )
 
 warrantyClient.interceptors.response.use(
   res => {
+    if (!res?.config?.silent) endRequest()
     return res
   },
   error => {
+    if (!error?.config?.silent) endRequest()
     return Promise.reject(error)
   }
 )

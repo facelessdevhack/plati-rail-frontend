@@ -56,7 +56,9 @@ const CreateOrderAlloys = () => {
 
   const getAndSetTodayDate = () => {
     const dateToSet = moment().format('YYYY-MM-DD HH:mm:ss')
-    dispatch(setEntry({ ...entry, date: dateToSet }))
+    // setEntry merges; only set `date`. Spreading `entry` here re-applied the
+    // just-cleared fields after resetEntry() on create, un-clearing the form.
+    dispatch(setEntry({ date: dateToSet }))
   }
 
   const fetchCoordinationEntries = async () => {
@@ -126,8 +128,18 @@ const CreateOrderAlloys = () => {
         setReloadAPI(!reloadAPI)
       }
     } catch (error) {
-      console.log(error, 'error')
-      message.error('Error creating order. Please try again.')
+      // The form is intentionally NOT reset here, so a failed create never
+      // silently loses the order — the entry stays for resubmission.
+      console.error('Create order failed:', error)
+      const status = error?.response?.status
+      const backendMsg = error?.response?.data?.message
+      if (status === 401) {
+        message.error('Your session expired — please log in again. Your order was NOT saved.')
+      } else if (backendMsg) {
+        message.error(`Order was NOT saved: ${backendMsg}`)
+      } else {
+        message.error('Order was NOT saved (network/server issue). Please try again — your entry is still here.')
+      }
     } finally {
       setIsCreatingOrder(false)
     }

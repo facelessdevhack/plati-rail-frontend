@@ -685,8 +685,11 @@ export const getProductionKPIData = createAsyncThunk(
     if (urgent) params.append('urgent', urgent)
     if (status) params.append('status', status)
     if (dateRange && dateRange.length === 2) {
-      params.append('startDate', dateRange[0].format('YYYY-MM-DD'))
-      params.append('endDate', dateRange[1].format('YYYY-MM-DD'))
+      // the slice stores dateRange as 'YYYY-MM-DD' STRINGS — calling .format()
+      // on them threw and killed the KPI fetch whenever a date filter was set
+      const fmt = d => (typeof d === 'string' ? d : d.format('YYYY-MM-DD'))
+      params.append('startDate', fmt(dateRange[0]))
+      params.append('endDate', fmt(dateRange[1]))
     }
     if (alloyId) params.append('alloyId', alloyId)
 

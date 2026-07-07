@@ -21,30 +21,8 @@ const Login = () => {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    console.log(loggedIn, user);
-    if (loggedIn && user.roleId === 5) {
-      console.log(JSON.stringify(user, null, 2), "USER");
-      navigate("/admin-daily-entry-dealers");
-      return;
-    }
-
-    if (loggedIn && user.roleId === 3) {
-      console.log(JSON.stringify(user, null, 2), "USER");
-      navigate("/entry-dashboard");
-      return;
-    }
-
-    if (loggedIn && user.roleId === 4) {
-      console.log(JSON.stringify(user, null, 2), "USER");
-      navigate("/admin-daily-entry-dealers");
-      return;
-    }
-
-    if (loggedIn) {
-      alert("Access Denied. Please contact the administrator for assistance.");
-    }
-  }, [loggedIn]);
+  // Post-login navigation is handled centrally by the role redirect in
+  // StackNavigation.js — keeping a second navigate() here caused races.
 
   const onSubmit = (e) => {
     const { email, password } = e;

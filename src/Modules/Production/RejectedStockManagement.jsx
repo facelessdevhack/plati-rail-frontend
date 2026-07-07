@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { DatePicker, message, Popconfirm } from 'antd'
+import { useNavigate } from 'react-router-dom'
+import { DatePicker, message, Modal, InputNumber } from 'antd'
 import {
-  ReloadOutlined, RollbackOutlined, ToolOutlined, CheckCircleOutlined, DeleteOutlined, ExportOutlined
+  ReloadOutlined, RollbackOutlined, ToolOutlined, DeleteOutlined, ExportOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
@@ -15,6 +16,7 @@ import DataTablePagination from '../../Core/Components/DataTablePagination'
 import InfoBox from '../../Core/Components/InfoBox'
 
 const RejectedStockManagement = () => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState([])
   const [searchText, setSearchText] = useState('')
@@ -23,6 +25,9 @@ const RejectedStockManagement = () => {
   const [reworkModalVisible, setReworkModalVisible] = useState(false)
   const [discardModalVisible, setDiscardModalVisible] = useState(false)
   const [selectedRejection, setSelectedRejection] = useState(null)
+  // partial return support — return was previously all-or-nothing
+  const [returnModalVisible, setReturnModalVisible] = useState(false)
+  const [returnQty, setReturnQty] = useState(1)
 
   // ─── Data ───
 
@@ -48,16 +53,23 @@ const RejectedStockManagement = () => {
 
   useEffect(() => { fetchRejectedStock() }, [])
 
-  const handleAction = async (id, action) => {
+  const handleAction = async (id, action, extra = {}) => {
     setLoading(true)
     try {
-      const response = await client.post(`/production/rejected-stock/${id}/process`, { action })
+      const response = await client.post(`/production/rejected-stock/${id}/process`, { action, ...extra })
       if (response.data.success) { message.success(response.data.message); fetchRejectedStock(pagination.current) }
     } catch (error) {
       message.error(error.response?.data?.message || 'Failed to process')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleReturnConfirm = async () => {
+    if (!selectedRejection) return
+    await handleAction(selectedRejection.rejectionId, 'return_to_source', { quantity: returnQty })
+    setReturnModalVisible(false)
+    setSelectedRejection(null)
   }
 
   const handleReworkSuccess = () => {
@@ -87,8 +99,26 @@ const RejectedStockManagement = () => {
       ),
     },
     {
-      key: 'jobCard', dataIndex: 'jobCardId', title: 'Job Card', align: 'center',
-      render: (id) => <StatusBadge variant="inprod">#{id}</StatusBadge>,
+      key: 'source', title: 'Source', align: 'center',
+      render: (_, record) => (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => navigate(`/production-plan/${record.planId}`)}
+            title='Open the source production plan'
+            style={{
+              background: '#ecfeff', border: '1px solid rgba(8,145,178,0.2)',
+              borderRadius: 33554400, padding: '4px 12px', fontSize: 12,
+              fontFamily: "'Inter', sans-serif", color: '#0e7490',
+              cursor: 'pointer', whiteSpace: 'nowrap'
+            }}
+          >
+            Plan #{record.planId} ↗
+          </button>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>
+            Job Card #{record.jobCardId}
+          </span>
+        </div>
+      ),
     },
     {
       key: 'rejectedQty', dataIndex: 'rejectedQuantity', title: 'Rejected Qty', align: 'center',
@@ -107,22 +137,22 @@ const RejectedStockManagement = () => {
       key: 'actions', title: 'Actions', align: 'center',
       render: (_, record) => (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Popconfirm
-            title={`Return ${record.rejectedQuantity} items to Main Stock?`}
-            onConfirm={() => handleAction(record.rejectionId, 'return_to_source')}
-            okText="Return" cancelText="Cancel"
-            icon={<CheckCircleOutlined style={{ color: '#4ecb71' }} />}
-          >
-            <button style={{
+          <button
+            onClick={() => {
+              setSelectedRejection(record)
+              setReturnQty(record.rejectedQuantity || 1)
+              setReturnModalVisible(true)
+            }}
+            style={{
               display: 'flex', alignItems: 'center', gap: 4,
               background: '#d9fae6', border: 'none', borderRadius: 10,
               padding: '6px 12px', fontSize: 13, fontWeight: 500,
               fontFamily: "'Inter', sans-serif", color: '#15803d',
               cursor: 'pointer', whiteSpace: 'nowrap',
-            }}>
-              <RollbackOutlined /> Return
-            </button>
-          </Popconfirm>
+            }}
+          >
+            <RollbackOutlined /> Return
+          </button>
           <button onClick={() => { setSelectedRejection(record); setReworkModalVisible(true) }} style={{
             display: 'flex', alignItems: 'center', gap: 4,
             background: '#4a90ff', border: 'none', borderRadius: 10,
@@ -269,6 +299,45 @@ const RejectedStockManagement = () => {
         onSuccess={() => fetchRejectedStock(pagination.current)}
         rejectionRecord={selectedRejection}
       />
+
+      {/* Return to stock — supports partial quantities */}
+      <Modal
+        title="Return to stock"
+        open={returnModalVisible}
+        onOk={handleReturnConfirm}
+        onCancel={() => { setReturnModalVisible(false); setSelectedRejection(null) }}
+        okText={`Return ${returnQty || 0} unit${returnQty !== 1 ? 's' : ''}`}
+        cancelText="Cancel"
+        okButtonProps={{ disabled: !returnQty || returnQty < 1, style: { background: '#15803d', borderRadius: 999 } }}
+        cancelButtonProps={{ style: { borderRadius: 999 } }}
+        width={440}
+        styles={{ content: { borderRadius: 20 } }}
+      >
+        {selectedRejection && (
+          <div style={{ fontFamily: "'Inter', sans-serif" }}>
+            <div style={{ marginBottom: 12, padding: 12, background: '#f8fafc', border: '1px solid #e5e5e5', borderRadius: 12, fontSize: 13, color: '#374151', lineHeight: 1.8 }}>
+              <div><strong>{selectedRejection.alloyName}</strong> — {selectedRejection.finishName}</div>
+              <div>Plan #{selectedRejection.planId} · Job Card #{selectedRejection.jobCardId}</div>
+              <div><strong style={{ color: '#dc2626' }}>{selectedRejection.rejectedQuantity}</strong> unit(s) currently rejected</div>
+            </div>
+            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 500 }}>Quantity to return to main stock</div>
+            <InputNumber
+              min={1}
+              max={selectedRejection.rejectedQuantity}
+              value={returnQty}
+              onChange={v => setReturnQty(parseInt(v) || 0)}
+              style={{ width: '100%' }}
+              size="large"
+              addonAfter="units"
+            />
+            {returnQty > 0 && returnQty < selectedRejection.rejectedQuantity && (
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                {selectedRejection.rejectedQuantity - returnQty} unit(s) will stay rejected for a later decision.
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
