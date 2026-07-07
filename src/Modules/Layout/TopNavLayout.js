@@ -35,7 +35,7 @@ import {
   ClockCircleOutlined,
   StockOutlined
 } from '@ant-design/icons'
-import { topNavSections, getActiveNav, getSectionsForRole } from './Routes/topNavRoutes'
+import { getActiveNav, getSectionsForRole } from './Routes/topNavRoutes'
 import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
 import { resetToInitialUser } from '../../redux/slices/user.slice'
 
@@ -86,8 +86,8 @@ const TopNavLayout = ({ content }) => {
   const activeNav = useMemo(() => getActiveNav(location.pathname), [location.pathname])
 
   const activeSection = useMemo(() => {
-    return topNavSections.find(s => s.key === activeNav.section)
-  }, [activeNav.section])
+    return visibleSections.find(s => s.key === activeNav.section)
+  }, [visibleSections, activeNav.section])
 
   const userMenuItems = [
     { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
