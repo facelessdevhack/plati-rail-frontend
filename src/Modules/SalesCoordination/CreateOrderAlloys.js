@@ -49,7 +49,7 @@ const CreateOrderAlloys = () => {
     return coordinationEntries.filter(entry => {
       const entryDate = entry.dateIST
         ? moment(entry.dateIST)
-        : moment.utc(entry.date || entry.created_at)
+        : moment.utc(entry.date || entry.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === today
     })
   }, [coordinationEntries])
@@ -342,7 +342,7 @@ const CreateOrderAlloys = () => {
           const formattedDate = entry.dateIST
             ? moment(entry.dateIST).format('DD MMM YYYY hh:mm A')
             : entry.date
-            ? moment.utc(entry.date).format('DD MMM YYYY hh:mm A')
+            ? moment.utc(entry.date).utcOffset(330).format('DD MMM YYYY hh:mm A')
             : 'N/A'
           const dealer = entry.dealerName || 'N/A'
           const product = entry.productName || 'N/A'
@@ -411,7 +411,7 @@ const CreateOrderAlloys = () => {
       render: (date, record) => {
         const istDate = record.dateIST
           ? moment(record.dateIST)
-          : moment.utc(date || record.created_at)
+          : moment.utc(date || record.created_at).utcOffset(330)
         return istDate.format('DD MMM YYYY hh:mm A')
       }
     },

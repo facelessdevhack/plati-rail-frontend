@@ -62,7 +62,7 @@ const CreateOrderView = () => {
     return coordinationEntries.filter(e => {
       const entryDate = e.dateIST
         ? moment(e.dateIST)
-        : moment.utc(e.date || e.created_at)
+        : moment.utc(e.date || e.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === today
     })
   }, [coordinationEntries])
@@ -240,7 +240,7 @@ const CreateOrderView = () => {
     sortedEntries.forEach(e => {
       const date = e.dateIST
         ? moment(e.dateIST).format('DD MMM YYYY hh:mm A')
-        : moment.utc(e.date).format('DD MMM YYYY hh:mm A')
+        : moment.utc(e.date).utcOffset(330).format('DD MMM YYYY hh:mm A')
       const statusMap = {
         dispatch: 'Awaiting Dispatch',
         pending: 'Out of Stock',
@@ -519,7 +519,7 @@ const CreateOrderView = () => {
                   paginatedEntries.map(record => {
                     const date = record.dateIST
                       ? moment(record.dateIST)
-                      : moment.utc(record.date || record.created_at)
+                      : moment.utc(record.date || record.created_at).utcOffset(330)
                     return (
                       <tr key={record.id}>
                         <td className='co-td-date'>

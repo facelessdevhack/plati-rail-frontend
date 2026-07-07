@@ -183,7 +183,7 @@ const DispatchEntriesView = () => {
     const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
     const displayDate = moment(targetDate).format('DD MMM YYYY')
     const dateEntries = dispatchEntries.filter(entry => {
-      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
     })
     if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
@@ -194,7 +194,7 @@ const DispatchEntriesView = () => {
     const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
     const displayDate = moment(targetDate).format('DD MMM YYYY')
     const dateEntries = dispatchEntries.filter(entry => {
-      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
     })
     if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
@@ -302,7 +302,7 @@ const DispatchEntriesView = () => {
     {
       key: 'date', dataIndex: 'dateIST', title: 'Date & Time',
       render: (_, record) => {
-        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at)
+        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at).utcOffset(330)
         return (
           <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
             {date.format('DD MMM YYYY')}<br />

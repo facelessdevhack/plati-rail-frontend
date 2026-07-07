@@ -39,8 +39,8 @@ const PendingEntriesView = () => {
         const aCanProcess = (a.inHouseStock || 0) >= (a.quantity || 0)
         const bCanProcess = (b.inHouseStock || 0) >= (b.quantity || 0)
         if (aCanProcess !== bCanProcess) return bCanProcess ? 1 : -1
-        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at || 0)
-        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at || 0)
+        const aDate = a.dateIST ? moment(a.dateIST) : moment.utc(a.date || a.created_at || 0).utcOffset(330)
+        const bDate = b.dateIST ? moment(b.dateIST) : moment.utc(b.date || b.created_at || 0).utcOffset(330)
         return bDate - aDate
       })
       setPendingEntries(sorted)
@@ -68,7 +68,7 @@ const PendingEntriesView = () => {
       }
       if (dealerFilter && entry.dealerName !== dealerFilter) return false
       if (dateRange && dateRange[0] && dateRange[1]) {
-        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
         const start = moment(dateRange[0].valueOf()).startOf('day')
         const end = moment(dateRange[1].valueOf()).endOf('day')
         if (!entryDate.isSameOrAfter(start) || !entryDate.isSameOrBefore(end)) return false
@@ -169,7 +169,7 @@ const PendingEntriesView = () => {
     {
       key: 'date', dataIndex: 'dateIST', title: 'Date & Time',
       render: (_, record) => {
-        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at)
+        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at).utcOffset(330)
         return (
           <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
             {date.format('DD MMM YYYY')}<br />
