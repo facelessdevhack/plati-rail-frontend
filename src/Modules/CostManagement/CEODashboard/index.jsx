@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Layout, Row, Col, DatePicker, Button, Space, Typography, Divider, Breadcrumb, message, Segmented } from 'antd'
 import { ReloadOutlined, HomeOutlined, DashboardOutlined, PrinterOutlined, CalendarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { disableBeforeCostingStart } from '../../../Utils/costingConfig'
 
 // Components
 import ExecutiveKPICards from './components/ExecutiveKPICards'
@@ -129,6 +130,7 @@ const CEODashboard = () => {
                     format="MMMM YYYY"
                     allowClear={false}
                     style={{ width: 180 }}
+                    disabledDate={disableBeforeCostingStart}
                   />
                 ) : (
                   <RangePicker
@@ -136,6 +138,7 @@ const CEODashboard = () => {
                     onChange={handleRangeChange}
                     format="DD MMM YYYY"
                     style={{ width: 280 }}
+                    disabledDate={disableBeforeCostingStart}
                     presets={[
                       { label: 'Last 7 Days', value: [dayjs().subtract(7, 'day'), dayjs()] },
                       { label: 'Last 30 Days', value: [dayjs().subtract(30, 'day'), dayjs()] },
