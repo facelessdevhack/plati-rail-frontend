@@ -317,229 +317,158 @@ const InventoryMovementsPage = () => {
     return configs[type] || { color: 'default', icon: <HistoryOutlined />, label: type?.toUpperCase(), bgColor: '#fafafa' };
   };
 
-  const getReferenceTypeTag = (type) => {
-    const configs = {
-      'purchase': { bg: '#dbeafe', border: 'rgba(74,144,255,0.2)', dot: '#4a90ff' },
-      'production_request': { bg: '#d9fae6', border: 'rgba(78,203,113,0.2)', dot: '#4ecb71' },
-      'inventory_request': { bg: '#d9fae6', border: 'rgba(78,203,113,0.2)', dot: '#4ecb71' },
-      'dispatch': { bg: '#dbeafe', border: 'rgba(74,144,255,0.2)', dot: '#4a90ff' },
-      'transfer': { bg: '#f3e8ff', border: 'rgba(124,58,237,0.2)', dot: '#7c3aed' },
-      'adjustment': { bg: '#fff7ed', border: 'rgba(242,108,45,0.2)', dot: '#f26c2d' },
-      'return': { bg: '#fef2f2', border: 'rgba(229,62,62,0.2)', dot: '#e53e3e' },
-      'rework_plan': { bg: '#fff7ed', border: 'rgba(242,108,45,0.2)', dot: '#f26c2d' },
-      'rework_return': { bg: '#ecfeff', border: 'rgba(8,145,178,0.2)', dot: '#0891b2' },
-    };
-    const c = configs[type] || { bg: '#f3f3f5', border: 'rgba(160,160,168,0.3)', dot: '#9ca3af' };
-    const label = type?.replace(/_/g, ' ').toUpperCase() || 'N/A';
-    return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        padding: '3px 8px', borderRadius: 33554400, fontSize: 10,
-        fontWeight: 500, fontFamily: "'Inter', sans-serif", lineHeight: '14px', color: '#1a1a1a',
-        background: c.bg, border: `1px solid ${c.border}`, whiteSpace: 'nowrap',
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
-        {label}
-      </span>
-    );
-  };
+  // ── Plain-language helpers ────────────────────────────────────────────────
+  // Pull the dealer name out of the freeform `notes` field. The backend
+  // serialises it as "...dealer: NAME | Product: ..." or
+  // "...(dispatch_entry #N | dealer: NAME)" depending on the call site.
+  const parseDealerFromNotes = (notes) => {
+    if (!notes) return null
+    const m = notes.match(/dealer[:\s]+([^|()]+?)(?=\s*(?:\||\)|$))/i)
+    return m ? m[1].trim() : null
+  }
 
-  const columns = [
-    {
-      title: 'Date & Time',
-      key: 'createdAt',
-      render: (record) => (
-        <div>
-          <div style={{ fontWeight: 'bold' }}>
-            {moment(record.createdAt).format('DD MMM YYYY')}
-          </div>
-          <div style={{ fontSize: '11px', color: '#666' }}>
-            {moment(record.createdAt).format('hh:mm A')}
-          </div>
-        </div>
-      ),
-      width: 130,
-      sorter: (a, b) => moment(a.createdAt).unix() - moment(b.createdAt).unix(),
-      defaultSortOrder: 'descend'
-    },
-    {
-      title: 'Movement',
-      key: 'movement',
-      render: (record) => {
-        const config = getMovementTypeConfig(record.movementType);
-        return (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '8px 12px',
-            backgroundColor: config.bgColor,
-            borderRadius: '6px',
-            width: 'fit-content'
-          }}>
-            <span style={{
-              marginRight: '8px',
-              color: config.color === 'green' ? '#52c41a' : config.color === 'red' ? '#ff4d4f' : '#1890ff'
-            }}>
-              {config.icon}
-            </span>
-            <Tag color={config.color} style={{ margin: 0 }}>
-              {config.label}
-            </Tag>
-          </div>
-        );
-      },
-      width: 140,
-      filters: [
-        { text: 'In', value: 'in' },
-        { text: 'Out', value: 'out' },
-        { text: 'Transfer', value: 'transfer' }
-      ],
-      onFilter: (value, record) => record.movementType === value
-    },
-    {
-      title: 'Product',
-      key: 'product',
-      render: (record) => {
-        const productName = record.productType === 'alloy'
-          ? record.alloyName
-          : (record.tyreBrand ? `${record.tyreBrand} ${record.tyreSize || ''}`.trim() : null);
-        return (
-          <div>
-            <div style={{ fontWeight: 'bold' }}>
-              <Tag color={record.productType === 'alloy' ? 'blue' : 'green'}>
-                {record.productType?.toUpperCase()}
-              </Tag>
-              <span style={{ marginLeft: '8px' }}>#{record.productId}</span>
-            </div>
-            {productName && (
-              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px', maxWidth: '200px' }}>
-                <Tooltip title={productName}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                    {productName}
-                  </span>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-        );
-      },
-      width: 220
-    },
-    {
-      title: 'Quantity Change',
-      key: 'quantity',
-      render: (record) => {
-        // Determine if movement is positive based on movement type
-        // 'in' movements are positive, 'out' movements are negative
-        // Handle both cases: when backend sends negative values OR absolute values
-        const isOutMovement = record.movementType === 'out';
-        const isPositive = record.movementType === 'in' ||
-          (!isOutMovement && record.quantityChange > 0);
+  // Adjustment notes look like "Manual Adjustment: REASON" or
+  // "Manual Adjustment: REASON - extra detail".
+  const parseReasonFromNotes = (notes) => {
+    if (!notes) return null
+    const m = notes.match(/Manual Adjustment:\s*([^-]+?)(?:\s*-|$)/i)
+    return m ? m[1].trim() : null
+  }
 
-        // Get absolute quantity and apply sign based on movement type
-        const absQuantity = Math.abs(record.quantityChange);
-        const displayQuantity = isOutMovement ? -absQuantity : absQuantity;
+  // Map a (referenceType, movementType) pair to a verb a warehouse user
+  // recognises, plus a colour and icon. Falls back to the raw movementType.
+  const humanizeMovement = (record) => {
+    const ref = record.referenceType || ''
+    const isIn = record.movementType === 'in'
+    const isOut = record.movementType === 'out'
+    const dealer = parseDealerFromNotes(record.notes)
+    const refId = record.referenceId
 
-        return (
-          <div>
-            <div style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              color: isPositive ? '#52c41a' : '#ff4d4f'
-            }}>
-              {isPositive ? '+' : ''}{displayQuantity}
-            </div>
-            <div style={{ fontSize: '11px', color: '#666' }}>
-              {record.previousQuantity} → {record.newQuantity}
-            </div>
-          </div>
-        );
-      },
-      width: 130
-    },
-    {
-      title: 'Location',
-      key: 'location',
-      render: (record) => (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <EnvironmentOutlined style={{ marginRight: '6px', color: '#1890ff' }} />
-            <span>{record.locationName || 'Unknown'}</span>
-          </div>
-        </div>
-      ),
-      width: 160
-    },
-    {
-      title: 'Reference',
-      key: 'reference',
-      render: (record) => (
-        <div>
-          {getReferenceTypeTag(record.referenceType)}
-          {record.referenceId && (
-            <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-              Ref #{record.referenceId}
-            </div>
-          )}
-        </div>
-      ),
-      width: 140
-    },
-    {
-      title: 'Notes',
-      key: 'notes',
-      render: (record) => (
-        <Tooltip title={record.notes}>
-          <div style={{
-            maxWidth: '200px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: '12px',
-            color: '#666'
-          }}>
-            {record.notes || '-'}
-          </div>
-        </Tooltip>
-      ),
-      width: 200
-    },
-    {
-      title: 'User',
-      key: 'user',
-      render: (record) => (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <UserOutlined style={{ marginRight: '6px', color: '#666' }} />
-          <span style={{ fontSize: '12px' }}>{record.createdByName || 'System'}</span>
-        </div>
-      ),
-      width: 120
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      fixed: 'right',
-      width: 100,
-      render: (record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => openAdjustmentModal(record)}
-        >
-          Adjust
-        </Button>
-      )
+    const sold = (label = 'Sold') => ({ verb: label, color: '#e53e3e', icon: '📤', to: dealer })
+    const received = (label = 'Received') => ({ verb: label, color: '#4ecb71', icon: '📥', to: dealer })
+
+    if (ref === 'dispatch_entry' && isOut) return sold('Sold')
+    if (ref === 'inprod_to_dispatch' && isOut) return sold('Sold (from in-production)')
+    if (ref === 'pending_to_dispatch' && isOut) return sold('Sold (pending fulfilled)')
+    if (ref === 'sales_entry' && isOut) return sold('Sales entry')
+    if (ref === 'dispatch_entry_delete' && isIn) return { verb: 'Cancelled dispatch', color: '#9ca3af', icon: '↩️', to: refId ? `restored, dispatch #${refId}` : 'restored' }
+    if (ref === 'inprod_dispatch_delete' && isIn) return { verb: 'Cancelled in-prod dispatch', color: '#9ca3af', icon: '↩️', to: 'restored' }
+    if (ref === 'pricing_entry_delete' && isIn) return { verb: 'Cancelled pricing entry', color: '#9ca3af', icon: '↩️', to: 'restored' }
+    if (ref === 'production_request' && isIn) return { verb: 'Received from production', color: '#4ecb71', icon: '🏭', to: refId ? `production plan #${refId}` : null }
+    if (ref === 'purchase_entry' && isIn) return received('Bought back from dealer')
+    if (ref?.startsWith('sales_entry_edit')) return { verb: isIn ? 'Sales entry edited (restored)' : 'Sales entry edited (deducted)', color: '#f26c2d', icon: '✏️', to: dealer }
+    if (ref?.startsWith('purchase_entry_edit')) return { verb: isIn ? 'Purchase edit (added stock)' : 'Purchase edit (removed stock)', color: '#f26c2d', icon: '✏️', to: dealer }
+    if (ref === 'transfer') return { verb: 'Transferred', color: '#4a90ff', icon: '🔄', to: null }
+    if (ref === 'adjustment') {
+      const reason = parseReasonFromNotes(record.notes)
+      return { verb: isIn ? 'Stock added (manual)' : 'Stock removed (manual)', color: '#7c3aed', icon: '⚙️', to: null, reason }
     }
-  ];
+    if (ref?.startsWith('phantom_backfill')) return { verb: 'Backfilled missing dispatch', color: '#7c3aed', icon: '🔧', to: dealer || (refId ? `dispatch #${refId}` : null) }
+    if (ref === 'reserve' || record.movementType === 'reserve') return { verb: 'Reserved', color: '#f26c2d', icon: '🔒', to: null }
+    if (ref === 'unreserve' || record.movementType === 'unreserve') return { verb: 'Reservation released', color: '#9ca3af', icon: '🔓', to: null }
+    return { verb: (record.movementType || 'Movement').toUpperCase(), color: '#6b7280', icon: '•', to: dealer }
+  }
 
-  const handleTableChange = (newPagination) => {
-    setPagination({
-      ...pagination,
-      current: newPagination.current,
-      pageSize: newPagination.pageSize
-    });
-  };
+  // Today / Yesterday / weekday for recent dates; full date for older.
+  const formatRelativeDay = (ts) => {
+    const m = moment(ts)
+    const todayStart = moment().startOf('day')
+    const yStart = moment().subtract(1, 'day').startOf('day')
+    if (m.isSameOrAfter(todayStart)) return 'Today'
+    if (m.isSameOrAfter(yStart)) return 'Yesterday'
+    if (m.isAfter(moment().subtract(7, 'days'))) return m.format('ddd, DD MMM')
+    return m.format('DD MMM YYYY')
+  }
+
+  // Decide which optional columns to hide based on active filters.
+  const hiddenCols = {
+    location: !!filters.locationId,
+    productType: !!filters.productType,
+  }
+
+  // Single-product reconciliation: triggered when search is a numeric product ID.
+  const focusedProductId = (() => {
+    const t = (filters.search || '').trim()
+    return /^\d+$/.test(t) ? Number(t) : null
+  })()
+  const focusedSummary = (() => {
+    if (!focusedProductId) return null
+    const rows = movements.filter(m => Number(m.productId) === focusedProductId)
+    if (rows.length === 0) return null
+    const last30 = moment().subtract(30, 'days')
+    const recent = rows.filter(m => moment(m.createdAt).isAfter(last30))
+    const inQty = recent.filter(m => m.movementType === 'in').reduce((s, m) => s + Math.abs(m.quantityChange || 0), 0)
+    const outQty = recent.filter(m => m.movementType === 'out').reduce((s, m) => s + Math.abs(m.quantityChange || 0), 0)
+    const latest = rows[0] // movements come back desc by createdAt
+    const productName = latest.productType === 'alloy'
+      ? latest.alloyName
+      : (latest.tyreBrand ? `${latest.tyreBrand} ${latest.tyreSize || ''}`.trim() : `Product #${latest.productId}`)
+    return { productName, currentQty: latest.newQuantity, inQty, outQty, total30: recent.length }
+  })()
+
+  // Detect cancelled-and-recreated dispatch pairs so the table can mute the
+  // first dispatch and the restore as "cancelled, see below".
+  // Looks for any `dispatch_entry_delete` IN row and pairs it with the most
+  // recent `dispatch_entry` OUT row for the same product within 10 minutes
+  // before it.
+  const cancelledDispatchIds = (() => {
+    const set = new Set()
+    movements.forEach((m, idx) => {
+      if (m.referenceType !== 'dispatch_entry_delete' || m.movementType !== 'in') return
+      // Movements come desc; the cancelled OUT is later in the array
+      for (let j = idx + 1; j < movements.length; j++) {
+        const c = movements[j]
+        if (c.productId !== m.productId) continue
+        if (c.movementType !== 'out' || c.referenceType !== 'dispatch_entry') continue
+        const gapMin = Math.abs(moment(m.createdAt).diff(moment(c.createdAt), 'minutes'))
+        if (gapMin <= 10 && Number(c.quantityChange) === Number(m.quantityChange)) {
+          set.add(c.id)
+          set.add(m.id)
+          break
+        }
+      }
+    })
+    return set
+  })()
+
+  // CSV export of currently visible movements.
+  const exportToCsv = () => {
+    const headers = ['Date', 'Time', 'Activity', 'Counterparty', 'Reference Type', 'Reference ID', 'Product Type', 'Product ID', 'Product Name', 'Qty Change', 'Previous Qty', 'New Qty', 'Location', 'User', 'Notes']
+    const rows = movements.map(m => {
+      const h = humanizeMovement(m)
+      const productName = m.productType === 'alloy' ? (m.alloyName || '') : (m.tyreBrand ? `${m.tyreBrand} ${m.tyreSize || ''}`.trim() : '')
+      const isOut = m.movementType === 'out'
+      const signedQty = isOut ? -Math.abs(m.quantityChange) : Math.abs(m.quantityChange)
+      return [
+        moment(m.createdAt).format('YYYY-MM-DD'),
+        moment(m.createdAt).format('HH:mm:ss'),
+        h.verb,
+        h.to || '',
+        m.referenceType || '',
+        m.referenceId ?? '',
+        m.productType || '',
+        m.productId ?? '',
+        productName,
+        signedQty,
+        m.previousQuantity ?? '',
+        m.newQuantity ?? '',
+        m.locationName || '',
+        m.createdByName || 'System',
+        (m.notes || '').replace(/\r?\n/g, ' ')
+      ]
+    })
+    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`
+    const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `inventory-movements-${moment().format('YYYY-MM-DD-HHmm')}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -551,6 +480,7 @@ const InventoryMovementsPage = () => {
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
           <button onClick={() => openAdjustmentModal()} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#4a90ff', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}><EditOutlined style={{ fontSize: 14 }} /> New Adjustment</button>
+          <button onClick={exportToCsv} disabled={loading || movements.length === 0} title="Download visible rows as CSV" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: movements.length === 0 ? 'not-allowed' : 'pointer', opacity: movements.length === 0 ? 0.5 : 1 }}><DownloadOutlined /> Export CSV</button>
           <button onClick={fetchMovements} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 16px', background: '#f3f3f5', border: 'none', borderRadius: 123, fontSize: 14, fontWeight: 400, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer' }}><span style={{ fontSize: 16 }}>↻</span> Refresh</button>
         </div>
       </div>
@@ -579,127 +509,206 @@ const InventoryMovementsPage = () => {
         </div>
       </div>
 
+      {/* Per-product reconciliation banner (shown when the search box holds a product ID) */}
+      {focusedSummary && (
+        <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, padding: '14px 24px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)' }}>
+          <div>
+            <div style={{ fontSize: 12, color: '#9ca3af', fontFamily: "'Inter', sans-serif", textTransform: 'uppercase', letterSpacing: 0.6 }}>Product #{focusedProductId}</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#1a1a1a', fontFamily: "'Inter', sans-serif", marginTop: 2 }}>{focusedSummary.productName}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', fontFamily: "'Inter', sans-serif" }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6 }}>Current stock</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a' }}>{focusedSummary.currentQty}</div>
+            </div>
+            <div style={{ width: 1, height: 32, background: '#e5e5e5' }} />
+            <div>
+              <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6 }}>Last 30 days</div>
+              <div style={{ fontSize: 14, color: '#1a1a1a', marginTop: 2 }}>
+                <span style={{ color: '#4ecb71', fontWeight: 600 }}>+{focusedSummary.inQty} in</span>
+                <span style={{ color: '#9ca3af', margin: '0 8px' }}>·</span>
+                <span style={{ color: '#e53e3e', fontWeight: 600 }}>−{focusedSummary.outQty} out</span>
+                <span style={{ color: '#9ca3af', margin: '0 8px' }}>·</span>
+                <span>{focusedSummary.total30} movements</span>
+              </div>
+            </div>
+            <button
+              onClick={() => openAdjustmentModal({ productId: focusedProductId, productType: movements[0]?.productType || 'alloy', alloyName: focusedSummary.productName })}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 16px', background: '#7c3aed', border: 'none', borderRadius: 123, fontSize: 13, fontWeight: 500, color: 'white', cursor: 'pointer' }}
+            >
+              <EditOutlined /> Adjust this product
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Movements Table */}
       <div style={{ background: 'white', border: '1px solid #e5e5e5', borderRadius: 20, overflow: 'hidden', boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.05)' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1100 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 }}>
             <thead>
               <tr>
-                {['Date', 'Type', 'Product', 'Qty', 'Location', 'Reference', 'Notes', 'User', 'Action'].map((h, i) => (
-                  <th key={h} style={{
-                    background: '#f3f3f5', padding: '12px 16px', textAlign: 'left',
-                    fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 14,
-                    fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
-                    whiteSpace: 'nowrap', lineHeight: '20px',
-                    paddingLeft: i === 0 ? 32 : undefined,
-                  }}>{h}</th>
-                ))}
+                {(() => {
+                  const headers = [
+                    { key: 'when', label: 'When', show: true, pl: 32 },
+                    { key: 'activity', label: 'Activity', show: true },
+                    { key: 'stock', label: 'Stock change', show: true },
+                    { key: 'product', label: 'Product', show: true },
+                    { key: 'location', label: 'Location', show: !hiddenCols.location },
+                    { key: 'user', label: 'By', show: true },
+                  ].filter(h => h.show)
+                  return headers.map((h) => (
+                    <th key={h.key} style={{
+                      background: '#f3f3f5', padding: '12px 16px', textAlign: 'left',
+                      fontWeight: 500, color: 'rgba(26,26,26,0.6)', fontSize: 13,
+                      fontFamily: "'Inter', sans-serif", borderBottom: '1px solid #e5e5e5',
+                      whiteSpace: 'nowrap', lineHeight: '20px',
+                      paddingLeft: h.pl,
+                    }}>{h.label}</th>
+                  ))
+                })()}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading...</td></tr>
               ) : movements.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No movements found</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No movements found</td></tr>
               ) : (
-                movements.map((record) => {
-                  const config = getMovementTypeConfig(record.movementType)
-                  const isOut = record.movementType === 'out'
-                  const isPositive = record.movementType === 'in' || (!isOut && record.quantityChange > 0)
-                  const absQty = Math.abs(record.quantityChange)
-                  const displayQty = isOut ? -absQty : absQty
-                  const productName = record.productType === 'alloy' ? record.alloyName : (record.tyreBrand ? `${record.tyreBrand} ${record.tyreSize || ''}`.trim() : null)
+                (() => {
+                  const colCount = 4 + (!hiddenCols.location ? 1 : 0) + 1 // when, activity, stock, product, [location], user
+                  const out = []
+                  let lastDay = null
+                  movements.forEach((record) => {
+                    const day = moment(record.createdAt).format('YYYY-MM-DD')
+                    if (day !== lastDay) {
+                      out.push(
+                        <tr key={`day-${day}`} style={{ background: '#f9fafb' }}>
+                          <td colSpan={colCount} style={{ padding: '8px 32px', fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, color: '#6b7280', letterSpacing: 0.5, textTransform: 'uppercase', borderBottom: '1px solid #e5e5e5', borderTop: '1px solid #e5e5e5' }}>
+                            — {formatRelativeDay(record.createdAt)} <span style={{ color: '#9ca3af', fontWeight: 400, marginLeft: 6 }}>{moment(record.createdAt).format('DD MMM YYYY')}</span> —
+                          </td>
+                        </tr>
+                      )
+                      lastDay = day
+                    }
 
-                  return (
-                    <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {/* Date */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle', paddingLeft: 24, whiteSpace: 'nowrap', fontSize: 12 }}>
-                        {moment(record.createdAt).format('DD MMM YYYY')}<br />
-                        <span style={{ color: '#9ca3af', fontSize: 11 }}>{moment(record.createdAt).format('hh:mm A')}</span>
-                      </td>
-                      {/* Movement */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '5px 13px', borderRadius: 33554400, fontSize: 12,
-                          fontWeight: 400, fontFamily: "'Inter', sans-serif", lineHeight: '16px', color: '#1a1a1a',
-                          background: config.bgColor,
-                          border: `1px solid ${config.color === 'green' ? 'rgba(78,203,113,0.2)' : config.color === 'red' ? 'rgba(229,62,62,0.2)' : config.color === 'blue' ? 'rgba(74,144,255,0.2)' : 'rgba(160,160,168,0.3)'}`,
-                        }}>
-                          <span style={{ fontSize: 12, color: config.color === 'green' ? '#4ecb71' : config.color === 'red' ? '#e53e3e' : config.color === 'blue' ? '#4a90ff' : '#f26c2d' }}>{config.icon}</span>
-                          {config.label}
-                        </span>
-                      </td>
-                      {/* Product */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle', maxWidth: 180 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{
-                            display: 'inline-flex', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                            background: record.productType === 'alloy' ? '#dbeafe' : '#d9fae6',
-                            color: record.productType === 'alloy' ? '#4a90ff' : '#15803d',
-                          }}>{record.productType?.toUpperCase()}</span>
-                          <span style={{ fontSize: 13, color: '#6b7280' }}>#{record.productId}</span>
-                        </div>
-                        {productName && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productName}</div>}
-                      </td>
-                      {/* Qty Change */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: isPositive ? '#4ecb71' : '#e53e3e' }}>
-                          {isPositive ? '+' : ''}{displayQty}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{record.previousQuantity} → {record.newQuantity}</div>
-                      </td>
-                      {/* Location */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle', fontSize: 13 }}>
-                        <span style={{ color: '#4a90ff' }}><EnvironmentOutlined /></span> {record.locationName || 'Unknown'}
-                      </td>
-                      {/* Reference */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
-                        {getReferenceTypeTag(record.referenceType)}
-                        {record.referenceId && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Ref #{record.referenceId}</div>}
-                      </td>
-                      {/* Notes */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
-                        <Tooltip title={record.notes || 'No notes'} placement="topLeft">
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 8, fontSize: 12,
-                            background: record.notes ? '#f9fafb' : 'transparent',
-                            border: record.notes ? '1px solid #e5e5e5' : 'none',
-                            color: record.notes ? '#374151' : '#d1d5db',
-                            width: '100%', overflow: 'hidden',
-                            cursor: record.notes ? 'pointer' : 'default',
-                            fontFamily: "'Inter', sans-serif",
-                          }}>
-                            {record.notes ? (
-                              <>
-                                <span style={{ flexShrink: 0 }}>📝</span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.notes}</span>
-                              </>
-                            ) : '—'}
+                    const h = humanizeMovement(record)
+                    const isOut = record.movementType === 'out'
+                    const isIn = record.movementType === 'in'
+                    const absQty = Math.abs(record.quantityChange || 0)
+                    const signedQty = isOut ? -absQty : absQty
+                    const productName = record.productType === 'alloy' ? record.alloyName : (record.tyreBrand ? `${record.tyreBrand} ${record.tyreSize || ''}`.trim() : null)
+                    const isCancelledPair = cancelledDispatchIds.has(record.id)
+                    const isSystemUser = !record.createdByName || record.createdByName === 'System'
+                    const initials = isSystemUser ? '' : record.createdByName.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+                    const stripeColor = isIn ? '#4ecb71' : isOut ? '#e53e3e' : '#9ca3af'
+
+                    out.push(
+                      <tr key={record.id} style={{ borderBottom: '1px solid #f3f4f6', opacity: isCancelledPair ? 0.55 : 1 }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {/* When (with left stripe to indicate direction) */}
+                        <td style={{ padding: '12px 12px 12px 32px', verticalAlign: 'middle', whiteSpace: 'nowrap', fontFamily: "'Inter', sans-serif", borderLeft: `3px solid ${stripeColor}` }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{moment(record.createdAt).format('hh:mm A')}</div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{moment(record.createdAt).format('DD MMM')}</div>
+                        </td>
+
+                        {/* Activity — verb + counterparty + chips, single readable sentence */}
+                        <td style={{ padding: '12px 12px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 16 }}>{h.icon}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: h.color, textDecoration: isCancelledPair ? 'line-through' : 'none' }}>{h.verb}</span>
+                            {h.to && (
+                              <span style={{ fontSize: 13, color: '#4b5563' }}>
+                                <span style={{ color: '#9ca3af', marginRight: 4 }}>→</span>{h.to}
+                              </span>
+                            )}
+                            {h.reason && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#f3e8ff', color: '#7c3aed', fontSize: 11, fontWeight: 500 }}>{h.reason}</span>
+                            )}
+                            {isCancelledPair && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 500 }}>cancelled & re-applied</span>
+                            )}
+                            {record.referenceType?.startsWith('phantom_backfill') && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8', fontSize: 11, fontWeight: 500 }}>backfill</span>
+                            )}
+                            {record.referenceId ? (
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  navigator.clipboard?.writeText(String(record.referenceId))
+                                  message.success(`Reference #${record.referenceId} copied`)
+                                }}
+                                title="Copy reference ID"
+                                style={{ fontSize: 11, color: '#4a90ff', textDecoration: 'none', borderBottom: '1px dashed #4a90ff' }}
+                              >ref #{record.referenceId}</a>
+                            ) : null}
                           </div>
-                        </Tooltip>
-                      </td>
-                      {/* User */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle', fontSize: 12, color: '#6b7280' }}>
-                        {record.createdByName || 'System'}
-                      </td>
-                      {/* Action */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
-                        <button onClick={() => openAdjustmentModal(record)} style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          background: '#4a90ff', border: 'none', borderRadius: 10,
-                          padding: '6px 12px', fontSize: 13, fontWeight: 500,
-                          fontFamily: "'Inter', sans-serif", color: 'white',
-                          cursor: 'pointer', whiteSpace: 'nowrap',
-                        }}><EditOutlined /> Adjust</button>
-                      </td>
-                    </tr>
-                  )
-                })
+                          {record.notes && (
+                            <div style={{ marginTop: 4, fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 520 }} title={record.notes}>
+                              {record.notes}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Stock change — the big number warehouse staff want */}
+                        <td style={{ padding: '12px 12px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                            <span style={{ fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}>{record.previousQuantity}</span>
+                            <span style={{ fontSize: 12, color: stripeColor }}>{isIn ? '↑' : isOut ? '↓' : '→'}</span>
+                            <span style={{ fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>{record.newQuantity}</span>
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: stripeColor, marginTop: 2 }}>
+                            {signedQty > 0 ? '+' : ''}{signedQty}
+                          </div>
+                        </td>
+
+                        {/* Product — compact */}
+                        <td style={{ padding: '12px 12px', verticalAlign: 'middle', maxWidth: 220, fontFamily: "'Inter', sans-serif" }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {!hiddenCols.productType && (
+                              <span style={{
+                                display: 'inline-flex', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                                background: record.productType === 'alloy' ? '#dbeafe' : '#d9fae6',
+                                color: record.productType === 'alloy' ? '#1d4ed8' : '#15803d',
+                              }}>{record.productType?.toUpperCase()}</span>
+                            )}
+                            <span style={{ fontSize: 11, color: '#9ca3af' }}>#{record.productId}</span>
+                          </div>
+                          {productName && (
+                            <Tooltip title={productName}>
+                              <div style={{ fontSize: 13, color: '#1a1a1a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{productName}</div>
+                            </Tooltip>
+                          )}
+                        </td>
+
+                        {/* Location (hidden when location filter is active) */}
+                        {!hiddenCols.location && (
+                          <td style={{ padding: '12px 12px', verticalAlign: 'middle', fontSize: 12, color: '#4b5563', fontFamily: "'Inter', sans-serif" }}>
+                            <span style={{ color: '#9ca3af', marginRight: 4 }}><EnvironmentOutlined /></span>{record.locationName || '—'}
+                          </td>
+                        )}
+
+                        {/* User — avatar for human, ⚙️ for system */}
+                        <td style={{ padding: '12px 12px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: 26, height: 26, borderRadius: '50%',
+                              background: isSystemUser ? '#f3f3f5' : '#e0e7ff',
+                              color: isSystemUser ? '#9ca3af' : '#4338ca',
+                              fontSize: isSystemUser ? 14 : 11, fontWeight: 600,
+                            }}>{isSystemUser ? '⚙' : initials}</span>
+                            <span style={{ fontSize: 12, color: '#4b5563' }}>{record.createdByName || 'System'}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                  return out
+                })()
               )}
             </tbody>
           </table>

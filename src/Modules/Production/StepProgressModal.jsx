@@ -294,24 +294,37 @@ const StepProgressModal = ({
               />
             </Form.Item>
 
-            <Form.Item
-              label={<span className="text-sm font-medium text-purple-700">↻ Rework Quantity</span>}
-              name='reworkQuantity'
-              rules={[
-                { required: true, message: 'Please enter rework quantity' },
-                { type: 'number', min: 0, message: 'Must be non-negative' }
-              ]}
-              tooltip='Units requiring rework'
-            >
-              <InputNumber
-                min={0}
-                max={inputQuantity}
-                className="w-full"
-                placeholder='Enter rework quantity'
-                addonAfter='units'
-                size="large"
-              />
-            </Form.Item>
+            {/* The editable "Rework Quantity" input was removed: step-level
+                rework is a DEAD END in the backend (the value is stored but
+                never re-fed anywhere — units entered here were stranded and
+                blocked the job card from ever completing). The real rework
+                path is: reject the units here → triage them on the Rejected
+                Stock page → Create Rework Plan. Historical nonzero values are
+                still shown read-only below. */}
+            {reworkQty > 0 && (
+              <Form.Item
+                label={
+                  <span className='text-sm font-medium text-purple-700'>
+                    ↻ Rework (legacy)
+                  </span>
+                }
+                tooltip='Recorded before step-level rework was retired. New rework goes through Reject → Rejected Stock → Create Rework Plan.'
+              >
+                <InputNumber
+                  value={reworkQty}
+                  className='w-full'
+                  addonAfter='units'
+                  size='large'
+                  disabled
+                />
+              </Form.Item>
+            )}
+          </div>
+
+          <div className='text-xs text-slate-500 -mt-2 mb-3'>
+            Units that need rework? Enter them as <strong>Rejected</strong>{' '}
+            with a reason — then create a rework plan from the{' '}
+            <strong>Rejected Stock</strong> page.
           </div>
 
           <Form.Item

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import { client } from '../../Utils/axiosClient'
 import {
   Card,
@@ -213,7 +212,8 @@ const InventoryManagement = () => {
       item => parseInt(item.inHouseStock || 0) === 0
     ).length
     const totalValue = filteredInventory.reduce((sum, item) => {
-      const price = parseFloat(item.price || 0)
+      // inventory rows carry `costing`; there is no `price` field on this API
+      const price = parseFloat(item.costing || 0)
       const stock = parseInt(item.inHouseStock || 0)
       return sum + price * stock
     }, 0)
@@ -364,31 +364,22 @@ const InventoryManagement = () => {
     try {
       setProductionRequestLoading(true)
 
-      const token = localStorage.getItem('token')
-      const response = await axios.post(
-        'http://localhost:4000/v2/production/add-production-plan',
-        values,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      // Use the configured client (baseURL + auth interceptor) — the previous
+      // hardcoded http://localhost:4000 URL broke this for every non-local user.
+      // The API returns {message, planId, ...} on 200 (there is no .success or
+      // .data.planId), so the old handler reported failure for created plans.
+      const response = await client.post(
+        '/production/add-production-plan',
+        values
       )
 
-      if (response.data.success) {
-        message.success(
-          `Production plan created successfully! Plan ID: ${response.data.data.planId}`
-        )
-        setProductionRequestModalVisible(false)
-        productionRequestForm.resetFields()
-        // Optionally refresh inventory data
-        refetch()
-      } else {
-        message.error(
-          'Failed to create production plan: ' + response.data.message
-        )
-      }
+      message.success(
+        `Production plan created successfully! Plan ID: ${response.data.planId}`
+      )
+      setProductionRequestModalVisible(false)
+      productionRequestForm.resetFields()
+      // Optionally refresh inventory data
+      refetch()
     } catch (error) {
       console.error('Production request failed:', error)
       message.error(

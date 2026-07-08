@@ -26,6 +26,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons';
 import { client } from '../../Utils/axiosClient';
+import { disableBeforeCostingStart } from '../../Utils/costingConfig';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -361,6 +362,7 @@ const ProfitDashboardPage = () => {
                 value={dateRange}
                 onChange={(dates) => setDateRange(dates)}
                 format="DD MMM YYYY"
+                disabledDate={disableBeforeCostingStart}
               />
               <Button
                 icon={<ReloadOutlined />}

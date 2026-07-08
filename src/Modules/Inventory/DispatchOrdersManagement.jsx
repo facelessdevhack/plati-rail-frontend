@@ -36,6 +36,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { client } from '../../Utils/axiosClient';
 
 // Redux actions
 import {
@@ -78,17 +79,8 @@ const DispatchOrdersManagement = () => {
   // Fetch dealers directly
   const fetchDealersData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/v2/inventory/dealers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setDealers(result.data || []);
-      }
+      const response = await client.get('/inventory/dealers');
+      setDealers(response.data.data || []);
     } catch (error) {
       console.error('Error fetching dealers:', error);
     }
@@ -246,20 +238,9 @@ const DispatchOrdersManagement = () => {
   // Handle order status changes
   const handleConfirmOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/v2/inventory/dispatch/orders/${orderId}/confirm`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        message.success('Order confirmed successfully');
-        dispatch(fetchDispatchOrders());
-      } else {
-        throw new Error('Failed to confirm order');
-      }
+      await client.post(`/inventory/dispatch/orders/${orderId}/confirm`);
+      message.success('Order confirmed successfully');
+      dispatch(fetchDispatchOrders());
     } catch (error) {
       message.error(`Failed to confirm order: ${error.message}`);
     }
@@ -267,20 +248,9 @@ const DispatchOrdersManagement = () => {
 
   const handlePackOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/v2/inventory/dispatch/orders/${orderId}/pack`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        message.success('Order packed successfully');
-        dispatch(fetchDispatchOrders());
-      } else {
-        throw new Error('Failed to pack order');
-      }
+      await client.post(`/inventory/dispatch/orders/${orderId}/pack`);
+      message.success('Order packed successfully');
+      dispatch(fetchDispatchOrders());
     } catch (error) {
       message.error(`Failed to pack order: ${error.message}`);
     }
@@ -288,20 +258,9 @@ const DispatchOrdersManagement = () => {
 
   const handleShipOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/v2/inventory/dispatch/orders/${orderId}/ship`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        message.success('Order shipped successfully');
-        dispatch(fetchDispatchOrders());
-      } else {
-        throw new Error('Failed to ship order');
-      }
+      await client.post(`/inventory/dispatch/orders/${orderId}/ship`);
+      message.success('Order shipped successfully');
+      dispatch(fetchDispatchOrders());
     } catch (error) {
       message.error(`Failed to ship order: ${error.message}`);
     }
@@ -309,20 +268,9 @@ const DispatchOrdersManagement = () => {
 
   const handleCancelOrder = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/v2/inventory/dispatch/orders/${orderId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        message.success('Order cancelled successfully');
-        dispatch(fetchDispatchOrders());
-      } else {
-        throw new Error('Failed to cancel order');
-      }
+      await client.post(`/inventory/dispatch/orders/${orderId}/cancel`);
+      message.success('Order cancelled successfully');
+      dispatch(fetchDispatchOrders());
     } catch (error) {
       message.error(`Failed to cancel order: ${error.message}`);
     }
@@ -337,18 +285,9 @@ const DispatchOrdersManagement = () => {
   // Search inventory for adding items
   const handleInventorySearch = async (searchParams) => {
     try {
-      const token = localStorage.getItem('token');
       const queryParams = new URLSearchParams(searchParams).toString();
-      const response = await fetch(`http://localhost:4000/v2/inventory/search?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const results = await response.json();
-        setInventorySearchResults(results.data?.inventory || []);
-      }
+      const response = await client.get(`/inventory/search?${queryParams}`);
+      setInventorySearchResults(response.data.data?.inventory || []);
     } catch (error) {
       message.error('Failed to search inventory');
     }

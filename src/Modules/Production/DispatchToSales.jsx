@@ -30,6 +30,8 @@ const DispatchToSales = () => {
   const [acceptModalVisible, setAcceptModalVisible] = useState(false)
   const [selectedJobCard, setSelectedJobCard] = useState(null)
   const [acceptQuantity, setAcceptQuantity] = useState(0)
+  // in-flight lock — double-clicking Accept fired two POSTs and dispatched twice
+  const [accepting, setAccepting] = useState(false)
   const [exportModalVisible, setExportModalVisible] = useState(false)
   const [todayDispatchedItems, setTodayDispatchedItems] = useState([])
   const [selectedExportItems, setSelectedExportItems] = useState([])
@@ -72,8 +74,9 @@ const DispatchToSales = () => {
   const showAcceptModal = (jc) => { setSelectedJobCard(jc); setAcceptQuantity(jc.pendingQuantity); setAcceptModalVisible(true) }
 
   const handleAcceptJobCard = async () => {
-    if (!selectedJobCard) return
+    if (!selectedJobCard || accepting) return
     if (acceptQuantity <= 0 || acceptQuantity > selectedJobCard.pendingQuantity) { message.error(`Enter 1-${selectedJobCard.pendingQuantity}`); return }
+    setAccepting(true)
     try {
       const res = await client.post(`/production/step-progress/${selectedJobCard.stepProgressId}/accept-dispatch`, { acceptedQuantity: acceptQuantity })
       message.success(`Accepted ${acceptQuantity} units`)
@@ -82,6 +85,7 @@ const DispatchToSales = () => {
       await fetchJobCardsForPlan(selectedJobCard.prodPlanId)
       await fetchDispatchReadyPlans(pagination.current)
     } catch (error) { message.error(error.response?.data?.message || 'Failed to accept') }
+    finally { setAccepting(false) }
   }
 
   // ─── Export ───
@@ -384,6 +388,7 @@ const DispatchToSales = () => {
       {/* Accept Quantity Modal */}
       <Modal title="Accept Dispatch Quantity" open={acceptModalVisible}
         onOk={handleAcceptJobCard}
+        confirmLoading={accepting}
         onCancel={() => { setAcceptModalVisible(false); setSelectedJobCard(null); setAcceptQuantity(0) }}
         okText="Accept" cancelText="Cancel"
       >

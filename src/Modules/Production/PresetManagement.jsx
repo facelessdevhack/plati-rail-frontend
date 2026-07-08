@@ -137,6 +137,7 @@ const PresetManagement = () => {
     presetDetails,
     productionSteps,
     loading,
+    presetsLoadError,
     isCreating,
     isUpdating,
     isDeleting
@@ -265,8 +266,9 @@ const PresetManagement = () => {
 
       await dispatch(
         createStepPreset({
-          name: values.name,
-          description: values.description,
+          // trim so "Test " can't become a near-duplicate of "Test"
+          name: values.name?.trim(),
+          description: values.description?.trim(),
           isActive: values.isActive !== false,
           steps
         })
@@ -309,11 +311,16 @@ const PresetManagement = () => {
         isActive: preset.isActive !== false && preset.is_active !== false
       })
 
-      if (details && details.length > 0) {
+      // getPresetDetails resolves to {presetId, presetName, ..., steps: [...]} —
+      // reading .length on that object always failed, so the edit drawer opened
+      // with zero steps and saving replaced the preset's steps with whatever
+      // the user manually rebuilt (silent data loss).
+      const detailSteps = details?.steps
+      if (detailSteps && detailSteps.length > 0) {
         // Form values already set above
 
         // Set selected steps
-        const steps = [...details]
+        const steps = [...detailSteps]
           .sort((a, b) => a.stepOrder - b.stepOrder)
           .map(step => ({
             id: step.stepId?.toString(),
@@ -444,28 +451,30 @@ const PresetManagement = () => {
         })
       ).unwrap()
 
-      if (details && details.length > 0) {
-        createForm.setFieldsValue({
-          name: `${preset.presetName}_copy`,
-          description: preset.presetDescription,
-          isActive: true
-        })
+      // Same shape fix as the edit drawer: the payload is an object with .steps.
+      // Open the drawer even for a zero-step preset — previously this silently
+      // did nothing.
+      const detailSteps = details?.steps || []
+      createForm.setFieldsValue({
+        name: `${preset.presetName}_copy`,
+        description: preset.presetDescription,
+        isActive: true
+      })
 
-        const steps = [...details]
-          .sort((a, b) => a.stepOrder - b.stepOrder)
-          .map(step => ({
-            id: step.stepId?.toString(),
-            stepName: step.stepName,
-            icon: STEP_ICONS[step.stepName] || '⚡',
-            stepOrder: step.stepOrder,
-            isRequired: step.isRequired !== false,
-            estimatedDuration: step.estimatedDuration || 2,
-            estimatedDurationUnit: step.estimatedDurationUnit || 'hours',
-            notes: step.notes || ''
-          }))
-        setSelectedSteps(steps)
-        setCreateDrawerVisible(true)
-      }
+      const steps = [...detailSteps]
+        .sort((a, b) => a.stepOrder - b.stepOrder)
+        .map(step => ({
+          id: step.stepId?.toString(),
+          stepName: step.stepName,
+          icon: STEP_ICONS[step.stepName] || '⚡',
+          stepOrder: step.stepOrder,
+          isRequired: step.isRequired !== false,
+          estimatedDuration: step.estimatedDuration || 2,
+          estimatedDurationUnit: step.estimatedDurationUnit || 'hours',
+          notes: step.notes || ''
+        }))
+      setSelectedSteps(steps)
+      setCreateDrawerVisible(true)
     } catch (error) {
       notification.error({
         message: 'Error',
@@ -918,6 +927,27 @@ const PresetManagement = () => {
             <div className='text-center py-12'>
               <Spin size='large' />
             </div>
+          ) : presetsLoadError && stepPresets.length === 0 ? (
+            // A failed LIST load previously fell through to the celebratory
+            // "No Production Presets Yet" empty-state — indistinguishable
+            // from an actually-empty database.
+            <Card className='text-center py-16 border-2 border-dashed border-red-200 bg-red-50'>
+              <div className='max-w-md mx-auto'>
+                <Title level={4} className='text-red-600 mb-2'>
+                  Failed to Load Presets
+                </Title>
+                <Text className='text-gray-600 block mb-4'>
+                  {String(presetsLoadError)}
+                </Text>
+                <Button
+                  type='primary'
+                  icon={<ReloadOutlined />}
+                  onClick={loadData}
+                >
+                  Retry
+                </Button>
+              </div>
+            </Card>
           ) : filteredPresets.length === 0 ? (
             <Card className='text-center py-16 border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50 to-white'>
               <div className='max-w-md mx-auto'>
@@ -1476,8 +1506,8 @@ const PresetManagement = () => {
                 </div>
                 <div className='text-right'>
                   <div className='text-2xl font-bold text-blue-600'>
-                    {presetDetails && presetDetails.length > 0
-                      ? calculateTotalDuration(presetDetails)
+                    {presetDetails?.steps?.length > 0
+                      ? calculateTotalDuration(presetDetails.steps)
                       : 'Not available'}
                   </div>
                   <div className='text-xs text-gray-500'>Total Duration</div>
@@ -1591,13 +1621,13 @@ const PresetManagement = () => {
                 <Title level={5} className='mb-0'>
                   Workflow Steps
                 </Title>
-                <Tag color='blue'>{presetDetails?.length || 0} steps</Tag>
+                <Tag color='blue'>{presetDetails?.steps?.length || 0} steps</Tag>
               </div>
               {/* Debug: console.log(presetDetails[0], 'PRESET DETAILS') */}
 
-              {presetDetails && presetDetails.length > 0 ? (
+              {presetDetails?.steps?.length > 0 ? (
                 <Timeline mode='left' className='mt-4'>
-                  {presetDetails.map((step, index) => {
+                  {presetDetails.steps.map((step, index) => {
                     const stepColor = STEP_COLORS[index % STEP_COLORS.length]
                     const stepIcon = STEP_ICONS[step.stepName] || '📝'
 

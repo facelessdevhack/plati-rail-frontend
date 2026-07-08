@@ -37,7 +37,6 @@ import JobCardDetailsModal from './JobCardDetailsModal'
 import CustomButton from '../../Core/Components/CustomButton'
 import Layout from '../Layout/layout'
 import ProductionPlanDetailsModal from './ProductionPlanDetailsModal'
-import ModernProductionHeader from './components/ModernProductionHeader'
 import ProductionTable from './components/ProductionTable'
 import EditProductionPlanModal from './EditProductionPlanModal'
 import AssignPresetModal from './AssignPresetModal'
@@ -51,7 +50,6 @@ import {
   moveToNextStep,
   getJobCardsWithDetails
 } from '../../redux/api/productionAPI'
-import { mockJobCards } from '../../Utils/mockProductionData'
 import {
   setSearchTerm,
   setFilters,
@@ -646,6 +644,13 @@ const ProductionListingV2 = () => {
 
   // Check if a plan can create job cards
   const canCreateJobCard = record => {
+    // Completed plans can't take new job cards (backend rejects them)
+    if (
+      record.isCompleted === 1 ||
+      record.quantityTracking?.completionStatus === 'completed'
+    ) {
+      return false
+    }
     // Require a preset/workflow on the plan AND remaining quantity
     const remaining = record.quantityTracking?.remainingQuantity ?? 0
     const hasWorkflow =
@@ -747,10 +752,17 @@ const ProductionListingV2 = () => {
     if (jobCards.length === 0) {
       const hasWorkflow =
         record.workflowInfo?.hasCustomWorkflow || record.hasWorkflowSteps
+      const rowCompleted =
+        record.isCompleted === 1 ||
+        record.quantityTracking?.completionStatus === 'completed'
       return (
         <div className='p-8 text-center'>
           <div className='text-gray-500'>No job cards created yet</div>
-          {hasWorkflow ? (
+          {rowCompleted ? (
+            <div className='text-gray-400 mt-2 text-sm'>
+              Plan is completed — no further job cards can be created
+            </div>
+          ) : hasWorkflow ? (
             <Button
               type='primary'
               icon={<PlusOutlined />}
@@ -922,20 +934,19 @@ const ProductionListingV2 = () => {
   // Create dropdown menu for mobile actions (memoized)
   const getActionMenu = useCallback(
     record => {
+      const isCompleted =
+        record.isCompleted === 1 ||
+        record.quantityTracking?.completionStatus === 'completed'
+      // NOTE: no 'View Details' here — the eye button is the same action;
+      // duplicating it in the kebab confused which one was "the" way
       const menuItems = [
         {
-          key: 'view',
-          label: 'View Details',
-          icon: <EyeOutlined />,
-          onClick: e => {
-            e.domEvent?.stopPropagation?.()
-            handleView(record)
-          }
-        },
-        {
           key: 'edit',
-          label: 'Edit Plan',
+          label: isCompleted ? 'Edit Plan (completed)' : 'Edit Plan',
           icon: <EditOutlined />,
+          // backend rejects edits to completed plans — disable up front
+          // instead of letting the user fill the form and hit a 400
+          disabled: isCompleted,
           onClick: e => {
             e.domEvent?.stopPropagation?.()
             handleEdit(record)
@@ -949,7 +960,7 @@ const ProductionListingV2 = () => {
             e.domEvent?.stopPropagation?.()
             handleCreateJobCard(record)
           },
-          disabled: !canCreateJobCard(record)
+          disabled: isCompleted || !canCreateJobCard(record)
         }
       ]
 
@@ -959,6 +970,8 @@ const ProductionListingV2 = () => {
           key: 'preset',
           label: 'Assign Preset',
           icon: <SettingOutlined />,
+          // backend rejects preset assignment on completed plans
+          disabled: isCompleted,
           onClick: e => {
             e.domEvent?.stopPropagation?.()
             handleAssignPreset(record)
@@ -1012,10 +1025,11 @@ const ProductionListingV2 = () => {
   ]
 
   return (
-    <div className='min-h-screen bg-gray-50'>
-      {/* Production Table with Integrated Filters */}
-      <div className='p-6'>
-        <ProductionTable
+    // no bg/padding wrappers: TopNavLayout already provides the app's warm
+    // #F8F4F0 background and the standard 32/60 content padding — the old
+    // bg-gray-50 painted cool gray over it and p-6 double-padded the page
+    <div style={{ width: '100%' }}>
+      <ProductionTable
           productionPlans={productionPlans}
           loading={loading}
           currentPage={currentPage}
@@ -1048,7 +1062,6 @@ const ProductionListingV2 = () => {
           lastKPIUpdate={lastKPIUpdate}
           rowClassName={getRowClassName}
         />
-      </div>
 
       {/* Production Plan Details Modal */}
       <ProductionPlanDetailsModal

@@ -32,7 +32,12 @@ const AdminDailyEntryDealersPage = () => {
     setLoading(true)
     try {
       const params = { page: currentPage, limit: pageSize }
-      if (user.roleId !== 5) params.id = user.userId
+      // Admins (5/999) and data entry (3) see every dealer. The salesId filter
+      // compares against dealers_master.assigned_sales_person_id, which is a
+      // sales_master.id — not a users.user_id — so it only fits actual
+      // salesperson accounts mapped to that table.
+      const seesAllDealers = [3, 5, 999].includes(Number(user.roleId))
+      if (!seesAllDealers) params.id = user.userId
       if (searchQuery) params.search = searchQuery
       await dispatch(getAllDealers(params))
     } catch (error) {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { message, Modal, Form, InputNumber, Select } from 'antd'
 import { ExportOutlined, FileExcelOutlined } from '@ant-design/icons'
+import moment from 'moment'
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { client } from '../../Utils/axiosClient'
@@ -12,6 +14,7 @@ import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
 import InfoBox from '../../Core/Components/InfoBox'
 
 const InventoryRequests = () => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [requests, setRequests] = useState([])
   const [searchText, setSearchText] = useState('')
@@ -43,8 +46,8 @@ const InventoryRequests = () => {
       filtered = filtered.filter(req =>
         String(req.jobCardId || '').includes(searchText) ||
         String(req.id || '').includes(searchText) ||
-        (req.alloyName || '').toLowerCase().includes(search) ||
-        (req.productName || '').toLowerCase().includes(search)
+        String(req.planId || '').includes(searchText) ||
+        (req.alloyName || '').toLowerCase().includes(search)
       )
     }
     if (statusFilter !== 'all') filtered = filtered.filter(req => req.status === statusFilter)
@@ -67,7 +70,9 @@ const InventoryRequests = () => {
 
   const handleMarkAsDone = (record) => {
     setSelectedRequest(record)
-    form.setFieldsValue({ receivedQuantity: record.quantityReceived || 0 })
+    // default to the full requested amount — the common case; the operator
+    // lowers it for a partial delivery
+    form.setFieldsValue({ receivedQuantity: record.quantityRequested || 0 })
     setIsModalVisible(true)
   }
 
@@ -79,7 +84,9 @@ const InventoryRequests = () => {
       setIsModalVisible(false); setSelectedRequest(null); form.resetFields()
       fetchInventoryRequests()
     } catch (error) {
-      message.error('Failed to update quantity')
+      if (error?.errorFields) return // antd form validation — already shown inline
+      // the backend explains WHY (insufficient stock, bounds) — show it
+      message.error(error?.response?.data?.message || 'Failed to update quantity')
     }
   }
 
@@ -89,16 +96,19 @@ const InventoryRequests = () => {
       message.success(`Request for Job ${record.jobCardId} deleted`)
       fetchInventoryRequests()
     } catch (error) {
-      message.error('Failed to delete inventory request')
+      message.error(error?.response?.data?.message || 'Failed to delete inventory request')
     }
   }
 
   const handleExportPDF = () => {
     const incompleteRequests = requests.filter(r => r.status !== 'completed')
     if (incompleteRequests.length === 0) { message.info('No incomplete requests to export'); return }
+    // sum what is still OWED — partially received requests only need the rest
     const groupedData = incompleteRequests.reduce((acc, req) => {
-      if (acc[req.alloyName]) acc[req.alloyName].quantityRequested += req.quantityRequested
-      else acc[req.alloyName] = { alloyName: req.alloyName, quantityRequested: req.quantityRequested }
+      const remaining = Math.max(0, (req.quantityRequested || 0) - (req.quantityReceived || 0))
+      if (remaining === 0) return acc
+      if (acc[req.alloyName]) acc[req.alloyName].quantityRequested += remaining
+      else acc[req.alloyName] = { alloyName: req.alloyName, quantityRequested: remaining }
       return acc
     }, {})
     const exportData = Object.values(groupedData).sort((a, b) => a.alloyName.localeCompare(b.alloyName))
@@ -121,31 +131,78 @@ const InventoryRequests = () => {
 
   const getStatusBadge = (status) => {
     if (status === 'completed') return <StatusBadge variant="paid">Completed</StatusBadge>
-    if (status === 'partial') return <StatusBadge variant="pending">Partial</StatusBadge>
-    return <StatusBadge variant="outofstock">Pending</StatusBadge>
+    if (status === 'partial') return <StatusBadge variant="inprod">Partial</StatusBadge>
+    return <StatusBadge variant="pending">Pending</StatusBadge>
   }
 
   // ─── Columns ───
 
   const columns = [
     {
-      key: 'jobCardId', dataIndex: 'jobCardId', title: 'Job ID',
-      render: (val) => <span style={{ fontWeight: 600 }}>{val}</span>,
+      key: 'jobCardId', dataIndex: 'jobCardId', title: 'Job Card',
+      render: (val, record) => (
+        <div>
+          <span style={{ fontWeight: 600 }}>#{val}</span>
+          {record.planId && (
+            <div>
+              <button
+                onClick={() => navigate(`/production-plan/${record.planId}`)}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: 12, color: '#0891b2', fontFamily: "'Inter', sans-serif"
+                }}
+                title="Open the production plan"
+              >
+                Plan #{record.planId} ↗
+              </button>
+            </div>
+          )}
+        </div>
+      ),
     },
-    { key: 'alloyName', dataIndex: 'alloyName', title: 'Alloy Name' },
+    { key: 'alloyName', dataIndex: 'alloyName', title: 'Material' },
     {
-      key: 'quantityRequested', dataIndex: 'quantityRequested', title: 'Qty Requested', align: 'center',
-      render: (val) => <span style={{ fontWeight: 600, color: '#4a90ff' }}>{val}</span>,
+      key: 'createdAt', dataIndex: 'createdAt', title: 'Requested',
+      render: (val) => (
+        <span style={{ fontSize: 13, color: '#6b7280' }}>
+          {val ? moment(val).format('DD MMM YYYY') : '—'}
+        </span>
+      ),
     },
     {
-      key: 'quantityReceived', dataIndex: 'quantityReceived', title: 'Qty Received', align: 'center',
+      key: 'quantityReceived', dataIndex: 'quantityReceived', title: 'Received', align: 'center',
       render: (val, record) => {
-        const pct = record.quantityRequested > 0 ? (val / record.quantityRequested) * 100 : 0
-        const color = pct === 100 ? '#15803d' : pct > 0 ? '#f26c2d' : '#dc2626'
+        const requested = record.quantityRequested || 0
+        const received = val || 0
+        const remaining = Math.max(0, requested - received)
+        const color = remaining === 0 && requested > 0 ? '#15803d' : received > 0 ? '#0891b2' : '#1a1a1a'
         return (
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontWeight: 600, color }}>{val}</span>
-            <div style={{ fontSize: 12, color: '#9ca3af' }}>{pct.toFixed(0)}%</div>
+            <span style={{ fontWeight: 600, color }}>{received}</span>
+            <span style={{ color: '#9ca3af' }}> / {requested}</span>
+            {remaining > 0 && (
+              <div style={{ fontSize: 12, color: '#f26c2d', fontWeight: 500 }}>{remaining} to issue</div>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      // can the warehouse actually fulfill what's left?
+      key: 'availableStock', dataIndex: 'availableStock', title: 'Stock', align: 'center',
+      render: (val, record) => {
+        const remaining = Math.max(0, (record.quantityRequested || 0) - (record.quantityReceived || 0))
+        if (remaining === 0) return <span style={{ color: '#d1d5db' }}>—</span>
+        const stock = parseInt(val) || 0
+        const enough = stock >= remaining
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontWeight: 600, color: enough ? '#15803d' : '#dc2626' }}>
+              {stock.toLocaleString()}
+            </span>
+            <div style={{ fontSize: 12, color: enough ? '#9ca3af' : '#dc2626', fontWeight: enough ? 400 : 500 }}>
+              {enough ? 'available' : `short ${remaining - stock}`}
+            </div>
           </div>
         )
       },
@@ -162,9 +219,11 @@ const InventoryRequests = () => {
             onClick={() => handleMarkAsDone(record)}
             disabled={record.status === 'completed'}
           >
-            Done
+            Receive
           </ProcessButton>
-          {record.status !== 'completed' && (
+          {/* material already issued can't just be deleted — the backend
+              blocks it; don't offer the dead affordance */}
+          {(record.quantityReceived || 0) === 0 && record.status !== 'completed' && (
             <DeleteButton onConfirm={() => handleDelete(record)} />
           )}
         </div>
@@ -253,32 +312,59 @@ const InventoryRequests = () => {
       <InfoBox
         title="Information"
         items={[
-          'Inventory requests are created from job cards when materials are needed',
-          'Mark requests as "Done" when materials are received from inventory',
-          'Partial fulfillment is tracked automatically based on received quantity',
-          'Export PDF generates a grouped summary of pending alloy requirements',
+          'Requests come from production job cards (Step Tracking → Request materials)',
+          '"Receive" records the running total received — the difference is issued from stock immediately',
+          'Received units automatically enter production: they are accepted at the job card\'s first step and move to the next one',
+          'Partial deliveries stay open (Partial status) until the full requested quantity is received',
+          'A request that has already received material cannot be deleted — set its received quantity back to 0 first',
+          'Export PDF generates a grouped summary of outstanding material requirements',
         ]}
       />
 
       {/* Receive Quantity Modal */}
       <Modal
-        title="Update Received Quantity"
+        title="Receive materials"
         open={isModalVisible}
         onOk={handleModalOk}
         onCancel={() => { setIsModalVisible(false); setSelectedRequest(null); form.resetFields() }}
         okText="Save" cancelText="Cancel" width={500}
+        okButtonProps={{ style: { background: '#f26c2d', borderRadius: 999 } }}
+        cancelButtonProps={{ style: { borderRadius: 999 } }}
+        styles={{ content: { borderRadius: 20 } }}
       >
-        {selectedRequest && (
-          <div style={{ marginBottom: 16, padding: 16, background: '#f9fafb', borderRadius: 12 }}>
-            <div style={{ fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#374151', lineHeight: 1.8 }}>
-              <div><strong>Job ID:</strong> {selectedRequest.jobCardId}</div>
-              <div><strong>Alloy:</strong> {selectedRequest.alloyName}</div>
-              <div><strong>Quantity Requested:</strong> <span style={{ color: '#4a90ff', fontWeight: 600 }}>{selectedRequest.quantityRequested}</span></div>
+        {selectedRequest && (() => {
+          const requested = selectedRequest.quantityRequested || 0
+          const received = selectedRequest.quantityReceived || 0
+          const remaining = Math.max(0, requested - received)
+          const stock = parseInt(selectedRequest.availableStock) || 0
+          return (
+            <div style={{ marginBottom: 16, padding: 16, background: '#f8fafc', border: '1px solid #e5e5e5', borderRadius: 16 }}>
+              <div style={{ fontSize: 13, fontFamily: "'Inter', sans-serif", color: '#374151', lineHeight: 1.9 }}>
+                <div><strong>Job card:</strong> #{selectedRequest.jobCardId}{selectedRequest.planId ? ` · Plan #${selectedRequest.planId}` : ''}</div>
+                <div><strong>Material:</strong> {selectedRequest.alloyName}</div>
+                <div>
+                  <strong>Requested:</strong> {requested}
+                  {' · '}<strong>already received:</strong> {received}
+                  {remaining > 0 && <>{' · '}<strong style={{ color: '#f26c2d' }}>{remaining} still to issue</strong></>}
+                </div>
+                <div>
+                  <strong>Stock available:</strong>{' '}
+                  <span style={{ fontWeight: 600, color: stock >= remaining ? '#15803d' : '#dc2626' }}>
+                    {stock.toLocaleString()} units
+                  </span>
+                  {stock < remaining && <span style={{ color: '#dc2626' }}> — not enough for the full remainder</span>}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
         <Form form={form} layout="vertical">
-          <Form.Item label="Received Quantity" name="receivedQuantity"
+          <Form.Item
+            label="Total received (running total, not just this delivery)"
+            name="receivedQuantity"
+            extra={selectedRequest?.quantityReceived > 0
+              ? `Currently ${selectedRequest.quantityReceived} — saving a higher number issues the difference from stock and moves it into production; a lower number returns it (only units the next step hasn't consumed can be pulled back).`
+              : 'Saving issues this many units from stock — they enter the job card\'s production flow immediately.'}
             rules={[
               { required: true, message: 'Please enter received quantity' },
               { type: 'number', min: 0, message: 'Must be >= 0' },

@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
 import moment from 'moment'
+import TabBar from '../../Core/Components/TabBar'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -36,12 +37,14 @@ const DiscardedStockManagement = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [adminNote, setAdminNote] = useState('')
+  // pending = actionable queue; approved/rejected = history
+  const [statusTab, setStatusTab] = useState('pending')
 
-  const fetchDiscardRequests = async () => {
+  const fetchDiscardRequests = async (status = statusTab) => {
     setLoading(true)
     try {
       const response = await client.get('/production/discard-requests', {
-        params: { status: 'pending' }
+        params: { status }
       })
 
       if (response.data.success) {
@@ -56,8 +59,8 @@ const DiscardedStockManagement = () => {
   }
 
   useEffect(() => {
-    fetchDiscardRequests()
-  }, [])
+    fetchDiscardRequests(statusTab)
+  }, [statusTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleProcess = async (action) => {
     if (!selectedRequest) return
@@ -159,20 +162,35 @@ const DiscardedStockManagement = () => {
       }
     },
     {
-      title: 'Actions',
+      title: statusTab === 'pending' ? 'Actions' : 'Processed',
       key: 'actions',
-      render: (_, record) => (
-        <Button
-          type='primary'
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setSelectedRequest(record)
-            setModalVisible(true)
-          }}
-        >
-          Review
-        </Button>
-      )
+      render: (_, record) =>
+        statusTab === 'pending' ? (
+          <Button
+            type='primary'
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedRequest(record)
+              setModalVisible(true)
+            }}
+          >
+            Review
+          </Button>
+        ) : (
+          <Space direction='vertical' size={0}>
+            <Text style={{ fontSize: 12 }}>
+              {record.processedAt ? moment(record.processedAt).format('DD MMM YYYY') : '—'}
+            </Text>
+            {record.adminNote && (
+              <Tooltip title={record.adminNote}>
+                <Text type='secondary' style={{ fontSize: 11 }} ellipsis>note: {record.adminNote}</Text>
+              </Tooltip>
+            )}
+            <Button size='small' icon={<EyeOutlined />} onClick={() => { setSelectedRequest(record); setModalVisible(true) }}>
+              View
+            </Button>
+          </Space>
+        )
     }
   ]
 
@@ -196,7 +214,10 @@ const DiscardedStockManagement = () => {
             </div>
             <Button
               icon={<ReloadOutlined />}
-              onClick={fetchDiscardRequests}
+              // arrow wrapper: passing the handler directly fed the click
+              // EVENT into fetchDiscardRequests(status) → status=[object
+              // Object] → empty list
+              onClick={() => fetchDiscardRequests()}
               loading={loading}
             >
               Refresh
@@ -205,6 +226,15 @@ const DiscardedStockManagement = () => {
         </Col>
 
         <Col span={24}>
+          <TabBar
+            tabs={[
+              { key: 'pending', label: 'Pending' },
+              { key: 'approved', label: 'Approved' },
+              { key: 'rejected', label: 'Denied' }
+            ]}
+            activeKey={statusTab}
+            onChange={setStatusTab}
+          />
            <Card bordered={false} className="shadow-sm"> 
             <Table
               columns={columns}
@@ -212,7 +242,7 @@ const DiscardedStockManagement = () => {
               loading={loading}
               rowKey='id'
               locale={{
-                emptyText: <Empty description="No pending discard requests found" />
+                emptyText: <Empty description={`No ${statusTab === 'rejected' ? 'denied' : statusTab} discard requests found`} />
               }}
             />
           </Card>
@@ -220,15 +250,15 @@ const DiscardedStockManagement = () => {
       </Row>
 
       <Modal
-        title="Review Discard Request"
-        visible={modalVisible}
+        title={selectedRequest?.status === 'pending' ? 'Review Discard Request' : 'Discard Request'}
+        open={modalVisible}
         onCancel={() => {
           setModalVisible(false)
           setSelectedRequest(null)
           setAdminNote('')
         }}
         width={800}
-        footer={[
+        footer={selectedRequest?.status === 'pending' ? [
           <Button key="back" onClick={() => {
             setModalVisible(false)
             setSelectedRequest(null)
@@ -254,6 +284,10 @@ const DiscardedStockManagement = () => {
           >
             Approve Discard
           </Button>,
+        ] : [
+          <Button key="close" onClick={() => { setModalVisible(false); setSelectedRequest(null); setAdminNote('') }}>
+            Close
+          </Button>
         ]}
       >
         {selectedRequest && (
@@ -275,13 +309,26 @@ const DiscardedStockManagement = () => {
                   <Text>{selectedRequest.reason}</Text>
                 </div>
 
-                <Title level={5}>Admin Notes</Title>
-                <TextArea
-                  rows={4}
-                  placeholder="Add a reason for approval or rejection (optional)"
-                  value={adminNote}
-                  onChange={e => setAdminNote(e.target.value)}
-                />
+                {selectedRequest.status === 'pending' ? (
+                  <>
+                    <Title level={5}>Admin Notes</Title>
+                    <TextArea
+                      rows={4}
+                      placeholder="Add a reason for approval or rejection (optional)"
+                      value={adminNote}
+                      onChange={e => setAdminNote(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Title level={5}>Outcome</Title>
+                    <Paragraph>
+                      <Text strong>Status: </Text>{selectedRequest.status === 'approved' ? 'Approved' : 'Denied'}<br />
+                      <Text strong>Processed: </Text>{selectedRequest.processedAt ? moment(selectedRequest.processedAt).format('DD MMM YYYY HH:mm') : '—'}<br />
+                      {selectedRequest.adminNote && (<><Text strong>Note: </Text>{selectedRequest.adminNote}</>)}
+                    </Paragraph>
+                  </>
+                )}
               </Col>
               <Col span={12}>
                 <Title level={5}>Evidence Photos</Title>

@@ -1,32 +1,30 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import {
   Table,
   Button,
   Dropdown,
   Tag,
-  Input,
   Select,
   DatePicker,
   Space,
-  Card,
-  Row,
-  Col,
-  Statistic
+  Row
 } from 'antd'
 import {
   EyeOutlined,
   MoreOutlined,
-  SearchOutlined,
-  FilterOutlined,
   CalendarOutlined,
   PlusOutlined,
-  DownloadOutlined,
   ExclamationCircleOutlined,
   InboxOutlined,
-  CheckCircleOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons'
 import moment from 'moment'
+
+import PageTitle from '../../../Core/Components/PageTitle'
+import TabBar from '../../../Core/Components/TabBar'
+import KpiCard from '../../../Core/Components/KpiCard'
+import FilterBar from '../../../Core/Components/FilterBar'
+import StatusBadge from '../../../Core/Components/StatusBadge'
 
 const { RangePicker } = DatePicker
 
@@ -85,50 +83,58 @@ const ProductionTable = ({
     completionRate: 0
   }
 
-  console.log('🔍 ProductionTable Debug - totalKPIs from Redux:', totalKPIs)
-  console.log('🔍 ProductionTable Debug - kpis used for display:', kpis)
-  console.log('🔍 ProductionTable Debug - kpisLoading:', kpisLoading)
+
+  // Live search with debounce — matches the Sales Coordination filter bar
+  // behavior (no Enter key needed)
+  const searchDebounce = useRef(null)
+  useEffect(() => {
+    if (localSearch === searchTerm) return undefined
+    searchDebounce.current = setTimeout(() => handleSearch(), 450)
+    return () => clearTimeout(searchDebounce.current)
+  }, [localSearch]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Get deadline urgency status for a production plan (using API-provided data)
   const getDeadlineStatus = record => {
     const deadlineInfo = record.deadlineInfo || {}
 
+    // A completed plan has no delivery pressure — it previously kept showing
+    // "⚠️ DELAYED" / "DUE TODAY" tags forever, contradicting its own state
+    if (
+      record.isCompleted === 1 ||
+      record.quantityTracking?.completionStatus === 'completed'
+    ) {
+      return { status: 'none', daysRemaining: null, closestDeadline: null }
+    }
+
     // Map API status to component status
     const apiStatus = deadlineInfo.status || 'none'
 
-    // Calculate days remaining if we have an earliest deadline
+    // Calculate days remaining on CALENDAR days. The old hour-based
+    // moment().diff ran in the browser's timezone and OVERRODE the API's IST
+    // verdict, so "DUE TODAY" could show a day early (a shipped console.warn
+    // acknowledged the mismatch).
     let daysRemaining = null
     let closestDeadline = null
 
     if (deadlineInfo.earliestDeadline) {
       closestDeadline = moment(deadlineInfo.earliestDeadline)
-      daysRemaining = closestDeadline.diff(moment(), 'days')
+      daysRemaining = closestDeadline
+        .clone()
+        .startOf('day')
+        .diff(moment().startOf('day'), 'days')
     }
 
-    // Map API status values to component status values
-    // Priority order: overdue > due_today > urgent (2-3 days) > upcoming (exactly 1 day)
+    // The API's status is authoritative; daysRemaining only fills the gap
+    // for the "exactly tomorrow" hint the API doesn't distinguish
     let mappedStatus = 'none'
-
-    if (apiStatus === 'overdue' || (daysRemaining !== null && daysRemaining < 0)) {
+    if (apiStatus === 'overdue') {
       mappedStatus = 'delayed'
-    } else if (apiStatus === 'due_today' || daysRemaining === 0) {
+    } else if (apiStatus === 'due_today') {
       mappedStatus = 'today'
-    } else if (apiStatus === 'urgent' || (daysRemaining !== null && daysRemaining >= 2 && daysRemaining <= 3)) {
-      // Urgent means 2-3 days - show DUE SOON
+    } else if (apiStatus === 'urgent') {
       mappedStatus = 'urgent'
-    } else if (daysRemaining !== null && daysRemaining === 1) {
-      // Only show UPCOMING/TOMORROW if exactly 1 day left
+    } else if (daysRemaining === 1) {
       mappedStatus = 'upcoming'
-    }
-    // If daysRemaining > 3 or null, don't show any tag (mappedStatus = 'none')
-
-    // Debug logging for plans showing incorrect tags
-    if (mappedStatus === 'upcoming' && daysRemaining !== 1) {
-      console.warn(`⚠️ Plan #${record.id}: UPCOMING status but daysRemaining = ${daysRemaining}`, {
-        apiStatus,
-        daysRemaining,
-        deadline: deadlineInfo.earliestDeadline
-      })
     }
 
     return {
@@ -144,22 +150,22 @@ const ProductionTable = ({
       dataIndex: 'id',
       key: 'id',
       width: 100,
-      sorter: (a, b) => (a.id || 0) - (b.id || 0),
+      sorter: true, // server-side (validSortFields.id)
       render: (id, record) => {
         return (
           <div>
             <div className='flex items-center gap-2'>
               <span className='font-semibold'>#{id}</span>
               {record.isRework && (
-                <Tag color='purple' className='text-xs font-bold m-0'>
-                  🔄 REWORK
-                </Tag>
+                <span className='inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200'>
+                  ↻ Rework
+                </span>
               )}
             </div>
             {record.isRework && record.parentPlanId && (
               <div
                 className='text-xs text-purple-600 cursor-pointer hover:underline mt-1'
-                onClick={(e) => { e.stopPropagation(); navigate(`/production/plans/${record.parentPlanId}`) }}
+                onClick={(e) => { e.stopPropagation(); navigate(`/production-plan/${record.parentPlanId}`) }}
               >
                 ↩ Rework of Plan #{record.parentPlanId}
               </div>
@@ -169,7 +175,7 @@ const ProductionTable = ({
                 <Tag
                   color='purple'
                   className='text-xs cursor-pointer'
-                  onClick={(e) => { e.stopPropagation(); navigate(`/production?parentPlanId=${record.id}`) }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/production-plan/${record.id}`) }}
                 >
                   🔄 {record.quantityTracking.childReworkPlanCount} Rework Plan{record.quantityTracking.childReworkPlanCount > 1 ? 's' : ''}
                 </Tag>
@@ -177,9 +183,9 @@ const ProductionTable = ({
             )}
             {record.urgent === 1 && (
               <div className='mt-1'>
-                <Tag color='#ff4d4f' size='small' className='text-xs' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
-                  ⚡ URGENT
-                </Tag>
+                <span className='inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500 text-white'>
+                  🔥 Urgent
+                </span>
               </div>
             )}
           </div>
@@ -187,10 +193,34 @@ const ProductionTable = ({
       }
     },
     {
+      // Single at-a-glance status — the status FILTER existed but no column
+      // showed it, so filtered rows were indistinguishable
+      title: 'Status',
+      key: 'status',
+      width: 130,
+      render: (_, record) => {
+        const qt = record.quantityTracking || {}
+        if (
+          record.isCompleted === 1 ||
+          qt.completionStatus === 'completed'
+        ) {
+          return <StatusBadge variant='dispatched'>Completed</StatusBadge>
+        }
+        if ((qt.rejectedQuantity || 0) > 0) {
+          return <StatusBadge variant='unpaid'>Has Rejections</StatusBadge>
+        }
+        if ((qt.allocatedQuantity || 0) > 0) {
+          return <StatusBadge variant='inprod'>In Production</StatusBadge>
+        }
+        return <StatusBadge variant='pending'>Pending</StatusBadge>
+      }
+    },
+    {
       title: 'Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 130,
+      sorter: true, // server-side (validSortFields.createdAt)
       render: createdAt => (
         <span>{moment(createdAt).format('MMM DD, YYYY')}</span>
       )
@@ -203,7 +233,7 @@ const ProductionTable = ({
         const deadlineInfo = getDeadlineStatus(record)
 
         if (!deadlineInfo.closestDeadline) {
-          return <span className='text-gray-400'>No deadline</span>
+          return <span className='text-gray-300'>—</span>
         }
 
         const deadlineDate = deadlineInfo.closestDeadline.format('MMM DD, YYYY')
@@ -216,136 +246,131 @@ const ProductionTable = ({
             <div className='text-sm font-medium'>{deadlineDate}</div>
             {daysText && <div className='text-xs text-gray-500'>{daysText}</div>}
             {deadlineInfo.status === 'delayed' && (
-              <Tag color='#ff4d4f' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
-                ⚠️ DELAYED
-              </Tag>
+              <span className='inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-600 text-white'>
+                ⚠ Delayed
+              </span>
             )}
             {deadlineInfo.status === 'today' && (
-              <Tag color='#ff4d4f' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#ff4d4f', color: 'white' }}>
-                📅 DUE TODAY
-              </Tag>
+              <span className='inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500 text-white'>
+                Due today
+              </span>
             )}
             {deadlineInfo.status === 'urgent' && (
-              <Tag color='#fa8c16' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#fa8c16', color: 'white' }}>
-                ⏰ DUE SOON
-              </Tag>
+              <span className='inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200'>
+                Due soon
+              </span>
             )}
             {deadlineInfo.status === 'upcoming' && (
-              <Tag color='#faad14' size='small' className='text-xs mt-1' style={{ fontWeight: 'bold', backgroundColor: '#faad14', color: 'white' }}>
-                📅 TOMORROW
-              </Tag>
+              <span className='inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200'>
+                Tomorrow
+              </span>
             )}
           </div>
         )
       }
     },
     {
-      title: 'Source Alloy',
-      key: 'sourceAlloy',
+      title: 'Product Conversion',
+      key: 'conversion',
       render: (_, record) => {
         const sourceProduct =
           record.alloyName ||
           record.sourceProduct ||
           record.sourceproductname ||
           `Alloy ${record.alloyId}`
-        return <span>{sourceProduct}</span>
-      }
-    },
-    {
-      title: 'Target Alloy',
-      key: 'targetAlloy',
-      render: (_, record) => {
         const targetProduct =
           record.convertName ||
           record.targetProduct ||
           record.targetproductname ||
           `Convert ${record.convertToAlloyId}`
-        return <span>{targetProduct}</span>
+        return (
+          <div className='leading-snug'>
+            <div className='text-xs text-slate-500'>{sourceProduct}</div>
+            <div className='text-sm font-medium text-slate-800'>
+              <span className='text-slate-400 mr-1'>→</span>
+              {targetProduct}
+            </div>
+          </div>
+        )
       }
     },
     {
-      title: (
-        <span>
-          Pending / <span className='text-purple-600'>Rework</span> / <span className='text-red-600'>Rejected</span> / Total
-        </span>
-      ),
+      title: 'Quantity Breakdown',
       key: 'quantity',
-      width: 220,
+      width: 280,
       render: (_, record) => {
-        const inProgressQuantity =
-          record.quantityTracking.inProgressQuantity || 0
-        const rejectedQuantity = record.quantityTracking.rejectedQuantity || 0
-        const reworkQuantity = record.quantityTracking.reworkQuantity || 0
+        const qt = record.quantityTracking || {}
         const total = record.quantity || 0
-        const deadlineInfo = getDeadlineStatus(record)
-        console.log(record, 'RECORD')
+        const done = qt.completedQuantity || 0
+        const rejected = qt.rejectedQuantity || 0
+        const rework = qt.reworkQuantity || 0
+        const unallocated = Math.max(0, qt.remainingQuantity ?? 0)
+        const inProd = Math.max(
+          0,
+          total - done - rejected - rework - unallocated
+        )
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0
+        const w = n => ({ width: `${total > 0 ? (n / total) * 100 : 0}%` })
         return (
           <div>
-            <div>
-              <span className='font-semibold' title="In Progress">
-                {inProgressQuantity.toLocaleString()}
+            {/* headline: done/total */}
+            <div className='flex items-baseline justify-between mb-1'>
+              <span className='text-sm font-semibold text-slate-800'>
+                {done.toLocaleString()}
+                <span className='text-slate-400 font-normal'>
+                  {' '}/ {total.toLocaleString()}
+                </span>
               </span>
-              <span className='text-gray-400'> / </span>
-              {reworkQuantity > 0 ? (
-                <>
-                  <span
-                    className='font-bold'
-                    style={{ color: '#7c3aed' }}
-                    title="Rework"
-                  >
-                    {reworkQuantity.toLocaleString()}
-                  </span>
-                  <span className='text-gray-400'> / </span>
-                </>
-              ) : (
-                <>
-                  <span className='text-gray-300' title="Rework">0</span>
-                  <span className='text-gray-400'> / </span>
-                </>
-              )}
-              {rejectedQuantity > 0 ? (
-                <>
-                  <span
-                    className='font-bold text-red-600'
-                    style={{ color: '#cf1322' }}
-                    title="Rejected"
-                  >
-                    {rejectedQuantity.toLocaleString()}
-                  </span>
-                  <span className='text-gray-400'> / </span>
-                </>
-              ) : (
-                <>
-                   <span className='text-gray-300' title="Rejected">0</span>
-                   <span className='text-gray-400'> / </span>
-                </>
-              )}
-              <span className='font-semibold' title="Total Plan Quantity">{total.toLocaleString()}</span>
+              <span className='text-xs font-medium text-slate-500'>{pct}%</span>
             </div>
-            {deadlineInfo.closestDeadline && (
-              <div className='mt-1'>
-                {deadlineInfo.status === 'delayed' && (
-                  <span className='text-xs text-red-600 font-medium'>
-                    ⚠️ Delayed by {Math.abs(deadlineInfo.daysRemaining)} {Math.abs(deadlineInfo.daysRemaining) === 1 ? 'day' : 'days'}
-                  </span>
-                )}
-                {deadlineInfo.status === 'today' && (
-                  <span className='text-xs text-red-600 font-medium'>
-                    📅 To be delivered today
-                  </span>
-                )}
-                {deadlineInfo.status === 'urgent' && (
-                  <span className='text-xs text-orange-600 font-medium'>
-                    ⏰ Due in {deadlineInfo.daysRemaining} {deadlineInfo.daysRemaining === 1 ? 'day' : 'days'}
-                  </span>
-                )}
-                {deadlineInfo.status === 'upcoming' && (
-                  <span className='text-xs text-yellow-600 font-medium'>
-                    📅 {deadlineInfo.closestDeadline.format('MMM DD')}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* stacked bar — one segment per state */}
+            <div className='flex h-2 rounded-full overflow-hidden bg-slate-200'>
+              {done > 0 && (
+                <div className='bg-green-500' style={w(done)} title={`${done} completed`} />
+              )}
+              {inProd > 0 && (
+                <div className='bg-blue-500' style={w(inProd)} title={`${inProd} in production`} />
+              )}
+              {rework > 0 && (
+                <div className='bg-purple-500' style={w(rework)} title={`${rework} in rework`} />
+              )}
+              {rejected > 0 && (
+                <div className='bg-red-500' style={w(rejected)} title={`${rejected} rejected`} />
+              )}
+            </div>
+            {/* explicit counts — every nonzero state is SAID, not implied */}
+            <div className='flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs leading-tight'>
+              {inProd > 0 && (
+                <span className='text-blue-700'>
+                  <span className='inline-block w-2 h-2 rounded-full bg-blue-500 mr-1' />
+                  {inProd} in production
+                </span>
+              )}
+              {rework > 0 && (
+                <span className='text-purple-700 font-medium'>
+                  <span className='inline-block w-2 h-2 rounded-full bg-purple-500 mr-1' />
+                  {rework} rework
+                </span>
+              )}
+              {rejected > 0 && (
+                <span className='text-red-700 font-medium'>
+                  <span className='inline-block w-2 h-2 rounded-full bg-red-500 mr-1' />
+                  {rejected} rejected
+                </span>
+              )}
+              {unallocated > 0 && (
+                <span className='text-slate-500'>
+                  <span className='inline-block w-2 h-2 rounded-full bg-slate-300 mr-1' />
+                  {unallocated} unallocated
+                </span>
+              )}
+              {done === total && total > 0 && (
+                <span className='text-green-700 font-medium'>
+                  <span className='inline-block w-2 h-2 rounded-full bg-green-500 mr-1' />
+                  all completed
+                </span>
+              )}
+            </div>
           </div>
         )
       }
@@ -355,7 +380,7 @@ const ProductionTable = ({
       key: 'jobCards',
       dataIndex: 'totalJobCards',
       width: 180,
-      sorter: (a, b) => (a.totalJobCards || 0) - (b.totalJobCards || 0),
+      sorter: true, // server-side (validSortFields.totalJobCards)
       render: (_, record) => {
         const totalCards = record.totalJobCards || 0
         const activeCards = record.activeJobCards || 0
@@ -408,210 +433,204 @@ const ProductionTable = ({
   // Old KPI functions removed - using calculateKPIs function defined above
 
   return (
-    <div className='space-y-4'>
-      {/* KPI Cards */}
-      <div className='space-y-3'>
-        {/* KPI Header */}
-        <div className='flex justify-between items-center'>
-          <h3 className='text-lg font-semibold text-gray-800'>
-            Production Overview (All Production Plans)
-          </h3>
-          <div className='flex items-center gap-3 text-xs text-gray-500'>
-            {kpisLoading && (
-              <span className='text-blue-500'>Updating KPIs...</span>
-            )}
-            {lastKPIUpdate && (
-              <span>
-                Last updated: {moment(lastKPIUpdate).format('MMM DD, HH:mm')}
-              </span>
-            )}
-          </div>
-        </div>
+    <div style={{ width: '100%' }}>
+      <PageTitle>Production Plans</PageTitle>
 
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-          {/* Today's Quantity */}
-          <Card className='text-center' loading={kpisLoading}>
-            <Statistic
-              title={<span className='text-gray-600'>Today's Quantity</span>}
-              value={kpis.todayQuantity}
-              suffix='units'
-              valueStyle={{ color: '#1890ff' }}
-              prefix={<CheckCircleOutlined />}
-            />
-            <div className='text-xs text-gray-500 mt-2'>
-              {kpis.todayPlansCount || 0} plans created today
-            </div>
-          </Card>
-
-          {/* Unallocated Quantity */}
-          <Card className='text-center' loading={kpisLoading}>
-            <Statistic
-              title={
-                <span className='text-gray-600'>Unallocated Quantity</span>
-              }
-              value={kpis.totalUnallocated}
-              suffix='units'
-              valueStyle={{ color: '#faad14' }}
-              prefix={<InboxOutlined />}
-            />
-            <div className='text-xs text-gray-500 mt-2'>
-              Available for job cards
-            </div>
-          </Card>
-
-          {/* Allocated Quantity */}
-          <Card className='text-center' loading={kpisLoading}>
-            <Statistic
-              title={<span className='text-gray-600'>Allocated Quantity</span>}
-              value={kpis.totalAllocated}
-              suffix='units'
-              valueStyle={{ color: '#52c41a' }}
-              prefix={<ThunderboltOutlined />}
-            />
-            <div className='text-xs text-gray-500 mt-2'>
-              {kpis.completionRate || 0}% completion rate
-            </div>
-          </Card>
-
-          {/* Urgent Plans */}
-          <Card className='text-center' loading={kpisLoading}>
-            <Statistic
-              title={<span className='text-gray-600'>Urgent Plans</span>}
-              value={kpis.urgentPlans || 0}
-              suffix={`/ ${kpis.totalPlans || 0}`}
-              valueStyle={{ color: '#ff4d4f' }}
-              prefix={<ExclamationCircleOutlined />}
-            />
-            <div className='text-xs text-gray-500 mt-2'>
-              High priority plans
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Search and Filters Bar */}
-      <div className='bg-white p-4 rounded-lg border border-gray-200'>
-        <div className='flex flex-wrap gap-3 items-center'>
-          {/* Search */}
-          <Input
-            placeholder='Search production plans...'
-            prefix={<SearchOutlined />}
-            value={localSearch}
-            onChange={e => setLocalSearch(e.target.value)}
-            onPressEnter={handleSearch}
-            allowClear
-            style={{ width: 300 }}
-          />
-
-          {/* Today Filter */}
-          <Button
-            type={isTodayFilter ? 'primary' : 'default'}
-            icon={<CalendarOutlined />}
-            onClick={handleTodayFilter}
-          >
-            Today
-          </Button>
-
-          {/* Date Range */}
-          <RangePicker
-            value={
-              filters.dateRange
-                ? [moment(filters.dateRange[0]), moment(filters.dateRange[1])]
-                : null
-            }
-            onChange={handleDateRangeChange}
-            placeholder={['Start Date', 'End Date']}
-            disabled={isTodayFilter}
-          />
-
-          {/* Priority Filter */}
-          <Select
-            placeholder='Priority'
-            value={filters.urgent}
-            onChange={value => handleFilterChange('urgent', value)}
-            options={urgentOptions}
-            style={{ width: 150 }}
-            allowClear
-          />
-
-          {/* Status Filter */}
-          <Select
-            placeholder='Status'
-            value={filters.status}
-            onChange={value => handleFilterChange('status', value)}
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'pending', label: 'Pending' },
-              { value: 'rejected', label: 'Rejected' },
-              { value: 'completed', label: 'Completed' }
-            ]}
-            style={{ width: 150 }}
-            allowClear
-          />
-
-          {/* Clear Filters */}
-          {(searchTerm ||
-            filters.urgent ||
-            filters.status ||
-            filters.dateRange ||
-            isTodayFilter) && (
-            <Button onClick={handleClearFilters}>Clear Filters</Button>
-          )}
-
-          {/* Actions - Right Side */}
-          <div className='ml-auto flex gap-2'>
-            <Dropdown
-              menu={{ items: exportMenuItems }}
-              trigger={['click']}
-              disabled={productionPlans.length === 0}
-            >
-              <Button
-                icon={<DownloadOutlined />}
-                disabled={productionPlans.length === 0}
-              >
-                Export
-              </Button>
-            </Dropdown>
-            <Button
-              type='primary'
-              icon={<PlusOutlined />}
-              onClick={handleCreatePlan}
-            >
-              Create Plan
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <Table
-        columns={columns}
-        dataSource={productionPlans}
-        rowKey='id'
-        loading={loading}
-        onChange={handleTableChange}
-        rowClassName={rowClassName}
-        pagination={{
-          current: currentPage,
-          pageSize: pageSize,
-          total: totalPlansCount,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} plans`,
-          pageSizeOptions: ['10', '25', '50', '100']
-        }}
-        expandable={{
-          expandedRowKeys,
-          onExpand: handleExpand,
-          expandedRowRender,
-          expandRowByClick: false
-        }}
-        onRow={record => ({
-          onClick: () => handleView(record),
-          style: { cursor: 'pointer' }
-        })}
+      {/* Status tabs — one glance, one click */}
+      <TabBar
+        tabs={[
+          { key: 'pending', label: 'Active' },
+          { key: 'completed', label: 'Completed' },
+          { key: 'rejected', label: 'Has Rejections' },
+          { key: '', label: 'All Plans' }
+        ]}
+        activeKey={filters.status ?? ''}
+        onChange={key => handleFilterChange('status', key)}
       />
+
+      {/* KPI row — shared KpiCard (reflects active filters) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+          gap: 16,
+          marginBottom: 16
+        }}
+      >
+        <KpiCard
+          title="Today's Quantity"
+          value={`${(kpis.todayQuantity || 0).toLocaleString()} units`}
+          icon={<CalendarOutlined />}
+          accentColor='blue'
+          subMetric={{
+            label: 'Plans created today:',
+            value: String(kpis.todayPlansCount || 0)
+          }}
+        />
+        <KpiCard
+          title='Unallocated'
+          value={`${(kpis.totalUnallocated || 0).toLocaleString()} units`}
+          icon={<InboxOutlined />}
+          accentColor='orange'
+          subMetric={{ label: 'Waiting for job cards', value: '' }}
+        />
+        <KpiCard
+          title='Allocated'
+          value={`${(kpis.totalAllocated || 0).toLocaleString()} units`}
+          icon={<ThunderboltOutlined />}
+          accentColor='green'
+          subMetric={{ label: 'Committed to job cards', value: '' }}
+        />
+        <KpiCard
+          title='Urgent Plans'
+          value={`${(kpis.urgentPlans || 0).toLocaleString()} / ${(
+            kpis.totalPlans || 0
+          ).toLocaleString()}`}
+          icon={<ExclamationCircleOutlined />}
+          accentColor='red'
+          subMetric={{ label: 'High priority plans', value: '' }}
+        />
+      </div>
+
+      {/* Filter bar — shared component (live search, range picker, export) */}
+      <FilterBar
+        searchText={localSearch}
+        onSearchChange={setLocalSearch}
+        dateRange={
+          filters.dateRange
+            ? [moment(filters.dateRange[0]), moment(filters.dateRange[1])]
+            : null
+        }
+        onDateRangeChange={handleDateRangeChange}
+        onRefresh={handleSearch}
+        loading={loading}
+        exportMenuItems={exportMenuItems}
+        extraFilters={
+          <>
+            <Select
+              placeholder='Priority'
+              value={filters.urgent || undefined}
+              onChange={value => handleFilterChange('urgent', value ?? '')}
+              options={urgentOptions.filter(o => o.value !== '')}
+              style={{ width: 120 }}
+              allowClear
+            />
+            <button
+              className='plati-btn-refresh'
+              onClick={handleTodayFilter}
+              style={
+                isTodayFilter
+                  ? { borderColor: '#f26c2d', color: '#f26c2d' }
+                  : undefined
+              }
+            >
+              <CalendarOutlined style={{ fontSize: 14 }} /> Today
+            </button>
+            {(searchTerm ||
+              filters.urgent ||
+              filters.dateRange ||
+              isTodayFilter) && (
+              <button
+                className='plati-btn-refresh'
+                onClick={handleClearFilters}
+              >
+                Clear
+              </button>
+            )}
+            <button className='plati-btn-create' onClick={handleCreatePlan}>
+              <PlusOutlined style={{ fontSize: 14 }} /> Create Plan
+            </button>
+          </>
+        }
+      />
+
+      {/* Table — antd behavior (expand/sort/paginate) in the plati skin */}
+      <div className='plati-antd-card'>
+        <Table
+          columns={columns}
+          dataSource={productionPlans}
+          rowKey='id'
+          loading={loading}
+          onChange={handleTableChange}
+          rowClassName={rowClassName}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: totalPlansCount,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} plans`,
+            pageSizeOptions: ['10', '25', '50', '100']
+          }}
+          expandable={{
+            expandedRowKeys,
+            onExpand: handleExpand,
+            expandedRowRender,
+            expandRowByClick: false
+          }}
+          onRow={record => ({
+            onClick: () => handleView(record),
+            style: { cursor: 'pointer' }
+          })}
+        />
+      </div>
+
+      {/* plati design-language skin (mirrors Core/Components/DataTable) */}
+      <style>{`
+        .plati-antd-card {
+          background: white;
+          border: 1px solid #e5e5e5;
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0px 1px 2px 0px rgba(0,0,0,0.05);
+        }
+        .plati-antd-card .ant-table {
+          font-family: 'Inter', sans-serif;
+          font-size: 14px;
+          color: #1a1a1a;
+        }
+        .plati-antd-card .ant-table-thead > tr > th {
+          background: #f3f3f5;
+          color: rgba(26, 26, 26, 0.6);
+          font-weight: 500;
+          font-size: 14px;
+          border-bottom: 1px solid #e5e5e5;
+          height: 40px;
+          padding: 10px 16px;
+        }
+        .plati-antd-card .ant-table-tbody > tr > td {
+          padding: 14px 16px;
+          border-bottom: 1px solid #f3f4f6;
+          color: #1a1a1a;
+          font-size: 14px;
+        }
+        .plati-antd-card .ant-table-tbody > tr:hover > td {
+          background: #fafafa;
+        }
+        .plati-antd-card .ant-pagination {
+          padding: 12px 24px;
+          margin: 0 !important;
+        }
+        .plati-btn-create {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #f26c2d;
+          border: none;
+          border-radius: 123px;
+          padding: 0 18px;
+          height: 40px;
+          font-size: 14px;
+          font-weight: 500;
+          font-family: 'Inter', sans-serif;
+          color: white;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+        .plati-btn-create:hover { background: #e05a1e; }
+      `}</style>
     </div>
   )
 }

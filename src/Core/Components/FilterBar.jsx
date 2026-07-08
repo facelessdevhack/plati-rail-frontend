@@ -54,16 +54,18 @@ const FilterBar = ({
             allowClear
             className="plati-filter-search"
           />
-          <Select
-            placeholder="Select Dealer"
-            value={selectedDealer}
-            onChange={onDealerChange}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={dealerOptions}
-            className="plati-filter-dealer"
-          />
+          {onDealerChange && (
+            <Select
+              placeholder="Select Dealer"
+              value={selectedDealer}
+              onChange={onDealerChange}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={dealerOptions}
+              className="plati-filter-dealer"
+            />
+          )}
 
           {useDateRange ? (
             <DatePicker.RangePicker

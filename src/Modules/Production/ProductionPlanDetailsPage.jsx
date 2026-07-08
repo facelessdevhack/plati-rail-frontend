@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
+import { notification } from 'antd'
 import moment from 'moment'
 import {
   ArrowLeft,
@@ -10,24 +11,19 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Play,
   Settings,
-  TrendingUp,
   FileText,
   Plus,
   Eye,
   Edit2,
-  Trash2,
   ArrowRight,
   BarChart3,
-  Activity,
   Filter,
   X,
   Search,
   RefreshCw,
   ThumbsUp,
-  ThumbsDown,
-  Target
+  ThumbsDown
 } from 'lucide-react'
 
 import {
@@ -45,7 +41,26 @@ import JobCardDetailsModal from './JobCardDetailsModal'
 import StepManagementView from './StepManagementView'
 import StepProgressModal from './StepProgressModal'
 import JobCardCreationModal from './JobCardCreationModal'
+import EditProductionPlanModal from './EditProductionPlanModal'
+import StatusBadge from '../../Core/Components/StatusBadge'
+import TabBar from '../../Core/Components/TabBar'
 import InventoryRequestModal from './InventoryRequestModal'
+
+const JOB_CARD_STATUS_BADGE = {
+  pending: { variant: 'pending', label: 'Pending' },
+  in_progress: { variant: 'inprod', label: 'In Progress' },
+  completed: { variant: 'paid', label: 'Completed' },
+  on_hold: { variant: 'outofstock', label: 'On Hold' },
+  cancelled: { variant: 'unpaid', label: 'Cancelled' }
+}
+
+const QUALITY_BADGE_VARIANT = {
+  excellent: 'paid',
+  good: 'paid',
+  fair: 'pending',
+  pending: 'pending',
+  poor: 'unpaid'
+}
 
 const ProductionPlanDetailsPage = () => {
   const { planId } = useParams()
@@ -83,6 +98,7 @@ const ProductionPlanDetailsPage = () => {
 
   // Job card creation modal states
   const [jobCardModalVisible, setJobCardModalVisible] = useState(false)
+  const [editModalVisible, setEditModalVisible] = useState(false)
 
   // Inventory request modal states
   const [inventoryRequestModalVisible, setInventoryRequestModalVisible] = useState(false)
@@ -194,26 +210,18 @@ const ProductionPlanDetailsPage = () => {
     }
   }
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'bg-amber-100 text-amber-700',
-      in_progress: 'bg-blue-100 text-blue-700',
-      completed: 'bg-green-100 text-green-700',
-      on_hold: 'bg-slate-100 text-slate-700',
-      cancelled: 'bg-red-100 text-red-700'
-    }
-    return colors[status] || colors.pending
-  }
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      pending: <Clock className="h-4 w-4" />,
-      in_progress: <Play className="h-4 w-4" />,
-      completed: <CheckCircle2 className="h-4 w-4" />,
-      on_hold: <AlertCircle className="h-4 w-4" />,
-      cancelled: <AlertCircle className="h-4 w-4" />
-    }
-    return icons[status] || icons.pending
+  // The backend never flips a job card's status field to 'completed' —
+  // derive it from the unit math instead (every unit's fate decided =
+  // nothing left to process on this card)
+  const getDerivedCardStatus = (jobCard) => {
+    if (jobCard.status === 'completed') return 'completed'
+    const total = parseInt(jobCard.quantity) || 0
+    const accounted =
+      (parseInt(jobCard.acceptedQuantity) || 0) +
+      (parseInt(jobCard.rejectedQuantity) || 0) +
+      (parseInt(jobCard.reworkQuantity) || 0)
+    if (total > 0 && accounted >= total) return 'completed'
+    return jobCard.status || 'pending'
   }
 
   const getQualityStatus = (jobCard) => {
@@ -248,9 +256,9 @@ const ProductionPlanDetailsPage = () => {
         if (!matchesSearch) return false
       }
 
-      // Status filter
+      // Status filter — same derived status the badge shows
       if (statusFilter !== 'all') {
-        if ((jobCard.status || 'pending') !== statusFilter) return false
+        if (getDerivedCardStatus(jobCard) !== statusFilter) return false
       }
 
       // Step filter
@@ -485,10 +493,111 @@ const ProductionPlanDetailsPage = () => {
     }
   }
 
+  // pipeline strip + bottleneck need aggregated data from the start,
+  // not only after the tab is clicked
+  useEffect(() => {
+    if (planDetails?.id && jobCards.length > 0) loadAggregatedQualityData()
+  }, [planDetails?.id, jobCards.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // single-job-card plans: pre-select it so the Steps tab is never
+  // mysteriously disabled — and load its step data, or the tab opens
+  // onto a false "No steps initialized" empty state
+  useEffect(() => {
+    if (jobCards.length === 1 && !selectedJobCardForSteps) {
+      setSelectedJobCardForSteps(jobCards[0])
+      loadStepProgressData(jobCards[0].jobCardId || jobCards[0].id)
+    }
+  }, [jobCards]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleViewAggregatedQuality = () => {
     setActiveViewTab('aggregated')
     loadAggregatedQualityData()
   }
+
+  // ─── RETHINK: one unit-flow model + a computed next action ───
+  // The page's job is to answer, in order: (1) where do the units stand,
+  // (2) what should I do next, (3) where are they stuck. Everything below
+  // derives from ONE consistent decomposition of plan.quantity.
+  const unitFlow = useMemo(() => {
+    const total = planDetails?.quantity || 0
+    // "done" = dispatch-accepted units (same semantics as the listing's
+    // completedQuantity). statistics.completedQuantity was fed by a backend
+    // dead-read and job-card completion flags that are never set — it showed
+    // 0/11 with a blue bar on COMPLETED plans.
+    const accepted = jobCards.reduce(
+      (s, c) => s + (parseInt(c.acceptedQuantity) || 0), 0
+    )
+    const done = Math.max(
+      accepted,
+      planDetails?.statistics?.completedQuantity || 0
+    )
+    const rejected = jobCards.reduce((s, c) => s + (parseInt(c.rejectedQuantity) || 0), 0)
+    const rework = jobCards.reduce((s, c) => s + (parseInt(c.reworkQuantity) || 0), 0)
+    const allocated = jobCards.reduce((s, c) => s + (parseInt(c.quantity) || 0), 0)
+    const unallocated = Math.max(0, total - allocated)
+    const inProd = Math.max(0, total - done - rejected - rework - unallocated)
+    return {
+      total, done, rejected, rework, unallocated, inProd,
+      pct: total > 0 ? Math.round((done / total) * 100) : 0
+    }
+  }, [planDetails, jobCards])
+
+  // first pipeline step that still holds pending units = the bottleneck
+  const bottleneckStep = useMemo(
+    () => (aggregatedQualityData || []).find(st => (st.pendingQuantity || 0) > 0) || null,
+    [aggregatedQualityData]
+  )
+
+  const nextAction = useMemo(() => {
+    if (!planDetails) return null
+    if (planDetails.isCompleted) {
+      return {
+        tone: 'done',
+        text: childReworkPlans.length > 0
+          ? 'Plan completed — its remaining units continue in the rework plans below.'
+          : 'Plan completed — output has been added to inventory.'
+      }
+    }
+    if (jobCards.length === 0) {
+      return {
+        tone: 'todo',
+        text: `All ${unitFlow.total.toLocaleString()} units are waiting for a job card.`,
+        actionLabel: 'Create Job Card',
+        onClick: handleCreateJobCard
+      }
+    }
+    if (unitFlow.rejected > 0) {
+      return {
+        tone: 'alert',
+        text: `${unitFlow.rejected} rejected unit${unitFlow.rejected !== 1 ? 's' : ''} need a decision — return, rework or discard.`,
+        actionLabel: 'Open Rejected Stock',
+        onClick: () => navigate('/rejected-stock')
+      }
+    }
+    if (bottleneckStep) {
+      return {
+        tone: 'todo',
+        text: `${bottleneckStep.pendingQuantity} unit${bottleneckStep.pendingQuantity !== 1 ? 's' : ''} waiting at ${bottleneckStep.stepName}.`,
+        actionLabel: 'Open Step Tracking',
+        onClick: handleViewAggregatedQuality
+      }
+    }
+    if (unitFlow.unallocated > 0) {
+      return {
+        tone: 'todo',
+        text: `${unitFlow.unallocated} unit${unitFlow.unallocated !== 1 ? 's' : ''} not on any job card yet.`,
+        actionLabel: 'Create Job Card',
+        onClick: handleCreateJobCard
+      }
+    }
+    return {
+      tone: 'ok',
+      text: 'Units are moving through production.',
+      actionLabel: 'Open Step Tracking',
+      onClick: handleViewAggregatedQuality
+    }
+  }, [planDetails, jobCards, unitFlow, bottleneckStep, childReworkPlans])
+
 
   const handleProcessStepFromAggregated = async (stepProgress, jobCardId) => {
     // Find the job card for this step
@@ -558,7 +667,10 @@ const ProductionPlanDetailsPage = () => {
     }
   }
 
-  const handleCreateJobCard = () => {
+  // function declaration (hoisted) — the nextAction memo above references
+  // this before a `const` here would be initialized (TDZ crash when the plan
+  // arrives from Redux cache while jobCards are still loading)
+  function handleCreateJobCard () {
     setJobCardModalVisible(true)
   }
 
@@ -590,28 +702,41 @@ const ProductionPlanDetailsPage = () => {
   const handleSubmitInventoryRequest = async (requestData) => {
     try {
       setInventoryRequestSubmitting(true)
-      
+
       await dispatch(createInventoryRequest(requestData)).unwrap()
-      
-      console.log('Inventory request submitted successfully:', requestData)
-      
-      alert(`Inventory request created successfully!\nQuantity: ${requestData.quantityRequested} units`)
+
+      // alert() blocks the whole tab; notification surfaces the same info
+      notification.success({
+        message: 'Materials requested',
+        description: `${requestData.quantityRequested} units requested from inventory. The warehouse will see it on the Inventory Requests page.`
+      })
 
       setInventoryRequestModalVisible(false)
       setSelectedStepForInventory(null)
+
+      // reload step data → StepManagementView refetches its material state,
+      // so the inventory step's status line flips to "requested" immediately
+      if (requestData.jobCardId) loadStepProgressData(requestData.jobCardId)
     } catch (error) {
       console.error('Failed to create inventory request:', error)
-      alert(`Failed to create inventory request: ${error.message || 'Please try again.'}`)
+      notification.error({
+        message: 'Request failed',
+        // backend messages carry the budget math ("plan quantity X, already
+        // requested Y") — show them verbatim
+        description: error?.message || 'Please try again.'
+      })
     } finally {
       setInventoryRequestSubmitting(false)
     }
   }
 
+  // no bg overrides on these states — the layout's warm #F8F4F0 shows through
+  // (the old slate gradient flashed a cool gray page during load)
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#f26c2d' }}></div>
           <p className="text-slate-600">Loading production plan...</p>
         </div>
       </div>
@@ -620,14 +745,14 @@ const ProductionPlanDetailsPage = () => {
 
   if (!planDetails) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600 text-lg mb-2">Production plan not found</p>
           <p className="text-slate-500 text-sm mb-4">Plan ID: {planId}</p>
           <button
             onClick={() => navigate('/production-plans-v2')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#f26c2d] text-white rounded-full hover:bg-[#e05a1e] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Production Plans
@@ -645,27 +770,55 @@ const ProductionPlanDetailsPage = () => {
   const progressPercentage = totalQuantity > 0 ? Math.round((allocatedQuantity / totalQuantity) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
-      <div className="bg-white border-b border-slate-200">
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e5e5' }}>
         <div className="max-w-screen-2xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <button
               onClick={() => navigate('/production-plans-v2')}
-              className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 14px', borderRadius: 999,
+                border: '1px solid #e5e5e5', background: 'white',
+                fontFamily: "'Inter', sans-serif", fontSize: 13,
+                color: 'rgba(26,26,26,0.7)', cursor: 'pointer'
+              }}
             >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Back to Plans</span>
+              <ArrowLeft className="h-4 w-4" />
+              Back to Plans
             </button>
 
-            <div className="flex gap-3">
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditModalVisible(true)}
+                disabled={planDetails.isCompleted}
+                title={planDetails.isCompleted ? 'Completed plans cannot be edited' : undefined}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 40, padding: '0 18px', borderRadius: 999,
+                  border: '1px solid #a0a0a8', background: 'white',
+                  fontFamily: "'Inter', sans-serif", fontSize: 14,
+                  color: '#1a1a1a',
+                  cursor: planDetails.isCompleted ? 'not-allowed' : 'pointer',
+                  opacity: planDetails.isCompleted ? 0.45 : 1
+                }}
+              >
                 <Edit2 className="h-4 w-4" />
                 Edit Plan
               </button>
               <button
                 onClick={handleCreateJobCard}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={planDetails.isCompleted}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 40, padding: '0 18px', borderRadius: 999,
+                  border: 'none', background: '#f26c2d',
+                  fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+                  color: 'white',
+                  cursor: planDetails.isCompleted ? 'not-allowed' : 'pointer',
+                  opacity: planDetails.isCompleted ? 0.45 : 1
+                }}
               >
                 <Plus className="h-4 w-4" />
                 Create Job Card
@@ -673,48 +826,60 @@ const ProductionPlanDetailsPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-blue-500 rounded-xl">
-              <Package className="h-8 w-8 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-3xl font-bold text-slate-800">
-                  Production Plan #{planDetails.id}
-                </h1>
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-medium ${
-                  planDetails.urgent ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
-                }`}>
-                  <AlertCircle className="h-4 w-4" />
-                  {planDetails.urgent ? 'URGENT' : 'NORMAL'}
-                </span>
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-sm font-medium ${
-                  getStatusColor(planDetails.currentStepStatus || 'pending')
-                }`}>
-                  {getStatusIcon(planDetails.currentStepStatus || 'pending')}
-                  {(planDetails.currentStepStatus || 'pending').replace('_', ' ').toUpperCase()}
-                </span>
-              </div>
-              <div className="flex items-center gap-6 text-sm text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  <span>Created {moment(planDetails.createdAt).format('MMM DD, YYYY [at] HH:mm')}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <User className="h-4 w-4" />
-                  <span>By {planDetails.createdBy || 'Unknown'}</span>
-                </div>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <div className="flex items-center gap-1.5">
-                  <Package className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-slate-800">Total: {totalQuantity.toLocaleString()} units</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-slate-800">Pending: {remainingQuantity.toLocaleString()} units</span>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <h1
+              style={{
+                fontFamily: "'Staff Wide Test', serif",
+                fontSize: 34, fontWeight: 400, color: '#1a1a1a',
+                margin: 0, lineHeight: '38px'
+              }}
+            >
+              Production Plan #{planDetails.id}
+            </h1>
+            {planDetails.isRework && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 13px', borderRadius: 999, fontSize: 12,
+                fontFamily: "'Inter', sans-serif", color: '#1a1a1a',
+                background: '#f5f3ff', border: '1px solid rgba(124,58,237,0.25)'
+              }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#7c3aed' }} />
+                Rework
+              </span>
+            )}
+            {planDetails.urgent ? (
+              <StatusBadge variant="unpaid">Urgent</StatusBadge>
+            ) : null}
+            {planDetails.isCompleted ? (
+              <StatusBadge variant="dispatched">Completed</StatusBadge>
+            ) : (
+              <StatusBadge variant="inprod">
+                {(planDetails.currentStepStatus || 'in production').replace('_', ' ')}
+              </StatusBadge>
+            )}
+          </div>
+
+          <div
+            className="flex items-center gap-5 flex-wrap"
+            style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: 'rgba(26,26,26,0.6)' }}
+          >
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              Created {moment(planDetails.createdAt).format('MMM DD, YYYY [at] HH:mm')}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <User className="h-4 w-4" />
+              By {planDetails.createdBy || 'Unknown'}
+            </span>
+            <span style={{ width: 1, height: 14, background: '#e5e5e5' }} />
+            <span className="flex items-center gap-1.5" style={{ color: '#1a1a1a', fontWeight: 500 }}>
+              <Package className="h-4 w-4" style={{ color: '#4a90ff' }} />
+              Total: {totalQuantity.toLocaleString()} units
+            </span>
+            <span className="flex items-center gap-1.5" style={{ color: '#1a1a1a', fontWeight: 500 }}>
+              <Clock className="h-4 w-4" style={{ color: '#f26c2d' }} />
+              Pending: {remainingQuantity.toLocaleString()} units
+            </span>
           </div>
         </div>
       </div>
@@ -722,7 +887,7 @@ const ProductionPlanDetailsPage = () => {
       {/* Rework Banner - shown if this plan is a rework plan */}
       {planDetails.isRework && planDetails.parentPlanId && (
         <div className="max-w-screen-2xl mx-auto px-6 pt-4">
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="bg-purple-50 border border-purple-200 rounded-[20px] p-4 flex items-center gap-3">
             <RefreshCw className="h-5 w-5 text-purple-600 flex-shrink-0" />
             <div className="flex-1">
               <span className="font-semibold text-purple-800">This is a Rework Plan</span>
@@ -730,7 +895,7 @@ const ProductionPlanDetailsPage = () => {
                 Created from rejected units of{' '}
                 <button
                   className="underline font-semibold hover:text-purple-900"
-                  onClick={() => navigate(`/production/plans/${planDetails.parentPlanId}`)}
+                  onClick={() => navigate(`/production-plan/${planDetails.parentPlanId}`)}
                 >
                   Plan #{planDetails.parentPlanId}
                 </button>
@@ -738,7 +903,7 @@ const ProductionPlanDetailsPage = () => {
             </div>
             <button
               className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1"
-              onClick={() => navigate(`/production/plans/${planDetails.parentPlanId}`)}
+              onClick={() => navigate(`/production-plan/${planDetails.parentPlanId}`)}
             >
               View Parent Plan <ArrowRight className="h-4 w-4" />
             </button>
@@ -748,212 +913,225 @@ const ProductionPlanDetailsPage = () => {
 
       {/* Main Content */}
       <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-6">
-        {/* Combined Plan Details Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* Header with Progress */}
-          <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-5 border-b border-slate-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xl font-semibold text-slate-800">Production Plan Overview</h3>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-600">Allocated:</span>
-                <span className="text-2xl font-bold text-blue-600">{allocatedQuantity.toLocaleString()}</span>
-                <span className="text-sm text-slate-500">of {totalQuantity.toLocaleString()} ({progressPercentage}%)</span>
+        {/* ── WHERE THINGS STAND — one flow bar, one next action ── */}
+        <div className="bg-white rounded-[20px] shadow-sm border border-[#e5e5e5] overflow-hidden">
+          <div className="px-6 py-5">
+            <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+              <h3 className="text-lg font-semibold text-slate-800 m-0">Where things stand</h3>
+              <div className="text-sm text-slate-500">
+                <span className="text-2xl font-bold text-slate-800">{unitFlow.done.toLocaleString()}</span>
+                <span className="text-slate-400"> / {unitFlow.total.toLocaleString()} completed</span>
+                <span className="ml-2 font-semibold text-slate-700">{unitFlow.pct}%</span>
               </div>
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-2.5 shadow-inner">
+
+            {/* segmented unit-flow bar — same vocabulary as the listing */}
+            <div className="flex h-3 rounded-full overflow-hidden bg-slate-200 mb-2">
+              {unitFlow.done > 0 && (
+                <div className="bg-green-500" style={{ width: `${(unitFlow.done / unitFlow.total) * 100}%` }} title={`${unitFlow.done} completed`} />
+              )}
+              {unitFlow.inProd > 0 && (
+                <div className="bg-blue-500" style={{ width: `${(unitFlow.inProd / unitFlow.total) * 100}%` }} title={`${unitFlow.inProd} in production`} />
+              )}
+              {unitFlow.rework > 0 && (
+                <div className="bg-purple-500" style={{ width: `${(unitFlow.rework / unitFlow.total) * 100}%` }} title={`${unitFlow.rework} in rework`} />
+              )}
+              {unitFlow.rejected > 0 && (
+                <div className="bg-red-500" style={{ width: `${(unitFlow.rejected / unitFlow.total) * 100}%` }} title={`${unitFlow.rejected} rejected`} />
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mb-4">
+              {unitFlow.done > 0 && (
+                <span className="text-green-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />{unitFlow.done} completed</span>
+              )}
+              {unitFlow.inProd > 0 && (
+                <span className="text-blue-700"><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />{unitFlow.inProd} in production</span>
+              )}
+              {unitFlow.rework > 0 && (
+                <span className="text-purple-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1" />{unitFlow.rework} in rework</span>
+              )}
+              {unitFlow.rejected > 0 && (
+                <span className="text-red-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />{unitFlow.rejected} rejected</span>
+              )}
+              {unitFlow.unallocated > 0 && (
+                <span className="text-slate-500"><span className="inline-block w-2 h-2 rounded-full bg-slate-300 mr-1" />{unitFlow.unallocated} unallocated</span>
+              )}
+            </div>
+
+            {/* NEXT ACTION — the page tells you what to do, not just what is */}
+            {nextAction && (
               <div
-                className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-2.5 rounded-full transition-all duration-500 shadow-sm"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
+                className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3"
+                style={{
+                  background:
+                    nextAction.tone === 'done' ? '#d9fae6'
+                    : nextAction.tone === 'alert' ? '#fef2f2'
+                    : nextAction.tone === 'ok' ? '#ecfeff'
+                    : '#fff7ed',
+                  border: `1px solid ${
+                    nextAction.tone === 'done' ? 'rgba(78,203,113,0.25)'
+                    : nextAction.tone === 'alert' ? 'rgba(229,62,62,0.25)'
+                    : nextAction.tone === 'ok' ? 'rgba(8,145,178,0.25)'
+                    : 'rgba(242,108,45,0.25)'
+                  }`
+                }}
+              >
+                <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "'Inter', sans-serif", color: '#1a1a1a' }}>
+                  <span
+                    className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                    style={{
+                      background:
+                        nextAction.tone === 'done' ? '#4ecb71'
+                        : nextAction.tone === 'alert' ? '#e53e3e'
+                        : nextAction.tone === 'ok' ? '#0891b2'
+                        : '#f26c2d'
+                    }}
+                  />
+                  <span className="font-semibold mr-1">Next:</span>
+                  {nextAction.text}
+                </div>
+                {nextAction.actionLabel && (
+                  <button
+                    onClick={nextAction.onClick}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 34, padding: '0 16px', borderRadius: 999,
+                      border: 'none', background: '#f26c2d', color: 'white',
+                      fontFamily: "'Inter', sans-serif", fontSize: 13,
+                      fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {nextAction.actionLabel}
+                  </button>
+                )}
+              </div>
+            )}
 
-          {/* Main Content Grid */}
-          <div className="p-6">
-            <div className="flex items-center gap-4">
-              {/* Source Alloy */}
-              <div className="flex-1 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm">
-                    <Package className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-0.5">Source Material</p>
-                    <h3 className="text-lg font-bold text-slate-800">
-                      {planDetails.alloyName || planDetails.sourceProduct || `Alloy ${planDetails.alloyId}`}
-                    </h3>
-                  </div>
+            {/* conversion */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex-1 rounded-2xl px-4 py-3 border" style={{ background: '#f8fafc', borderColor: '#e5e5e5' }}>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5 m-0">Source material</p>
+                <div className="text-sm font-semibold text-slate-800">
+                  {planDetails.alloyName || planDetails.sourceProduct || `Alloy ${planDetails.alloyId}`}
                 </div>
               </div>
-
-              {/* Arrow */}
-              <div className="flex-shrink-0">
-                <div className="p-2 bg-gradient-to-r from-blue-100 to-green-100 rounded-full shadow-sm">
-                  <ArrowRight className="h-6 w-6 text-slate-700" strokeWidth={2.5} />
+              <ArrowRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
+              <div className="flex-1 rounded-2xl px-4 py-3 border" style={{ background: '#f0fdf4', borderColor: 'rgba(78,203,113,0.25)' }}>
+                <p className="text-[11px] font-semibold text-green-600 uppercase tracking-wide mb-0.5 m-0">Target product</p>
+                <div className="text-sm font-semibold text-slate-800">
+                  {planDetails.convertName || planDetails.targetProduct || `Alloy ${planDetails.convertToAlloyId}`}
                 </div>
-              </div>
-
-              {/* Target Alloy */}
-              <div className="flex-1 bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm">
-                    <Package className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-0.5">Target Product</p>
-                    <h3 className="text-lg font-bold text-slate-800">
-                      {planDetails.convertName || planDetails.targetProduct || `Alloy ${planDetails.convertToAlloyId}`}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quality Metrics Overview */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="px-6 py-4 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              Quality Tracking Overview
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-5 w-5 text-slate-600" />
-                  <span className="text-sm font-medium text-slate-600">Total Quantity</span>
-                </div>
-                <div className="text-2xl font-bold text-slate-800">{qualityMetrics.total.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">All job cards</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <ThumbsUp className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-600">Accepted</span>
-                </div>
-                <div className="text-2xl font-bold text-green-700">{qualityMetrics.accepted.toLocaleString()}</div>
-                <div className="text-xs text-green-600">{qualityMetrics.qualityRate}% quality rate</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <ThumbsDown className="h-5 w-5 text-red-600" />
-                  <span className="text-sm font-medium text-red-600">Rejected</span>
-                </div>
-                <div className="text-2xl font-bold text-red-700">{qualityMetrics.rejected.toLocaleString()}</div>
-                <div className="text-xs text-red-600">Failed quality</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border border-amber-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-600">Pending</span>
-                </div>
-                <div className="text-2xl font-bold text-amber-700">{qualityMetrics.pending.toLocaleString()}</div>
-                <div className="text-xs text-amber-600">Awaiting inspection</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-600">Completion</span>
-                </div>
-                <div className="text-2xl font-bold text-blue-700">{qualityMetrics.completionRate}%</div>
-                <div className="text-xs text-blue-600">Overall rate</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Job Cards Section with Tabbed Interface */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          {/* Tab Navigation */}
-          <div className="px-6 py-4 border-b border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-6">
-                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  Production Tracking
-                </h3>
+        {/* ── PRODUCTION PIPELINE — where the units are, step by step ── */}
+        {aggregatedQualityData.length > 0 && (
+          <div className="bg-white rounded-[20px] shadow-sm border border-[#e5e5e5] px-6 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-800 m-0">Production pipeline</h3>
+              <button
+                onClick={handleViewAggregatedQuality}
+                className="text-xs font-medium"
+                style={{ color: '#f26c2d', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                Open step tracking →
+              </button>
+            </div>
+            <div className="flex items-stretch gap-1 overflow-x-auto pb-1">
+              {aggregatedQualityData.map((st, i) => {
+                const started = (st.inputQuantity || 0) > 0
+                const pending = st.pendingQuantity || 0
+                const isBottleneck = bottleneckStep && bottleneckStep.stepOrder === st.stepOrder
+                return (
+                  <React.Fragment key={st.stepOrder || i}>
+                    {i > 0 && (
+                      <div className="self-center text-slate-300 flex-shrink-0">›</div>
+                    )}
+                    <button
+                      onClick={handleViewAggregatedQuality}
+                      className="flex-1 min-w-[110px] rounded-xl px-3 py-2 text-left border transition-colors"
+                      style={{
+                        fontFamily: "'Inter', sans-serif",
+                        cursor: 'pointer',
+                        background: isBottleneck ? '#fff7ed' : started && pending === 0 ? '#f0fdf4' : 'white',
+                        borderColor: isBottleneck ? 'rgba(242,108,45,0.4)' : started && pending === 0 ? 'rgba(78,203,113,0.25)' : '#e5e5e5'
+                      }}
+                    >
+                      <div className="text-[11px] font-medium truncate" style={{ color: 'rgba(26,26,26,0.6)' }}>
+                        {i + 1}. {st.stepName}
+                      </div>
+                      <div className="text-sm font-semibold" style={{ color: isBottleneck ? '#f26c2d' : started && pending === 0 ? '#15803d' : '#a0a0a8' }}>
+                        {started
+                          ? pending > 0
+                            ? `${pending} pending`
+                            : '✓ clear'
+                          : '—'}
+                      </div>
+                    </button>
+                  </React.Fragment>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-                {/* Tab Buttons */}
-                <div className="flex bg-slate-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setActiveViewTab('overview')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeViewTab === 'overview'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Job Cards Overview ({filteredJobCards.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveViewTab('steps')}
-                    disabled={!selectedJobCardForSteps}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeViewTab === 'steps'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : selectedJobCardForSteps
-                        ? 'text-slate-600 hover:text-slate-900'
-                        : 'text-slate-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Step Quality Tracking
-                    {selectedJobCardForSteps && (
-                      <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                        #{selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={handleViewAggregatedQuality}
-                    disabled={jobCards.length === 0}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeViewTab === 'aggregated'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : jobCards.length > 0
-                        ? 'text-slate-600 hover:text-slate-900'
-                        : 'text-slate-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Aggregated Quality
-                    {jobCards.length > 0 && (
-                      <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                        {jobCards.length} cards
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
+        {/* ── PRODUCTION TRACKING — job cards, per-card steps, aggregated steps ── */}
+        <div className="bg-white rounded-[20px] shadow-sm border border-[#e5e5e5] overflow-hidden">
+          <div className="px-6 pt-5">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h3 className="text-lg font-semibold text-slate-800 m-0">Production Tracking</h3>
 
               {activeViewTab === 'overview' && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 36, padding: '0 16px', borderRadius: 999,
+                      border: '1px solid #e5e5e5',
+                      background: showFilters ? '#f3f3f5' : 'white',
+                      color: '#1a1a1a', fontFamily: "'Inter', sans-serif",
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                    }}
                   >
-                    <Filter className="h-4 w-4" />
+                    <Filter className="h-3.5 w-3.5" />
                     Filters
                     {(searchTerm || statusFilter !== 'all' || stepFilter !== 'all' || qualityFilter !== 'all') && (
-                      <span className="bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      <span style={{
+                        background: '#f26c2d', color: 'white', fontSize: 11, fontWeight: 600,
+                        borderRadius: 999, minWidth: 18, height: 18, lineHeight: '18px',
+                        textAlign: 'center', padding: '0 4px'
+                      }}>
                         {[searchTerm, statusFilter !== 'all', stepFilter !== 'all', qualityFilter !== 'all'].filter(Boolean).length}
                       </span>
                     )}
                   </button>
                   <button
                     onClick={refreshJobCards}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                    title='Refresh job cards'
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 36, height: 36, borderRadius: 999,
+                      border: '1px solid #e5e5e5', background: 'white',
+                      color: '#1a1a1a', cursor: 'pointer'
+                    }}
                   >
                     <RefreshCw className="h-4 w-4" />
                   </button>
                   <button
                     onClick={handleCreateJobCard}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    disabled={!!planDetails.isCompleted}
+                    title={planDetails.isCompleted ? 'Plan is completed' : undefined}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 36, padding: '0 18px', borderRadius: 999, border: 'none',
+                      background: planDetails.isCompleted ? '#f5c9b3' : '#f26c2d',
+                      color: 'white', fontFamily: "'Inter', sans-serif",
+                      fontSize: 13, fontWeight: 500,
+                      cursor: planDetails.isCompleted ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <Plus className="h-4 w-4" />
                     Create Job Card
@@ -962,46 +1140,72 @@ const ProductionPlanDetailsPage = () => {
               )}
             </div>
 
+            {/* Tabs appear only when reachable: Step Tracking needs a selected
+                job card, Aggregated needs at least one job card */}
+            <TabBar
+              tabs={[
+                { key: 'overview', label: 'Job Cards' },
+                ...(selectedJobCardForSteps
+                  ? [{ key: 'steps', label: `Step Tracking · #${selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id}` }]
+                  : []),
+                ...(jobCards.length > 0
+                  ? [{ key: 'aggregated', label: 'Aggregated Quality' }]
+                  : [])
+              ]}
+              activeKey={activeViewTab}
+              onChange={key => {
+                if (key === 'aggregated') handleViewAggregatedQuality()
+                else setActiveViewTab(key)
+              }}
+              counts={{
+                overview: filteredJobCards.length,
+                ...(jobCards.length > 0 ? { aggregated: jobCards.length } : {})
+              }}
+            />
+
             {/* Filters Panel - Only show in overview tab */}
             {activeViewTab === 'overview' && showFilters && (
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filter Job Cards
-                  </h4>
+              <div
+                className="rounded-2xl p-4 mb-4 border"
+                style={{ background: '#f8fafc', borderColor: '#e5e5e5', fontFamily: "'Inter', sans-serif" }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold" style={{ color: '#1a1a1a' }}>Filter job cards</span>
                   <button
                     onClick={clearFilters}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    className="text-sm flex items-center gap-1"
+                    style={{ color: '#f26c2d', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
                   >
                     <X className="h-3 w-3" />
-                    Clear All
+                    Clear all
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   {/* Search */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Search</label>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
                         type="text"
                         placeholder="Job Card ID or Step..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="w-full pl-10 pr-3 py-2 rounded-full text-sm focus:outline-none"
+                        style={{ border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a' }}
                       />
                     </div>
                   </div>
 
                   {/* Status Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Status</label>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="w-full px-3.5 py-2 rounded-full text-sm focus:outline-none"
+                      style={{ border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a' }}
                     >
                       <option value="all">All Status</option>
                       <option value="pending">Pending</option>
@@ -1014,11 +1218,12 @@ const ProductionPlanDetailsPage = () => {
 
                   {/* Step Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Current Step</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Current Step</label>
                     <select
                       value={stepFilter}
                       onChange={(e) => setStepFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="w-full px-3.5 py-2 rounded-full text-sm focus:outline-none"
+                      style={{ border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a' }}
                     >
                       <option value="all">All Steps</option>
                       {uniqueSteps.map(step => (
@@ -1029,11 +1234,12 @@ const ProductionPlanDetailsPage = () => {
 
                   {/* Quality Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Quality Status</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Quality</label>
                     <select
                       value={qualityFilter}
                       onChange={(e) => setQualityFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="w-full px-3.5 py-2 rounded-full text-sm focus:outline-none"
+                      style={{ border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a' }}
                     >
                       <option value="all">All Quality</option>
                       <option value="excellent">Excellent (≥95%)</option>
@@ -1053,29 +1259,41 @@ const ProductionPlanDetailsPage = () => {
             // Job Cards Overview Tab
             jobCardsLoading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#f26c2d' }}></div>
               </div>
             ) : jobCards.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 text-lg mb-2">No job cards created yet</p>
-                <p className="text-slate-500 text-sm mb-4">Create your first job card to start production</p>
-                <button
-                  onClick={handleCreateJobCard}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create First Job Card
-                </button>
+              <div className="text-center py-12" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-base font-medium mb-1" style={{ color: '#1a1a1a' }}>No job cards yet</p>
+                <p className="text-slate-500 text-sm mb-4">Create the first job card to start production</p>
+                {!planDetails.isCompleted && (
+                  <button
+                    onClick={handleCreateJobCard}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 38, padding: '0 20px', borderRadius: 999, border: 'none',
+                      background: '#f26c2d', color: 'white',
+                      fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer'
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create First Job Card
+                  </button>
+                )}
               </div>
             ) : filteredJobCards.length === 0 ? (
-              <div className="text-center py-12">
-                <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 text-lg mb-2">No job cards match your filters</p>
-                <p className="text-slate-500 text-sm mb-4">Try adjusting your filter criteria</p>
+              <div className="text-center py-12" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <Filter className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-base font-medium mb-1" style={{ color: '#1a1a1a' }}>No job cards match your filters</p>
+                <p className="text-slate-500 text-sm mb-4">Try adjusting the filter criteria</p>
                 <button
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 38, padding: '0 20px', borderRadius: 999,
+                    border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a',
+                    fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer'
+                  }}
                 >
                   <X className="h-4 w-4" />
                   Clear Filters
@@ -1083,88 +1301,110 @@ const ProductionPlanDetailsPage = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full" style={{ fontFamily: "'Inter', sans-serif", borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Job Card ID</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Created Date</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Quantities</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Quality</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Current Step</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Status</th>
-                      <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">Actions</th>
+                    <tr style={{ background: '#f3f3f5' }}>
+                      <th className="text-left py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Job Card</th>
+                      <th className="text-left py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Unit Breakdown</th>
+                      <th className="text-left py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Quality</th>
+                      <th className="text-left py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Current Step</th>
+                      <th className="text-left py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Status</th>
+                      <th className="text-center py-3 px-6 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredJobCards.map((card) => {
-                      const qualityStatus = getQualityStatus(card)
+                      const total = parseInt(card.quantity) || 0
                       const accepted = parseInt(card.acceptedQuantity) || 0
                       const rejected = parseInt(card.rejectedQuantity) || 0
-                      const pending = (parseInt(card.quantity) || 0) - accepted - rejected
+                      const rework = parseInt(card.reworkQuantity) || 0
+                      const inProd = Math.max(0, total - accepted - rejected - rework)
+                      const judged = accepted + rejected
+                      const qualityStatus = getQualityStatus(card)
+                      const qualityRate = judged > 0 ? Math.round((accepted / judged) * 100) : null
+                      const statusBadge = JOB_CARD_STATUS_BADGE[getDerivedCardStatus(card)] || JOB_CARD_STATUS_BADGE.pending
+                      const stepsActive = selectedJobCardForSteps?.id === card.id
 
                       return (
-                        <tr key={card.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="font-semibold text-slate-800">#{card.jobCardId || card.id}</span>
+                        <tr key={card.id} className="hover:bg-[#fafafa] transition-colors" style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td className="py-4 px-6">
+                            <div className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>#{card.jobCardId || card.id}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{moment(card.createdAt).format('MMM DD, YYYY')}</div>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-slate-600">{moment(card.createdAt).format('MMM DD, YYYY')}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-slate-800">Total: {card.quantity?.toLocaleString()}</span>
+                          {/* same segment palette + wording as the hero bar */}
+                          <td className="py-4 px-6" style={{ minWidth: 200 }}>
+                            <div className="text-sm mb-1.5" style={{ color: '#1a1a1a' }}>
+                              <span className="font-semibold">{accepted.toLocaleString()}</span>
+                              <span className="text-slate-400"> / {total.toLocaleString()} accepted</span>
+                            </div>
+                            {total > 0 && (
+                              <div className="flex h-2 rounded-full overflow-hidden bg-slate-200 mb-1.5" style={{ maxWidth: 220 }}>
+                                {accepted > 0 && <div className="bg-green-500" style={{ width: `${(accepted / total) * 100}%` }} />}
+                                {inProd > 0 && <div className="bg-blue-500" style={{ width: `${(inProd / total) * 100}%` }} />}
+                                {rework > 0 && <div className="bg-purple-500" style={{ width: `${(rework / total) * 100}%` }} />}
+                                {rejected > 0 && <div className="bg-red-500" style={{ width: `${(rejected / total) * 100}%` }} />}
                               </div>
-                              <div className="flex gap-3 text-xs">
-                                <span className="text-green-600">✓ {accepted}</span>
-                                <span className="text-red-600">✗ {rejected}</span>
-                                <span className="text-amber-600">⏳ {pending}</span>
-                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                              {inProd > 0 && (
+                                <span className="text-blue-700"><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />{inProd} in production</span>
+                              )}
+                              {rework > 0 && (
+                                <span className="text-purple-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1" />{rework} in rework</span>
+                              )}
+                              {rejected > 0 && (
+                                <span className="text-red-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />{rejected} rejected</span>
+                              )}
+                              {total > 0 && inProd === 0 && rework === 0 && rejected === 0 && accepted >= total && (
+                                <span className="text-green-700 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />all accepted</span>
+                              )}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium ${
-                              qualityStatus.color
-                            }`}>
-                              {qualityStatus.icon}
-                              {qualityStatus.status.toUpperCase()}
+                          <td className="py-4 px-6">
+                            <StatusBadge
+                              variant={QUALITY_BADGE_VARIANT[qualityStatus.status] || 'pending'}
+                              subText={qualityRate !== null ? `${qualityRate}% of judged units` : undefined}
+                            >
+                              {qualityStatus.status.charAt(0).toUpperCase() + qualityStatus.status.slice(1)}
+                            </StatusBadge>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="text-sm" style={{ color: card.currentStepName ? '#1a1a1a' : '#a0a0a8' }}>
+                              {card.currentStepName || '—'}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-slate-600">{card.currentStepName || '-'}</span>
+                          <td className="py-4 px-6">
+                            <StatusBadge variant={statusBadge.variant}>{statusBadge.label}</StatusBadge>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium ${
-                              getStatusColor(card.status || 'pending')
-                            }`}>
-                              {getStatusIcon(card.status || 'pending')}
-                              {(card.status || 'pending').replace('_', ' ').toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
+                          <td className="py-4 px-6">
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handleViewStepProgress(card)}
-                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium ${
-                                  selectedJobCardForSteps?.id === card.id && activeViewTab === 'steps'
-                                    ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                                }`}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  height: 32, padding: '0 14px', borderRadius: 999,
+                                  fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                  background: stepsActive && activeViewTab === 'steps' ? '#7c3aed' : '#faf5ff',
+                                  color: stepsActive && activeViewTab === 'steps' ? 'white' : '#7c3aed',
+                                  border: '1px solid #e9d5ff'
+                                }}
                               >
                                 <BarChart3 className="h-3.5 w-3.5" />
                                 Steps
                               </button>
                               <button
                                 onClick={() => handleViewDetails(card)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  height: 32, padding: '0 14px', borderRadius: 999,
+                                  fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                  background: 'white', color: '#1a1a1a', border: '1px solid #e5e5e5'
+                                }}
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 View
                               </button>
-                              <button className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors text-sm font-medium">
-                                <Edit2 className="h-3.5 w-3.5" />
-                                Edit
-                              </button>
+                              {/* the old "Edit" button here had NO onClick — dead affordance, removed */}
                             </div>
                           </td>
                         </tr>
@@ -1177,30 +1417,37 @@ const ProductionPlanDetailsPage = () => {
           ) : activeViewTab === 'steps' ? (
             // Step Quality Tracking Tab (Individual Job Card)
             selectedJobCardForSteps ? (
-              <div className="p-6">
-                {/* Job Card Info Header */}
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6 border border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-500 rounded-lg">
-                        <BarChart3 className="h-5 w-5 text-white" />
+              <div className="px-6 pb-6">
+                {/* Job Card Info Header — purple = the rework/steps identity */}
+                <div
+                  className="rounded-2xl p-4 mb-5 border flex items-center justify-between flex-wrap gap-3"
+                  style={{ background: '#faf5ff', borderColor: '#e9d5ff', fontFamily: "'Inter', sans-serif" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl" style={{ background: '#7c3aed' }}>
+                      <BarChart3 className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-semibold" style={{ color: '#1a1a1a' }}>
+                        Job Card #{selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id}
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-slate-800">Job Card #{selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id}</h4>
-                        <p className="text-sm text-slate-600">
-                          Quantity: {selectedJobCardForSteps.quantity?.toLocaleString()} units |
-                          Created: {moment(selectedJobCardForSteps.createdAt).format('MMM DD, YYYY')}
-                        </p>
+                      <div className="text-sm text-slate-500">
+                        {selectedJobCardForSteps.quantity?.toLocaleString()} units · created {moment(selectedJobCardForSteps.createdAt).format('MMM DD, YYYY')}
                       </div>
                     </div>
-                    <button
-                      onClick={() => loadStepProgressData(selectedJobCardForSteps.id)}
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors text-sm font-medium border border-purple-200"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Refresh Steps
-                    </button>
                   </div>
+                  <button
+                    onClick={() => loadStepProgressData(selectedJobCardForSteps.jobCardId || selectedJobCardForSteps.id)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 34, padding: '0 16px', borderRadius: 999,
+                      border: '1px solid #e9d5ff', background: 'white', color: '#7c3aed',
+                      fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh Steps
+                  </button>
                 </div>
 
                 {/* Step Management View */}
@@ -1210,110 +1457,145 @@ const ProductionPlanDetailsPage = () => {
                   onProcessStep={handleProcessStep}
                   onRequestInventory={handleRequestInventory}
                   loading={stepProgressLoading}
+                  planCompleted={!!planDetails.isCompleted}
+                  isReworkPlan={!!planDetails.isRework}
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16">
-                <BarChart3 className="h-16 w-16 text-slate-300 mb-4" />
-                <p className="text-slate-600 text-lg mb-2">No Job Card Selected</p>
-                <p className="text-slate-500 text-sm mb-4">Click on the "Steps" button in any job card to view detailed step-wise quality tracking</p>
+              <div className="flex flex-col items-center justify-center py-16" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <BarChart3 className="h-12 w-12 text-slate-300 mb-3" />
+                <p className="text-base font-medium mb-1" style={{ color: '#1a1a1a' }}>No job card selected</p>
+                <p className="text-slate-500 text-sm">Click "Steps" on any job card to see its step-by-step quality tracking</p>
               </div>
             )
           ) : (
             // Aggregated Quality Tracking Tab (All Job Cards)
-            <div className="p-6">
+            <div className="px-6 pb-6">
               {/* Aggregated Info Header */}
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 mb-6 border border-green-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-500 rounded-lg">
-                      <BarChart3 className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-800">Step-wise Quality Overview</h4>
-                      <p className="text-sm text-slate-600">
-                        Production Plan #{planDetails.id} | {jobCards.length} Job Card{jobCards.length !== 1 ? 's' : ''} | Total Quantity: {qualityMetrics.total.toLocaleString()} units
-                      </p>
-                    </div>
+              <div
+                className="rounded-2xl p-4 mb-5 border flex items-center justify-between flex-wrap gap-3"
+                style={{ background: '#f8fafc', borderColor: '#e5e5e5', fontFamily: "'Inter', sans-serif" }}
+              >
+                <div>
+                  <div className="font-semibold" style={{ color: '#1a1a1a' }}>Step-wise quality — all job cards</div>
+                  <div className="text-sm text-slate-500">
+                    {jobCards.length} job card{jobCards.length !== 1 ? 's' : ''} · {qualityMetrics.total.toLocaleString()} units total
                   </div>
-                  <button
-                    onClick={loadAggregatedQualityData}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium border border-green-200"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh Data
-                  </button>
                 </div>
+                <button
+                  onClick={loadAggregatedQualityData}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 34, padding: '0 16px', borderRadius: 999,
+                    border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a',
+                    fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </button>
               </div>
 
               {/* Aggregated Step Management View */}
               {aggregatedQualityLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#f26c2d' }}></div>
                   <p className="ml-3 text-slate-600">Loading aggregated quality data...</p>
                 </div>
               ) : aggregatedQualityData.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: '#e5e5e5' }}>
+                  <table className="w-full" style={{ fontFamily: "'Inter', sans-serif", borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr className="border-b-2 border-slate-300 bg-slate-50">
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Step</th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">Job Card</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">Input</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-green-700">Accepted</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-red-700">Rejected</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-amber-700">Pending</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-purple-700">Rework</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">Updated Time</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">Status</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-slate-700">Action</th>
+                      <tr style={{ background: '#f3f3f5' }}>
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Step</th>
+                        <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Job Card</th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Input</th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'rgba(26,26,26,0.55)' }}>
+                          <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5 align-middle" />Accepted
+                        </th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'rgba(26,26,26,0.55)' }}>
+                          <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 align-middle" />Rejected
+                        </th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'rgba(26,26,26,0.55)' }}>
+                          <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ background: '#f26c2d' }} />Pending
+                        </th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: 'rgba(26,26,26,0.55)' }}>
+                          <span className="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1.5 align-middle" />Rework
+                        </th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Updated</th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Status</th>
+                        <th className="text-center py-3 px-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(26,26,26,0.55)' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {aggregatedQualityData.map((step, stepIndex) => (
+                      {aggregatedQualityData.map((step, stepIndex) => {
+                        const isBottleneck = bottleneckStep && bottleneckStep.stepOrder === step.stepOrder
+                        return (
                         <React.Fragment key={step.id || stepIndex}>
                           {/* Show job card breakdown rows */}
                           {step.jobCardBreakdown && step.jobCardBreakdown.length > 0 ? (
-                            step.jobCardBreakdown.map((jcBreakdown, jcIndex) => (
-                              <tr key={`${stepIndex}-${jcIndex}`} className="border-b border-slate-100 hover:bg-slate-50">
-                                {/* Step info - only show for first job card */}
+                            step.jobCardBreakdown.map((jcBreakdown, jcIndex) => {
+                              const rowStatusBadge =
+                                jcBreakdown.status === 'completed'
+                                  ? { variant: 'paid', label: 'Completed' }
+                                  : jcBreakdown.status === 'in_progress'
+                                  ? { variant: 'inprod', label: 'In Progress' }
+                                  : { variant: 'pending', label: 'Pending' }
+                              return (
+                              <tr key={`${stepIndex}-${jcIndex}`} className="hover:bg-[#fafafa]" style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                {/* Step info - only show for first job card; the
+                                    bottleneck step (same one the pipeline strip
+                                    highlights) gets the orange treatment */}
                                 {jcIndex === 0 && (
-                                  <td rowSpan={step.jobCardBreakdown.length} className="py-3 px-4 bg-blue-50 border-r border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded font-bold text-sm">
+                                  <td
+                                    rowSpan={step.jobCardBreakdown.length}
+                                    className="py-3 px-5"
+                                    style={{
+                                      background: isBottleneck ? '#fff7ed' : '#fafafa',
+                                      borderRight: '1px solid #f0f0f0'
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <div
+                                        className="flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs flex-shrink-0"
+                                        style={{ background: isBottleneck ? '#f26c2d' : '#1a1a1a', color: 'white' }}
+                                      >
                                         {step.stepOrder}
                                       </div>
-                                      <span className="font-semibold text-slate-800">{step.stepName}</span>
+                                      <div>
+                                        <div className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>{step.stepName}</div>
+                                        {isBottleneck && (
+                                          <div className="text-[11px] font-medium" style={{ color: '#f26c2d' }}>bottleneck</div>
+                                        )}
+                                      </div>
                                     </div>
                                   </td>
                                 )}
                                 {/* Job card info */}
                                 <td className="py-3 px-4">
-                                  <span className="font-semibold text-slate-800">#{jcBreakdown.jobCardId}</span>
+                                  <span className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>#{jcBreakdown.jobCardId}</span>
                                 </td>
-                                {/* Quantities */}
-                                <td className="text-center py-3 px-4 text-slate-700">{jcBreakdown.inputQuantity.toLocaleString()}</td>
-                                <td className="text-center py-3 px-4 text-green-700 font-medium">{jcBreakdown.acceptedQuantity.toLocaleString()}</td>
-                                <td className="text-center py-3 px-4 text-red-700 font-medium">{jcBreakdown.rejectedQuantity.toLocaleString()}</td>
-                                <td className="text-center py-3 px-4 text-amber-700 font-medium">{jcBreakdown.pendingQuantity.toLocaleString()}</td>
-                                <td className="text-center py-3 px-4 text-purple-700 font-medium">{jcBreakdown.reworkQuantity.toLocaleString()}</td>
-                                <td className="text-center py-3 px-4 text-sm text-slate-600">
+                                {/* Quantities — zeros muted so the eye lands on real numbers */}
+                                <td className="text-center py-3 px-4 text-sm" style={{ color: jcBreakdown.inputQuantity === 0 ? '#d1d5db' : '#1a1a1a' }}>{jcBreakdown.inputQuantity.toLocaleString()}</td>
+                                <td className="text-center py-3 px-4 text-sm font-medium" style={{ color: jcBreakdown.acceptedQuantity === 0 ? '#d1d5db' : '#15803d' }}>{jcBreakdown.acceptedQuantity.toLocaleString()}</td>
+                                <td className="text-center py-3 px-4 text-sm font-medium" style={{ color: jcBreakdown.rejectedQuantity === 0 ? '#d1d5db' : '#b91c1c' }}>{jcBreakdown.rejectedQuantity.toLocaleString()}</td>
+                                <td className="text-center py-3 px-4 text-sm font-medium" style={{ color: jcBreakdown.pendingQuantity === 0 ? '#d1d5db' : '#c2410c' }}>{jcBreakdown.pendingQuantity.toLocaleString()}</td>
+                                <td className="text-center py-3 px-4 text-sm font-medium" style={{ color: jcBreakdown.reworkQuantity === 0 ? '#d1d5db' : '#6d28d9' }}>{jcBreakdown.reworkQuantity.toLocaleString()}</td>
+                                <td className="text-center py-3 px-4 text-xs text-slate-500">
                                   {jcBreakdown.processedAt ? moment(jcBreakdown.processedAt).format('MMM DD, HH:mm') :
                                    moment(jcBreakdown.createdAt).format('MMM DD, HH:mm')}
                                 </td>
                                 <td className="text-center py-3 px-4">
-                                  <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                                    jcBreakdown.status === 'completed'
-                                      ? 'bg-green-100 text-green-700'
-                                      : jcBreakdown.status === 'in_progress'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {(jcBreakdown.status || 'pending').replace('_', ' ').toUpperCase()}
-                                  </span>
+                                  <StatusBadge variant={rowStatusBadge.variant}>{rowStatusBadge.label}</StatusBadge>
                                 </td>
                                 <td className="text-center py-3 px-4">
-                                  {jcBreakdown.pendingQuantity > 0 || jcBreakdown.inputQuantity > 0 ? (
+                                  {/* Process only while there is genuinely
+                                      something to process — a completed row
+                                      kept input>0 so the old check left the
+                                      button live on finished steps/plans */}
+                                  {!planDetails.isCompleted &&
+                                  jcBreakdown.status !== 'completed' &&
+                                  jcBreakdown.pendingQuantity > 0 ? (
                                     <button
                                       onClick={() => {
                                         // Find the full step progress record for this job card and step
@@ -1324,60 +1606,78 @@ const ProductionPlanDetailsPage = () => {
                                           handleProcessStepFromAggregated(fullStepData, jcBreakdown.jobCardId)
                                         }
                                       }}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#f26c2d] text-white rounded-full hover:bg-[#e05a1e] transition-colors text-xs font-medium"
                                     >
                                       <Settings className="h-3.5 w-3.5" />
                                       Process
                                     </button>
                                   ) : (
-                                    <span className="text-xs text-slate-400">Completed</span>
+                                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                                      {planDetails.isCompleted
+                                        ? 'Plan completed'
+                                        : jcBreakdown.status === 'completed'
+                                        ? 'Completed'
+                                        : jcBreakdown.inputQuantity > 0
+                                        ? '✓ Cleared'
+                                        : 'Awaiting input'}
+                                    </span>
                                   )}
                                 </td>
                               </tr>
-                            ))
+                              )
+                            })
                           ) : (
-                            <tr className="border-b border-slate-100">
-                              <td className="py-3 px-4 bg-blue-50 border-r border-slate-200">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded font-bold text-sm">
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td className="py-3 px-5" style={{ background: '#fafafa', borderRight: '1px solid #f0f0f0' }}>
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    className="flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs flex-shrink-0"
+                                    style={{ background: '#1a1a1a', color: 'white' }}
+                                  >
                                     {step.stepOrder}
                                   </div>
-                                  <span className="font-semibold text-slate-800">{step.stepName}</span>
+                                  <span className="font-semibold text-sm" style={{ color: '#1a1a1a' }}>{step.stepName}</span>
                                 </div>
                               </td>
-                              <td colSpan="9" className="py-3 px-4 text-center text-slate-500 italic">
+                              <td colSpan="9" className="py-3 px-4 text-center text-slate-400 italic text-sm">
                                 No job card data
                               </td>
                             </tr>
                           )}
                           {/* Total row for this step - only show if multiple job cards */}
                           {jobCards.length > 1 && (
-                            <tr className="bg-slate-100 border-b-2 border-slate-300 font-semibold">
-                              <td className="py-2 px-4"></td>
-                              <td className="py-2 px-4 text-slate-700">STEP TOTAL</td>
-                              <td className="text-center py-2 px-4 text-slate-800">{step.inputQuantity.toLocaleString()}</td>
-                              <td className="text-center py-2 px-4 text-green-800">{step.acceptedQuantity.toLocaleString()}</td>
-                              <td className="text-center py-2 px-4 text-red-800">{step.rejectedQuantity.toLocaleString()}</td>
-                              <td className="text-center py-2 px-4 text-amber-800">{step.pendingQuantity.toLocaleString()}</td>
-                              <td className="text-center py-2 px-4 text-purple-800">{step.reworkQuantity.toLocaleString()}</td>
-                              <td className="text-center py-2 px-4">-</td>
-                              <td className="text-center py-2 px-4">-</td>
-                              <td className="text-center py-2 px-4">-</td>
+                            <tr className="font-semibold" style={{ background: '#f7f7f8', borderBottom: '2px solid #e5e5e5' }}>
+                              <td className="py-2 px-5"></td>
+                              <td className="py-2 px-4 text-xs uppercase tracking-wide" style={{ color: 'rgba(26,26,26,0.55)' }}>Step total</td>
+                              <td className="text-center py-2 px-4 text-sm" style={{ color: '#1a1a1a' }}>{step.inputQuantity.toLocaleString()}</td>
+                              <td className="text-center py-2 px-4 text-sm" style={{ color: '#15803d' }}>{step.acceptedQuantity.toLocaleString()}</td>
+                              <td className="text-center py-2 px-4 text-sm" style={{ color: '#b91c1c' }}>{step.rejectedQuantity.toLocaleString()}</td>
+                              <td className="text-center py-2 px-4 text-sm" style={{ color: '#c2410c' }}>{step.pendingQuantity.toLocaleString()}</td>
+                              <td className="text-center py-2 px-4 text-sm" style={{ color: '#6d28d9' }}>{step.reworkQuantity.toLocaleString()}</td>
+                              <td className="text-center py-2 px-4 text-slate-300">—</td>
+                              <td className="text-center py-2 px-4 text-slate-300">—</td>
+                              <td className="text-center py-2 px-4 text-slate-300">—</td>
                             </tr>
                           )}
                         </React.Fragment>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <AlertCircle className="h-16 w-16 text-slate-300 mb-4" />
-                  <p className="text-slate-600 text-lg mb-2">No Quality Tracking Data Available</p>
-                  <p className="text-slate-500 text-sm mb-4">No step progress data found for any job cards in this production plan</p>
+                <div className="flex flex-col items-center justify-center py-16" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  <AlertCircle className="h-12 w-12 text-slate-300 mb-3" />
+                  <p className="text-base font-medium mb-1" style={{ color: '#1a1a1a' }}>No quality tracking data yet</p>
+                  <p className="text-slate-500 text-sm mb-4">No step progress recorded for any job card in this plan</p>
                   <button
                     onClick={loadAggregatedQualityData}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 38, padding: '0 20px', borderRadius: 999,
+                      border: '1px solid #e5e5e5', background: 'white', color: '#1a1a1a',
+                      fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer'
+                    }}
                   >
                     <RefreshCw className="h-4 w-4" />
                     Try Again
@@ -1390,7 +1690,7 @@ const ProductionPlanDetailsPage = () => {
 
         {/* Notes */}
         {planDetails.note && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="bg-white rounded-[20px] shadow-sm border border-[#e5e5e5] p-6">
             <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
               Notes
@@ -1403,7 +1703,7 @@ const ProductionPlanDetailsPage = () => {
 
         {/* Child Rework Plans - shown for original plans that have rework plans */}
         {!planDetails.isRework && (childReworkPlansLoading || childReworkPlans.length > 0) && (
-          <div className="bg-white rounded-xl shadow-sm border border-purple-200 overflow-hidden">
+          <div className="bg-white rounded-[20px] shadow-sm border border-purple-200 overflow-hidden">
             <div className="bg-purple-50 px-6 py-4 border-b border-purple-200 flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-purple-600" />
               <h3 className="text-lg font-semibold text-purple-800">
@@ -1439,7 +1739,7 @@ const ProductionPlanDetailsPage = () => {
                         </div>
                         <button
                           className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1 ml-4"
-                          onClick={() => navigate(`/production/plans/${rp.id}`)}
+                          onClick={() => navigate(`/production-plan/${rp.id}`)}
                         >
                           View Plan <ArrowRight className="h-4 w-4" />
                         </button>
@@ -1488,12 +1788,26 @@ const ProductionPlanDetailsPage = () => {
         selectedPlan={planDetails}
       />
 
+      {/* Edit Plan Modal — the header button was previously a dead affordance */}
+      <EditProductionPlanModal
+        visible={editModalVisible}
+        onClose={() => setEditModalVisible(false)}
+        planData={planDetails}
+        onSuccess={() => {
+          setEditModalVisible(false)
+          loadPlanDetails()
+        }}
+      />
+
       {/* Inventory Request Modal */}
       {selectedStepForInventory && (
         <InventoryRequestModal
           visible={inventoryRequestModalVisible}
           stepProgress={selectedStepForInventory}
           jobCard={selectedStepForInventory.jobCard}
+          planId={planDetails?.id}
+          planQuantity={planDetails?.quantity}
+          planAlloyName={planDetails?.alloyName || planDetails?.sourceProduct}
           onCancel={() => {
             setInventoryRequestModalVisible(false)
             setSelectedStepForInventory(null)

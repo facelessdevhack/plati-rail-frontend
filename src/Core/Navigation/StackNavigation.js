@@ -8,16 +8,16 @@ import AdminSalesDashboard from '../../Modules/Admin/AdminSalesDashboard'
 import { MissingRoute } from './MissingRoute'
 import AdminLayout from '../../Modules/Layout/adminLayout'
 import TopNavLayout from '../../Modules/Layout/TopNavLayout'
+import { roleLandingPaths } from '../../Modules/Layout/Routes/topNavRoutes'
 import EntryDashboard from '../../Modules/DataEntry/EntryDashboard'
 import { entrySiderRoutes } from '../../Modules/Layout/Routes/entrySiderRoutes'
 import AddStock from '../../Modules/Stock/AddStock'
 import AddModel from '../../Modules/AddModules/AddModel'
 import AddPcd from '../../Modules/AddModules/AddPcd'
-import AddDailyEntry from '../../Modules/DataEntry/AddDailyEntry'
+import DailyEntryWorkspace from '../../Modules/DataEntry/DailyEntryWorkspace'
 import DailyEntryAdmin from '../../Modules/DailyEntry'
 import AdminDailyEntryDealersPage from '../../Modules/DailyEntry/DailyEntryDealers'
 import AdminDealerDetails from '../../Modules/DailyEntry/Dealers/DealersDetails'
-import AddPMEntry from '../../Modules/DataEntry/AddPMEntry'
 import PrivateRoute from './PrivateRoute'
 import UnauthorizedPage from './UnauthorizedPage'
 
@@ -26,11 +26,6 @@ import AddDailyPurchaseEntry from '../../Modules/DataEntry/AddDailyPurchaseEntry
 import AddCapStock from '../../Modules/AddModules/AddCapModel'
 import AddFinish from '../../Modules/AddModules/AddFinish'
 import EntryLayout from '../../Modules/Layout/entryLayout'
-import AddDailyEntryTYRES from '../../Modules/DataEntry/AddDailyEntry-TYRES'
-import AddDailyEntryALLOYS from '../../Modules/DataEntry/AddDailyEntry-ALLOYS'
-import AddDailyEntryCAP from '../../Modules/DataEntry/AddDailyEntry-CAP'
-import AddDailyEntryPPF from '../../Modules/DataEntry/AddDailyEntry-PPF'
-import AddChargesEntry from '../../Modules/DataEntry/AddChargesEntry'
 import { adminSiderRoutes } from '../../Modules/Layout/Routes/adminSiderRoutes'
 import { dataUserSiderRoutes } from '../../Modules/Layout/Routes/dataUserSiderRoutes'
 import { saleCoSidebarRoutes } from '../../Modules/Layout/Routes/saleCoSidebarRoutes'
@@ -50,6 +45,7 @@ import POList from '../../Modules/Purchase/POList'
 import CreatePO from '../../Modules/Purchase/CreatePO'
 import PODetails from '../../Modules/Purchase/PODetails'
 import GRNList from '../../Modules/Purchase/GRNList'
+import VendorPurchases from '../../Modules/Purchase/VendorPurchases'
 import CreateGRN from '../../Modules/Purchase/CreateGRN'
 import GRNDetails from '../../Modules/Purchase/GRNDetails'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
@@ -125,34 +121,30 @@ const StackNavigation = () => {
 
   useEffect(() => {
     if (loggedIn && user) {
-      const roleId = Number(user.roleId)
-
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
-        if (roleId === 999) {
-          navigate('/admin-dashboard') // Superadmin goes to admin dashboard
-        } else if (roleId === 5) {
-          navigate('/admin-dashboard')
-        } else if (roleId === 7) {
-          navigate('/sales-coordinator-dashboard')
-        } else if (roleId === 3) {
-          navigate('/entry-dashboard')
-        } else if (roleId === 6) {
-          navigate('/production-dashboard')
-        } else if (roleId === 1) {
-          navigate('/inventory-dashboard')
-        } else if (roleId === 8) {
-          navigate('/purchase/indents')
-        } else if (roleId === 9) {
-          navigate('/purchase/requisitions')
-        } else if (roleId === 10) {
-          navigate('/purchase/indents')
-        } else {
-          navigate('/dealer-warranty')
-        }
+        // Deep-link return: PrivateRoute passes the blocked destination via
+        // router state; the session-expiry redirect passes it via ?returnTo=.
+        const fromState = location.state?.from
+          ? `${location.state.from.pathname}${location.state.from.search || ''}`
+          : null
+        const fromQuery = new URLSearchParams(location.search).get('returnTo')
+        const returnTo = fromState || fromQuery
+        const safeReturnTo =
+          returnTo &&
+          returnTo.startsWith('/') &&
+          !returnTo.startsWith('//') &&
+          returnTo !== '/login'
+            ? returnTo
+            : null
+
+        const roleId = Number(user.roleId)
+        navigate(safeReturnTo || roleLandingPaths[roleId] || '/dealer-warranty', {
+          replace: true
+        })
       }
     }
-  }, [loggedIn, user, navigate, location.pathname])
+  }, [loggedIn, user, navigate, location])
 
   return (
     <Routes>
@@ -217,7 +209,7 @@ const StackNavigation = () => {
         path='/add-daily-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddDailyEntry />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='alloys' />} />
           </PrivateRoute>
         }
       />
@@ -225,7 +217,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-alloys'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddDailyEntryALLOYS />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='alloys' />} />
           </PrivateRoute>
         }
       />
@@ -233,7 +225,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-tyres'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddDailyEntryTYRES />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='tyres' />} />
           </PrivateRoute>
         }
       />
@@ -241,7 +233,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-caps'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddDailyEntryCAP />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='caps' />} />
           </PrivateRoute>
         }
       />
@@ -249,7 +241,7 @@ const StackNavigation = () => {
         path='/add-daily-entry-ppf'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddDailyEntryPPF />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='ppf' />} />
           </PrivateRoute>
         }
       />
@@ -259,7 +251,7 @@ const StackNavigation = () => {
         path='add-payment-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddPMEntry />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='payment' />} />
           </PrivateRoute>
         }
       />
@@ -267,7 +259,7 @@ const StackNavigation = () => {
         path='add-charges-entry'
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
-            <TopNavLayout content={<AddChargesEntry />} />
+            <TopNavLayout content={<DailyEntryWorkspace initialTab='charges' />} />
           </PrivateRoute>
         }
       />
@@ -900,6 +892,16 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
             <TopNavLayout content={<PODetails />} />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Vendor Purchases (stock bought at invoice cost → FIFO layers) */}
+      <Route
+        path='/purchase/vendor-purchases'
+        element={
+          <PrivateRoute allowedRoles={[4, 5, 8, 9, 10, 999]}>
+            <TopNavLayout content={<VendorPurchases />} />
           </PrivateRoute>
         }
       />

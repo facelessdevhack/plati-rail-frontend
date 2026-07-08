@@ -62,7 +62,7 @@ const CreateOrderView = () => {
     return coordinationEntries.filter(e => {
       const entryDate = e.dateIST
         ? moment(e.dateIST)
-        : moment.utc(e.date || e.created_at)
+        : moment.utc(e.date || e.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === today
     })
   }, [coordinationEntries])
@@ -73,8 +73,14 @@ const CreateOrderView = () => {
   }, [allEntries, currentPage])
 
   const getAndSetTodayDate = useCallback(() => {
-    const dateToSet = moment().format('YYYY-MM-DD HH:mm:ss')
-    dispatch(setEntry({ ...entry, date: dateToSet }))
+    // Store the creation instant as a UTC wall-clock string. The DB session is
+    // UTC and the read path (dateIST = moment.utc(date).utcOffset(330)) treats
+    // stored dates as UTC — sending local IST wall-clock (moment().format)
+    // landed the order 5.5h ahead, so its creation time displayed +5:30 off.
+    const dateToSet = moment.utc().format('YYYY-MM-DD HH:mm:ss')
+    // setEntry merges, so only set `date`. Spreading a stale `entry` (captured by
+    // this useCallback at first render, when the dealer is null) wiped the dealer.
+    dispatch(setEntry({ date: dateToSet }))
   }, [dispatch])
 
   const fetchCoordinationEntries = useCallback(async () => {
@@ -129,7 +135,8 @@ const CreateOrderView = () => {
         ...entry,
         productType: orderType,
         isTransportPaid: transportPaid,
-        transportAmount: transportPaid ? parseFloat(transportAmount) || 0 : 0,
+        // backend stores the amount in transportation_charges (not transportAmount)
+        transportationCharges: transportPaid ? parseFloat(transportAmount) || 0 : 0,
         specialInstructions: specialInstructions || null
       }
       const addEntryResponse = await addCoordinatedEntryAPI(payload)
@@ -154,8 +161,18 @@ const CreateOrderView = () => {
         setReloadAPI(prev => !prev)
       }
     } catch (error) {
-      console.error(error)
-      message.error('Error creating order. Please try again.')
+      // The form is intentionally NOT reset here, so the order is preserved and
+      // can be resubmitted — a failed create must never silently lose the order.
+      console.error('Create order failed:', error)
+      const status = error?.response?.status
+      const backendMsg = error?.response?.data?.message
+      if (status === 401) {
+        message.error('Your session expired — please log in again. Your order was NOT saved.')
+      } else if (backendMsg) {
+        message.error(`Order was NOT saved: ${backendMsg}`)
+      } else {
+        message.error('Order was NOT saved (network/server issue). Please try again — your entry is still here.')
+      }
     } finally {
       setIsCreatingOrder(false)
     }
@@ -227,7 +244,7 @@ const CreateOrderView = () => {
     sortedEntries.forEach(e => {
       const date = e.dateIST
         ? moment(e.dateIST).format('DD MMM YYYY hh:mm A')
-        : moment.utc(e.date).format('DD MMM YYYY hh:mm A')
+        : moment.utc(e.date).utcOffset(330).format('DD MMM YYYY hh:mm A')
       const statusMap = {
         dispatch: 'Awaiting Dispatch',
         pending: 'Out of Stock',
@@ -255,9 +272,9 @@ const CreateOrderView = () => {
       return (
         <div>
           <span className='co-transport-badge paid'>Paid</span>
-          {record.transportAmount > 0 && (
+          {record.transportationCharges > 0 && (
             <div className='co-transport-amount'>
-              Rs. {record.transportAmount}
+              Rs. {record.transportationCharges}
             </div>
           )}
         </div>
@@ -392,6 +409,9 @@ const CreateOrderView = () => {
                   onChange={e =>
                     dispatch(setEntry({ quantity: +e.target.value }))
                   }
+                  // blur on wheel so scrolling the page past a focused qty
+                  // field doesn't silently change the selected quantity
+                  onWheel={e => e.currentTarget.blur()}
                   placeholder='20'
                   className='co-input'
                 />
@@ -420,6 +440,7 @@ const CreateOrderView = () => {
                       type='number'
                       value={transportAmount}
                       onChange={e => setTransportAmount(e.target.value)}
+                      onWheel={e => e.currentTarget.blur()}
                       placeholder='0.00'
                       className='co-transport-input'
                     />
@@ -506,7 +527,7 @@ const CreateOrderView = () => {
                   paginatedEntries.map(record => {
                     const date = record.dateIST
                       ? moment(record.dateIST)
-                      : moment.utc(record.date || record.created_at)
+                      : moment.utc(record.date || record.created_at).utcOffset(330)
                     return (
                       <tr key={record.id}>
                         <td className='co-td-date'>

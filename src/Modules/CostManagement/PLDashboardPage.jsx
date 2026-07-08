@@ -40,6 +40,7 @@ import {
   WalletOutlined
 } from '@ant-design/icons'
 import { client } from '../../Utils/axiosClient'
+import { COSTING_REPORT_FROM } from '../../Utils/costingConfig'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -273,8 +274,10 @@ const PLDashboardPage = () => {
   // Calculate total overheads
   const totalOverheads = overheadData?.grandTotal || 0
 
-  // Calculate Net Profit
-  const netProfit = (summaryData?.grossProfit || 0) - totalOverheads
+  // Calculate Net Profit (scrap loss = discarded production units at their
+  // carried FIFO cost)
+  const scrapLoss = summaryData?.scrapLoss || 0
+  const netProfit = (summaryData?.grossProfit || 0) - totalOverheads - scrapLoss
 
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return '₹0'
@@ -302,10 +305,10 @@ const PLDashboardPage = () => {
     )
   })
 
-  // Generate year options (last 5 years)
+  // Generate year options (last 5 years); years before costing start disabled
   const yearOptions = []
   for (let y = dayjs().year(); y >= dayjs().year() - 4; y--) {
-    yearOptions.push({ label: y.toString(), value: y })
+    yearOptions.push({ label: y.toString(), value: y, disabled: y < COSTING_REPORT_FROM.year() })
   }
 
   // Product columns
@@ -770,7 +773,14 @@ const PLDashboardPage = () => {
                 style={{ width: 130 }}
               >
                 {MONTH_NAMES.map((name, idx) => (
-                  <Option key={idx + 1} value={idx + 1}>{name}</Option>
+                  <Option
+                    key={idx + 1}
+                    value={idx + 1}
+                    disabled={dayjs(`${selectedYear}-${String(idx + 1).padStart(2, '0')}-01`)
+                      .isBefore(COSTING_REPORT_FROM, 'month')}
+                  >
+                    {name}
+                  </Option>
                 ))}
               </Select>
               <Select
@@ -819,6 +829,14 @@ const PLDashboardPage = () => {
                 prefix='₹'
                 valueStyle={{ color: '#fa8c16' }}
               />
+              {summaryData?.costSource && (
+                <div style={{ marginTop: '8px' }}>
+                  <Text type='secondary'>
+                    FIFO-costed: {summaryData.costSource.fifoQuantity || 0} units
+                    {' · '}static: {summaryData.costSource.staticQuantity || 0}
+                  </Text>
+                </div>
+              )}
             </Card>
           </Col>
           <Col span={6}>
@@ -859,6 +877,7 @@ const PLDashboardPage = () => {
                    summaryData?.grossProfitMargin >= 15 ? 'Healthy' :
                    summaryData?.grossProfitMargin >= 10 ? 'Good' :
                    summaryData?.grossProfitMargin >= 5 ? 'Low' : 'Critical'}
+                  {' · pre-GST-adjustment'}
                 </Text>
               </div>
             </Card>
@@ -901,6 +920,14 @@ const PLDashboardPage = () => {
                 prefix='₹'
                 valueStyle={{ color: '#722ed1' }}
               />
+              {scrapLoss > 0 && (
+                <div style={{ marginTop: '4px' }}>
+                  <Text type='danger'>
+                    + Scrap loss: ₹{Number(scrapLoss).toLocaleString('en-IN')}
+                    {summaryData?.scrapQuantity ? ` (${summaryData.scrapQuantity} units discarded)` : ''}
+                  </Text>
+                </div>
+              )}
               <div style={{ marginTop: '8px' }}>
                 <Text type='secondary'>
                   {overheadData?.categories?.length || 0} expense categories

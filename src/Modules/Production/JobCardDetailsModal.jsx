@@ -159,7 +159,6 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
 
   // Local state
   const [loading, setLoading] = useState(false)
-  const [editMode, setEditMode] = useState(false)
   const [stepHistory, setStepHistory] = useState([])
   const [qaReports, setQaReports] = useState([])
   const [inventoryRequests, setInventoryRequests] = useState([])
@@ -246,7 +245,9 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
         }
       }
 
-      // Load job card progress
+      // Load job card progress — this is also the ONLY honest source for the
+      // History tab. The old code fabricated a timeline ("completed N days
+      // ago by Production Team") and a QA report ("yesterday by QA Team").
       try {
         const progressResult = await dispatch(
           getJobCardProgress(jobCard.id)
@@ -263,41 +264,37 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
               currentProgress.planStepId || currentProgress.plan_step_id
             )
           }
+
+          // REAL step history: completed progress rows with their actual
+          // timestamps (nothing invented)
+          const realHistory = progressResult
+            .filter(p => p.status === 'completed')
+            .sort((a, b) => (a.stepOrder || 0) - (b.stepOrder || 0))
+            .map(p => ({
+              stepId: p.planStepId || p.id,
+              stepName: p.stepName || `Step ${p.stepOrder}`,
+              status: 'completed',
+              completedAt:
+                p.completedAt || p.processedAt || p.updatedAt || null,
+              completedBy: null,
+              notes: p.notes || ''
+            }))
+          setStepHistory(realHistory)
         }
       } catch (error) {
         console.error('Failed to load job card progress:', error)
       }
 
-      // Simulate loading additional details
-      const steps = getProductionSteps()
-      // For preset-based, prodStep is the position (1-based), for standard it's the step ID
-      const completedStepsCount = Math.min(
-        jobCard.prodStep - 1,
-        steps.length - 1
-      )
-      const mockStepHistory = steps
-        .slice(0, completedStepsCount)
-        .map((step, index) => ({
-          stepId: step.id || step.stepOrder || index + 1,
-          stepName: step.name || step.stepName,
-          status: 'completed',
-          completedAt: moment()
-            .subtract(completedStepsCount - index, 'days')
-            .format(),
-          completedBy: 'Production Team',
-          notes: step.notes || ''
-        }))
-      setStepHistory(mockStepHistory)
-
-      // Load QA reports if any
+      // QA summary from REAL fields only (quantity + reason are recorded;
+      // date/inspector are not — show nothing rather than fiction)
       if (jobCard.rejectedQuantity > 0) {
         setQaReports([
           {
             id: 1,
-            date: moment().subtract(1, 'day').format(),
+            date: jobCard.updatedAt || null,
             rejectedQuantity: jobCard.rejectedQuantity,
             reason: jobCard.rejectionReason || 'Quality issues detected',
-            inspector: 'QA Team'
+            inspector: null
           }
         ])
       }
@@ -401,7 +398,6 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
         description: 'Job card has been updated successfully'
       })
 
-      setEditMode(false)
       onRefresh && onRefresh()
     } catch (error) {
       notification.error({
@@ -513,8 +509,15 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
     ? steps[jobCard.prodStep] // Next step by index for presets
     : steps.find(s => (s.id || s.stepOrder) === jobCard.prodStep + 1) // Next step by ID for standard
 
-  const progress = Math.round((jobCard.prodStep / totalSteps) * 100)
-  const isCompleted = jobCard.prodStep >= totalSteps
+  // progress counts FINISHED steps (prodStep is the step being worked on);
+  // completion = all units accepted, not merely "reached the last step"
+  const finishedSteps = Math.max(0, (jobCard.prodStep || 1) - 1)
+  const isCompleted =
+    (jobCard.quantity || 0) > 0 &&
+    (jobCard.acceptedQuantity || 0) >= jobCard.quantity
+  const progress = isCompleted
+    ? 100
+    : Math.round((finishedSteps / totalSteps) * 100)
 
   return (
     <Modal
@@ -549,19 +552,19 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                   <Avatar
                     size={64}
                     style={{
-                      backgroundColor: jobCard.isUrgent ? '#ff4d4f' : '#1890ff',
+                      backgroundColor: (jobCard.urgent === 1 || jobCard.urgent === true) ? '#ff4d4f' : '#1890ff',
                       fontSize: '24px',
                       fontWeight: 'bold'
                     }}
                   >
-                    {jobCard.id}
+                    {jobCard.id || jobCard.jobCardId}
                   </Avatar>
                   <div>
                     <Title level={2} className='text-white mb-0'>
-                      Job Card #{jobCard.jobCardId}
+                      Job Card #{jobCard.jobCardId || jobCard.id}
                     </Title>
                     <div className='flex items-center gap-2 mt-2'>
-                      {jobCard.isUrgent && (
+                      {(jobCard.urgent === 1 || jobCard.urgent === true) && (
                         <Tag
                           color='red'
                           icon={<FireOutlined />}
@@ -873,19 +876,9 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                           </Button>
                         )}
 
-                        <Button
-                          icon={<EditOutlined />}
-                          onClick={() => setEditMode(true)}
-                          size='large'
-                          block
-                        >
-                          Edit Job Card
-                        </Button>
-
-                        <Button icon={<FileTextOutlined />} size='large' block>
-                          Generate Report
-                        </Button>
-
+                        {/* "Edit Job Card" set an editMode no JSX rendered and
+                            "Generate Report" had no handler — both were dead
+                            affordances; removed until actually implemented */}
                         <Button
                           icon={<ReloadOutlined />}
                           onClick={loadJobCardDetails}
@@ -915,13 +908,13 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                   <Card title='Job Card Information'>
                     <Descriptions column={1} bordered size='small'>
                       <Descriptions.Item label='Job Card ID'>
-                        #{jobCard.id}
+                        #{jobCard.id || jobCard.jobCardId}
                       </Descriptions.Item>
                       <Descriptions.Item label='Production Plan'>
                         #{jobCard.prodPlanId}
                       </Descriptions.Item>
                       <Descriptions.Item label='Product'>
-                        {jobCard.alloyName} → {jobCard.convertName}
+                        {jobCard.alloyName || jobCard.sourceProductName || '—'} → {jobCard.convertName || jobCard.targetProductName || '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label='Quantity'>
                         {jobCard.quantity?.toLocaleString()} units
@@ -939,7 +932,7 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                         </Descriptions.Item>
                       )}
                       <Descriptions.Item label='Priority'>
-                        {jobCard.isUrgent ? (
+                        {(jobCard.urgent === 1 || jobCard.urgent === true) ? (
                           <Tag color='red' icon={<FireOutlined />}>
                             URGENT
                           </Tag>
@@ -948,7 +941,7 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                         )}
                       </Descriptions.Item>
                       <Descriptions.Item label='Created By'>
-                        {jobCard.createdBy || 'System'}
+                        {jobCard.createdByFirstName ? `${jobCard.createdByFirstName} ${jobCard.createdByLastName || ''}`.trim() : jobCard.createdByName || '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label='Created'>
                         {moment(jobCard.createdAt).format('MMM DD, YYYY HH:mm')}
@@ -1025,15 +1018,19 @@ const JobCardDetailsModal = ({ visible, onCancel, jobCard, onRefresh }) => {
                       <Timeline.Item
                         key={history.stepId}
                         color='green'
-                        label={moment(history.completedAt).format(
-                          'MMM DD, HH:mm'
-                        )}
+                        label={
+                          history.completedAt
+                            ? moment(history.completedAt).format('MMM DD, HH:mm')
+                            : ''
+                        }
                       >
                         <div>
                           <Text strong>{history.stepName}</Text>
                           <br />
                           <Text type='secondary'>
-                            Completed by {history.completedBy}
+                            {history.completedBy
+                              ? `Completed by ${history.completedBy}`
+                              : 'Completed'}
                           </Text>
                           {history.notes && (
                             <>

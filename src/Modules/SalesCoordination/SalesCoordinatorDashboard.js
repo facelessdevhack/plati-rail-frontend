@@ -69,13 +69,13 @@ const SalesCoordinatorDashboard = () => {
       setInProductionEntries(inProductionRes.inProdEntries || [])
       setLastUpdated(moment())
 
-      // Set comparison data
-      if (comparisonRes && comparisonRes.comparisonData) {
+      // Set comparison data (API returns { comparison }, not comparisonData)
+      if (comparisonRes && comparisonRes.comparison) {
         setPendingComparison({
-          currentCount: comparisonRes.comparisonData.currentCount || 0,
-          previousCount: comparisonRes.comparisonData.previousCount || 0,
-          percentageChange: comparisonRes.comparisonData.percentageChange || 0,
-          trend: comparisonRes.comparisonData.trend || 'neutral'
+          currentCount: comparisonRes.comparison.currentCount || 0,
+          previousCount: comparisonRes.comparison.previousCount || 0,
+          percentageChange: comparisonRes.comparison.percentageChange || 0,
+          trend: comparisonRes.comparison.trend || 'neutral'
         })
       }
     } catch (error) {
@@ -253,7 +253,7 @@ const SalesCoordinatorDashboard = () => {
     },
     {
       title: 'Dispatch Approval',
-      value: dispatchEntries.length,
+      value: dispatchEntries.filter(e => e.dispatchStatus === 'awaiting_approval').length,
       icon: Truck,
       color: 'bg-blue-500 text-blue-600',
       description: 'Entries ready for coordinator approval',

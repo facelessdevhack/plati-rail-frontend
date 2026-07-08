@@ -115,6 +115,14 @@ const UserProductionSteps = () => {
         message.success(
           `Assigned: ${results.assigned.length}, Reactivated: ${results.reactivated.length}, Already Active: ${results.alreadyActive.length}`
         );
+        // partial failures were previously invisible to the admin
+        if (results.errors?.length > 0) {
+          message.warning(
+            `${results.errors.length} step(s) failed: ${results.errors
+              .map((e) => `#${e.stepId} (${e.error})`)
+              .join(', ')}`
+          );
+        }
         setIsModalVisible(false);
         setBulkSelectedSteps([]);
         setSelectedUser(null);

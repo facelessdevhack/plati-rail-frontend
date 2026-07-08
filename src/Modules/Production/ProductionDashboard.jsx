@@ -123,13 +123,13 @@ const ProductionDashboard = () => {
       
       // Quantity metrics
       metrics.totalQuantity += plan.quantity || 0
-      metrics.allocatedQuantity += tracking.totalJobCardQuantity || 0
+      metrics.allocatedQuantity += tracking.allocatedQuantity || 0
       metrics.remainingQuantity += tracking.remainingQuantity || 0
       metrics.completedQuantity += tracking.completedQuantity || 0
       
       // Allocation status
       const remainingQty = tracking.remainingQuantity || plan.quantity || 0
-      const allocatedQty = tracking.totalJobCardQuantity || 0
+      const allocatedQty = tracking.allocatedQuantity || 0
       
       if (remainingQty > 0 && allocatedQty === 0) {
         metrics.plansNeedingJobCards++
@@ -183,7 +183,7 @@ const ProductionDashboard = () => {
     
     productionPlans.forEach(plan => {
       const tracking = plan.quantityTracking || {}
-      const allocatedQty = tracking.totalJobCardQuantity || 0
+      const allocatedQty = tracking.allocatedQuantity || 0
       const planQty = plan.quantity || 0
       
       if (allocatedQty === 0) {
@@ -239,7 +239,7 @@ const ProductionDashboard = () => {
       width: 150,
       render: (_, record) => {
         const tracking = record.quantityTracking || {}
-        const allocated = tracking.totalJobCardQuantity || 0
+        const allocated = tracking.allocatedQuantity || 0
         const total = record.quantity || 0
         const percentage = total > 0 ? Math.round((allocated / total) * 100) : 0
         

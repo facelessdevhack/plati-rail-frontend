@@ -33,7 +33,7 @@ export const topNavSections = [
     defaultPath: '/admin-dashboard',
     allowedRoles: [3, 4, 5, 999],
     subNav: [
-      { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard' },
+      { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard', allowedRoles: [5, 999] },
       { key: 'sales-daily-entries', label: 'Daily Entries', path: '/admin-daily-entry-dealers', icon: 'file' },
       { key: 'sales-warranty', label: 'Warranty', path: '/dealer-warranty', icon: 'safety' },
       { key: 'sales-price-lists', label: 'Price Lists', path: '/price-lists', icon: 'tags' },
@@ -49,7 +49,19 @@ export const topNavSections = [
       { key: 'sc-dispatch', label: 'Dispatch Entries', path: '/sales-dispatch-entries', icon: 'package' },
       { key: 'sc-pending', label: 'Pending', path: '/sales-pending-entries', icon: 'clock' },
       { key: 'sc-inprod', label: 'In-Production', path: '/sales-inprod-entries', icon: 'factory' },
-      { key: 'sc-pricing', label: 'Pricing Entries', path: '/data-entry-pricing', icon: 'invoice' },
+      { key: 'sc-pricing', label: 'Pricing Entries', path: '/data-entry-pricing', icon: 'invoice', allowedRoles: [3, 4, 5, 999] },
+    ]
+  },
+  {
+    key: 'data-entry',
+    label: 'Data Entry',
+    defaultPath: '/entry-dashboard',
+    allowedRoles: [3, 999],
+    subNav: [
+      { key: 'de-dashboard', label: 'Dashboard', path: '/entry-dashboard', icon: 'dashboard' },
+      { key: 'de-daily-entries', label: 'Daily Entries', path: '/add-daily-entry', icon: 'edit' },
+      { key: 'de-inwards', label: 'Inwards Entry', path: '/add-inwards-entry', icon: 'inbox' },
+      { key: 'de-dealers', label: 'Dealers', path: '/dealers-list', icon: 'team' },
     ]
   },
   {
@@ -68,6 +80,7 @@ export const topNavSections = [
     defaultPath: '/purchase/requisitions',
     allowedRoles: [5, 8, 9, 10, 999],
     subNav: [
+      { key: 'pur-vendor-purchases', label: 'Vendor Purchases', path: '/purchase/vendor-purchases', icon: 'truck' },
       { key: 'pur-requisitions', label: 'Requisitions', path: '/purchase/requisitions', icon: 'audit' },
       { key: 'pur-submit', label: 'Submit Request', path: '/purchase/requisitions/create', icon: 'form' },
       { key: 'pur-indents', label: 'Indents', path: '/purchase/indents', icon: 'unordered-list' },
@@ -95,6 +108,27 @@ export const topNavSections = [
 ]
 
 /**
+ * Where each role lands after login. Single source of truth — used by the
+ * post-login redirect in StackNavigation. Keep in sync with the sections
+ * above when adding a role.
+ */
+export const roleLandingPaths = {
+  999: '/admin-dashboard',
+  5: '/admin-dashboard',
+  7: '/sales-coordinator-dashboard',
+  3: '/entry-dashboard',
+  6: '/production-dashboard',
+  4: '/admin-daily-entry-dealers',
+  // Roles 1/2 have no dedicated dashboard; sales-coordinator-dashboard is
+  // the one route their allowedRoles include.
+  1: '/sales-coordinator-dashboard',
+  2: '/sales-coordinator-dashboard',
+  8: '/purchase/indents',
+  9: '/purchase/requisitions',
+  10: '/purchase/indents',
+}
+
+/**
  * Find which primary section and sub-nav item is active based on the current path
  */
 export function getActiveNav(pathname) {
@@ -117,9 +151,22 @@ export function getActiveNav(pathname) {
 }
 
 /**
- * Filter sections based on user role
+ * Filter sections based on user role.
+ * Sub-nav items may carry their own allowedRoles when the route behind them is
+ * stricter than the section (e.g. /admin-dashboard is 5/999 while the Sales
+ * section is visible to 3/4 too). The section's defaultPath resolves to the
+ * first sub-nav item the role can actually open, so clicking a section never
+ * lands on /unauthorized.
  */
 export function getSectionsForRole(roleId) {
   const id = Number(roleId)
-  return topNavSections.filter(section => section.allowedRoles.includes(id))
+  return topNavSections
+    .filter(section => section.allowedRoles.includes(id))
+    .map(section => {
+      const subNav = section.subNav.filter(
+        item => !item.allowedRoles || item.allowedRoles.includes(id)
+      )
+      return { ...section, subNav, defaultPath: subNav[0]?.path || section.defaultPath }
+    })
+    .filter(section => section.subNav.length > 0)
 }

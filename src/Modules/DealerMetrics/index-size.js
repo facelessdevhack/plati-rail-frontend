@@ -21,7 +21,7 @@ const DealerMetricsForSize = () => {
 
     const fetchDealers = () => {
         const params = { page: currentPage, limit: pageSize };
-        if (user.roleId !== 5) {
+        if (Number(user.roleId) !== 5 && Number(user.roleId) !== 999) {
             params.id = user.userId;
         }
         dispatch(getAllDealers(params));
@@ -57,7 +57,6 @@ const DealerMetricsForSize = () => {
 
     // Function to handle row click
     const handleRowClick = (record) => {
-        console.log(record, 'RECORD');
         navigate(`/admin-dealer-metrics-by-size/${record.value}`, {
             state: { id: record.value, name: record.label },
         });

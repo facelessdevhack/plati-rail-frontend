@@ -21,7 +21,7 @@ const DealerMetricsDetails = () => {
     const { loggedIn, user } = useSelector((state) => state.userDetails);
     const { dealerQuantityMetrics } = useSelector(state => state.metrics)
 
-    const isAdmin = user.roleId === 5;
+    const isAdmin = Number(user.roleId) === 5 || Number(user.roleId) === 999;
 
     // API CALLS
     useEffect(() => {

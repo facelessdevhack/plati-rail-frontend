@@ -59,7 +59,7 @@ const InProductionEntriesView = () => {
       }
       if (dealerFilter && entry.dealerName !== dealerFilter) return false
       if (dateRange && dateRange[0] && dateRange[1]) {
-        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at)
+        const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
         const start = moment(dateRange[0].valueOf()).startOf('day')
         const end = moment(dateRange[1].valueOf()).endOf('day')
         if (!entryDate.isSameOrAfter(start) || !entryDate.isSameOrBefore(end)) return false
@@ -161,7 +161,7 @@ const InProductionEntriesView = () => {
     {
       key: 'date', dataIndex: 'dateIST', title: 'Date & Time',
       render: (_, record) => {
-        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at)
+        const date = record.dateIST ? moment(record.dateIST) : moment.utc(record.date || record.created_at).utcOffset(330)
         return (
           <div style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
             {date.format('DD MMM YYYY')}<br />

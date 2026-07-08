@@ -83,6 +83,18 @@ const EditProductionPlanModal = ({
 
   // Handle form submission
   const handleSubmit = async (values) => {
+    // Defensive guard — the backend rejects edits to completed plans; catch
+    // it before the request (the listing also disables the menu item)
+    if (
+      planData?.isCompleted === 1 ||
+      planData?.quantityTracking?.completionStatus === 'completed'
+    ) {
+      notification.warning({
+        message: 'Plan is completed',
+        description: 'Completed production plans cannot be edited.'
+      })
+      return
+    }
     setLoading(true)
     try {
       if (planData?.id) {
@@ -145,7 +157,9 @@ const EditProductionPlanModal = ({
   // Handle preset preview
   const handlePreviewPreset = async (presetName) => {
     try {
-      await dispatch(getPresetDetails({ presetName })).unwrap()
+      // The thunk's param is presetId (backend resolves id or name); passing
+      // { presetName } sent /step-presets/undefined → failed every time.
+      await dispatch(getPresetDetails({ presetId: presetName })).unwrap()
       setPreviewPresetName(presetName)
       setPresetPreviewVisible(true)
     } catch (error) {
@@ -170,10 +184,10 @@ const EditProductionPlanModal = ({
   }
 
   // Calculate available stock for validation
-  const getAvailableStock = () => {
-    if (!planData) return 0
-    return (planData.inHouseStock || 0) + (planData.showroomStock || 0)
-  }
+  // NOTE: the old getAvailableStock() summed inHouseStock/showroomStock —
+  // fields the listing never sends — so the label always said "Available: 0
+  // units" and the validation text read "between 1 and 0". The backend is
+  // the source of truth for stock; the form only enforces a sane minimum.
 
   return (
     <>
@@ -301,21 +315,14 @@ const EditProductionPlanModal = ({
             <Col xs={24} sm={16}>
               <Form.Item
                 name="quantity"
-                label={
-                  <div className="flex items-center justify-between">
-                    <span>Quantity</span>
-                    <span className="text-xs text-gray-500 font-normal">
-                      Available: {getAvailableStock()} units
-                    </span>
-                  </div>
-                }
+                label="Quantity"
+                extra="Stock availability is checked on save"
                 rules={[
                   { required: true, message: 'Please enter quantity!' },
                   {
                     type: 'number',
                     min: 1,
-                    max: getAvailableStock() || 10000,
-                    message: `Quantity must be between 1 and ${getAvailableStock()} (available stock)`
+                    message: 'Quantity must be at least 1'
                   }
                 ]}
               >
@@ -324,7 +331,6 @@ const EditProductionPlanModal = ({
                   style={{ width: '100%' }}
                   size="large"
                   min={1}
-                  max={getAvailableStock() || 10000}
                 />
               </Form.Item>
             </Col>
@@ -335,17 +341,14 @@ const EditProductionPlanModal = ({
                 label="Priority"
                 valuePropName="checked"
               >
-                <div className="flex items-center gap-3 pt-2">
-                  <Switch 
-                    size="default"
-                    onChange={(checked) => {
-                      form.setFieldsValue({ urgent: checked })
-                    }}
-                  />
-                  <span className="text-sm text-gray-600">
-                    Mark as Urgent
-                  </span>
-                </div>
+                {/* Switch must be the DIRECT child — wrapped in a div the
+                    form value never reached it, so urgent plans showed the
+                    toggle OFF while submit still sent urgent:true */}
+                <Switch
+                  size="default"
+                  checkedChildren="Urgent"
+                  unCheckedChildren="Normal"
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -517,30 +520,30 @@ const EditProductionPlanModal = ({
         ]}
         width={600}
       >
-        {presetDetails && presetDetails.length > 0 && (
+        {presetDetails?.steps?.length > 0 && (
           <div className="mt-4">
             <div className="mb-4">
               <Text strong>Category: </Text>
-              <Tag color={getCategoryColor(presetDetails[0]?.presetCategory)}>
-                {presetDetails[0]?.presetCategory?.toUpperCase()}
+              <Tag color={getCategoryColor(presetDetails.category)}>
+                {presetDetails.category?.toUpperCase()}
               </Tag>
             </div>
 
             <div className="mb-4">
               <Text strong>Description: </Text>
               <Text>
-                {presetDetails[0]?.presetDescription || 'No description available'}
+                {presetDetails.description || 'No description available'}
               </Text>
             </div>
 
-            <Divider>Production Steps ({presetDetails.length})</Divider>
+            <Divider>Production Steps ({presetDetails.steps.length})</Divider>
 
             <div className="space-y-3 max-h-300 overflow-y-auto">
-              {[...presetDetails]
+              {[...presetDetails.steps]
                 .sort((a, b) => a.stepOrder - b.stepOrder)
                 .map((step) => (
                   <div
-                    key={step.id}
+                    key={step.stepId}
                     className="flex items-center p-3 bg-white border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center gap-4 w-full">
