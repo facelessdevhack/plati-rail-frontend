@@ -179,26 +179,22 @@ const DispatchEntriesView = () => {
 
   // ─── Export Functions ───
 
+  // Export exactly what the current tab + date/search/dealer filters show
+  // (filteredEntries). The old code re-filtered from scratch hardcoded to
+  // 'awaiting_approval', so on the Dispatched (approved) tab the export
+  // matched nothing regardless of the selected date — the date filter looked
+  // broken. filteredEntries already scopes by activeTab and uses processedAt
+  // for approved / dateIST otherwise.
   const handleExportTodayEntries = () => {
-    const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
-    const displayDate = moment(targetDate).format('DD MMM YYYY')
-    const dateEntries = dispatchEntries.filter(entry => {
-      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
-      return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
-    })
-    if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
-    exportToPDF(dateEntries, `Dispatch Entries - ${displayDate}`)
+    const displayDate = moment(selectedDate || dayjs().format('YYYY-MM-DD')).format('DD MMM YYYY')
+    if (filteredEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
+    exportToPDF(filteredEntries, `Dispatch Entries - ${displayDate}`)
   }
 
   const handleExportExcelTodayEntries = () => {
-    const targetDate = selectedDate || dayjs().format('YYYY-MM-DD')
-    const displayDate = moment(targetDate).format('DD MMM YYYY')
-    const dateEntries = dispatchEntries.filter(entry => {
-      const entryDate = entry.dateIST ? moment(entry.dateIST) : moment.utc(entry.date || entry.created_at).utcOffset(330)
-      return entryDate.format('YYYY-MM-DD') === targetDate && entry.dispatchStatus === 'awaiting_approval'
-    })
-    if (dateEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
-    exportToExcel(dateEntries, `Dispatch Entries - ${displayDate}`)
+    const displayDate = moment(selectedDate || dayjs().format('YYYY-MM-DD')).format('DD MMM YYYY')
+    if (filteredEntries.length === 0) { message.warning(`No entries for ${displayDate}`); return }
+    exportToExcel(filteredEntries, `Dispatch Entries - ${displayDate}`)
   }
 
   const handleExportDealerWisePDFs = async () => {
