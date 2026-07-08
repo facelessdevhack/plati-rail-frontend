@@ -60,6 +60,7 @@ export const topNavSections = [
     subNav: [
       { key: 'de-dashboard', label: 'Dashboard', path: '/entry-dashboard', icon: 'dashboard' },
       { key: 'de-daily-entries', label: 'Daily Entries', path: '/add-daily-entry', icon: 'edit' },
+      { key: 'de-inwards', label: 'Inwards Entry', path: '/add-inwards-entry', icon: 'inbox' },
       { key: 'de-dealers', label: 'Dealers', path: '/dealers-list', icon: 'team' },
     ]
   },
