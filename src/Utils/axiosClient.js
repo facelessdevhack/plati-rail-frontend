@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { startRequest, endRequest } from './globalLoading'
+import { handleSessionExpired } from './session'
 
 const commonHeader = {
   'Content-Type': 'application/json',
@@ -37,13 +38,6 @@ const getError = error => {
   return { ...data }
 }
 
-const handleLogOutUser = () => {
-  localStorage.clear()
-  if (window.location.pathname !== '/') {
-    window.location.href = '/'
-  }
-}
-
 client.defaults.withCredentials = false
 
 const setupAxiosInterceptors = () => {
@@ -74,13 +68,22 @@ const setupAxiosInterceptors = () => {
   client.interceptors.response.use(
     res => {
       if (!res?.config?.silent) endRequest()
+      // Sliding session: the backend re-issues the JWT once it's an hour old
+      // and hands it back in this header. Swapping it in here means an
+      // actively-working user never hits the 24h hard expiry.
+      const renewed = res?.headers?.['x-renewed-token']
+      if (renewed) {
+        localStorage.setItem('token', renewed)
+      }
       return res
     },
     async error => {
       if (!error?.config?.silent) endRequest()
       // error.response is undefined for network errors — guard before reading status
       if (error?.response?.status === 401) {
-        handleLogOutUser()
+        handleSessionExpired(
+          window.location.pathname + window.location.search
+        )
       }
 
       return Promise.reject(error)

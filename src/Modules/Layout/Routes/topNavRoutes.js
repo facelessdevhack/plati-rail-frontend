@@ -79,6 +79,7 @@ export const topNavSections = [
     defaultPath: '/purchase/requisitions',
     allowedRoles: [5, 8, 9, 10, 999],
     subNav: [
+      { key: 'pur-vendor-purchases', label: 'Vendor Purchases', path: '/purchase/vendor-purchases', icon: 'truck' },
       { key: 'pur-requisitions', label: 'Requisitions', path: '/purchase/requisitions', icon: 'audit' },
       { key: 'pur-submit', label: 'Submit Request', path: '/purchase/requisitions/create', icon: 'form' },
       { key: 'pur-indents', label: 'Indents', path: '/purchase/indents', icon: 'unordered-list' },
