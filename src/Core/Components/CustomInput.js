@@ -82,9 +82,18 @@ const CustomInput = ({
   const mappedSize = size || "md";
   const mappedWidth = width || "full";
 
+  // Number inputs change value when the wheel scrolls over them while focused —
+  // so scrolling the page to reach a button silently alters a typed quantity.
+  // Blur on wheel so the scroll passes through without touching the value.
+  const handleWheel =
+    props.type === "number"
+      ? (e) => { e.currentTarget.blur(); if (props.onWheel) props.onWheel(e); }
+      : props.onWheel;
+
   return (
     <Input
       {...props}
+      onWheel={handleWheel}
       className={input({ variant: mappedVariant, size: mappedSize, width: mappedWidth, className })}
       placeholder={placeholder}
     />

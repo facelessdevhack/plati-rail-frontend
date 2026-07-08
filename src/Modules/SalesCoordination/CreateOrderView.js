@@ -73,7 +73,11 @@ const CreateOrderView = () => {
   }, [allEntries, currentPage])
 
   const getAndSetTodayDate = useCallback(() => {
-    const dateToSet = moment().format('YYYY-MM-DD HH:mm:ss')
+    // Store the creation instant as a UTC wall-clock string. The DB session is
+    // UTC and the read path (dateIST = moment.utc(date).utcOffset(330)) treats
+    // stored dates as UTC — sending local IST wall-clock (moment().format)
+    // landed the order 5.5h ahead, so its creation time displayed +5:30 off.
+    const dateToSet = moment.utc().format('YYYY-MM-DD HH:mm:ss')
     // setEntry merges, so only set `date`. Spreading a stale `entry` (captured by
     // this useCallback at first render, when the dealer is null) wiped the dealer.
     dispatch(setEntry({ date: dateToSet }))
@@ -405,6 +409,9 @@ const CreateOrderView = () => {
                   onChange={e =>
                     dispatch(setEntry({ quantity: +e.target.value }))
                   }
+                  // blur on wheel so scrolling the page past a focused qty
+                  // field doesn't silently change the selected quantity
+                  onWheel={e => e.currentTarget.blur()}
                   placeholder='20'
                   className='co-input'
                 />
@@ -433,6 +440,7 @@ const CreateOrderView = () => {
                       type='number'
                       value={transportAmount}
                       onChange={e => setTransportAmount(e.target.value)}
+                      onWheel={e => e.currentTarget.blur()}
                       placeholder='0.00'
                       className='co-transport-input'
                     />
