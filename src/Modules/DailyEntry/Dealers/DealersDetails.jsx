@@ -53,6 +53,7 @@ import {
 } from '../../../redux/api/entriesAPI'
 
 import Button from '../../../Core/Components/CustomButton'
+import PlatiFormStyles from '../../../Core/Components/FormStyles'
 import {
   updateChargesEntryById,
   updateDealerEntryById,
@@ -66,6 +67,16 @@ import DataTablePagination from '../../../Core/Components/DataTablePagination'
 
 const { Title, Text } = Typography;
 const { Search } = Input;
+
+// Design-language form label (matches PlatiFormStyles labels)
+const platiLabelStyle = {
+  fontFamily: "'Inter', sans-serif",
+  fontSize: 14,
+  fontWeight: 500,
+  color: '#1a1a1a',
+  lineHeight: '20px',
+  marginBottom: 6
+}
 
 const AdminDealerDetails = () => {
   const [activeTab, setActiveTab] = useState(1)
@@ -571,23 +582,39 @@ const AdminDealerDetails = () => {
   const handleDeleteEntry = record => {
     const isPurchase = record.source === 'Purchase'
     Modal.confirm({
-      title: `Delete this ${isPurchase ? 'purchase' : 'sales'} entry?`,
+      title: (
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 500, color: '#1a1a1a' }}>
+          Delete this {isPurchase ? 'purchase' : 'sales'} entry?
+        </span>
+      ),
       content: (
-        <div>
-          <p>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14 }}>
+          <p style={{ color: '#1a1a1a', marginBottom: 4 }}>
             <strong>{record.productName}</strong> — {record.quantity} units on{' '}
             {moment(record.date).format('DD MMM YYYY')}
           </p>
-          <p style={{ color: '#8c8c8c' }}>
+          <p style={{ color: 'rgba(26,26,26,0.6)' }}>
             {isPurchase
               ? 'The stock this entry added will be removed.'
               : 'The sold stock will be restored and the dealer balance adjusted.'}
           </p>
         </div>
       ),
+      icon: <DeleteOutlined style={{ color: '#e53e3e' }} />,
       okText: 'Delete',
-      okType: 'danger',
       cancelText: 'Cancel',
+      okButtonProps: {
+        style: {
+          background: '#e53e3e', border: 'none', borderRadius: 12,
+          fontFamily: "'Inter', sans-serif", fontWeight: 500, height: 38, padding: '0 20px'
+        }
+      },
+      cancelButtonProps: {
+        style: {
+          background: '#e5e5e5', border: 'none', borderRadius: 12,
+          fontFamily: "'Inter', sans-serif", fontWeight: 500, color: '#1a1a1a', height: 38, padding: '0 20px'
+        }
+      },
       onOk: async () => {
         const api = isPurchase ? removeInwardsEntryAPI : removeEntryAPI
         const response = await api({ entryId: record.entryId })
@@ -603,16 +630,23 @@ const AdminDealerDetails = () => {
     })
   }
 
+  const contextMenuLabel = text => (
+    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, padding: '2px 4px', display: 'inline-block' }}>
+      {text}
+    </span>
+  )
+
   const getEntryContextMenu = record => ({
     items: [
-      { key: 'edit', icon: <EditOutlined />, label: 'Edit Entry' },
+      { key: 'edit', icon: <EditOutlined />, label: contextMenuLabel('Edit Entry') },
       // charges entries have no delete endpoint — hide Delete for them
       ...(record.sourceType !== 4
         ? [
+            { type: 'divider' },
             {
               key: 'delete',
               icon: <DeleteOutlined />,
-              label: 'Delete Entry',
+              label: contextMenuLabel('Delete Entry'),
               danger: true
             }
           ]
@@ -1668,152 +1702,136 @@ const AdminDealerDetails = () => {
             </Modal>
 
       {/* Edit Entry Modal */}
+      <PlatiFormStyles />
       <Modal
         title={
-          <div className='flex items-center space-x-3'>
-            <FileTextOutlined className='text-blue-600' />
-            <span>Edit Entry</span>
-          </div>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 500, color: '#1a1a1a' }}>
+            Edit Entry
+          </span>
         }
         open={showEditModal}
-        onOk={handleEditModalOk}
         onCancel={handleEditModalCancel}
         width={600}
-        footer={
-          <div className='flex justify-end items-center gap-3'>
-            <AntButton onClick={handleEditModalCancel} size='large'>
-              Cancel
-            </AntButton>
-            <AntButton
-              type='primary'
-              onClick={handleEditModalOk}
-              size='large'
-              style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
-            >
-              Update Entry
-            </AntButton>
-          </div>
-        }
-            >
-              <div>
-                {loader && (
-                  <Spin
-                    size='large'
-                    spinning={loader}
-                    fullscreen={true}
-                    className='z-20'
-                  ></Spin>
-                )}
-                {editingEntry && editingEntry.sourceType === 2 ? (
-                  <div className='flex flex-col gap-y-2'>
-                    <div>
-                      <div>Change Description</div>
-                      <CustomInput
-                        value={editingEntry?.description}
-                        onChange={e => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            description: e.target.value
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Pricing</div>
-                      <CustomInput
-                        value={
-                          editingEntry?.sourceType === 2
-                            ? editingEntry?.amount
-                            : editingEntry?.price
-                        }
-                        onChange={e => {
-                          if (editingEntry?.sourceType === 2) {
-                            setEditingEntry({
-                              ...editingEntry,
-                              amount: e.target.value
-                            })
-                          } else {
-                            setEditingEntry({
-                              ...editingEntry,
-                              price: e.target.value
-                            })
-                          }
-                        }}
-                      />
-                    </div>
+        footer={null}
+        styles={{ body: { padding: '16px 0 0' } }}
+      >
+        <div className='plati-form'>
+          {loader && (
+            <Spin size='large' spinning={loader} fullscreen={true} className='z-20' />
+          )}
+          {editingEntry && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {editingEntry.sourceType === 2 ? (
+                <>
+                  <div>
+                    <div style={platiLabelStyle}>Description</div>
+                    <CustomInput
+                      value={editingEntry?.description}
+                      onChange={e =>
+                        setEditingEntry({ ...editingEntry, description: e.target.value })
+                      }
+                    />
                   </div>
-                ) : (
-                  <div className='flex flex-col gap-y-2'>
-                    <div>
-                      <div>Select Product</div>
-                      <CustomSelect
-                        showSearch={true}
-                        className='w-full'
-                        options={allProducts}
-                        value={editingEntry?.productId}
-                        onChange={(e, l) => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            productId: e,
-                            productName: l ? l.label : null
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Quantity</div>
+                  <div>
+                    <div style={platiLabelStyle}>Amount (₹)</div>
+                    <CustomInput
+                      value={editingEntry?.amount}
+                      onChange={e =>
+                        setEditingEntry({ ...editingEntry, amount: e.target.value })
+                      }
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div style={platiLabelStyle}>Product</div>
+                    <CustomSelect
+                      showSearch={true}
+                      className='w-full'
+                      options={allProducts}
+                      value={editingEntry?.productId}
+                      onChange={(e, l) => {
+                        setEditingEntry({
+                          ...editingEntry,
+                          productId: e,
+                          productName: l ? l.label : null
+                        })
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={platiLabelStyle}>Quantity</div>
                       <CustomInput
                         value={editingEntry?.quantity}
-                        onChange={e => {
-                          setEditingEntry({
-                            ...editingEntry,
-                            quantity: e.target.value
-                          })
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div>Change Pricing</div>
-                      <CustomInput
-                        value={
-                          editingEntry?.sourceType === 2
-                            ? editingEntry?.amount
-                            : editingEntry?.price
+                        onChange={e =>
+                          setEditingEntry({ ...editingEntry, quantity: e.target.value })
                         }
-                        onChange={e => {
-                          if (editingEntry?.sourceType === 2) {
-                            setEditingEntry({
-                              ...editingEntry,
-                              amount: e.target.value
-                            })
-                          } else {
-                            setEditingEntry({
-                              ...editingEntry,
-                              price: e.target.value
-                            })
-                          }
-                        }}
                       />
                     </div>
-                    <div>
-                      <label className='flex items-center gap-x-2'>
-                        <input
-                          type='checkbox'
-                          checked={editingEntry?.isClaim === 1}
-                          onChange={e => {
-                            setEditingEntry({
-                              ...editingEntry,
-                              isClaim: e.target.checked ? 1 : 0
-                            })
-                          }}
-                        />
-                        <span>Is this a claim?</span>
-                      </label>
+                    <div style={{ flex: 1 }}>
+                      <div style={platiLabelStyle}>Price (₹)</div>
+                      <CustomInput
+                        value={editingEntry?.price}
+                        onChange={e =>
+                          setEditingEntry({ ...editingEntry, price: e.target.value })
+                        }
+                      />
                     </div>
                   </div>
-                )}
+                  <label
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      fontFamily: "'Inter', sans-serif", fontSize: 14,
+                      color: '#1a1a1a', cursor: 'pointer', userSelect: 'none'
+                    }}
+                  >
+                    <input
+                      type='checkbox'
+                      checked={editingEntry?.isClaim === 1}
+                      onChange={e =>
+                        setEditingEntry({
+                          ...editingEntry,
+                          isClaim: e.target.checked ? 1 : 0
+                        })
+                      }
+                      style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#f55e34' }}
+                    />
+                    This entry is a claim (no charge)
+                  </label>
+                </>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 8 }}>
+                <button
+                  type='button'
+                  onClick={handleEditModalCancel}
+                  style={{
+                    background: '#e5e5e5', border: 'none', borderRadius: 12,
+                    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif", color: '#1a1a1a', cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type='button'
+                  onClick={handleEditModalOk}
+                  disabled={loader}
+                  style={{
+                    background: '#4a90ff', border: 'none', borderRadius: 12,
+                    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif", color: 'white', cursor: 'pointer',
+                    opacity: loader ? 0.6 : 1
+                  }}
+                >
+                  Update Entry
+                </button>
               </div>
-            </Modal>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }
