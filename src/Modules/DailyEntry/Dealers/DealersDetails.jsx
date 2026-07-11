@@ -16,7 +16,8 @@ import {
   Avatar,
   Tooltip,
   Divider,
-  Input
+  Input,
+  Dropdown
 } from 'antd'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
@@ -31,13 +32,16 @@ import {
   CalendarOutlined,
   ArrowLeftOutlined,
   DollarOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  EditOutlined
 } from '@ant-design/icons'
 import CustomTable from '../../../Core/Components/CustomTable'
 import CustomInput from '../../../Core/Components/CustomInput'
 import {
   editEntryAPI,
   editInwardsEntryAPI,
+  removeEntryAPI,
+  removeInwardsEntryAPI,
   getAdminPaymentMethods,
   getAllEntriesAdmin,
   getAllPaymentMethods,
@@ -533,7 +537,15 @@ const AdminDealerDetails = () => {
     
     try {
       setLoader(true)
-      const editEntryResponse = await editEntryAPI(finalEditingEntry)
+      // Purchase (inwards) entries live in inwards_purchase_master — they have
+      // their own edit endpoint; everything else goes through edit-entry
+      const editEntryResponse =
+        finalEditingEntry.source === 'Purchase'
+          ? await editInwardsEntryAPI({
+              ...finalEditingEntry,
+              entryId: finalEditingEntry.id
+            })
+          : await editEntryAPI(finalEditingEntry)
       if (editEntryResponse) {
         setCheckedEntry(!checkedEntry)
         console.log(editEntryResponse, 'editEntryResponse')
@@ -553,6 +565,64 @@ const AdminDealerDetails = () => {
     setEditingEntry(null)
     setShowEditModal(false)
   }
+
+  // Right-click Edit/Delete on entry rows — the old UI had this; the redesign
+  // dropped the trigger while the edit modal and APIs survived.
+  const handleDeleteEntry = record => {
+    const isPurchase = record.source === 'Purchase'
+    Modal.confirm({
+      title: `Delete this ${isPurchase ? 'purchase' : 'sales'} entry?`,
+      content: (
+        <div>
+          <p>
+            <strong>{record.productName}</strong> — {record.quantity} units on{' '}
+            {moment(record.date).format('DD MMM YYYY')}
+          </p>
+          <p style={{ color: '#8c8c8c' }}>
+            {isPurchase
+              ? 'The stock this entry added will be removed.'
+              : 'The sold stock will be restored and the dealer balance adjusted.'}
+          </p>
+        </div>
+      ),
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        const api = isPurchase ? removeInwardsEntryAPI : removeEntryAPI
+        const response = await api({ entryId: record.entryId })
+        if (response?.status === 200) {
+          message.success('Entry deleted')
+          setCheckedEntry(prev => !prev) // triggers refetch
+        } else {
+          message.error(
+            response?.response?.data?.message || 'Failed to delete entry'
+          )
+        }
+      }
+    })
+  }
+
+  const getEntryContextMenu = record => ({
+    items: [
+      { key: 'edit', icon: <EditOutlined />, label: 'Edit Entry' },
+      // charges entries have no delete endpoint — hide Delete for them
+      ...(record.sourceType !== 4
+        ? [
+            {
+              key: 'delete',
+              icon: <DeleteOutlined />,
+              label: 'Delete Entry',
+              danger: true
+            }
+          ]
+        : [])
+    ],
+    onClick: ({ key }) => {
+      if (key === 'edit') showEditModalFunction(record)
+      if (key === 'delete') handleDeleteEntry(record)
+    }
+  })
 
   const getPaymentMethodLabel = methodId => {
     console.log(methodId, 'METHOD ID')
@@ -1013,7 +1083,12 @@ const AdminDealerDetails = () => {
                         const statusVariant = record.paymentStatus === 1 ? 'outofstock' : record.paymentStatus === 2 ? 'pending' : record.paymentStatus === 3 ? 'paid' : 'paid'
                         const balVal = record?.entryCurrentBal || record?.currentBal
                         return (
-                          <tr key={record.entryId || idx} style={{ borderBottom: '1px solid #f3f4f6' }}
+                          <Dropdown
+                            key={record.entryId || idx}
+                            menu={getEntryContextMenu(record)}
+                            trigger={['contextMenu']}
+                          >
+                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}
                             onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
@@ -1079,6 +1154,7 @@ const AdminDealerDetails = () => {
                               )}
                             </td>
                           </tr>
+                          </Dropdown>
                         )
                       })
                     )}
