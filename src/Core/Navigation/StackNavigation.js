@@ -209,7 +209,7 @@ const StackNavigation = () => {
       <Route
         path='/add-stock'
         element={
-          <PrivateRoute allowedRoles={[3, 999]}>
+          <PrivateRoute allowedRoles={[3, 6, 999]}>
             <TopNavLayout content={<AddStock />} />
           </PrivateRoute>
         }
@@ -299,7 +299,7 @@ const StackNavigation = () => {
       <Route
         path='add-model'
         element={
-          <PrivateRoute allowedRoles={[3, 999]}>
+          <PrivateRoute allowedRoles={[3, 6, 999]}>
             <TopNavLayout content={<AddModel />} />
           </PrivateRoute>
         }
