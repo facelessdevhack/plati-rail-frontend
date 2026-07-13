@@ -62,6 +62,12 @@ function getItemLayout (label, key, icon, children) {
 export const adminSiderRoutes = [
   // Main Dashboard
   getItemLayout(
+    <Link to='/access-control'>Access Control</Link>,
+    'access-control',
+    <SafetyCertificateOutlined style={{ fontSize: '16px' }} />
+  ),
+
+  getItemLayout(
     <Link to='/admin-dashboard'>
       <span style={{ fontWeight: 600 }}>Dashboard</span>
     </Link>,

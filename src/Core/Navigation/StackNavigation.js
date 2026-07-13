@@ -49,7 +49,7 @@ import VendorPurchases from '../../Modules/Purchase/VendorPurchases'
 import CreateGRN from '../../Modules/Purchase/CreateGRN'
 import GRNDetails from '../../Modules/Purchase/GRNDetails'
 import AdminOrderDashboard from '../../Modules/AdminOrderDashboard/OrderDashboard'
-import DealerMetrics from '../../Modules/Admin/DealerMetrics'
+import DealerMetrics from '../../Modules/DealerMetrics'
 import DealerMetricsDetails from '../../Modules/DealerMetrics/DealerMetricsDetails'
 import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetricsDetailsBySize'
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
@@ -92,6 +92,8 @@ import RejectedStockManagement from '../../Modules/Production/RejectedStockManag
 import DiscardedStockManagement from '../../Modules/Production/DiscardedStockManagement';
 import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
+import AccessControl from '../../Modules/Admin/AccessControl';
+import ForcePasswordChange from '../../Modules/Authentication/ForcePasswordChange';
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
@@ -139,7 +141,12 @@ const StackNavigation = () => {
             : null
 
         const roleId = Number(user.roleId)
-        navigate(safeReturnTo || roleLandingPaths[roleId] || '/dealer-warranty', {
+        const permissions = new Set(user.permissions || [])
+        const permissionLanding =
+          permissions.has('users.view') || permissions.has('roles.view')
+            ? '/access-control'
+            : null
+        navigate(safeReturnTo || roleLandingPaths[roleId] || permissionLanding || '/unauthorized', {
           replace: true
         })
       }
@@ -147,7 +154,9 @@ const StackNavigation = () => {
   }, [loggedIn, user, navigate, location])
 
   return (
-    <Routes>
+    <>
+      {loggedIn && <ForcePasswordChange />}
+      <Routes>
       {/* Public Routes */}
       <Route path='login' element={<Login />} />
       <Route path='unauthorized' element={<UnauthorizedPage />} />
@@ -684,6 +693,18 @@ const StackNavigation = () => {
 
       {/* User Production Steps Management */}
       <Route
+        path='/access-control'
+        element={
+          <PrivateRoute
+            allowedRoles={[5, 999]}
+            allowedPermissions={['users.view', 'roles.view']}
+          >
+            <TopNavLayout content={<AccessControl />} />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
         path='/user-production-steps'
         element={
           <PrivateRoute allowedRoles={[4, 5, 999]}>
@@ -933,7 +954,8 @@ const StackNavigation = () => {
       />
 
       {/* ...other routes wrapped with PrivateRoute */}
-    </Routes>
+      </Routes>
+    </>
   )
 }
 

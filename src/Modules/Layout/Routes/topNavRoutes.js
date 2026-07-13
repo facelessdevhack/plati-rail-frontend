@@ -104,6 +104,22 @@ export const topNavSections = [
       { key: 'fin-overheads', label: 'Monthly Overheads', path: '/monthly-overheads', icon: 'bank' },
       { key: 'fin-costing', label: 'Product Costing', path: '/temp-costing', icon: 'calculator' },
     ]
+  },
+  {
+    key: 'access-control',
+    label: 'Access Control',
+    defaultPath: '/access-control',
+    allowedRoles: [5, 999],
+    allowedPermissions: ['users.view', 'roles.view'],
+    subNav: [
+      {
+        key: 'access-control-console',
+        label: 'Users & Roles',
+        path: '/access-control',
+        icon: 'safety',
+        allowedPermissions: ['users.view', 'roles.view']
+      }
+    ]
   }
 ]
 
@@ -158,13 +174,20 @@ export function getActiveNav(pathname) {
  * first sub-nav item the role can actually open, so clicking a section never
  * lands on /unauthorized.
  */
-export function getSectionsForRole(roleId) {
+export function getSectionsForRole(roleId, permissions = []) {
   const id = Number(roleId)
+  const permissionSet = new Set(permissions)
+  const isAllowed = item =>
+    item.allowedRoles?.includes(id) ||
+    item.allowedPermissions?.some(permission => permissionSet.has(permission))
+
   return topNavSections
-    .filter(section => section.allowedRoles.includes(id))
+    .filter(isAllowed)
     .map(section => {
       const subNav = section.subNav.filter(
-        item => !item.allowedRoles || item.allowedRoles.includes(id)
+        item =>
+          (!item.allowedRoles && !item.allowedPermissions) ||
+          isAllowed(item)
       )
       return { ...section, subNav, defaultPath: subNav[0]?.path || section.defaultPath }
     })
