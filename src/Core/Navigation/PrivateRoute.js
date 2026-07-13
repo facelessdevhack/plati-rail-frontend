@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { isTokenExpired, handleSessionExpired } from "../../Utils/session";
 
-const PrivateRoute = ({ children, allowedRoles }) => {
+const PrivateRoute = ({ children, allowedRoles, allowedPermissions }) => {
     const { loggedIn, user } = useSelector((state) => state.userDetails);
     const location = useLocation();
 
@@ -27,7 +27,17 @@ const PrivateRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    if (allowedRoles && !allowedRoles.includes(Number(user.roleId))) {
+    const roleAllowed = allowedRoles?.includes(Number(user.roleId)) || false;
+    const grantedPermissions = new Set(user.permissions || []);
+    const permissionAllowed =
+        Number(user.roleId) === 999 ||
+        allowedPermissions?.some(permission => grantedPermissions.has(permission)) ||
+        false;
+
+    // When both mechanisms are supplied, either one may authorize the page. This
+    // keeps old sessions and legacy role routes working while screens migrate to
+    // named permissions.
+    if ((allowedRoles || allowedPermissions) && !roleAllowed && !permissionAllowed) {
         return <Navigate to="/unauthorized" />;
     }
 

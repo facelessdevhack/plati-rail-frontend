@@ -82,19 +82,26 @@ const TopNavLayout = ({ content }) => {
   const { user } = useSelector(state => state.userDetails)
 
   const roleId = Number(user?.roleId)
-  const visibleSections = useMemo(() => getSectionsForRole(roleId), [roleId])
+  const permissions = user?.permissions || []
+  const visibleSections = useMemo(
+    () => getSectionsForRole(roleId, permissions),
+    [roleId, permissions]
+  )
+  const accessOnly = visibleSections.length === 1 && visibleSections[0].key === 'access-control'
   const activeNav = useMemo(() => getActiveNav(location.pathname), [location.pathname])
 
   const activeSection = useMemo(() => {
     return visibleSections.find(s => s.key === activeNav.section)
   }, [visibleSections, activeNav.section])
 
-  const userMenuItems = [
-    { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
-    { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
-    { type: 'divider' },
-    { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }
-  ]
+  const userMenuItems = accessOnly
+    ? [{ key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }]
+    : [
+        { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
+        { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+        { type: 'divider' },
+        { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }
+      ]
 
   const handleUserMenuClick = ({ key }) => {
     switch (key) {
@@ -148,7 +155,7 @@ const TopNavLayout = ({ content }) => {
 
           {/* Right: Notifications + User */}
           <div className="topnav-right">
-            <ProductionNotificationSystem />
+            {!accessOnly && <ProductionNotificationSystem />}
             <Dropdown
               menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
               placement="bottomRight"

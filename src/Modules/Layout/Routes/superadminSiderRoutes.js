@@ -369,6 +369,12 @@ export const superadminSiderRoutes = [
 
   // Master Data
   getItemLayout(
+    <Link to='/access-control'>Access Control</Link>,
+    'access-control',
+    <SafetyCertificateOutlined style={{ fontSize: '16px' }} />
+  ),
+
+  getItemLayout(
     'Master Data',
     'masters',
     <SettingOutlined style={{ fontSize: '16px' }} />,

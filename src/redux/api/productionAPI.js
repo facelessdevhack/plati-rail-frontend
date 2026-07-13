@@ -31,13 +31,7 @@ export const getProductionPlansWithQuantities = createAsyncThunk(
       }
 
       const response = await client.get(
-        `/production/plans-with-quantities?${params}&_t=${Date.now()}`,
-        {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        }
+        `/production/plans-with-quantities?${params}&_t=${Date.now()}`
       )
 
       return {
@@ -75,13 +69,7 @@ export const getProductionPlansForSmartPlanner = createAsyncThunk(
       if (endDate) params.append('endDate', endDate)
 
       const response = await client.get(
-        `/production/plans-for-smart-planner?${params}&_t=${Date.now()}`,
-        {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        }
+        `/production/plans-for-smart-planner?${params}&_t=${Date.now()}`
       )
 
       return {

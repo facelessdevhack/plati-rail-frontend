@@ -22,6 +22,9 @@ export const userSlice = createSlice({
     updateUser: (state, action) => {
       state[action.payload.key] = action.payload.value
     },
+    mergeAuthenticatedUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload }
+    },
     updateUserData: (state, action) => {
       action.payload.map(ele => {
         state[ele.key] = ele.value
@@ -75,6 +78,7 @@ export const {
   updateUserData,
   resetToInitialUser,
   updateUserToken,
+  mergeAuthenticatedUser,
   addDummyDataForUserDetails
 } = userSlice.actions
 export default userSlice.reducer

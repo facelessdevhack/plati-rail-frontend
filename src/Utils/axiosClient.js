@@ -4,10 +4,7 @@ import { handleSessionExpired } from './session'
 
 const commonHeader = {
   'Content-Type': 'application/json',
-  'Content-Disposition': '',
-  Accept: '*/*',
-  'Access-Control-Allow-Origin': window.location.origin,
-  'Access-Control-Allow-Credentials': true
+  Accept: '*/*'
 }
 
 const client = axios.create({
@@ -92,7 +89,7 @@ const setupAxiosInterceptors = () => {
 }
 
 const warrantyClient = axios.create({
-  baseURL: process.env.REACT_APP_WARRANTY_API_URL || 'http://localhost:4001/v2'
+  baseURL: process.env.REACT_APP_WARRANTY_API_URL || process.env.REACT_APP_API_URL
 })
 
 warrantyClient.defaults.withCredentials = false
