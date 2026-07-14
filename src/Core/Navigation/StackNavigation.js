@@ -504,7 +504,7 @@ const StackNavigation = () => {
       <Route
         path='/production-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionDashboard />} />
           </PrivateRoute>
         }
@@ -512,7 +512,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plans'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionListing />} />
           </PrivateRoute>
         }
@@ -520,7 +520,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plans-v2'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionListingV2 />} />
           </PrivateRoute>
         }
@@ -528,7 +528,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plans-modern'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionListingModern />} />
           </PrivateRoute>
         }
@@ -536,7 +536,7 @@ const StackNavigation = () => {
       <Route
         path='/production-plan/:planId'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionPlanDetailsPage />} />
           </PrivateRoute>
         }
@@ -544,7 +544,7 @@ const StackNavigation = () => {
       <Route
         path='/production-alloys'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<AlloySelection />} />
           </PrivateRoute>
         }
@@ -552,7 +552,7 @@ const StackNavigation = () => {
       <Route
         path='/production-presets'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<PresetManagement />} />
           </PrivateRoute>
         }
@@ -560,7 +560,7 @@ const StackNavigation = () => {
        <Route
          path='/rejected-stock'
          element={
-           <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+           <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
              <TopNavLayout content={<RejectedStockManagement />} />
            </PrivateRoute>
          }
@@ -568,7 +568,7 @@ const StackNavigation = () => {
       <Route
         path='/dispatch-to-sales'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<DispatchToSales />} />
           </PrivateRoute>
         }
@@ -576,7 +576,7 @@ const StackNavigation = () => {
       <Route
         path='/discarded-stock-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]} allowedPermissions={['production.manage']}>
             <TopNavLayout content={<DiscardedStockManagement />} />
           </PrivateRoute>
         }
@@ -584,7 +584,7 @@ const StackNavigation = () => {
       <Route
         path='/smart-production'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<SmartProductionDashboard />} />
           </PrivateRoute>
         }
@@ -592,7 +592,7 @@ const StackNavigation = () => {
       <Route
         path='/production-planner-v2'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<ProductionPlannerV2 />} />
           </PrivateRoute>
         }
@@ -605,10 +605,10 @@ const StackNavigation = () => {
           </PrivateRoute>
         }
       />
-          <Route
+      <Route
         path='/inventory-requests'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['production.view', 'production.manage']}>
             <TopNavLayout content={<InventoryRequests />} />
           </PrivateRoute>
         }
@@ -627,7 +627,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase-orders'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<PurchaseDashboard />} />
           </PrivateRoute>
         }
@@ -635,7 +635,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase-orders/smart-purchasing'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 6, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 6, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<SmartPurchasing />} />
           </PrivateRoute>
         }
@@ -707,7 +707,7 @@ const StackNavigation = () => {
       <Route
         path='/user-production-steps'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]} allowedPermissions={['production.assign']}>
             <TopNavLayout content={<UserProductionSteps />} />
           </PrivateRoute>
         }
@@ -717,7 +717,7 @@ const StackNavigation = () => {
       <Route
         path='/equipment-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]} allowedPermissions={['equipment.manage']}>
             <TopNavLayout content={<EquipmentManagement />} />
           </PrivateRoute>
         }
@@ -727,7 +727,7 @@ const StackNavigation = () => {
       <Route
         path='/step-position-mapping'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]} allowedPermissions={['equipment.manage']}>
             <TopNavLayout content={<StepPositionMapping />} />
           </PrivateRoute>
         }
@@ -799,7 +799,7 @@ const StackNavigation = () => {
       <Route
         path='/mold-management'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 999]} allowedPermissions={['molds.manage']}>
             <TopNavLayout content={<MoldManagementDashboard />} />
           </PrivateRoute>
         }
@@ -823,7 +823,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/requisitions/create'
         element={
-          <PrivateRoute allowedRoles={[1, 3, 5, 6, 7, 8, 9, 10, 999]}>
+          <PrivateRoute allowedRoles={[1, 3, 5, 6, 7, 8, 9, 10, 999]} allowedPermissions={['purchase.manage']}>
             <TopNavLayout content={<CreateRequisition />} />
           </PrivateRoute>
         }
@@ -833,7 +833,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/requisitions'
         element={
-          <PrivateRoute allowedRoles={[9, 5, 999]}>
+          <PrivateRoute allowedRoles={[9, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<RequisitionList />} />
           </PrivateRoute>
         }
@@ -841,7 +841,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/requisitions/:id'
         element={
-          <PrivateRoute allowedRoles={[9, 5, 999]}>
+          <PrivateRoute allowedRoles={[9, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<RequisitionDetails />} />
           </PrivateRoute>
         }
@@ -851,7 +851,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/indents'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<IndentList />} />
           </PrivateRoute>
         }
@@ -859,7 +859,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/indents/create'
         element={
-          <PrivateRoute allowedRoles={[8, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 5, 999]} allowedPermissions={['purchase.manage']}>
             <TopNavLayout content={<CreateIndent />} />
           </PrivateRoute>
         }
@@ -867,7 +867,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/indents/:id'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<IndentDetails />} />
           </PrivateRoute>
         }
@@ -877,7 +877,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/items'
         element={
-          <PrivateRoute allowedRoles={[9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<ItemsMaster />} />
           </PrivateRoute>
         }
@@ -885,7 +885,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/item-categories'
         element={
-          <PrivateRoute allowedRoles={[9, 5, 999]}>
+          <PrivateRoute allowedRoles={[9, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<ItemCategories />} />
           </PrivateRoute>
         }
@@ -895,7 +895,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/po'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<POList />} />
           </PrivateRoute>
         }
@@ -903,7 +903,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/po/create'
         element={
-          <PrivateRoute allowedRoles={[10, 5, 999]}>
+          <PrivateRoute allowedRoles={[10, 5, 999]} allowedPermissions={['purchase.manage']}>
             <TopNavLayout content={<CreatePO />} />
           </PrivateRoute>
         }
@@ -911,7 +911,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/po/:id'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<PODetails />} />
           </PrivateRoute>
         }
@@ -921,7 +921,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/vendor-purchases'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 8, 9, 10, 999]}>
+          <PrivateRoute allowedRoles={[4, 5, 8, 9, 10, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<VendorPurchases />} />
           </PrivateRoute>
         }
@@ -931,7 +931,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/grn'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<GRNList />} />
           </PrivateRoute>
         }
@@ -939,7 +939,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/grn/create'
         element={
-          <PrivateRoute allowedRoles={[8, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 5, 999]} allowedPermissions={['purchase.manage']}>
             <TopNavLayout content={<CreateGRN />} />
           </PrivateRoute>
         }
@@ -947,7 +947,7 @@ const StackNavigation = () => {
       <Route
         path='/purchase/grn/:id'
         element={
-          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]}>
+          <PrivateRoute allowedRoles={[8, 9, 10, 5, 999]} allowedPermissions={['purchase.view', 'purchase.manage']}>
             <TopNavLayout content={<GRNDetails />} />
           </PrivateRoute>
         }

@@ -13,6 +13,7 @@ export const topNavSections = [
     label: 'Production',
     defaultPath: '/production-plans-v2',
     allowedRoles: [4, 5, 6, 999],
+    allowedPermissions: ['production.view', 'production.manage'],
     subNav: [
       { key: 'prod-plans-v2', label: 'Plans V2', path: '/production-plans-v2', icon: 'file' },
       { key: 'prod-smart', label: 'Smart Planner', path: '/smart-production', icon: 'rocket' },
@@ -69,6 +70,7 @@ export const topNavSections = [
     label: 'Inventory',
     defaultPath: '/inventory-locations',
     allowedRoles: [3, 4, 5, 6, 999],
+    allowedPermissions: ['inventory.view', 'inventory.manage'],
     subNav: [
       { key: 'inv-locations', label: 'Locations', path: '/inventory-locations', icon: 'environment' },
       { key: 'inv-movements', label: 'Movements', path: '/inventory-movements', icon: 'swap' },
@@ -79,6 +81,7 @@ export const topNavSections = [
     label: 'Purchase',
     defaultPath: '/purchase/requisitions',
     allowedRoles: [5, 8, 9, 10, 999],
+    allowedPermissions: ['purchase.view', 'purchase.manage', 'purchase.approve'],
     subNav: [
       { key: 'pur-vendor-purchases', label: 'Vendor Purchases', path: '/purchase/vendor-purchases', icon: 'truck' },
       { key: 'pur-requisitions', label: 'Requisitions', path: '/purchase/requisitions', icon: 'audit' },
