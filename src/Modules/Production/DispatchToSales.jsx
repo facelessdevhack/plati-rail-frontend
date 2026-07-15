@@ -17,6 +17,17 @@ import { ProcessButton } from '../../Core/Components/ActionButton'
 import DataTablePagination from '../../Core/Components/DataTablePagination'
 import InfoBox from '../../Core/Components/InfoBox'
 
+const getDispatchItemLabel = item => {
+  const productName = String(item?.productName || '').trim()
+  if (productName) return productName
+
+  return [
+    item?.modelName,
+    item?.inches ? `${item.inches}"` : null,
+    item?.finish
+  ].filter(Boolean).join(' ')
+}
+
 const DispatchToSales = () => {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState([])
@@ -104,8 +115,13 @@ const DispatchToSales = () => {
   const handleExportPdf = (exportAll = false) => {
     const items = exportAll ? todayDispatchedItems : todayDispatchedItems.filter(item => selectedExportItems.includes(item.id))
     if (items.length === 0) { message.warning('No items to export'); return }
-    const grouped = items.reduce((acc, item) => {
-      const name = `${item.productName} ${item.modelName} ${item.inches}" ${item.finish}`
+    // Keep acceptance-log id as the identity so repeated API rows cannot become
+    // repeated printed rows while distinct dispatch transactions still count.
+    const uniqueItems = [...new Map(items.map(item => [item.id, item])).values()]
+    const grouped = uniqueItems.reduce((acc, item) => {
+      // productName already contains model, size and finish in production data.
+      // Appending those fields again made every printed product look duplicated.
+      const name = getDispatchItemLabel(item)
       if (acc[name]) acc[name].qty += item.acceptedQuantity; else acc[name] = { alloyName: name, qty: item.acceptedQuantity }
       return acc
     }, {})
@@ -434,7 +450,7 @@ const DispatchToSales = () => {
             <div key={item.id} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12, background: selectedExportItems.includes(item.id) ? '#eff6ff' : 'white' }}>
               <Checkbox checked={selectedExportItems.includes(item.id)} onChange={e => e.target.checked ? setSelectedExportItems([...selectedExportItems, item.id]) : setSelectedExportItems(selectedExportItems.filter(id => id !== item.id))} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{item.productName} - {item.modelName} {item.inches}" {item.finish}</div>
+                <div style={{ fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{getDispatchItemLabel(item)}</div>
                 <div style={{ fontSize: 12, color: '#9ca3af' }}>Accepted: {item.acceptedQuantity} units · Plan #{item.prodPlanId} · {moment(item.dispatchedAt).format('DD-MM-YYYY HH:mm')}</div>
               </div>
             </div>
