@@ -54,6 +54,20 @@ const STEP_GUIDANCE = {
   },
 }
 
+// Export inputs can occasionally contain the same dispatch row more than once.
+// Use the database id as identity so the same transaction is never printed twice,
+// while separate dispatch ids for the same dealer and product remain legitimate.
+const uniqueDispatchEntries = entries => {
+  const seenIds = new Set()
+  return entries.filter(entry => {
+    if (entry?.id === null || entry?.id === undefined) return true
+    const id = String(entry.id)
+    if (seenIds.has(id)) return false
+    seenIds.add(id)
+    return true
+  })
+}
+
 const DispatchEntriesView = () => {
   const dispatch = useDispatch()
   const [dispatchEntries, setDispatchEntries] = useState([])
@@ -239,7 +253,8 @@ const DispatchEntriesView = () => {
   }
 
   const exportToPDF = (entries, reportTitle) => {
-    const groupedByDealer = entries.reduce((g, e) => { const d = e.dealerName || 'Unknown'; if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
+    const exportEntries = uniqueDispatchEntries(entries)
+    const groupedByDealer = exportEntries.reduce((g, e) => { const d = e.dealerName || 'Unknown'; if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
     let html = `<html><head><title>${reportTitle}</title><style>body{font-family:Arial,sans-serif;padding:8px}h1{text-align:center;font-size:22px}.dealer-title{font-weight:bold;font-size:18px;background:#f5f5f5;padding:6px;border:1px solid #ddd;border-radius:6px;margin:12px 0 6px}table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:12px}th,td{border:1px solid #ddd;padding:4px 6px}th{background:#f8f9fa;font-weight:bold}tr:nth-child(even){background:#f9f9f9}@media print{body{font-size:12px}}</style></head><body><h1>${reportTitle} - ${moment().format('DD MMM YYYY')}</h1>`
     Object.keys(groupedByDealer).forEach(dealer => {
       html += `<div class="dealer-title">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Transport</th></tr></thead><tbody>`
@@ -256,7 +271,7 @@ const DispatchEntriesView = () => {
   }
 
   const exportToExcel = (entries, reportTitle) => {
-    const sorted = [...entries].sort((a, b) => moment(b.dateIST || b.date).valueOf() - moment(a.dateIST || a.date).valueOf())
+    const sorted = uniqueDispatchEntries(entries).sort((a, b) => moment(b.dateIST || b.date).valueOf() - moment(a.dateIST || a.date).valueOf())
     const data = sorted.map((e, i) => ({
       'S.No': i + 1, 'Entry ID': e.id,
       Date: e.dateIST ? moment(e.dateIST).format('DD MMM YYYY hh:mm A') : 'N/A',
@@ -273,7 +288,7 @@ const DispatchEntriesView = () => {
 
   const exportDealerWiseToExcel = (entries, reportTitle) => {
     const getName = e => e.dealerName || e.dealer_name || 'Unknown'
-    const grouped = entries.reduce((g, e) => { const d = getName(e); if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
+    const grouped = uniqueDispatchEntries(entries).reduce((g, e) => { const d = getName(e); if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
     const wb = XLSX.utils.book_new()
     const summaryData = []
     let sn = 1
