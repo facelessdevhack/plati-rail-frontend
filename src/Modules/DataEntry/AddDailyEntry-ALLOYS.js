@@ -21,6 +21,7 @@ const AddDailyEntryALLOYS = () => {
     (state) => state.entryDetails,
   );
   const [reloadAPI, setReloadAPI] = React.useState(false);
+  const createRequestRef = React.useRef(null);
   const { dealersDropdown, allProducts } = useSelector(
     (state) => state.stockDetails,
   );
@@ -107,7 +108,17 @@ const AddDailyEntryALLOYS = () => {
     } else {
       try {
         // Use new coordinated entry API for sales coordination
-        const addEntryResponse = await addCoordinatedEntryAPI({ ...entry })
+        const payload = { ...entry };
+        const payloadFingerprint = JSON.stringify(payload);
+        if (createRequestRef.current?.fingerprint !== payloadFingerprint) {
+          const randomPart = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+          createRequestRef.current = {
+            fingerprint: payloadFingerprint,
+            requestId: `sales-${Date.now()}-${randomPart}`,
+          };
+        }
+        payload.requestId = createRequestRef.current.requestId;
+        const addEntryResponse = await addCoordinatedEntryAPI(payload)
         if (addEntryResponse.status === 200) {
           console.log(addEntryResponse, 'addEntryResponse');
           const responseData = addEntryResponse.data;
@@ -123,6 +134,7 @@ const AddDailyEntryALLOYS = () => {
             };
             alert(messages[responseData.routedTo] || 'Entry added successfully!');
           }
+          createRequestRef.current = null;
         }
       } catch (error) {
         console.log(error, 'error');

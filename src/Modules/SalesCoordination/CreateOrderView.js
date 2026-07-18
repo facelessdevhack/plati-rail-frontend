@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { getDealersDropdown, getAllProducts } from '../../redux/api/stockAPI'
 import { setEntry, resetEntry } from '../../redux/slices/entry.slice'
@@ -54,6 +54,7 @@ const CreateOrderView = () => {
   const [transportAmount, setTransportAmount] = useState('')
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const createRequestRef = useRef(null)
   const pageSize = 10
 
   // Filter today's entries for selected order type
@@ -106,6 +107,7 @@ const CreateOrderView = () => {
   }, [reloadAPI])
 
   const handleOrderTypeChange = e => {
+    createRequestRef.current = null
     setOrderType(e.target.value)
     dispatch(resetEntry())
     setTransportPaid(false)
@@ -139,6 +141,15 @@ const CreateOrderView = () => {
         transportationCharges: transportPaid ? parseFloat(transportAmount) || 0 : 0,
         specialInstructions: specialInstructions || null
       }
+      const payloadFingerprint = JSON.stringify(payload)
+      if (createRequestRef.current?.fingerprint !== payloadFingerprint) {
+        const randomPart = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)
+        createRequestRef.current = {
+          fingerprint: payloadFingerprint,
+          requestId: `sales-${Date.now()}-${randomPart}`
+        }
+      }
+      payload.requestId = createRequestRef.current.requestId
       const addEntryResponse = await addCoordinatedEntryAPI(payload)
       if (addEntryResponse.status === 200) {
         const responseData = addEntryResponse.data
@@ -154,6 +165,7 @@ const CreateOrderView = () => {
           message.success('Order created successfully!')
         }
         dispatch(resetEntry())
+        createRequestRef.current = null
         setTransportPaid(false)
         setTransportAmount('')
         setSpecialInstructions('')
@@ -179,6 +191,7 @@ const CreateOrderView = () => {
   }
 
   const handleReset = () => {
+    createRequestRef.current = null
     dispatch(resetEntry())
     setTransportPaid(false)
     setTransportAmount('')

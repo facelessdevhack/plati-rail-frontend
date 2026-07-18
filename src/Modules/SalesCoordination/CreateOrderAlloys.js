@@ -35,6 +35,7 @@ const CreateOrderAlloys = () => {
   const [coordinationEntries, setCoordinationEntries] = React.useState([])
   const [deletingId, setDeletingId] = React.useState(null)
   const [isCreatingOrder, setIsCreatingOrder] = React.useState(false)
+  const createRequestRef = React.useRef(null)
   const { dealersDropdown, allProducts } = useSelector(
     state => state.stockDetails
   )
@@ -103,7 +104,17 @@ const CreateOrderAlloys = () => {
 
     setIsCreatingOrder(true)
     try {
-      const addEntryResponse = await addCoordinatedEntryAPI({ ...entry })
+      const payload = { ...entry }
+      const payloadFingerprint = JSON.stringify(payload)
+      if (createRequestRef.current?.fingerprint !== payloadFingerprint) {
+        const randomPart = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)
+        createRequestRef.current = {
+          fingerprint: payloadFingerprint,
+          requestId: `sales-${Date.now()}-${randomPart}`
+        }
+      }
+      payload.requestId = createRequestRef.current.requestId
+      const addEntryResponse = await addCoordinatedEntryAPI(payload)
       if (addEntryResponse.status === 200) {
         console.log(addEntryResponse, 'addEntryResponse')
         const responseData = addEntryResponse.data
@@ -124,6 +135,7 @@ const CreateOrderAlloys = () => {
         }
 
         dispatch(resetEntry())
+        createRequestRef.current = null
         getAndSetTodayDate()
         setReloadAPI(!reloadAPI)
       }

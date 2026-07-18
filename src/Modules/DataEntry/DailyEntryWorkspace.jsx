@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Select, message } from 'antd'
 import moment from 'moment'
@@ -101,6 +101,7 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
   const dispatch = useDispatch()
   const [activeTab, setActiveTab] = useState(initialTab)
   const [submitting, setSubmitting] = useState(false)
+  const createRequestRef = useRef(null)
 
   const {
     entry,
@@ -176,7 +177,17 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
           dispatch(setEditing({ isEditing: false, editingEntryId: null }))
         }
       } else if (activeTab === 'alloys') {
-        const res = await addCoordinatedEntryAPI({ ...entry })
+        const payload = { ...entry }
+        const payloadFingerprint = JSON.stringify(payload)
+        if (createRequestRef.current?.fingerprint !== payloadFingerprint) {
+          const randomPart = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)
+          createRequestRef.current = {
+            fingerprint: payloadFingerprint,
+            requestId: `sales-${Date.now()}-${randomPart}`
+          }
+        }
+        payload.requestId = createRequestRef.current.requestId
+        const res = await addCoordinatedEntryAPI(payload)
         if (res.status === 200 || res.status === 201) {
           const routed = res.data?.routedTo
           const messages = {
@@ -186,6 +197,7 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
             pending_entry_master: 'Added as PENDING — out of stock and not in production'
           }
           message.success(messages[routed] || 'Entry added')
+          createRequestRef.current = null
         }
       } else {
         const res = await addEntryAPI({ ...entry })

@@ -557,7 +557,8 @@ export const addCoordinatedEntryAPI = async ({
   isTransportPaid,
   isRepair,
   date,
-  uniqueProductId
+  uniqueProductId,
+  requestId
 }) => {
   // NOTE: throws on failure — callers must try/catch and surface the error.
   // (Previously returned the error object, so callers' try/catch was dead and
@@ -576,7 +577,8 @@ export const addCoordinatedEntryAPI = async ({
     isTransportPaid,
     date: date || moment().format('YYYY-MM-DD HH:mm:ss'),
     isRepair,
-    uniqueProductId
+    uniqueProductId,
+    requestId
   })
   return response
 }
