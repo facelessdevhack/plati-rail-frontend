@@ -15,6 +15,8 @@ export class AdminDashboardApiService {
       if (params.endDate) queryParams.append('endDate', params.endDate)
       if (params.dealerId) queryParams.append('dealerId', params.dealerId)
       if (params.productId) queryParams.append('productId', params.productId)
+      if (params.dealerType && params.dealerType !== 'all')
+        queryParams.append('dealerType', params.dealerType)
       if (params.chartPeriod)
         queryParams.append('chartPeriod', params.chartPeriod)
 

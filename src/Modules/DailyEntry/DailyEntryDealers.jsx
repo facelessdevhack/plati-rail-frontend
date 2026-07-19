@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { message, Modal } from 'antd'
 import { ReloadOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAllDealers } from '../../redux/api/stockAPI'
 import { client } from '../../Utils/axiosClient'
@@ -14,6 +14,7 @@ import DataTablePagination from '../../Core/Components/DataTablePagination'
 
 const AdminDailyEntryDealersPage = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const dispatch = useDispatch()
   const { allDealers, dealersPagination } = useSelector(state => state.stockDetails)
   const { user } = useSelector(state => state.userDetails)
@@ -36,8 +37,11 @@ const AdminDailyEntryDealersPage = () => {
       // compares against dealers_master.assigned_sales_person_id, which is a
       // sales_master.id — not a users.user_id — so it only fits actual
       // salesperson accounts mapped to that table.
+      const requestedSalesId = searchParams.get('salesId')
       const seesAllDealers = [3, 5, 999].includes(Number(user.roleId))
-      if (!seesAllDealers) params.id = user.userId
+      if (requestedSalesId) params.id = requestedSalesId
+      else if (!seesAllDealers) params.id = user.userId
+      if (searchParams.get('overdue') === 'true') params.overdue = true
       if (searchQuery) params.search = searchQuery
       await dispatch(getAllDealers(params))
     } catch (error) {

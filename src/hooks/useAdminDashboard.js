@@ -13,7 +13,8 @@ export const useAdminDashboard = (initialFilters = {}) => {
     endDate:
       initialFilters.endDate ||
       new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to yesterday
-    chartPeriod: 'daily',
+    chartPeriod: 'monthly',
+    dealerType: 'all',
     ...initialFilters
   })
 
@@ -87,7 +88,8 @@ export const useAdminDashboard = (initialFilters = {}) => {
       endDate: new Date(Date.now() - 24 * 60 * 60 * 1000)
         .toISOString()
         .split('T')[0], // Default to yesterday
-      chartPeriod: 'daily'
+      chartPeriod: 'monthly',
+      dealerType: 'all'
     })
   }, [])
 
