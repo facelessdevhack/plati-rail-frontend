@@ -43,6 +43,12 @@ const formatCurrency = value => {
   return `₹${Math.round(amount).toLocaleString('en-IN')}`
 }
 const formatDate = value => (value ? moment(value).format('DD MMM YYYY') : '—')
+const formatChartPeriod = (value, chartPeriod) => {
+  if (!value) return '—'
+  if (chartPeriod === 'weekly') return `W${moment(value).isoWeek()}`
+  if (chartPeriod === 'daily') return moment(value).format('DD MMM')
+  return moment(value, 'YYYY-MM').format('MMM')
+}
 
 const GrowthPill = ({ value, label }) => {
   const amount = number(value)
@@ -183,31 +189,88 @@ const TrendsSection = ({ data, chartPeriod, setChartPeriod, navigate }) => {
   const unitRows = data?.trends?.units || []
   const overdueDealers = data?.overdue?.byDealer || []
   const overdueSalesPeople = data?.overdue?.bySalesPerson || []
+  const currentRevenueRows = revenueRows.filter(row => row.series === 'Current Period')
+  const periodLabels = new Map(
+    currentRevenueRows.map(row => [number(row.bucket), formatChartPeriod(row.period, chartPeriod)])
+  )
 
   const lineConfig = {
     data: revenueRows,
-    xField: 'period',
+    xField: 'bucket',
     yField: 'revenue',
-    seriesField: 'channel',
-    color: ['#4a90ff', '#f55e34'],
-    smooth: true,
-    height: 300,
-    animation: false,
-    tooltip: { formatter: datum => ({ name: datum.channel, value: formatCurrency(datum.revenue) }) },
-    yAxis: { label: { formatter: formatCurrency }, grid: { line: { style: { stroke: '#ededf0' } } } },
-    xAxis: { label: { autoRotate: false, autoHide: true } },
-    legend: { position: 'top-right' }
+    colorField: 'series',
+    seriesField: 'series',
+    height: 255,
+    animate: false,
+    scale: {
+      color: { range: ['#4a90ff', '#a9ccff'] },
+      x: { nice: false },
+      y: { nice: true }
+    },
+    style: {
+      shape: 'smooth',
+      lineWidth: 2.5,
+      lineDash: group => group?.[0]?.series === 'Previous Period' ? [7, 6] : null
+    },
+    axis: {
+      x: {
+        title: false,
+        labelAutoRotate: false,
+        labelAutoHide: true,
+        labelFormatter: value => periodLabels.get(number(value)) || value,
+        line: false,
+        tick: false
+      },
+      y: {
+        title: false,
+        labelFormatter: formatCurrency,
+        grid: true,
+        gridStroke: '#dedee3',
+        gridLineWidth: 1,
+        line: false,
+        tick: false
+      }
+    },
+    legend: false,
+    tooltip: {
+      title: datum => formatChartPeriod(datum.period, chartPeriod),
+      items: [datum => ({ name: datum.series, value: formatCurrency(datum.revenue) })]
+    }
   }
   const barConfig = {
     data: unitRows,
-    xField: 'units',
-    yField: 'period',
-    color: '#8b5cf6',
-    height: 300,
-    animation: false,
-    barStyle: { radius: [0, 6, 6, 0] },
-    xAxis: { grid: { line: { style: { stroke: '#ededf0' } } } },
-    tooltip: { formatter: datum => ({ name: 'Units', value: formatNumber(datum.units) }) }
+    xField: 'period',
+    yField: 'units',
+    height: 255,
+    animate: false,
+    scale: { y: { nice: true } },
+    style: { fill: '#6f9ef6', radius: 3, maxWidth: 18 },
+    axis: {
+      x: {
+        title: false,
+        labelFormatter: value => formatChartPeriod(value, chartPeriod),
+        labelAutoHide: false,
+        line: false,
+        tick: false
+      },
+      y: {
+        title: false,
+        tickCount: 4,
+        labelAutoRotate: false,
+        labelAutoHide: false,
+        labelFormatter: formatNumber,
+        grid: true,
+        gridStroke: '#dedee3',
+        gridLineWidth: 1,
+        line: false,
+        tick: false
+      }
+    },
+    legend: false,
+    tooltip: {
+      title: datum => formatChartPeriod(datum.period, chartPeriod),
+      items: [datum => ({ name: 'Units', value: formatNumber(datum.units) })]
+    }
   }
 
   const dealerColumns = [
@@ -266,14 +329,19 @@ const TrendsSection = ({ data, chartPeriod, setChartPeriod, navigate }) => {
           <div className='sales-card-heading-row'>
             <div>
               <h2>Revenue</h2>
-              <p>Revenue movement across the selected period</p>
             </div>
-            <PillTabs
-              items={[{ key: 'monthly', label: 'Monthly' }, { key: 'weekly', label: 'Weekly' }]}
-              value={chartPeriod}
-              onChange={setChartPeriod}
-              ariaLabel='Revenue chart period'
-            />
+            <div className='sales-revenue-controls'>
+              <div className='sales-chart-legend' aria-label='Revenue chart legend'>
+                <span><i className='current' />Current Period</span>
+                <span><i className='previous' />Previous Period</span>
+              </div>
+              <PillTabs
+                items={[{ key: 'monthly', label: 'Monthly' }, { key: 'weekly', label: 'Weekly' }]}
+                value={chartPeriod}
+                onChange={setChartPeriod}
+                ariaLabel='Revenue chart period'
+              />
+            </div>
           </div>
           {revenueRows.length ? <Line {...lineConfig} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
         </section>
@@ -281,7 +349,6 @@ const TrendsSection = ({ data, chartPeriod, setChartPeriod, navigate }) => {
           <div className='sales-card-heading-row'>
             <div>
               <h2>Units Sold</h2>
-              <p>Volume by period</p>
             </div>
           </div>
           {unitRows.length ? <Bar {...barConfig} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
@@ -486,17 +553,26 @@ const WarrantySection = ({ data }) => {
     colorField: 'type',
     radius: 1,
     innerRadius: 0.68,
+    transform: [{ type: 'stackY' }],
     startAngle: Math.PI,
     endAngle: Math.PI * 2,
-    color: ['#f6d0c3', '#ffb39a', '#ff9473', '#ff7451', '#f55e34'],
-    legend: { position: 'bottom', itemName: { style: { fontSize: 11 } } },
-    label: false,
-    statistic: {
-      title: { content: 'Claim Rate', style: { fontSize: 13, color: '#7a7a80' } },
-      content: { content: `${number(warranty.claimRate).toFixed(2)}%`, style: { fontSize: 25, color: '#1a1a1a' } }
+    scale: { color: { range: ['#f8d5c9', '#ffb79f', '#ff9978', '#ff7957', '#f55632'] } },
+    style: { stroke: '#ffffff', lineWidth: 2 },
+    legend: {
+      color: {
+        position: 'bottom',
+        layout: { justifyContent: 'flex-start' },
+        itemMarker: 'circle',
+        itemLabelFontSize: 11,
+        rowPadding: 4
+      }
     },
-    animation: false,
-    height: 280
+    label: false,
+    tooltip: {
+      items: [datum => ({ name: datum.type, value: formatNumber(datum.value) })]
+    },
+    animate: false,
+    height: 275
   }
 
   return (
@@ -520,9 +596,16 @@ const WarrantySection = ({ data }) => {
           <DashboardTable columns={columns} rows={rows} rowKey='dealerId' />
         </TablePanel>
         <section className='sales-card sales-claims-card'>
-          <h2>Claims by Product Type</h2>
-          <p>Defect reasons are not recorded in the current sales data.</p>
-          {claims.length ? <Pie {...pieConfig} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+          <h2>Claims by Type</h2>
+          {claims.length ? (
+            <div className='sales-claims-chart'>
+              <Pie {...pieConfig} />
+              <div className='sales-claims-stat' aria-label={`Claim rate ${number(warranty.claimRate).toFixed(2)} percent`}>
+                <span>Claim Rate</span>
+                <strong>{number(warranty.claimRate).toFixed(2)}%</strong>
+              </div>
+            </div>
+          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
         </section>
       </div>
     </div>

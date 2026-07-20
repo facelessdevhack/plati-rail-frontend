@@ -284,13 +284,41 @@
 .sales-chart-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(0, 2.68fr) minmax(320px, 1fr);
 }
 
 .sales-chart-card {
-  min-height: 405px;
+  min-height: 363px;
   padding: 24px;
 }
+
+.sales-revenue-controls,
+.sales-chart-legend {
+  align-items: center;
+  display: flex;
+}
+
+.sales-revenue-controls { gap: 20px; }
+.sales-chart-legend { gap: 16px; }
+
+.sales-chart-legend span {
+  align-items: center;
+  color: var(--sales-muted);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.sales-chart-legend i {
+  background: #4a90ff;
+  border-radius: 50%;
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+}
+
+.sales-chart-legend i.previous { background: #a9ccff; }
 
 .sales-card-heading-row {
   align-items: flex-start;
@@ -546,13 +574,40 @@
 }
 
 .sales-claims-card {
-  min-height: 330px;
+  min-height: 418px;
   padding: 16px 14px;
 }
 
 .sales-claims-card > p {
   font-size: 12px;
   margin-top: 2px;
+}
+
+.sales-claims-chart { position: relative; }
+
+.sales-claims-stat {
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: 78px;
+  transform: translateX(-50%);
+  width: 160px;
+}
+
+.sales-claims-stat span {
+  color: var(--sales-muted);
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.sales-claims-stat strong {
+  color: #1a1a1a;
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
 }
 
 .sales-dashboard-state {
@@ -593,6 +648,8 @@
   .sales-section-tabs { overflow-x: auto; width: 100%; }
   .sales-section-tabs button { padding-inline: 16px; }
   .sales-card-heading-row { flex-direction: column; }
+  .sales-revenue-controls { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .sales-chart-legend { flex-wrap: wrap; }
   .sales-pill-tabs { max-width: 100%; overflow-x: auto; }
   .sales-chart-card { padding: 18px; }
 }
