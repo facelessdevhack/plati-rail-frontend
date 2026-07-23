@@ -17,7 +17,12 @@ jest.mock('antd', () => {
     Alert: ({ message }) => <div>{message}</div>,
     DatePicker: { RangePicker: () => <div data-testid='date-range' /> },
     Empty,
-    Select: ({ value }) => <div data-testid='select'>{value}</div>,
+    Select: ({ value, options = [] }) => (
+      <div data-testid='select'>
+        <span>{value}</span>
+        {options.map(option => <span key={option.value}>{option.label}</span>)}
+      </div>
+    ),
     Spin: () => <div>Loading</div>
   }
 })
@@ -152,6 +157,8 @@ test('switches graph period, channel, dashboard sections, and claim graph', () =
 
   fireEvent.click(screen.getByRole('tab', { name: 'Product Performance' }))
   expect(screen.getByText('Top Performing Models')).toBeInTheDocument()
+  expect(screen.getByText('20 per table')).toBeInTheDocument()
+  expect(screen.getByText('50 per table')).toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('tab', { name: 'Dealer Performance' }))
   expect(screen.getByText('Top Dealers')).toBeInTheDocument()

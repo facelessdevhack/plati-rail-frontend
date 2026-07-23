@@ -757,7 +757,7 @@ const StackNavigation = () => {
       <Route
         path='/cost-categories'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<CostCategoriesPage />} />
           </PrivateRoute>
         }
@@ -765,7 +765,7 @@ const StackNavigation = () => {
       <Route
         path='/monthly-overheads'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<MonthlyOverheadsPage />} />
           </PrivateRoute>
         }
@@ -773,7 +773,7 @@ const StackNavigation = () => {
       <Route
         path='/profit-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<ProfitDashboardPage />} />
           </PrivateRoute>
         }
@@ -781,7 +781,7 @@ const StackNavigation = () => {
       <Route
         path='/pnl-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<PLDashboardPage />} />
           </PrivateRoute>
         }
@@ -789,7 +789,7 @@ const StackNavigation = () => {
       <Route
         path='/ceo-dashboard'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<CEODashboard />} />
           </PrivateRoute>
         }
@@ -805,11 +805,11 @@ const StackNavigation = () => {
         }
       />
 
-      {/* Temp Costing View - Restricted to userId 4 only */}
+      {/* Product Costing - Admin only */}
       <Route
         path='/temp-costing'
         element={
-          <PrivateRoute allowedRoles={[4, 5, 999]}>
+          <PrivateRoute allowedRoles={[5, 999]}>
             <TopNavLayout content={<TempCostingView />} />
           </PrivateRoute>
         }

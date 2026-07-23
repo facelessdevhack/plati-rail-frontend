@@ -98,7 +98,7 @@ export const topNavSections = [
     key: 'finance',
     label: 'Finance',
     defaultPath: '/profit-dashboard',
-    allowedRoles: [4, 5, 999],
+    allowedRoles: [5, 999],
     subNav: [
       { key: 'fin-profit', label: 'Profit Dashboard', path: '/profit-dashboard', icon: 'line-chart' },
       { key: 'fin-pnl', label: 'P&L Dashboard', path: '/pnl-dashboard', icon: 'line-chart' },

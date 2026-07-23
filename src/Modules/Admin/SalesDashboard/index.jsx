@@ -385,13 +385,21 @@ const ProductSection = ({ data }) => {
   const [view, setView] = useState('models')
   const [limit, setLimit] = useState(10)
   const product = data?.productPerformance || {}
+  const tableSizeOptions = [5, 10, 20, 50].map(value => ({
+    value,
+    label: `${value} per table`
+  }))
 
   return (
     <section className='sales-card sales-performance-card'>
       <div className='sales-card-heading-row performance-heading'>
         <h2>Product Performance</h2>
         <div className='sales-heading-controls'>
-          <Select value={limit} onChange={setLimit} options={[{ value: 5, label: '5 per table' }, { value: 10, label: '10 per table' }]} />
+          <Select
+            value={limit}
+            onChange={setLimit}
+            options={tableSizeOptions}
+          />
           <PillTabs
             items={[{ key: 'models', label: 'Models' }, { key: 'sizeFinish', label: 'Size & Finish' }, { key: 'designs', label: 'Designs' }]}
             value={view}
