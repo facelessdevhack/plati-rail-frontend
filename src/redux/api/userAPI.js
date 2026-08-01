@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import { client, getError } from '../../Utils/axiosClient'
+import { resetSessionExpiryHandling } from '../../Utils/session'
 
 export const userAuthenticate = createAsyncThunk(
   'auth/login',
@@ -14,11 +15,10 @@ export const userAuthenticate = createAsyncThunk(
       // Save the token to localStorage for axios usage
       if (response.data.token) {
         localStorage.setItem('token', response.data.token)
+        resetSessionExpiryHandling()
       }
-      console.log(response.data, 'user obj')
       return response.data
     } catch (error) {
-      console.log(error, 'error')
       return rejectWithValue(getError(error))
       //return error;
     }

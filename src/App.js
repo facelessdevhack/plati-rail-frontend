@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import { setupAxiosInterceptors } from "./Utils/axiosClient";
 import GlobalLoader from "./Core/Components/GlobalLoader";
 import { useGlobalLoading } from "./Utils/globalLoading";
+import SessionExpiryBoundary from "./Core/Navigation/SessionExpiryBoundary";
 
 // Setup axios interceptors when the app starts
 setupAxiosInterceptors();
@@ -18,6 +19,7 @@ const GlobalLoaderMount = () => {
 const App = () => (
   <Provider store={store}>
     <BrowserRouter>
+      <SessionExpiryBoundary />
       <GlobalLoaderMount />
       <StackNavigation />
     </BrowserRouter>

@@ -1,6 +1,9 @@
 import axios from 'axios'
 import { startRequest, endRequest } from './globalLoading'
-import { handleSessionExpired } from './session'
+import {
+  handleSessionExpired,
+  isUnauthorizedForCurrentSession
+} from './session'
 
 const commonHeader = {
   'Content-Type': 'application/json',
@@ -37,7 +40,11 @@ const getError = error => {
 
 client.defaults.withCredentials = false
 
+let interceptorsInstalled = false
+
 const setupAxiosInterceptors = () => {
+  if (interceptorsInstalled) return
+  interceptorsInstalled = true
   // we can get the access of store here by which we can dispatch action's like clearing the user state
 
   client.interceptors.request.use(
@@ -77,7 +84,7 @@ const setupAxiosInterceptors = () => {
     async error => {
       if (!error?.config?.silent) endRequest()
       // error.response is undefined for network errors — guard before reading status
-      if (error?.response?.status === 401) {
+      if (isUnauthorizedForCurrentSession(error)) {
         handleSessionExpired(
           window.location.pathname + window.location.search
         )
@@ -116,6 +123,11 @@ warrantyClient.interceptors.response.use(
   },
   error => {
     if (!error?.config?.silent) endRequest()
+    if (isUnauthorizedForCurrentSession(error)) {
+      handleSessionExpired(
+        window.location.pathname + window.location.search
+      )
+    }
     return Promise.reject(error)
   }
 )
