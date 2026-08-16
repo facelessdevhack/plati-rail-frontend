@@ -637,7 +637,15 @@ const AdminDealerDetails = () => {
   )
 
   const getEntryContextMenu = record => ({
-    items: [
+    items: Number(record.sourceType) === 5
+      ? [
+          {
+            key: 'tracked-adjustment',
+            label: contextMenuLabel('Linked to payment — manage from Payments'),
+            disabled: true
+          }
+        ]
+      : [
       { key: 'edit', icon: <EditOutlined />, label: contextMenuLabel('Edit Entry') },
       // charges entries have no delete endpoint — hide Delete for them
       ...(record.sourceType !== 4
@@ -651,7 +659,7 @@ const AdminDealerDetails = () => {
             }
           ]
         : [])
-    ],
+        ],
     onClick: ({ key }) => {
       if (key === 'edit') showEditModalFunction(record)
       if (key === 'delete') handleDeleteEntry(record)
@@ -709,7 +717,7 @@ const AdminDealerDetails = () => {
                       setSelectedEntries([...selectedEntries, text])
                     }
                   }}
-                  disabled={record.isChecked === 1}
+                  disabled={record.isChecked === 1 || Number(record.sourceType) === 5}
                   className="cursor-pointer"
                 />
               </div>
@@ -729,7 +737,19 @@ const AdminDealerDetails = () => {
       title: 'Product Name',
       dataIndex: 'productName',
       key: 'productName',
-      render: text => <div>{text || '-'}</div>
+      render: (text, record) => (
+        <div>
+          {Number(record.sourceType) === 5 && (
+            <span
+              className='inline-block px-2 py-0.5 rounded-full mr-2 text-xs'
+              style={{ background: '#f3e8ff', color: '#7c3aed', fontWeight: 600 }}
+            >
+              Middleman
+            </span>
+          )}
+          {text || 'Payment adjustment'}
+        </div>
+      )
     },
     {
       title: <div className='flex justify-center items-center'>Quantity</div>,
@@ -745,7 +765,11 @@ const AdminDealerDetails = () => {
       key: 'price',
       render: (text, record) => (
         <div className='flex justify-center items-center'>
-          <div>{record.isClaim === 1 ? 'Claimed' : formatINR(text)}</div>
+          <div style={{ color: Number(record.sourceType) === 5 ? '#b91c1c' : undefined }}>
+            {record.isClaim === 1
+              ? 'Claimed'
+              : `${Number(record.sourceType) === 5 ? '−' : ''}${formatINR(text)}`}
+          </div>
         </div>
       )
     },
@@ -794,6 +818,9 @@ const AdminDealerDetails = () => {
             dataIndex: 'isChecked',
             key: 'isChecked',
             render: (text, record) => (
+              Number(record.sourceType) === 5 ? (
+                <span style={{ color: '#7c3aed', fontWeight: 600 }}>Tracked</span>
+              ) : (
               <Button
                 size='slim'
                 padding='slim'
@@ -809,6 +836,7 @@ const AdminDealerDetails = () => {
               >
                 <div>{text === 1 ? 'Checked' : 'Unchecked'}</div>
               </Button>
+              )
             )
           }
         ]
@@ -930,6 +958,7 @@ const AdminDealerDetails = () => {
               <Button
                 size='slim'
                 padding='slim'
+                disabled={text === 1}
                 onClick={() => handleCheckPaymentEntry(record.id)}
               >
                 {text === 1 ? 'Checked' : 'Unchecked'}
@@ -1135,7 +1164,7 @@ const AdminDealerDetails = () => {
                                     if (selectedEntries.includes(record.entryId)) setSelectedEntries(selectedEntries.filter(id => id !== record.entryId))
                                     else setSelectedEntries([...selectedEntries, record.entryId])
                                   }}
-                                  disabled={record.isChecked === 1}
+                                  disabled={record.isChecked === 1 || Number(record.sourceType) === 5}
                                   style={{ cursor: 'pointer', width: 18, height: 18 }}
                                 />
                               </td>
@@ -1144,9 +1173,18 @@ const AdminDealerDetails = () => {
                               {moment(record.date).format('DD MMM YYYY')}<br />
                               <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.date).format('dddd')}</span>
                             </td>
-                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>{record.productName || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>
+                              {Number(record.sourceType) === 5 && (
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, marginRight: 8, background: '#f3e8ff', color: '#7c3aed', fontWeight: 600, fontSize: 12 }}>
+                                  Middleman
+                                </span>
+                              )}
+                              {record.productName || 'Payment adjustment'}
+                            </td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.quantity || '-'}</td>
-                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.isClaim === 1 ? 'Claimed' : formatINR(record.price)}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", color: Number(record.sourceType) === 5 ? '#b91c1c' : undefined }}>
+                              {record.isClaim === 1 ? 'Claimed' : `${Number(record.sourceType) === 5 ? '−' : ''}${formatINR(record.price)}`}
+                            </td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontSize: 14 }}>{record.source || '-'}</td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                               <span style={{
@@ -1168,6 +1206,9 @@ const AdminDealerDetails = () => {
                             </td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                               {isAdmin && (
+                                Number(record.sourceType) === 5 ? (
+                                  <span style={{ color: '#7c3aed', fontWeight: 600 }}>Tracked</span>
+                                ) : (
                                 <button
                                   onClick={() => {
                                     if (record.source === 'Purchase') handleCheckPurchaseEntry(record.entryId)
@@ -1185,6 +1226,7 @@ const AdminDealerDetails = () => {
                                 >
                                   {record.isChecked === 1 ? '✓ Checked' : 'Unchecked'}
                                 </button>
+                                )
                               )}
                             </td>
                           </tr>
@@ -1329,14 +1371,18 @@ const AdminDealerDetails = () => {
                                   </button>
                                 </td>
                                 <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
-                                  <button onClick={() => handleCheckPaymentEntry(record.id)} style={{
+                                  <button
+                                    disabled={record.isPaid === 1}
+                                    onClick={() => handleCheckPaymentEntry(record.id)}
+                                    style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 6,
                                     padding: '8px 16px', borderRadius: 12, fontSize: 14,
                                     fontWeight: 400, fontFamily: "'Inter', sans-serif",
-                                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    border: 'none', cursor: record.isPaid === 1 ? 'default' : 'pointer', whiteSpace: 'nowrap',
                                     background: record.isPaid === 1 ? '#4a90ff' : '#f3f3f5',
                                     color: record.isPaid === 1 ? 'white' : '#1a1a1a',
-                                  }}>
+                                  }}
+                                  >
                                     {record.isPaid === 1 ? '✓ Checked' : 'Unchecked'}
                                   </button>
                                 </td>
@@ -1669,7 +1715,7 @@ const AdminDealerDetails = () => {
                   />
                 </div>
                 <div>
-                  <div>Select Mid-Dealer</div>
+                  <div>Middleman (optional)</div>
                   <CustomSelect
                     showSearch={true}
                     className='w-full'
@@ -1683,7 +1729,7 @@ const AdminDealerDetails = () => {
                   <div className='flex justify-start'>
                     {adminPaymentMethods?.map(method => (
                       <label
-                        key={method}
+                        key={method.id}
                         className='mr-4 flex justify-start gap-x-2'
                       >
                         <input

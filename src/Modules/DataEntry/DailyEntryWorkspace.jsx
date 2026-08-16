@@ -14,7 +14,8 @@ import {
   getDailyEntry,
   getPaymentDailyEntry,
   getChargesDailyEntry,
-  getPaymentMethods
+  getPaymentMethods,
+  getMiddleDealers
 } from '../../redux/api/entriesAPI'
 import {
   setEntry,
@@ -102,6 +103,7 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [submitting, setSubmitting] = useState(false)
   const createRequestRef = useRef(null)
+  const paymentRequestRef = useRef(null)
 
   const {
     entry,
@@ -112,7 +114,8 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
     allPaymentDailyEntries,
     chargesEntry,
     allChargesDailyEntries,
-    allPaymentMethods
+    allPaymentMethods,
+    allMiddleDealers
   } = useSelector(state => state.entryDetails)
   const { dealersDropdown, allProducts } = useSelector(state => state.stockDetails)
 
@@ -133,6 +136,7 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
   useEffect(() => {
     dispatch(getDealersDropdown({}))
     dispatch(getPaymentMethods({}))
+    dispatch(getMiddleDealers({}))
     dispatch(getDailyEntry({}))
     dispatch(getPaymentDailyEntry({}))
     dispatch(getChargesDailyEntry({}))
@@ -226,8 +230,25 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
 
     setSubmitting(true)
     try {
-      await client.post('entries/create-pm-entry', { ...pmEntry })
-      message.success('Payment recorded')
+      const payload = { ...pmEntry }
+      const payloadFingerprint = JSON.stringify(payload)
+      if (paymentRequestRef.current?.fingerprint !== payloadFingerprint) {
+        const randomPart = window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)
+        paymentRequestRef.current = {
+          fingerprint: payloadFingerprint,
+          requestId: `payment-${Date.now()}-${randomPart}`
+        }
+      }
+      payload.requestId = paymentRequestRef.current.requestId
+      const response = await client.post('entries/create-pm-entry', payload)
+      paymentRequestRef.current = null
+      const allocated = Number(response.data?.allocatedAmount || 0)
+      const unallocated = Number(response.data?.unallocatedAmount || 0)
+      message.success(
+        unallocated > 0
+          ? `Payment recorded — ₹${allocated.toLocaleString('en-IN')} allocated, ₹${unallocated.toLocaleString('en-IN')} kept as credit`
+          : 'Payment recorded and fully allocated'
+      )
       const keep = { dealerId, dealerName, payment_date: pmEntry.payment_date }
       dispatch(resetPMEntry())
       dispatch(setPMEntry(keep))
@@ -312,6 +333,21 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
 
   const paymentMethodLabel = id =>
     allPaymentMethods?.find(m => m.id === id)?.methodName || '—'
+
+  const isMiddlemanAdjustment = row =>
+    row.activityType === 'middle_dealer_adjustment' ||
+    row.activityType === 'legacy_middle_dealer_adjustment' ||
+    Number(row.sourceType) === 5
+
+  const getAdjustmentMetadata = row => {
+    if (!row?.metadata) return {}
+    if (typeof row.metadata === 'object') return row.metadata
+    try {
+      return JSON.parse(row.metadata)
+    } catch (_) {
+      return {}
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -507,6 +543,27 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                   ))}
                 </div>
               </div>
+              <div className="col-span-2">
+                <SectionLabel>Middleman (optional)</SectionLabel>
+                <Select
+                  showSearch
+                  allowClear
+                  className="w-full"
+                  size="large"
+                  options={(allMiddleDealers || []).filter(
+                    option => Number(option.value) !== Number(dealerId)
+                  )}
+                  value={pmEntry?.middleDealerId || null}
+                  placeholder="Select only when this payment came through a middleman"
+                  optionFilterProp="label"
+                  onChange={value =>
+                    dispatch(setPMEntry({ middleDealerId: value || null }))
+                  }
+                />
+                <div className="text-xs mt-1" style={{ color: MUTED }}>
+                  A linked middleman balance adjustment will appear in Today so far.
+                </div>
+              </div>
             </div>
           )}
 
@@ -599,6 +656,12 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                 (s, r) => s + (r.isClaim ? 0 : (Number(r.price) || Number(r.amount) || 0)),
                 0
               )
+              const dealerNetActivity = rows.reduce((sum, row) => {
+                if (isMiddlemanAdjustment(row)) {
+                  return sum + Number(row.balanceDelta || -Number(row.amount || 0))
+                }
+                return sum + Number(row.amount || 0)
+              }, 0)
               return (
                 <div key={name} className="mb-4">
                   <div
@@ -618,13 +681,18 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                     </span>
                     <span className="text-xs" style={{ color: MUTED }}>
                       {rows.length} {rows.length === 1 ? 'entry' : 'entries'} ·{' '}
-                      ₹{dealerValue.toLocaleString('en-IN')}
+                      {activeTab === 'payment'
+                        ? `net ${dealerNetActivity < 0 ? '−' : '+'}₹${Math.abs(dealerNetActivity).toLocaleString('en-IN')}`
+                        : `₹${dealerValue.toLocaleString('en-IN')}`}
                     </span>
                   </div>
 
-                  {rows.map((row, i) => (
+                  {rows.map((row, i) => {
+                    const middlemanAdjustment = isMiddlemanAdjustment(row)
+                    const adjustmentMetadata = getAdjustmentMetadata(row)
+                    return (
                     <div
-                      key={row.id || row.entryId || i}
+                      key={`${row.activityType || row.sourceType || 'entry'}-${row.id || row.entryId || i}`}
                       className="flex items-center justify-between px-3 py-2 rounded-xl mb-1"
                       style={{
                         border: `1px solid ${row.id === editingEntryId ? 'rgba(242,108,45,0.5)' : '#f0f0f0'}`,
@@ -636,7 +704,9 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                           {isProductTab
                             ? row.productName
                             : activeTab === 'payment'
-                              ? `${row.description || ''} — ${paymentMethodLabel(row.paymentMethod)}`
+                              ? middlemanAdjustment
+                                ? row.description || 'Middleman payment adjustment'
+                                : `${row.description || ''} — ${paymentMethodLabel(row.paymentMethod)}`
                               : row.description}
                         </div>
                         <div className="text-xs" style={{ color: MUTED }}>
@@ -659,6 +729,30 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                                 </span>
                               )}
                             </>
+                          ) : middlemanAdjustment ? (
+                            <>
+                              <span
+                                className="inline-block px-2 py-0.5 rounded-full mr-1"
+                                style={{ background: '#f3e8ff', color: '#7c3aed', fontWeight: 600 }}
+                              >
+                                Middleman adjustment
+                              </span>
+                              <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                                −₹{Number(row.amount || 0).toLocaleString('en-IN')}
+                              </span>
+                              {row.relatedDealerName && (
+                                <span> · linked dealer: {row.relatedDealerName}</span>
+                              )}
+                              {Number(adjustmentMetadata.commissionRate || 0) > 0 && (
+                                <span>
+                                  {' '}· gross ₹{Number(adjustmentMetadata.grossPaymentAmount || 0).toLocaleString('en-IN')}
+                                  {' '}· commission {Number(adjustmentMetadata.commissionRate)}%
+                                </span>
+                              )}
+                              {row.activityType === 'legacy_middle_dealer_adjustment' && (
+                                <span> · legacy entry #{row.legacyEntryId || row.id}</span>
+                              )}
+                            </>
                           ) : (
                             <>₹{Number(row.amount || 0).toLocaleString('en-IN')}</>
                           )}
@@ -678,7 +772,8 @@ const DailyEntryWorkspace = ({ initialTab = 'alloys' }) => {
                         </button>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             })}
