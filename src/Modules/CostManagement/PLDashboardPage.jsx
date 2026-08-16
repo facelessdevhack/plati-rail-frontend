@@ -277,7 +277,8 @@ const PLDashboardPage = () => {
   // Calculate Net Profit (scrap loss = discarded production units at their
   // carried FIFO cost)
   const scrapLoss = summaryData?.scrapLoss || 0
-  const netProfit = (summaryData?.grossProfit || 0) - totalOverheads - scrapLoss
+  const productionVarianceLoss = summaryData?.productionVarianceLoss || 0
+  const netProfit = (summaryData?.grossProfit || 0) - totalOverheads - scrapLoss - productionVarianceLoss
 
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return '₹0'
@@ -928,6 +929,16 @@ const PLDashboardPage = () => {
                   </Text>
                 </div>
               )}
+              {productionVarianceLoss > 0 && (
+                <div style={{ marginTop: '4px' }}>
+                  <Text type='danger'>
+                    + Legacy production variance: ₹{Number(productionVarianceLoss).toLocaleString('en-IN')}
+                    {summaryData?.productionVarianceQuantity
+                      ? ` (${summaryData.productionVarianceQuantity} units with no recorded final fate)`
+                      : ''}
+                  </Text>
+                </div>
+              )}
               <div style={{ marginTop: '8px' }}>
                 <Text type='secondary'>
                   {overheadData?.categories?.length || 0} expense categories
@@ -947,7 +958,7 @@ const PLDashboardPage = () => {
               />
               <div style={{ marginTop: '8px' }}>
                 <Text type='secondary'>
-                  Gross Profit - Operating Expenses
+                  Gross Profit - Operating Expenses - Production Losses
                 </Text>
               </div>
             </Card>

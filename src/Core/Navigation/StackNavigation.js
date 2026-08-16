@@ -97,7 +97,7 @@ import ForcePasswordChange from '../../Modules/Authentication/ForcePasswordChang
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
-import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage, PLDashboardPage, CEODashboard } from '../../Modules/CostManagement';
+import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage, CEODashboard } from '../../Modules/CostManagement';
 import { MoldManagementDashboard } from '../../Modules/Ordering';
 import TempCostingView from '../../Modules/Admin/TempCostingView';
 
@@ -782,7 +782,8 @@ const StackNavigation = () => {
         path='/pnl-dashboard'
         element={
           <PrivateRoute allowedRoles={[5, 999]}>
-            <TopNavLayout content={<PLDashboardPage />} />
+            {/* One authoritative FIFO-based P&L view for both finance and CEO routes. */}
+            <TopNavLayout content={<CEODashboard />} />
           </PrivateRoute>
         }
       />

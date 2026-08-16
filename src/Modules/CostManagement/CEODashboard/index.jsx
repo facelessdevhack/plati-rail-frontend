@@ -2,13 +2,15 @@ import React, { useState } from 'react'
 import { Layout, Row, Col, DatePicker, Button, Space, Typography, Divider, Breadcrumb, message, Segmented } from 'antd'
 import { ReloadOutlined, HomeOutlined, DashboardOutlined, PrinterOutlined, CalendarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { disableBeforeCostingStart } from '../../../Utils/costingConfig'
+import { COSTING_REPORT_FROM, disableBeforeCostingStart } from '../../../Utils/costingConfig'
 
 // Components
 import ExecutiveKPICards from './components/ExecutiveKPICards'
 import RevenueProfitTrend from './components/RevenueProfitTrend'
 import ProductPLTable from './components/ProductPLTable'
 import GrossProfitRankings from './components/GrossProfitRankings'
+import DataQualityBanner from './components/DataQualityBanner'
+import FinancePnLPanel from './components/FinancePnLPanel'
 
 // Hook
 import useCEODashboardData from './hooks/useCEODashboardData'
@@ -23,8 +25,8 @@ const { RangePicker } = DatePicker
  */
 const CEODashboard = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs())
-  const [dateMode, setDateMode] = useState('month') // 'month' or 'range'
-  const [selectedRange, setSelectedRange] = useState(null)
+  const [dateMode, setDateMode] = useState('range') // 'month' or 'range'
+  const [selectedRange, setSelectedRange] = useState([COSTING_REPORT_FROM, dayjs()])
 
   // Fetch dashboard data
   const {
@@ -35,6 +37,12 @@ const CEODashboard = () => {
     trends,
     profitabilityMatrix,
     period,
+    dataQuality,
+    pnlStatement,
+    profitBridge,
+    netProfitAllocation,
+    expenseBreakdown,
+    exceptions,
     refresh,
     setPeriod,
     setCustomDateRange
@@ -63,6 +71,10 @@ const CEODashboard = () => {
     if (mode === 'month') {
       setSelectedRange(null)
       setPeriod(selectedDate.year(), selectedDate.month() + 1)
+    } else {
+      const range = [COSTING_REPORT_FROM, dayjs()]
+      setSelectedRange(range)
+      setCustomDateRange(range)
     }
   }
 
@@ -105,10 +117,10 @@ const CEODashboard = () => {
               <Space direction="vertical" size={0}>
                 <Title level={3} style={{ margin: 0 }}>
                   <DashboardOutlined style={{ marginRight: 12 }} />
-                  Product P&L Dashboard
+                  Finance GP &amp; NP Dashboard
                 </Title>
                 <Text type="secondary">
-                  Executive overview for product profitability analysis and strategic decisions
+                  FIFO-based gross profit, monthly expenses, net profit and costing verification
                 </Text>
               </Space>
             </Col>
@@ -186,18 +198,32 @@ const CEODashboard = () => {
           </div>
         )}
 
+        <DataQualityBanner dataQuality={dataQuality} loading={loading} />
+
         {/* KPI Cards */}
         <section style={{ marginBottom: 24 }}>
           <ExecutiveKPICards summary={summary} loading={loading} />
         </section>
 
+        <section style={{ marginBottom: 24 }}>
+          <FinancePnLPanel
+            pnlStatement={pnlStatement}
+            profitBridge={profitBridge}
+            trends={trends}
+            expenseBreakdown={expenseBreakdown}
+            exceptions={exceptions}
+            dataQuality={dataQuality}
+            loading={loading}
+          />
+        </section>
+
         {/* Revenue & Profit Trend Chart */}
         <section style={{ marginBottom: 24 }}>
-          <RevenueProfitTrend trends={trends} loading={loading} />
+          <RevenueProfitTrend trends={trends} loading={loading} period={period} />
         </section>
 
         <Divider style={{ margin: '32px 0' }}>
-          <Text type="secondary">Gross Profit Rankings</Text>
+          <Text type="secondary">FIFO-Costed Gross Profit Rankings</Text>
         </Divider>
 
         {/* Gross Profit Rankings - Products & Dealers */}
@@ -205,18 +231,20 @@ const CEODashboard = () => {
           <GrossProfitRankings
             products={profitabilityMatrix}
             dealers={byDealer}
+            netProfitAllocation={netProfitAllocation}
             loading={loading}
           />
         </section>
 
         <Divider style={{ margin: '32px 0' }}>
-          <Text type="secondary">Product Details</Text>
+          <Text type="secondary">FIFO-Costed Product Details</Text>
         </Divider>
 
         {/* Product P&L Table */}
         <section style={{ marginBottom: 24 }}>
           <ProductPLTable
             products={allProducts}
+            netProfitAllocation={netProfitAllocation}
             loading={loading}
             onViewDetails={handleViewProductDetails}
           />

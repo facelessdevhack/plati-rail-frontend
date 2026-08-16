@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { Card, Table, Tag, Typography, Empty, Spin, Input, Space } from 'antd'
-import { SearchOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Card, Table, Tag, Typography, Empty, Spin, Input, Space, Tooltip } from 'antd'
+import { SearchOutlined, DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -45,6 +45,11 @@ const getMarginTagColor = (margin) => {
   return 'red'
 }
 
+const formatUnitRate = (value) => `₹${Number(value || 0).toLocaleString('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+})}`
+
 /**
  * Gross Profit Rankings Component
  * Shows tables for Products and Dealers ranked by Gross Profit
@@ -53,10 +58,21 @@ const getMarginTagColor = (margin) => {
 const GrossProfitRankings = ({
   products = [],
   dealers = [],
+  netProfitAllocation,
   loading
 }) => {
   const [productSearch, setProductSearch] = useState('')
   const [dealerSearch, setDealerSearch] = useState('')
+
+  const allocationHelp = netProfitAllocation
+    ? `${netProfitAllocation.note} Allocation rate: ${formatUnitRate(netProfitAllocation.expensePerCostedUnit)} per FIFO-costed unit. Status: ${netProfitAllocation.status}.`
+    : 'Net Profit is Gross Profit less allocated operating expenses.'
+
+  const netProfitTitle = (
+    <Tooltip title={allocationHelp}>
+      <span>Net Profit <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: 11 }} /></span>
+    </Tooltip>
+  )
 
   // Sort all products by units/volume (highest to lowest)
   const sortedProducts = useMemo(() => {
@@ -90,7 +106,7 @@ const GrossProfitRankings = ({
 
   // Export products to CSV
   const handleExportProducts = () => {
-    const headers = ['#', 'Product Name', 'Model', 'Inches', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'Margin %']
+    const headers = ['#', 'Product Name', 'Model', 'Inches', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %', 'NP Status']
     const rows = filteredProducts.map((p, i) => [
       i + 1,
       p.productName || '-',
@@ -100,7 +116,11 @@ const GrossProfitRankings = ({
       p.revenue || 0,
       (p.revenue || 0) - (p.grossProfit || 0),
       p.grossProfit || 0,
-      (p.grossMargin || 0).toFixed(2)
+      (p.grossMargin || 0).toFixed(2),
+      p.allocatedExpenses || 0,
+      p.netProfit || 0,
+      (p.netMargin || 0).toFixed(2),
+      p.netProfitStatus || '-'
     ])
 
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
@@ -115,7 +135,7 @@ const GrossProfitRankings = ({
 
   // Export dealers to CSV
   const handleExportDealers = () => {
-    const headers = ['#', 'Dealer Name', 'District', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'Margin %']
+    const headers = ['#', 'Dealer Name', 'District', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %', 'NP Status']
     const rows = filteredDealers.map((d, i) => [
       i + 1,
       d.dealerName || '-',
@@ -124,7 +144,11 @@ const GrossProfitRankings = ({
       d.revenue || 0,
       (d.revenue || 0) - (d.grossProfit || 0),
       d.grossProfit || 0,
-      (d.grossMargin || 0).toFixed(2)
+      (d.grossMargin || 0).toFixed(2),
+      d.allocatedExpenses || 0,
+      d.netProfit || 0,
+      (d.netMargin || 0).toFixed(2),
+      d.netProfitStatus || '-'
     ])
 
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
@@ -215,7 +239,7 @@ const GrossProfitRankings = ({
       )
     },
     {
-      title: 'Margin',
+      title: 'GP Margin',
       dataIndex: 'grossMargin',
       key: 'grossMargin',
       width: 80,
@@ -223,6 +247,32 @@ const GrossProfitRankings = ({
       sorter: (a, b) => (a.grossMargin || 0) - (b.grossMargin || 0),
       render: (value) => (
         <Tag color={getMarginTagColor(value)} style={{ margin: 0, fontSize: 11 }}>
+          {(value || 0).toFixed(1)}%
+        </Tag>
+      )
+    },
+    {
+      title: netProfitTitle,
+      dataIndex: 'netProfit',
+      key: 'netProfit',
+      width: 130,
+      align: 'right',
+      sorter: (a, b) => (a.netProfit || 0) - (b.netProfit || 0),
+      render: (value) => (
+        <Text strong style={{ color: getProfitColor(value || 0), fontSize: 12 }}>
+          {formatCurrency(value || 0)}
+        </Text>
+      )
+    },
+    {
+      title: 'NP Margin',
+      dataIndex: 'netMargin',
+      key: 'netMargin',
+      width: 90,
+      align: 'center',
+      sorter: (a, b) => (a.netMargin || 0) - (b.netMargin || 0),
+      render: (value) => (
+        <Tag color={getMarginTagColor(value || 0)} style={{ margin: 0, fontSize: 11 }}>
           {(value || 0).toFixed(1)}%
         </Tag>
       )
@@ -307,7 +357,7 @@ const GrossProfitRankings = ({
       )
     },
     {
-      title: 'Margin',
+      title: 'GP Margin',
       dataIndex: 'grossMargin',
       key: 'grossMargin',
       width: 80,
@@ -315,6 +365,32 @@ const GrossProfitRankings = ({
       sorter: (a, b) => (a.grossMargin || 0) - (b.grossMargin || 0),
       render: (value) => (
         <Tag color={getMarginTagColor(value)} style={{ margin: 0, fontSize: 11 }}>
+          {(value || 0).toFixed(1)}%
+        </Tag>
+      )
+    },
+    {
+      title: netProfitTitle,
+      dataIndex: 'netProfit',
+      key: 'netProfit',
+      width: 130,
+      align: 'right',
+      sorter: (a, b) => (a.netProfit || 0) - (b.netProfit || 0),
+      render: (value) => (
+        <Text strong style={{ color: getProfitColor(value || 0), fontSize: 12 }}>
+          {formatCurrency(value || 0)}
+        </Text>
+      )
+    },
+    {
+      title: 'NP Margin',
+      dataIndex: 'netMargin',
+      key: 'netMargin',
+      width: 90,
+      align: 'center',
+      sorter: (a, b) => (a.netMargin || 0) - (b.netMargin || 0),
+      render: (value) => (
+        <Tag color={getMarginTagColor(value || 0)} style={{ margin: 0, fontSize: 11 }}>
           {(value || 0).toFixed(1)}%
         </Tag>
       )
@@ -329,6 +405,8 @@ const GrossProfitRankings = ({
     const totalCogs = totalRevenue - totalProfit
     const totalVolume = pageData.reduce((sum, r) => sum + (r.volume || 0), 0)
     const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+    const totalNetProfit = pageData.reduce((sum, r) => sum + (r.netProfit || 0), 0)
+    const avgNetMargin = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0
 
     return (
       <Table.Summary fixed>
@@ -353,6 +431,14 @@ const GrossProfitRankings = ({
           <Table.Summary.Cell index={6} align="center">
             <Tag color={getMarginTagColor(avgMargin)}>{avgMargin.toFixed(1)}%</Tag>
           </Table.Summary.Cell>
+          <Table.Summary.Cell index={7} align="right">
+            <Text strong style={{ color: getProfitColor(totalNetProfit) }}>
+              {formatCurrency(totalNetProfit)}
+            </Text>
+          </Table.Summary.Cell>
+          <Table.Summary.Cell index={8} align="center">
+            <Tag color={getMarginTagColor(avgNetMargin)}>{avgNetMargin.toFixed(1)}%</Tag>
+          </Table.Summary.Cell>
         </Table.Summary.Row>
       </Table.Summary>
     )
@@ -366,6 +452,8 @@ const GrossProfitRankings = ({
     const totalCogs = totalRevenue - totalProfit
     const totalUnits = pageData.reduce((sum, r) => sum + (r.totalQuantity || 0), 0)
     const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+    const totalNetProfit = pageData.reduce((sum, r) => sum + (r.netProfit || 0), 0)
+    const avgNetMargin = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0
 
     return (
       <Table.Summary fixed>
@@ -389,6 +477,14 @@ const GrossProfitRankings = ({
           </Table.Summary.Cell>
           <Table.Summary.Cell index={6} align="center">
             <Tag color={getMarginTagColor(avgMargin)}>{avgMargin.toFixed(1)}%</Tag>
+          </Table.Summary.Cell>
+          <Table.Summary.Cell index={7} align="right">
+            <Text strong style={{ color: getProfitColor(totalNetProfit) }}>
+              {formatCurrency(totalNetProfit)}
+            </Text>
+          </Table.Summary.Cell>
+          <Table.Summary.Cell index={8} align="center">
+            <Tag color={getMarginTagColor(avgNetMargin)}>{avgNetMargin.toFixed(1)}%</Tag>
           </Table.Summary.Cell>
         </Table.Summary.Row>
       </Table.Summary>
@@ -422,6 +518,11 @@ const GrossProfitRankings = ({
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedProducts.length} products)
             </Text>
+            {netProfitAllocation && (
+              <Tag color={netProfitAllocation.status === 'VERIFIED' ? 'green' : netProfitAllocation.status === 'PROVISIONAL' ? 'orange' : 'red'} style={{ marginLeft: 8 }}>
+                NP {netProfitAllocation.status}
+              </Tag>
+            )}
           </span>
         }
         extra={
@@ -473,7 +574,7 @@ const GrossProfitRankings = ({
               showTotal: (total) => `${total} products`,
               pageSizeOptions: ['15', '25', '50', '100']
             }}
-            scroll={{ x: 900, y: 500 }}
+            scroll={{ x: 1120, y: 500 }}
             summary={productSummary}
           />
         )}
@@ -487,6 +588,11 @@ const GrossProfitRankings = ({
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedDealers.length} dealers)
             </Text>
+            {netProfitAllocation && (
+              <Tag color={netProfitAllocation.status === 'VERIFIED' ? 'green' : netProfitAllocation.status === 'PROVISIONAL' ? 'orange' : 'red'} style={{ marginLeft: 8 }}>
+                NP {netProfitAllocation.status}
+              </Tag>
+            )}
           </span>
         }
         extra={
@@ -537,7 +643,7 @@ const GrossProfitRankings = ({
               showTotal: (total) => `${total} dealers`,
               pageSizeOptions: ['15', '25', '50', '100']
             }}
-            scroll={{ x: 850, y: 500 }}
+            scroll={{ x: 1100, y: 500 }}
             summary={dealerSummary}
           />
         )}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Row, Col, Card, Progress, Typography, Space, Tooltip } from 'antd'
+import { Row, Col, Card, Progress, Typography, Space, Tag, Tooltip } from 'antd'
 import {
   DollarOutlined,
   RiseOutlined,
@@ -7,14 +7,16 @@ import {
   TrophyOutlined,
   WarningOutlined,
   ShoppingCartOutlined,
-  TeamOutlined
+  TeamOutlined,
+  BankOutlined
 } from '@ant-design/icons'
 
 const { Text } = Typography
 
 // Format currency for Indian Rupees with breakdown (e.g., "3Cr 25L" or "25L 35K")
 const formatCurrencyBreakdown = (value) => {
-  if (value === null || value === undefined || value === 0) return '₹0'
+  if (value === null || value === undefined) return '—'
+  if (value === 0) return '₹0'
 
   const absValue = Math.abs(value)
   const sign = value < 0 ? '-' : ''
@@ -125,7 +127,7 @@ const KPICard = ({
             <GrowthIndicator value={growth} />
             {growthLabel && (
               <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
-                vs last month
+                vs prior period
               </Text>
             )}
           </div>
@@ -238,6 +240,10 @@ const ProductHighlightCard = ({ product, type, loading }) => {
  * Displays key metrics for CEO dashboard
  */
 const ExecutiveKPICards = ({ summary, loading }) => {
+  const incomplete = summary?.status === 'INCOMPLETE'
+  const provisional = summary?.status === 'PROVISIONAL'
+  const statusColor = incomplete ? 'red' : provisional ? 'gold' : 'green'
+
   return (
     <div className="executive-kpi-cards">
       <Row gutter={[16, 16]}>
@@ -251,13 +257,33 @@ const ExecutiveKPICards = ({ summary, loading }) => {
             growth={summary?.growth?.revenue}
             growthLabel
             loading={loading}
+            extra={
+              <Text type={summary?.salesAwaitingCost > 0 ? 'danger' : 'secondary'} style={{ fontSize: 11 }}>
+                {formatCurrencyCompact(summary?.salesAwaitingCost || 0)} awaiting FIFO cost
+              </Text>
+            }
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <KPICard
+            title="FIFO COGS"
+            formattedValue={formatCurrencyBreakdown(summary?.totalCost)}
+            icon={<ShoppingCartOutlined />}
+            iconColor="#fa8c16"
+            loading={loading}
+            extra={
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {Number(summary?.costingCoveragePercent || 0).toFixed(1)}% sales quantity costed
+              </Text>
+            }
           />
         </Col>
 
         {/* Gross Profit */}
         <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <KPICard
-            title="Gross Profit"
+            title={incomplete ? 'Covered Gross Profit' : 'Gross Profit'}
             formattedValue={formatCurrencyBreakdown(summary?.grossProfit)}
             icon={<RiseOutlined />}
             iconColor="#52c41a"
@@ -267,12 +293,28 @@ const ExecutiveKPICards = ({ summary, loading }) => {
             extra={
               <div style={{ marginTop: 4 }}>
                 <Progress
-                  percent={summary?.grossMargin || 0}
+                  percent={Math.min(Math.max(Number(summary?.grossMargin || 0), 0), 100)}
                   size="small"
                   strokeColor="#52c41a"
-                  format={p => `${p.toFixed(1)}%`}
+                  format={() => `${Number(summary?.grossMargin || 0).toFixed(1)}%`}
                 />
+                <Tag color={statusColor} style={{ marginTop: 4 }}>{summary?.status || 'INCOMPLETE'}</Tag>
               </div>
+            }
+          />
+        </Col>
+
+        <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+          <KPICard
+            title="Operating Expenses"
+            formattedValue={formatCurrencyBreakdown(summary?.totalOperatingExpenses)}
+            icon={<BankOutlined />}
+            iconColor="#8c8c8c"
+            loading={loading}
+            extra={
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                Includes finance and recorded scrap
+              </Text>
             }
           />
         </Col>
@@ -280,14 +322,16 @@ const ExecutiveKPICards = ({ summary, loading }) => {
         {/* Net Profit */}
         <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <KPICard
-            title="Net Profit"
-            formattedValue={formatCurrencyBreakdown(summary?.netProfit)}
+            title={incomplete ? 'Indicative Net Profit' : 'Net Profit'}
+            formattedValue={formatCurrencyBreakdown(incomplete ? summary?.indicativeNetProfit : summary?.netProfit)}
             icon={<DollarOutlined />}
-            iconColor={summary?.netProfit >= 0 ? '#722ed1' : '#ff4d4f'}
+            iconColor={(incomplete ? summary?.indicativeNetProfit : summary?.netProfit) >= 0 ? '#722ed1' : '#ff4d4f'}
             loading={loading}
             extra={
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                Net Margin: {summary?.netMargin?.toFixed(1) || 0}%
+              <Text type={incomplete ? 'danger' : 'secondary'} style={{ fontSize: 11 }}>
+                {incomplete
+                  ? 'Not final until FIFO and expenses are complete'
+                  : `Net Margin: ${Number(summary?.netMargin || 0).toFixed(1)}%`}
               </Text>
             }
           />

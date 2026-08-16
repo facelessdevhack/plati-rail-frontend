@@ -17,14 +17,22 @@ const { Text } = Typography
 
 // Format currency for Indian Rupees
 const formatCurrency = (value) => {
-  if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`
-  if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`
-  if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`
-  return `₹${value.toFixed(0)}`
+  const numericValue = Number(value || 0)
+  const absoluteValue = Math.abs(numericValue)
+  const sign = numericValue < 0 ? '-' : ''
+  if (absoluteValue >= 10000000) return `${sign}₹${(absoluteValue / 10000000).toFixed(2)}Cr`
+  if (absoluteValue >= 100000) return `${sign}₹${(absoluteValue / 100000).toFixed(2)}L`
+  if (absoluteValue >= 1000) return `${sign}₹${(absoluteValue / 1000).toFixed(1)}K`
+  return `${sign}₹${absoluteValue.toFixed(0)}`
 }
 
 // Format percentage
 const formatPercent = (value) => `${value.toFixed(1)}%`
+
+const formatUnitRate = (value) => `₹${Number(value || 0).toLocaleString('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+})}`
 
 // Get margin color based on value
 const getMarginColor = (margin) => {
@@ -130,9 +138,13 @@ const TrendSparkline = ({ data }) => {
  * Product P&L Table Component
  * Sortable, searchable table with export functionality
  */
-const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
+const ProductPLTable = ({ products = [], netProfitAllocation, loading, onViewDetails }) => {
   const [searchText, setSearchText] = useState('')
   const [pageSize, setPageSize] = useState(10)
+
+  const allocationHelp = netProfitAllocation
+    ? `${netProfitAllocation.note} Allocation rate: ${formatUnitRate(netProfitAllocation.expensePerCostedUnit)} per FIFO-costed unit. Status: ${netProfitAllocation.status}.`
+    : 'Net Profit is Gross Profit less allocated operating expenses.'
 
   // Filter products based on search
   const filteredProducts = useMemo(() => {
@@ -148,7 +160,7 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
 
   // Export to CSV
   const handleExport = () => {
-    const headers = ['Product Name', 'Model', 'Inches', 'Units Sold', 'Revenue', 'COGS', 'Gross Profit', 'Margin %']
+    const headers = ['Product Name', 'Model', 'Inches', 'Units Sold', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %', 'NP Status']
     const rows = filteredProducts.map(p => [
       p.productName || '-',
       p.model || '-',
@@ -157,7 +169,11 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
       p.revenue || 0,
       p.cogs || 0,
       p.grossProfit || 0,
-      p.grossMargin?.toFixed(2) || '0'
+      p.grossMargin?.toFixed(2) || '0',
+      p.allocatedExpenses || 0,
+      p.netProfit || 0,
+      p.netMargin?.toFixed(2) || '0',
+      p.netProfitStatus || '-'
     ])
 
     const csvContent = [
@@ -238,12 +254,42 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
       )
     },
     {
-      title: 'Margin %',
+      title: 'GP Margin %',
       dataIndex: 'grossMargin',
       key: 'grossMargin',
       width: 100,
       align: 'center',
       sorter: (a, b) => (a.grossMargin || 0) - (b.grossMargin || 0),
+      render: (value) => (
+        <Tag color={getMarginColor(value || 0)}>
+          {formatPercent(value || 0)}
+        </Tag>
+      )
+    },
+    {
+      title: (
+        <Tooltip title={allocationHelp}>
+          <span>Net Profit</span>
+        </Tooltip>
+      ),
+      dataIndex: 'netProfit',
+      key: 'netProfit',
+      width: 130,
+      align: 'right',
+      sorter: (a, b) => (a.netProfit || 0) - (b.netProfit || 0),
+      render: (value) => (
+        <Text strong style={{ color: (value || 0) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+          {formatCurrency(value || 0)}
+        </Text>
+      )
+    },
+    {
+      title: 'NP Margin %',
+      dataIndex: 'netMargin',
+      key: 'netMargin',
+      width: 110,
+      align: 'center',
+      sorter: (a, b) => (a.netMargin || 0) - (b.netMargin || 0),
       render: (value) => (
         <Tag color={getMarginColor(value || 0)}>
           {formatPercent(value || 0)}
@@ -289,7 +335,18 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
 
   return (
     <Card
-      title="Product P&L Details"
+      title={(
+        <Space size={8}>
+          <span>Product P&amp;L Details</span>
+          {netProfitAllocation && (
+            <Tooltip title={allocationHelp}>
+              <Tag color={netProfitAllocation.status === 'VERIFIED' ? 'green' : netProfitAllocation.status === 'PROVISIONAL' ? 'orange' : 'red'}>
+                NP {netProfitAllocation.status}
+              </Tag>
+            </Tooltip>
+          )}
+        </Space>
+      )}
       style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
       extra={
         <Space>
@@ -324,7 +381,7 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
           pageSizeOptions: ['10', '20', '50', '100'],
           onShowSizeChange: (_, size) => setPageSize(size)
         }}
-        scroll={{ x: 1000 }}
+        scroll={{ x: 1240 }}
         size="middle"
         summary={(pageData) => {
           if (pageData.length === 0) return null
@@ -334,6 +391,8 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
           const totalProfit = pageData.reduce((sum, r) => sum + (r.grossProfit || 0), 0)
           const totalVolume = pageData.reduce((sum, r) => sum + (r.volume || 0), 0)
           const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+          const totalNetProfit = pageData.reduce((sum, r) => sum + (r.netProfit || 0), 0)
+          const avgNetMargin = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0
 
           return (
             <Table.Summary fixed>
@@ -358,8 +417,16 @@ const ProductPLTable = ({ products = [], loading, onViewDetails }) => {
                 <Table.Summary.Cell index={5} align="center">
                   <Tag color={getMarginColor(avgMargin)}>{formatPercent(avgMargin)}</Tag>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={6} />
-                <Table.Summary.Cell index={7} />
+                <Table.Summary.Cell index={6} align="right">
+                  <Text strong style={{ color: totalNetProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                    {formatCurrency(totalNetProfit)}
+                  </Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="center">
+                  <Tag color={getMarginColor(avgNetMargin)}>{formatPercent(avgNetMargin)}</Tag>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={8} />
+                <Table.Summary.Cell index={9} />
               </Table.Summary.Row>
             </Table.Summary>
           )
