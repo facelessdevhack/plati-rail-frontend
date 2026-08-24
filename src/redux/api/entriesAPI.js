@@ -519,7 +519,7 @@ export const deletePaymentEntryAPI = async ({ paymentId, reason }) => {
     return response
   } catch (e) {
     console.log('DELETE PAYMENT ENTRY ERROR: ' + e)
-    return e
+    throw e
   }
 }
 

@@ -283,16 +283,42 @@ const AdminDealerDetails = () => {
       console.log(e, 'CHECK ENTRY ERROR')
     }
   }
-// Delete Payment Entry Function
+  // Middleman adjustments belong to the middleman's ledger, while their source
+  // payment belongs to the original dealer. Both are reversed through the
+  // source payment so the two dealer balances stay consistent.
   const handleDeletePaymentEntry = async (record) => {
+    const isMiddlemanAdjustment = Number(record.sourceType) === 5
+    const paymentId = isMiddlemanAdjustment
+      ? Number(record.linkedPaymentId)
+      : Number(record.id)
+
+    if (!Number.isInteger(paymentId) || paymentId <= 0) {
+      message.error(
+        isMiddlemanAdjustment
+          ? 'This historical middleman adjustment is not linked to a reversible payment.'
+          : 'This payment entry does not have a valid ID.'
+      )
+      return
+    }
+
+    const entryDescription = record.description || record.productName || '-'
+    const entryAmount = record.amount ?? record.price
+    const entryDate = record.paymentDate || record.date
+
     Modal.confirm({
-      title: 'Delete Payment Entry',
+      title: isMiddlemanAdjustment
+        ? 'Delete Linked Middleman Payment'
+        : 'Delete Payment Entry',
       content: (
         <div>
-          <p>Are you sure you want to delete this payment entry?</p>
-          <p><strong>Description:</strong> {record.description}</p>
-          <p><strong>Amount:</strong> {formatINR(record.amount)}</p>
-          <p><strong>Date:</strong> {moment(record.paymentDate).format('DD/MM/YYYY')}</p>
+          <p>
+            {isMiddlemanAdjustment
+              ? 'This will reverse the original dealer payment and this linked middleman adjustment together.'
+              : 'Are you sure you want to delete this payment entry?'}
+          </p>
+          <p><strong>Description:</strong> {entryDescription}</p>
+          <p><strong>Amount:</strong> {formatINR(entryAmount)}</p>
+          <p><strong>Date:</strong> {moment(entryDate).format('DD/MM/YYYY')}</p>
           <p className="text-red-500 text-sm">
             Note: This entry will be archived and can be restored if needed.
           </p>
@@ -305,21 +331,30 @@ const AdminDealerDetails = () => {
         try {
           setLoader(true)
           const response = await deletePaymentEntryAPI({
-            paymentId: record.id,
-            reason: 'Deleted by admin from dealer details page'
+            paymentId,
+            reason: isMiddlemanAdjustment
+              ? 'Deleted from linked middleman adjustment in dealer details'
+              : 'Deleted by admin from dealer details page'
           })
-          
+
           if (response.data?.message) {
-            message.success('Payment entry deleted and archived successfully!')
-            // Refresh the payment entries
-            getPaymentEntries({ dealerId: id })
-            getDealerInfo() // Refresh dealer info to update balance
+            message.success(
+              isMiddlemanAdjustment
+                ? 'Payment and middleman adjustment reversed successfully!'
+                : 'Payment entry deleted and archived successfully!'
+            )
+            // Refresh both tabs. Calling the thunk without dispatch left the
+            // deleted payment visible until a manual page reload.
+            setCheckedEntry(previous => !previous)
+            await getDealerInfo()
           } else {
             message.error('Failed to delete payment entry')
           }
         } catch (error) {
           console.error('Error deleting payment entry:', error)
-          message.error('Failed to delete payment entry')
+          message.error(
+            error?.response?.data?.message || 'Failed to delete payment entry'
+          )
         } finally {
           setLoader(false)
         }
@@ -640,9 +675,17 @@ const AdminDealerDetails = () => {
     items: Number(record.sourceType) === 5
       ? [
           {
-            key: 'tracked-adjustment',
-            label: contextMenuLabel('Linked to payment — manage from Payments'),
-            disabled: true
+            key: record.linkedPaymentId
+              ? 'delete-linked-payment'
+              : 'historical-adjustment',
+            icon: record.linkedPaymentId ? <DeleteOutlined /> : undefined,
+            label: contextMenuLabel(
+              record.linkedPaymentId
+                ? 'Delete linked payment and adjustment'
+                : 'Historical adjustment — no reversible payment link'
+            ),
+            danger: Boolean(record.linkedPaymentId),
+            disabled: !record.linkedPaymentId
           }
         ]
       : [
@@ -663,6 +706,7 @@ const AdminDealerDetails = () => {
     onClick: ({ key }) => {
       if (key === 'edit') showEditModalFunction(record)
       if (key === 'delete') handleDeleteEntry(record)
+      if (key === 'delete-linked-payment') handleDeletePaymentEntry(record)
     }
   })
 
@@ -686,6 +730,27 @@ const AdminDealerDetails = () => {
     if (value === null || value === undefined) return ''
     return value < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'
   }
+
+  const renderMiddlemanDeleteAction = record =>
+    record.linkedPaymentId ? (
+      <button
+        onClick={() => handleDeletePaymentEntry(record)}
+        title='Delete the original payment and this linked adjustment'
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '8px 12px', borderRadius: 12, fontSize: 13,
+          fontWeight: 500, fontFamily: "'Inter', sans-serif",
+          border: '1px solid rgba(229,62,62,0.25)', cursor: 'pointer',
+          background: '#fef2f2', color: '#b91c1c', whiteSpace: 'nowrap'
+        }}
+      >
+        <DeleteOutlined /> Delete payment
+      </button>
+    ) : (
+      <Tooltip title='This legacy adjustment has no safely reversible payment link.'>
+        <span style={{ color: '#7c3aed', fontWeight: 600 }}>Historical</span>
+      </Tooltip>
+    )
 
   // Columns for Entries
   const columns = [
@@ -814,12 +879,12 @@ const AdminDealerDetails = () => {
     ...(isAdmin
       ? [
           {
-            title: 'Checked',
+            title: 'Actions',
             dataIndex: 'isChecked',
             key: 'isChecked',
             render: (text, record) => (
               Number(record.sourceType) === 5 ? (
-                <span style={{ color: '#7c3aed', fontWeight: 600 }}>Tracked</span>
+                renderMiddlemanDeleteAction(record)
               ) : (
               <Button
                 size='slim'
@@ -1207,7 +1272,7 @@ const AdminDealerDetails = () => {
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                               {isAdmin && (
                                 Number(record.sourceType) === 5 ? (
-                                  <span style={{ color: '#7c3aed', fontWeight: 600 }}>Tracked</span>
+                                  renderMiddlemanDeleteAction(record)
                                 ) : (
                                 <button
                                   onClick={() => {
