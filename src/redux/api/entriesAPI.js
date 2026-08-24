@@ -330,23 +330,32 @@ export const getPaymentEntries = createAsyncThunk(
       limit = 10,
       startDate,
       endDate,
+      search = '',
       sortField = 'created_at',
       sortOrder = 'desc'
     },
     { rejectWithValue }
   ) => {
     try {
-      // Build query params string with optional date filtering and sorting
-      let url = `/entries/get-payment-entries?dealerId=${dealerId}&page=${page}&limit=${limit}`
-      if (startDate && endDate) {
-        url += `&startDate=${startDate}&endDate=${endDate}`
+      const params = {
+        dealerId,
+        page,
+        limit,
+        sortField,
+        sortOrder
       }
-      if (sortField && sortOrder) {
-        url += `&sortField=${sortField}&sortOrder=${sortOrder}`
+      if (startDate && endDate) {
+        params.startDate = startDate
+        params.endDate = endDate
+      }
+      if (search.trim()) {
+        params.search = search.trim()
       }
 
       // Make the API call
-      const response = await client.get(url)
+      const response = await client.get('/entries/get-payment-entries', {
+        params
+      })
 
       // Return the paginated response
       return response.data

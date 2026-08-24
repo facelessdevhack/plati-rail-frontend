@@ -85,6 +85,7 @@ const AdminDealerDetails = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedPaymentSearch, setDebouncedPaymentSearch] = useState('')
   const [startDate, setStartDate] = useState(null)
   const [endDate, setEndDate] = useState(null)
   const [sortField, setSortField] = useState('created_at')
@@ -153,17 +154,6 @@ const AdminDealerDetails = () => {
         sortOrder
       })
     )
-    dispatch(
-      getPaymentEntries({
-        dealerId: id,
-        page: currentPage,
-        limit: pageSize,
-        startDate,
-        endDate,
-        sortField,
-        sortOrder
-      })
-    )
     dispatch(getMiddleDealers({}))
     dispatch(getAllDealersOrders({ id, page: currentPage, limit: pageSize }))
     dispatch(getAdminPaymentMethods({}))
@@ -182,6 +172,45 @@ const AdminDealerDetails = () => {
     id
   ])
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedPaymentSearch(searchQuery.trim())
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchQuery])
+
+  useEffect(() => {
+    dispatch(
+      getPaymentEntries({
+        dealerId: id,
+        page: currentPage,
+        limit: pageSize,
+        startDate,
+        endDate,
+        search: debouncedPaymentSearch,
+        sortField,
+        sortOrder
+      })
+    )
+  }, [
+    dispatch,
+    currentPage,
+    pageSize,
+    startDate,
+    endDate,
+    debouncedPaymentSearch,
+    sortField,
+    sortOrder,
+    checkedEntry,
+    id
+  ])
+
+  const handleSearchChange = event => {
+    setSearchQuery(event.target.value)
+    setCurrentPage(1)
+  }
+
   // Filter dealers based on the search query (client-side filtering for search)
   const filteredDealers = searchQuery 
     ? allDealerEntries?.filter(entry =>
@@ -191,14 +220,8 @@ const AdminDealerDetails = () => {
       )
     : allDealerEntries
 
-  // Filter payments based on the search query (client-side filtering for search)
-  const filteredPayments = searchQuery
-    ? allPMEntries?.filter(entry =>
-        String(entry?.description || '')
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-      )
-    : allPMEntries
+  // Payment search is server-side so pagination always represents every match.
+  const filteredPayments = allPMEntries
 
   // Check Entry Function for Entries
   const handleCheckEntry = async entryId => {
@@ -1102,6 +1125,7 @@ const AdminDealerDetails = () => {
   ]
 
   const handleDateChange = dates => {
+    setCurrentPage(1)
     if (dates) {
       setStartDate(dates[0].startOf('day').toISOString())
       setEndDate(dates[1].endOf('day').toISOString())
@@ -1192,7 +1216,7 @@ const AdminDealerDetails = () => {
                   type='text'
                   placeholder='Search...'
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   style={{
                     flex: 1, minWidth: 200, height: 40,
                     border: '1px solid #a0a0a8', borderRadius: 123,
@@ -1405,7 +1429,7 @@ const AdminDealerDetails = () => {
                 <input
                   type='text' placeholder='Search payments...'
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   style={{ flex: 1, minWidth: 200, height: 40, border: '1px solid #a0a0a8', borderRadius: 123, padding: '0 16px', fontSize: 16, fontFamily: "'Inter', sans-serif", color: '#1a1a1a', outline: 'none', background: 'white' }}
                 />
                 <DatePicker.RangePicker
@@ -1541,7 +1565,7 @@ const AdminDealerDetails = () => {
               </div>
               <DataTablePagination
                 currentPage={currentPage}
-                totalItems={searchQuery ? filteredPayments?.length : paymentEntriesPagination?.total || pmEntryCount || 0}
+                totalItems={paymentEntriesPagination?.total || pmEntryCount || 0}
                 pageSize={pageSize}
                 onPageChange={(page) => handlePages(page, pageSize)}
                 onPageSizeChange={(size) => { handlePages(1, size) }}
@@ -1715,7 +1739,14 @@ const AdminDealerDetails = () => {
         {TABS_CONFIG.map(tab => (
           <button
             key={tab.key}
-            onClick={() => { setActiveTab(tab.tabKey); setSelectedEntries([]); setSelectedPayments([]) }}
+            onClick={() => {
+              setActiveTab(tab.tabKey)
+              setCurrentPage(1)
+              setSearchQuery('')
+              setDebouncedPaymentSearch('')
+              setSelectedEntries([])
+              setSelectedPayments([])
+            }}
             style={{
               background: 'none', border: 'none',
               borderBottom: activeTab === tab.tabKey ? '2px solid #f55e34' : '1px solid transparent',
