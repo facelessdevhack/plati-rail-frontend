@@ -523,6 +523,28 @@ export const deletePaymentEntryAPI = async ({ paymentId, reason }) => {
   }
 }
 
+export const updatePaymentEntryAPI = async ({
+  paymentId,
+  description,
+  amount,
+  paymentDate,
+  paymentMethod,
+  middleDealerId
+}) => {
+  try {
+    return await client.put(`entries/payments/${paymentId}`, {
+      description,
+      amount,
+      paymentDate,
+      paymentMethod,
+      middleDealerId
+    })
+  } catch (error) {
+    console.log('UPDATE PAYMENT ENTRY ERROR:', error)
+    throw error
+  }
+}
+
 export const checkMultipleEntriesAPI = async ({ entryIds, entryType }) => {
   try {
     const response = await client.post('/entries/check-multiple-entries', {

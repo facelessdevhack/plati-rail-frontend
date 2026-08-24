@@ -49,6 +49,7 @@ import {
   getPaymentEntries,
   checkMultipleEntriesAPI,
   deletePaymentEntryAPI,
+  updatePaymentEntryAPI,
   getAllDealersOrders
 } from '../../../redux/api/entriesAPI'
 
@@ -572,6 +573,17 @@ const AdminDealerDetails = () => {
     setShowEditModal(true)
   }
 
+  const showEditPaymentModal = payment => {
+    setEditingEntry({
+      ...payment,
+      sourceType: 2,
+      amount: Number(payment.amount),
+      paymentDate: moment(payment.paymentDate).format('YYYY-MM-DD'),
+      middleDealerId: payment.middleDealerId || null
+    })
+    setShowEditModal(true)
+  }
+
   const handleEditModalOk = async () => {
     const finalEditingEntry =
       editingEntry.id === undefined
@@ -586,7 +598,16 @@ const AdminDealerDetails = () => {
       // Purchase (inwards) entries live in inwards_purchase_master — they have
       // their own edit endpoint; everything else goes through edit-entry
       const editEntryResponse =
-        finalEditingEntry.source === 'Purchase'
+        Number(finalEditingEntry.sourceType) === 2
+          ? await updatePaymentEntryAPI({
+              paymentId: finalEditingEntry.id,
+              description: finalEditingEntry.description,
+              amount: Number(finalEditingEntry.amount),
+              paymentDate: finalEditingEntry.paymentDate,
+              paymentMethod: Number(finalEditingEntry.paymentMethod),
+              middleDealerId: finalEditingEntry.middleDealerId || null
+            })
+          : finalEditingEntry.source === 'Purchase'
           ? await editInwardsEntryAPI({
               ...finalEditingEntry,
               entryId: finalEditingEntry.id
@@ -594,16 +615,27 @@ const AdminDealerDetails = () => {
           : await editEntryAPI(finalEditingEntry)
       if (editEntryResponse) {
         setCheckedEntry(!checkedEntry)
+        await getDealerInfo()
         console.log(editEntryResponse, 'editEntryResponse')
         setLoader(false)
         setShowEditModal(false)
+        setEditingEntry(null)
+        message.success(
+          Number(finalEditingEntry.sourceType) === 2
+            ? 'Payment updated successfully'
+            : 'Entry updated successfully'
+        )
       } else {
         message.error('Unable to edit entry')
       }
     } catch (e) {
-      message.info('Unable to edit entry')
+      message.error(
+        e?.response?.data?.message ||
+        (Number(finalEditingEntry.sourceType) === 2
+          ? 'Unable to edit payment'
+          : 'Unable to edit entry')
+      )
       setLoader(false)
-      setShowEditModal(false)
     }
   }
 
@@ -715,6 +747,26 @@ const AdminDealerDetails = () => {
     const method = allAdminPaymentMethods.find(method => method.id === methodId)
     return method ? method.methodName : 'Unknown Method'
   }
+
+  const renderPaymentMiddleman = record =>
+    record.middleDealerName ? (
+      <div>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', padding: '3px 9px',
+          borderRadius: 999, background: '#f3e8ff', color: '#7c3aed',
+          fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap'
+        }}>
+          {record.middleDealerName}
+        </span>
+        {record.middlemanAmount != null && (
+          <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
+            Net adjustment {formatINR(record.middlemanAmount)}
+          </div>
+        )}
+      </div>
+    ) : (
+      <span style={{ color: '#9ca3af' }}>No middleman</span>
+    )
 
   const formatINR = value => {
     if (value === null || value === undefined) return 'N/A'
@@ -983,6 +1035,12 @@ const AdminDealerDetails = () => {
       render: text => <div>{text}</div>
     },
     {
+      title: 'Middleman',
+      dataIndex: 'middleDealerName',
+      key: 'middleDealerName',
+      render: (text, record) => renderPaymentMiddleman(record)
+    },
+    {
       title: 'Balance After Entry',
       dataIndex: 'currentBal',
       key: 'currentBal',
@@ -1004,15 +1062,24 @@ const AdminDealerDetails = () => {
             title: 'Actions',
             key: 'actions',
             render: (text, record) => (
-              <Button
-                size="slim"
-                padding="slim"
-                type="primary"
-                danger
-                onClick={() => handleDeletePaymentEntry(record)}
-              >
-                Delete
-              </Button>
+              <Space size={8}>
+                <Button
+                  size='slim'
+                  padding='slim'
+                  onClick={() => showEditPaymentModal(record)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size='slim'
+                  padding='slim'
+                  type='primary'
+                  danger
+                  onClick={() => handleDeletePaymentEntry(record)}
+                >
+                  Delete
+                </Button>
+              </Space>
             )
           },
           {
@@ -1378,7 +1445,7 @@ const AdminDealerDetails = () => {
                           />
                         </th>
                       )}
-                      {['Date', 'Description', 'Amount', 'Mode of Payment', 'Transport Charges', 'Balance after Entry', ...(isAdmin ? ['Actions', 'Checked'] : [])].map(h => (
+                      {['Date', 'Description', 'Amount', 'Mode of Payment', 'Transport Charges', 'Middleman', 'Balance after Entry', ...(isAdmin ? ['Actions', 'Checked'] : [])].map(h => (
                         <th key={h} style={{
                           background: '#f3f3f5', padding: '12px 16px',
                           textAlign: ['Amount', 'Transport Charges', 'Actions', 'Checked'].includes(h) ? 'center' : 'left',
@@ -1391,7 +1458,7 @@ const AdminDealerDetails = () => {
                   </thead>
                   <tbody>
                     {!sortedFilteredPayments || sortedFilteredPayments.length === 0 ? (
-                      <tr><td colSpan={isAdmin ? 9 : 6} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No payment entries found</td></tr>
+                      <tr><td colSpan={isAdmin ? 10 : 7} style={{ textAlign: 'center', padding: 40, color: '#f55e34', fontWeight: 500 }}>No payment entries found</td></tr>
                     ) : (
                       sortedFilteredPayments.map((record, idx) => {
                         const balVal = record?.entryCurrentBal || record?.currentBal
@@ -1421,19 +1488,31 @@ const AdminDealerDetails = () => {
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: '#15803d' }}>{formatINR(record.amount)}</td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>{getPaymentMethodLabel(record.paymentMethod)}</td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.transportationCharges || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>
+                              {renderPaymentMiddleman(record)}
+                            </td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: balVal < 0 ? '#dc2626' : '#15803d' }}>
                               {balVal !== null && balVal !== undefined ? formatINR(balVal) : '₹0'}
                             </td>
                             {isAdmin && (
                               <>
                                 <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
-                                  <button onClick={() => handleDeletePaymentEntry(record)} style={{
-                                    background: 'rgba(26,26,26,0.2)', border: 'none', borderRadius: 12,
-                                    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer', color: '#1a1a1a', fontSize: 16, margin: '0 auto',
-                                  }}>
-                                    <DeleteOutlined />
-                                  </button>
+                                  <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                                    <button onClick={() => showEditPaymentModal(record)} style={{
+                                      background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 12,
+                                      width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      cursor: 'pointer', color: '#2563eb', fontSize: 16,
+                                    }} title='Edit payment'>
+                                      <EditOutlined />
+                                    </button>
+                                    <button onClick={() => handleDeletePaymentEntry(record)} style={{
+                                      background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 12,
+                                      width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      cursor: 'pointer', color: '#dc2626', fontSize: 16,
+                                    }} title='Delete payment'>
+                                      <DeleteOutlined />
+                                    </button>
+                                  </div>
                                 </td>
                                 <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                                   <button
@@ -1817,7 +1896,7 @@ const AdminDealerDetails = () => {
       <Modal
         title={
           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 500, color: '#1a1a1a' }}>
-            Edit Entry
+            {Number(editingEntry?.sourceType) === 2 ? 'Edit Payment' : 'Edit Entry'}
           </span>
         }
         open={showEditModal}
@@ -1832,7 +1911,7 @@ const AdminDealerDetails = () => {
           )}
           {editingEntry && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {editingEntry.sourceType === 2 ? (
+              {Number(editingEntry.sourceType) === 2 ? (
                 <>
                   <div>
                     <div style={platiLabelStyle}>Description</div>
@@ -1846,12 +1925,70 @@ const AdminDealerDetails = () => {
                   <div>
                     <div style={platiLabelStyle}>Amount (₹)</div>
                     <CustomInput
+                      type='number'
                       value={editingEntry?.amount}
+                      disabled={Number(editingEntry?.middlemanSettledAmount || 0) > 0}
                       onChange={e =>
                         setEditingEntry({ ...editingEntry, amount: e.target.value })
                       }
                     />
                   </div>
+                  <div>
+                    <div style={platiLabelStyle}>Payment Date</div>
+                    <CustomInput
+                      type='date'
+                      value={editingEntry?.paymentDate}
+                      onChange={e =>
+                        setEditingEntry({ ...editingEntry, paymentDate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={platiLabelStyle}>Middleman</div>
+                    <CustomSelect
+                      showSearch={true}
+                      allowClear={true}
+                      className='w-full'
+                      options={allMiddleDealers || []}
+                      value={editingEntry?.middleDealerId || undefined}
+                      disabled={Number(editingEntry?.middlemanSettledAmount || 0) > 0}
+                      placeholder='No middleman'
+                      onChange={value =>
+                        setEditingEntry({
+                          ...editingEntry,
+                          middleDealerId: value || null
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={platiLabelStyle}>Payment Method</div>
+                    <CustomSelect
+                      className='w-full'
+                      options={(allAdminPaymentMethods || []).map(method => ({
+                        value: method.id,
+                        label: method.methodName
+                      }))}
+                      value={editingEntry?.paymentMethod}
+                      onChange={value =>
+                        setEditingEntry({ ...editingEntry, paymentMethod: value })
+                      }
+                    />
+                  </div>
+                  {Number(editingEntry?.middlemanSettledAmount || 0) > 0 ? (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 10,
+                      background: '#fff7ed', color: '#9a3412', fontSize: 13
+                    }}>
+                      This middleman adjustment has been settled. Description,
+                      date, and payment method can still be edited, but amount
+                      and middleman are locked.
+                    </div>
+                  ) : (
+                    <div style={{ color: '#6b7280', fontSize: 13 }}>
+                      Changing the amount re-resolves this payment's tracked allocations.
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -1936,7 +2073,7 @@ const AdminDealerDetails = () => {
                     opacity: loader ? 0.6 : 1
                   }}
                 >
-                  Update Entry
+                  {Number(editingEntry?.sourceType) === 2 ? 'Update Payment' : 'Update Entry'}
                 </button>
               </div>
             </div>
