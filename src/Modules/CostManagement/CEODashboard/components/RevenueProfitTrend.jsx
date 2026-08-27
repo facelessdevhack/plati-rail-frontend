@@ -24,9 +24,17 @@ ChartJS.register(
 const { Text } = Typography
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+const getTrendProfit = row => {
+  if (row?.netProfit !== null && row?.netProfit !== undefined) return Number(row.netProfit)
+  return Number(row?.grossProfit || 0) -
+    Number(row?.operatingExpenses || 0) -
+    Number(row?.scrapLoss || 0) -
+    Number(row?.productionVarianceLoss || 0)
+}
+
 /**
  * Revenue & Profit Trend Chart
- * Grouped bar chart showing revenue, gross profit and net profit by month
+ * Grouped bar chart showing revenue, gross profit and indicative profit by month
  */
 const RevenueProfitTrend = ({ trends, loading, period }) => {
   // Transform data for Chart.js
@@ -39,7 +47,7 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
 
     const revenueData = trends.map(t => (t.revenue || 0) / 100000) // Convert to Lakhs
     const profitData = trends.map(t => (t.grossProfit || 0) / 100000) // Convert to Lakhs
-    const netProfitData = trends.map(t => t.netProfit === null || t.netProfit === undefined ? null : t.netProfit / 100000)
+    const indicativeProfitData = trends.map(t => getTrendProfit(t) / 100000)
 
     return {
       labels,
@@ -61,8 +69,8 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
           borderRadius: 4
         },
         {
-          label: 'Net Profit',
-          data: netProfitData,
+          label: 'Indicative Profit',
+          data: indicativeProfitData,
           backgroundColor: '#722ed1',
           borderColor: '#722ed1',
           borderWidth: 1,
@@ -78,15 +86,13 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
 
     const totalRevenue = trends.reduce((sum, t) => sum + (t.revenue || 0), 0)
     const totalProfit = trends.reduce((sum, t) => sum + (t.grossProfit || 0), 0)
-    const completeNetProfitRows = trends.filter(t => t.netProfit !== null && t.netProfit !== undefined)
-    const totalNetProfit = completeNetProfitRows.reduce((sum, t) => sum + Number(t.netProfit || 0), 0)
+    const totalIndicativeProfit = trends.reduce((sum, t) => sum + getTrendProfit(t), 0)
     const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
 
     return {
       totalRevenue: totalRevenue / 10000000, // Crores
       totalProfit: totalProfit / 10000000,
-      totalNetProfit: totalNetProfit / 10000000,
-      netProfitComplete: completeNetProfitRows.length === trends.length,
+      totalIndicativeProfit: totalIndicativeProfit / 10000000,
       avgMargin: avgMargin.toFixed(1)
     }
   }, [trends])
@@ -168,7 +174,7 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
 
   return (
     <Card
-      title={`Revenue, GP & NP Trend${period?.displayLabel ? ` • ${period.displayLabel}` : ''}`}
+      title={`Revenue and profit trend${period?.displayLabel ? ` • ${period.displayLabel}` : ''}`}
       style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', height: '100%' }}
       extra={
         summaryStats && (
@@ -186,9 +192,9 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
               <Text strong>{summaryStats.avgMargin}%</Text>
             </span>
             <span>
-              <Text type="secondary">NP: </Text>
+              <Text type="secondary">Indicative profit: </Text>
               <Text strong style={{ color: '#722ed1' }}>
-                {summaryStats.netProfitComplete ? `₹${summaryStats.totalNetProfit.toFixed(1)}Cr` : 'Incomplete'}
+                ₹{summaryStats.totalIndicativeProfit.toFixed(1)}Cr
               </Text>
             </span>
           </div>

@@ -17,6 +17,17 @@ const statusTag = status => {
   return <Tag color={colors[status] || 'default'}>{status || 'UNKNOWN'}</Tag>
 }
 
+const getTrendProfit = row => {
+  if (row?.netProfit !== null && row?.netProfit !== undefined) {
+    return Number(row.netProfit)
+  }
+
+  return Number(row?.grossProfit || 0) -
+    Number(row?.operatingExpenses || 0) -
+    Number(row?.scrapLoss || 0) -
+    Number(row?.productionVarianceLoss || 0)
+}
+
 const FinancePnLPanel = ({
   pnlStatement,
   profitBridge = [],
@@ -26,28 +37,45 @@ const FinancePnLPanel = ({
   dataQuality,
   loading
 }) => {
+  const incomplete = dataQuality?.status === 'INCOMPLETE'
+
   const statementRows = useMemo(() => {
     if (!pnlStatement) return []
-    const incomplete = dataQuality?.status === 'INCOMPLETE'
     return [
       { key: 'sales', label: 'Net Sales', amount: pnlStatement.netSales, emphasis: true },
-      { key: 'coveredSales', label: 'Sales with FIFO cost', amount: pnlStatement.salesWithCost },
-      { key: 'awaiting', label: 'Sales awaiting FIFO cost', amount: pnlStatement.salesAwaitingCost, warning: pnlStatement.salesAwaitingCost > 0 },
-      { key: 'cogs', label: 'Less: FIFO COGS', amount: -pnlStatement.fifoCogs },
-      { key: 'gp', label: incomplete ? 'Covered Gross Profit' : 'Gross Profit', amount: pnlStatement.coveredGrossProfit, emphasis: true },
+      { key: 'coveredSales', label: 'Sales with product cost', amount: pnlStatement.salesWithCost },
+      { key: 'awaiting', label: 'Sales awaiting product cost', amount: pnlStatement.salesAwaitingCost, warning: pnlStatement.salesAwaitingCost > 0 },
+      { key: 'cogs', label: 'Less: Product cost', amount: -pnlStatement.fifoCogs },
+      { key: 'gp', label: incomplete ? 'Gross profit on costed sales' : 'Gross profit', amount: pnlStatement.coveredGrossProfit, emphasis: true },
       { key: 'overhead', label: 'Less: Indirect expenses', amount: -pnlStatement.indirectExpenses },
       { key: 'finance', label: 'Less: Finance expenses', amount: -pnlStatement.financeExpenses },
       { key: 'scrap', label: 'Less: Recorded scrap loss', amount: -pnlStatement.scrapLoss },
-      { key: 'productionVariance', label: 'Less: Legacy production variance', amount: -pnlStatement.productionVarianceLoss },
+      { key: 'productionVariance', label: 'Less: Production quantity difference', amount: -pnlStatement.productionVarianceLoss },
       {
-        key: 'np',
-        label: incomplete ? 'Indicative Net Profit (not final)' : 'Net Profit',
+        key: 'profit',
+        label: incomplete ? 'Indicative profit (not final)' : 'Profit',
         amount: incomplete ? pnlStatement.indicativeNetProfit : pnlStatement.netProfit,
         emphasis: true,
         warning: incomplete
       }
     ]
-  }, [pnlStatement, dataQuality])
+  }, [pnlStatement, incomplete])
+
+  const userFacingProfitBridge = useMemo(() => {
+    if (!profitBridge.length) return []
+    return profitBridge.map(item => {
+      const labels = {
+        sales: 'Sales with product cost',
+        cogs: 'Less: Product cost',
+        overhead: 'Less: Indirect expenses',
+        finance: 'Less: Finance expenses',
+        scrap: 'Less: Recorded scrap loss',
+        productionVariance: 'Less: Production quantity difference',
+        netProfit: incomplete ? 'Indicative profit (not final)' : 'Profit'
+      }
+      return { ...item, label: labels[item.key] || item.label }
+    })
+  }, [profitBridge, incomplete])
 
   const statementColumns = [
     {
@@ -73,13 +101,13 @@ const FinancePnLPanel = ({
     { title: 'Units', dataIndex: 'totalQuantity', align: 'right', render: value => Number(value || 0).toLocaleString('en-IN') },
     { title: 'Net Sales', dataIndex: 'revenue', align: 'right', render: money },
     { title: 'Costed Sales', dataIndex: 'costedRevenue', align: 'right', render: money },
-    { title: 'FIFO COGS', dataIndex: 'cost', align: 'right', render: money },
-    { title: 'GP', dataIndex: 'grossProfit', align: 'right', render: money },
-    { title: 'GP %', dataIndex: 'grossMargin', align: 'right', render: value => `${Number(value || 0).toFixed(1)}%` },
+    { title: 'Product cost', dataIndex: 'cost', align: 'right', render: money },
+    { title: 'Gross profit', dataIndex: 'grossProfit', align: 'right', render: money },
+    { title: 'Gross profit %', dataIndex: 'grossMargin', align: 'right', render: value => `${Number(value || 0).toFixed(1)}%` },
     { title: 'Expenses', dataIndex: 'operatingExpenses', align: 'right', render: money },
     { title: 'Scrap', dataIndex: 'scrapLoss', align: 'right', render: money },
-    { title: 'Prod. variance', dataIndex: 'productionVarianceLoss', align: 'right', render: money },
-    { title: 'NP', dataIndex: 'netProfit', align: 'right', render: money }
+    { title: 'Production difference', dataIndex: 'productionVarianceLoss', align: 'right', render: money },
+    { title: 'Profit', align: 'right', render: (_, row) => money(getTrendProfit(row)) }
   ]
 
   const exceptionColumns = [
@@ -102,7 +130,7 @@ const FinancePnLPanel = ({
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={12}>
-          <Card title="Formal P&L statement" style={{ borderRadius: 12, height: '100%' }}>
+          <Card title="Profit and loss summary" style={{ borderRadius: 12, height: '100%' }}>
             <Table
               rowKey="key"
               loading={loading}
@@ -116,8 +144,8 @@ const FinancePnLPanel = ({
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card title="Profit bridge" style={{ borderRadius: 12, height: '100%' }}>
-            {profitBridge.length ? profitBridge.map(item => (
+          <Card title="How profit is calculated" style={{ borderRadius: 12, height: '100%' }}>
+            {userFacingProfitBridge.length ? userFacingProfitBridge.map(item => (
               <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                 <Text strong={item.type === 'total'}>{item.label}</Text>
                 <Text
@@ -132,7 +160,7 @@ const FinancePnLPanel = ({
         </Col>
       </Row>
 
-      <Card title="Month-by-month P&L" style={{ borderRadius: 12 }}>
+      <Card title="Monthly profit summary" style={{ borderRadius: 12 }}>
         <Table
           rowKey="period"
           loading={loading}
@@ -140,7 +168,7 @@ const FinancePnLPanel = ({
           dataSource={trends}
           pagination={false}
           size="small"
-          scroll={{ x: 1250 }}
+          scroll={{ x: 1550 }}
         />
       </Card>
 
@@ -162,7 +190,7 @@ const FinancePnLPanel = ({
           </Card>
         </Col>
         <Col xs={24} xl={14}>
-          <Card title={`Costing and accounting exceptions (${exceptions.length})`} style={{ borderRadius: 12, height: '100%' }}>
+          <Card title={`Items needing attention (${exceptions.length})`} style={{ borderRadius: 12, height: '100%' }}>
             <Table
               rowKey="key"
               loading={loading}

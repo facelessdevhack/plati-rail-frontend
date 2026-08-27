@@ -243,6 +243,7 @@ const ExecutiveKPICards = ({ summary, loading }) => {
   const incomplete = summary?.status === 'INCOMPLETE'
   const provisional = summary?.status === 'PROVISIONAL'
   const statusColor = incomplete ? 'red' : provisional ? 'gold' : 'green'
+  const displayedProfit = incomplete ? summary?.indicativeNetProfit : summary?.netProfit
 
   return (
     <div className="executive-kpi-cards">
@@ -259,7 +260,7 @@ const ExecutiveKPICards = ({ summary, loading }) => {
             loading={loading}
             extra={
               <Text type={summary?.salesAwaitingCost > 0 ? 'danger' : 'secondary'} style={{ fontSize: 11 }}>
-                {formatCurrencyCompact(summary?.salesAwaitingCost || 0)} awaiting FIFO cost
+                {formatCurrencyCompact(summary?.salesAwaitingCost || 0)} awaiting product cost
               </Text>
             }
           />
@@ -267,14 +268,14 @@ const ExecutiveKPICards = ({ summary, loading }) => {
 
         <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <KPICard
-            title="FIFO COGS"
+            title="Product Cost"
             formattedValue={formatCurrencyBreakdown(summary?.totalCost)}
             icon={<ShoppingCartOutlined />}
             iconColor="#fa8c16"
             loading={loading}
             extra={
               <Text type="secondary" style={{ fontSize: 11 }}>
-                {Number(summary?.costingCoveragePercent || 0).toFixed(1)}% sales quantity costed
+                {Number(summary?.costingCoveragePercent || 0).toFixed(1)}% of sold units have a cost
               </Text>
             }
           />
@@ -319,19 +320,19 @@ const ExecutiveKPICards = ({ summary, loading }) => {
           />
         </Col>
 
-        {/* Net Profit */}
+        {/* Profit */}
         <Col xs={24} sm={12} md={8} lg={6} xl={4}>
           <KPICard
-            title={incomplete ? 'Indicative Net Profit' : 'Net Profit'}
-            formattedValue={formatCurrencyBreakdown(incomplete ? summary?.indicativeNetProfit : summary?.netProfit)}
+            title={incomplete ? 'Indicative Profit' : 'Profit'}
+            formattedValue={formatCurrencyBreakdown(displayedProfit)}
             icon={<DollarOutlined />}
-            iconColor={(incomplete ? summary?.indicativeNetProfit : summary?.netProfit) >= 0 ? '#722ed1' : '#ff4d4f'}
+            iconColor={displayedProfit >= 0 ? '#722ed1' : '#ff4d4f'}
             loading={loading}
             extra={
               <Text type={incomplete ? 'danger' : 'secondary'} style={{ fontSize: 11 }}>
                 {incomplete
-                  ? 'Not final until FIFO and expenses are complete'
-                  : `Net Margin: ${Number(summary?.netMargin || 0).toFixed(1)}%`}
+                  ? 'Current estimate · final after all product costs are completed'
+                  : `Profit margin: ${Number(summary?.netMargin || 0).toFixed(1)}%`}
               </Text>
             }
           />
