@@ -67,7 +67,13 @@ const DataQualityBanner = ({ dataQuality, loading }) => {
           <Statistic title="Fallback cost" value={dataQuality.provisionalQuantity || 0} suffix="pcs" />
         </Col>
         <Col xs={12} sm={6} lg={3}>
-          <Statistic title="Pending layers" value={dataQuality.pendingLayerQuantity || 0} suffix="pcs" />
+          <Statistic title="Open pending stock" value={dataQuality.pendingLayerQuantity || 0} suffix="pcs" />
+          {Number(dataQuality.pendingLayerCreatedQuantity || 0) > Number(dataQuality.pendingLayerQuantity || 0) && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {Number(dataQuality.pendingLayerCreatedQuantity).toLocaleString('en-IN')} created ·{' '}
+              {(Number(dataQuality.pendingLayerCreatedQuantity) - Number(dataQuality.pendingLayerQuantity)).toLocaleString('en-IN')} consumed
+            </Text>
+          )}
         </Col>
         <Col xs={12} sm={6} lg={3}>
           <Statistic title="Stranded WIP" value={dataQuality.strandedWipQuantity || 0} suffix="pcs" />
