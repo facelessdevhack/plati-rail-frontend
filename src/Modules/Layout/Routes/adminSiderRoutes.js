@@ -289,8 +289,8 @@ export const adminSiderRoutes = [
       'monthly-overheads'
     ),
     getItemLayout(
-      <Link to='/profit-dashboard'><LineChartOutlined style={{ marginRight: '8px' }} />Profit Dashboard</Link>,
-      'profit-dashboard'
+      <Link to='/pnl-dashboard'><LineChartOutlined style={{ marginRight: '8px' }} />P&amp;L Dashboard</Link>,
+      'pnl-dashboard'
     )
   ]),
 

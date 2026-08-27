@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import Login from '../../Modules/Authentication/Login'
 import InventoryDashboard from '../../Modules/Inventory/InventoryDashboard'
@@ -103,7 +103,7 @@ import ForcePasswordChange from '../../Modules/Authentication/ForcePasswordChang
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
-import { CostCategoriesPage, MonthlyOverheadsPage, ProfitDashboardPage, CEODashboard } from '../../Modules/CostManagement';
+import { CostCategoriesPage, MonthlyOverheadsPage, CEODashboard } from '../../Modules/CostManagement';
 import { MoldManagementDashboard } from '../../Modules/Ordering';
 import TempCostingView from '../../Modules/Admin/TempCostingView';
 
@@ -844,7 +844,7 @@ const StackNavigation = () => {
         path='/profit-dashboard'
         element={
           <PrivateRoute allowedRoles={[5, 999]}>
-            <TopNavLayout content={<ProfitDashboardPage />} />
+            <Navigate to='/pnl-dashboard' replace />
           </PrivateRoute>
         }
       />
@@ -861,7 +861,7 @@ const StackNavigation = () => {
         path='/ceo-dashboard'
         element={
           <PrivateRoute allowedRoles={[5, 999]}>
-            <TopNavLayout content={<CEODashboard />} />
+            <Navigate to='/pnl-dashboard' replace />
           </PrivateRoute>
         }
       />

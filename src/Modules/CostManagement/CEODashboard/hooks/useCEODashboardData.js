@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { message } from 'antd'
 import { client } from '../../../../Utils/axiosClient'
 import dayjs from 'dayjs'
-import { COSTING_REPORT_FROM } from '../../../../Utils/costingConfig'
 
 /**
- * Custom hook for fetching CEO Dashboard data
+ * Custom hook for fetching the P&L dashboard data
  * @param {number} initialYear - Initial year for data (legacy mode)
  * @param {number} initialMonth - Initial month for data (legacy mode)
  */
@@ -18,8 +17,9 @@ const useCEODashboardData = (
   const [data, setData] = useState(null)
   const [year, setYear] = useState(initialYear)
   const [month, setMonth] = useState(initialMonth)
-  // Finance dashboard opens year-to-date from the FIFO reporting boundary.
-  const [dateRange, setDateRange] = useState(() => [COSTING_REPORT_FROM, dayjs()])
+  // A normal user lands on the current month. Custom ranges remain available
+  // from the page-level period control.
+  const [dateRange, setDateRange] = useState(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)

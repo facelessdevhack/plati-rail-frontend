@@ -53,47 +53,30 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
       labels,
       datasets: [
         {
-          label: 'Revenue',
+          label: 'Sales',
           data: revenueData,
-          backgroundColor: '#1890ff',
-          borderColor: '#1890ff',
+          backgroundColor: '#f26c2d',
+          borderColor: '#f26c2d',
           borderWidth: 1,
           borderRadius: 4
         },
         {
           label: 'Gross Profit',
           data: profitData,
-          backgroundColor: '#52c41a',
-          borderColor: '#52c41a',
+          backgroundColor: '#4ecb71',
+          borderColor: '#4ecb71',
           borderWidth: 1,
           borderRadius: 4
         },
         {
-          label: 'Indicative Profit',
+          label: 'Net Profit',
           data: indicativeProfitData,
-          backgroundColor: '#722ed1',
-          borderColor: '#722ed1',
+          backgroundColor: '#1a1a1a',
+          borderColor: '#1a1a1a',
           borderWidth: 1,
           borderRadius: 4
         }
       ]
-    }
-  }, [trends])
-
-  // Calculate summary stats
-  const summaryStats = useMemo(() => {
-    if (!trends || trends.length === 0) return null
-
-    const totalRevenue = trends.reduce((sum, t) => sum + (t.revenue || 0), 0)
-    const totalProfit = trends.reduce((sum, t) => sum + (t.grossProfit || 0), 0)
-    const totalIndicativeProfit = trends.reduce((sum, t) => sum + getTrendProfit(t), 0)
-    const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
-
-    return {
-      totalRevenue: totalRevenue / 10000000, // Crores
-      totalProfit: totalProfit / 10000000,
-      totalIndicativeProfit: totalIndicativeProfit / 10000000,
-      avgMargin: avgMargin.toFixed(1)
     }
   }, [trends])
 
@@ -151,8 +134,9 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
   if (loading) {
     return (
       <Card
-        title="Revenue & Profit Trend"
-        style={{ borderRadius: 12, height: '100%' }}
+        title="Sales and profit over time"
+        className="pnl-section-card"
+        bordered={false}
       >
         <div style={{ height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Spin size="large" />
@@ -164,8 +148,9 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
   if (!trends || trends.length === 0) {
     return (
       <Card
-        title="Revenue & Profit Trend"
-        style={{ borderRadius: 12, height: '100%' }}
+        title="Sales and profit over time"
+        className="pnl-section-card"
+        bordered={false}
       >
         <Empty description="No trend data available" style={{ height: 350 }} />
       </Card>
@@ -174,32 +159,10 @@ const RevenueProfitTrend = ({ trends, loading, period }) => {
 
   return (
     <Card
-      title={`Revenue and profit trend${period?.displayLabel ? ` • ${period.displayLabel}` : ''}`}
-      style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', height: '100%' }}
-      extra={
-        summaryStats && (
-          <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
-            <span>
-              <Text type="secondary">Total Rev: </Text>
-              <Text strong style={{ color: '#1890ff' }}>₹{summaryStats.totalRevenue.toFixed(1)}Cr</Text>
-            </span>
-            <span>
-              <Text type="secondary">Total Profit: </Text>
-              <Text strong style={{ color: '#52c41a' }}>₹{summaryStats.totalProfit.toFixed(1)}Cr</Text>
-            </span>
-            <span>
-              <Text type="secondary">Avg Margin: </Text>
-              <Text strong>{summaryStats.avgMargin}%</Text>
-            </span>
-            <span>
-              <Text type="secondary">Indicative profit: </Text>
-              <Text strong style={{ color: '#722ed1' }}>
-                ₹{summaryStats.totalIndicativeProfit.toFixed(1)}Cr
-              </Text>
-            </span>
-          </div>
-        )
-      }
+      title="Sales and profit over time"
+      className="pnl-section-card"
+      bordered={false}
+      extra={period?.displayLabel ? <Text type="secondary">{period.displayLabel}</Text> : null}
     >
       <div style={{ height: 320 }}>
         {chartData && <Bar data={chartData} options={options} />}

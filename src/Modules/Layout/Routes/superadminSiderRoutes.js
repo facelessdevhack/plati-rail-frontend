@@ -32,7 +32,6 @@ import {
   FileSearchOutlined,
   AppstoreOutlined,
   UserOutlined,
-  CrownOutlined,
   TagsOutlined,
   UnorderedListOutlined,
   PlusCircleOutlined,
@@ -97,15 +96,6 @@ export const superadminSiderRoutes = [
     </Link>,
     'production-dashboard',
     <ToolOutlined style={{ fontSize: '16px' }} />
-  ),
-
-  // Profit Dashboard
-  getItemLayout(
-    <Link to='/profit-dashboard'>
-      <span style={{ fontWeight: 600 }}>💰 Profit Dashboard</span>
-    </Link>,
-    'profit-dashboard',
-    <LineChartOutlined style={{ fontSize: '16px' }} />
   ),
 
   // ============ DATA ENTRY ============
@@ -396,8 +386,8 @@ export const superadminSiderRoutes = [
       'monthly-overheads'
     ),
     getItemLayout(
-      <Link to='/profit-dashboard'><LineChartOutlined style={{ marginRight: '8px' }} />Profit Dashboard</Link>,
-      'cost-profit-dashboard'
+      <Link to='/pnl-dashboard'><LineChartOutlined style={{ marginRight: '8px' }} />P&amp;L Dashboard</Link>,
+      'cost-pnl-dashboard'
     )
   ]),
 

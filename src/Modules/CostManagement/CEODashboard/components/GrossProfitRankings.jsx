@@ -31,8 +31,8 @@ const formatCurrency = (value) => {
 
 // Get color based on profit value
 const getProfitColor = (profit) => {
-  if (profit >= 500000) return '#52c41a' // Green for high profit (>5L)
-  if (profit >= 100000) return '#1890ff' // Blue for good profit (>1L)
+  if (profit >= 500000) return '#4ecb71' // Green for high profit (>5L)
+  if (profit >= 100000) return '#4a90ff' // Blue for good profit (>1L)
   if (profit >= 0) return '#faad14' // Orange for low profit
   return '#ff4d4f' // Red for loss
 }
@@ -65,7 +65,7 @@ const GrossProfitRankings = ({
   const [dealerSearch, setDealerSearch] = useState('')
 
   const allocationHelp = netProfitAllocation
-    ? `${netProfitAllocation.note} Allocation rate: ${formatUnitRate(netProfitAllocation.expensePerCostedUnit)} per FIFO-costed unit. Status: ${netProfitAllocation.status}.`
+    ? `${netProfitAllocation.note} Allocation rate: ${formatUnitRate(netProfitAllocation.expensePerCostedUnit)} per costed unit.`
     : 'Net Profit is Gross Profit less allocated operating expenses.'
 
   const netProfitTitle = (
@@ -106,7 +106,7 @@ const GrossProfitRankings = ({
 
   // Export products to CSV
   const handleExportProducts = () => {
-    const headers = ['#', 'Product Name', 'Model', 'Inches', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %', 'NP Status']
+    const headers = ['#', 'Product Name', 'Model', 'Inches', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %']
     const rows = filteredProducts.map((p, i) => [
       i + 1,
       p.productName || '-',
@@ -119,8 +119,7 @@ const GrossProfitRankings = ({
       (p.grossMargin || 0).toFixed(2),
       p.allocatedExpenses || 0,
       p.netProfit || 0,
-      (p.netMargin || 0).toFixed(2),
-      p.netProfitStatus || '-'
+      (p.netMargin || 0).toFixed(2)
     ])
 
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
@@ -135,7 +134,7 @@ const GrossProfitRankings = ({
 
   // Export dealers to CSV
   const handleExportDealers = () => {
-    const headers = ['#', 'Dealer Name', 'District', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %', 'NP Status']
+    const headers = ['#', 'Dealer Name', 'District', 'Units', 'Revenue', 'COGS', 'Gross Profit', 'GP Margin %', 'Allocated Expenses', 'Net Profit', 'NP Margin %']
     const rows = filteredDealers.map((d, i) => [
       i + 1,
       d.dealerName || '-',
@@ -147,8 +146,7 @@ const GrossProfitRankings = ({
       (d.grossMargin || 0).toFixed(2),
       d.allocatedExpenses || 0,
       d.netProfit || 0,
-      (d.netMargin || 0).toFixed(2),
-      d.netProfitStatus || '-'
+      (d.netMargin || 0).toFixed(2)
     ])
 
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
@@ -171,7 +169,7 @@ const GrossProfitRankings = ({
       fixed: 'left',
       render: (_, __, index) => (
         <Text strong style={{
-          color: index < 3 ? '#52c41a' : (index < 7 ? '#1890ff' : '#666')
+          color: index < 3 ? '#4ecb71' : (index < 7 ? '#4a90ff' : '#666')
         }}>
           {index + 1}
         </Text>
@@ -212,7 +210,7 @@ const GrossProfitRankings = ({
       width: 120,
       align: 'right',
       sorter: (a, b) => (a.revenue || 0) - (b.revenue || 0),
-      render: (value) => <Text style={{ fontSize: 12, color: '#1890ff' }}>{formatCurrency(value)}</Text>
+      render: (value) => <Text style={{ fontSize: 12, color: '#f26c2d' }}>{formatCurrency(value)}</Text>
     },
     {
       title: 'COGS',
@@ -289,7 +287,7 @@ const GrossProfitRankings = ({
       fixed: 'left',
       render: (_, __, index) => (
         <Text strong style={{
-          color: index < 3 ? '#52c41a' : (index < 7 ? '#1890ff' : '#666')
+          color: index < 3 ? '#4ecb71' : (index < 7 ? '#4a90ff' : '#666')
         }}>
           {index + 1}
         </Text>
@@ -330,7 +328,7 @@ const GrossProfitRankings = ({
       width: 120,
       align: 'right',
       sorter: (a, b) => (a.revenue || 0) - (b.revenue || 0),
-      render: (value) => <Text style={{ fontSize: 12, color: '#1890ff' }}>{formatCurrency(value)}</Text>
+      render: (value) => <Text style={{ fontSize: 12, color: '#f26c2d' }}>{formatCurrency(value)}</Text>
     },
     {
       title: 'COGS',
@@ -418,13 +416,13 @@ const GrossProfitRankings = ({
             <Text strong>{totalVolume.toLocaleString()}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={3} align="right">
-            <Text strong style={{ color: '#1890ff' }}>{formatCurrency(totalRevenue)}</Text>
+            <Text strong style={{ color: '#f26c2d' }}>{formatCurrency(totalRevenue)}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={4} align="right">
             <Text type="secondary">{formatCurrency(totalCogs)}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={5} align="right">
-            <Text strong style={{ color: totalProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+            <Text strong style={{ color: totalProfit >= 0 ? '#4ecb71' : '#e53e3e' }}>
               {formatCurrency(totalProfit)}
             </Text>
           </Table.Summary.Cell>
@@ -465,13 +463,13 @@ const GrossProfitRankings = ({
             <Text strong>{totalUnits.toLocaleString()}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={3} align="right">
-            <Text strong style={{ color: '#1890ff' }}>{formatCurrency(totalRevenue)}</Text>
+            <Text strong style={{ color: '#f26c2d' }}>{formatCurrency(totalRevenue)}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={4} align="right">
             <Text type="secondary">{formatCurrency(totalCogs)}</Text>
           </Table.Summary.Cell>
           <Table.Summary.Cell index={5} align="right">
-            <Text strong style={{ color: totalProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+            <Text strong style={{ color: totalProfit >= 0 ? '#4ecb71' : '#e53e3e' }}>
               {formatCurrency(totalProfit)}
             </Text>
           </Table.Summary.Cell>
@@ -494,12 +492,12 @@ const GrossProfitRankings = ({
   if (loading) {
     return (
       <div>
-        <Card title="Products by Units" style={{ borderRadius: 12, marginBottom: 16 }}>
+        <Card className="pnl-ranking-card" title="Products by Units" style={{ marginBottom: 16 }}>
           <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Spin size="large" />
           </div>
         </Card>
-        <Card title="Dealers by Units" style={{ borderRadius: 12 }}>
+        <Card className="pnl-ranking-card" title="Dealers by Units">
           <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Spin size="large" />
           </div>
@@ -518,16 +516,12 @@ const GrossProfitRankings = ({
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedProducts.length} products)
             </Text>
-            {netProfitAllocation && (
-              <Tag color={netProfitAllocation.status === 'VERIFIED' ? 'green' : netProfitAllocation.status === 'PROVISIONAL' ? 'orange' : 'red'} style={{ marginLeft: 8 }}>
-                NP {netProfitAllocation.status}
-              </Tag>
-            )}
           </span>
         }
         extra={
           <Space>
             <Input
+              className="pnl-search-input"
               placeholder="Search products..."
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={productSearch}
@@ -537,28 +531,15 @@ const GrossProfitRankings = ({
               size="small"
             />
             <button
+              className="pnl-pill-button"
               onClick={handleExportProducts}
-              style={{
-                border: '1px solid #d9d9d9',
-                borderRadius: 6,
-                padding: '4px 12px',
-                background: '#fff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
-              }}
             >
               <DownloadOutlined /> CSV
             </button>
           </Space>
         }
-        style={{
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          borderTop: '3px solid #1890ff',
-          marginBottom: 16
-        }}
+        className="pnl-ranking-card"
+        style={{ marginBottom: 16 }}
       >
         {sortedProducts.length === 0 ? (
           <Empty description="No product data available" />
@@ -588,16 +569,12 @@ const GrossProfitRankings = ({
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
               ({sortedDealers.length} dealers)
             </Text>
-            {netProfitAllocation && (
-              <Tag color={netProfitAllocation.status === 'VERIFIED' ? 'green' : netProfitAllocation.status === 'PROVISIONAL' ? 'orange' : 'red'} style={{ marginLeft: 8 }}>
-                NP {netProfitAllocation.status}
-              </Tag>
-            )}
           </span>
         }
         extra={
           <Space>
             <Input
+              className="pnl-search-input"
               placeholder="Search dealers..."
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={dealerSearch}
@@ -607,27 +584,14 @@ const GrossProfitRankings = ({
               size="small"
             />
             <button
+              className="pnl-pill-button"
               onClick={handleExportDealers}
-              style={{
-                border: '1px solid #d9d9d9',
-                borderRadius: 6,
-                padding: '4px 12px',
-                background: '#fff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
-              }}
             >
               <DownloadOutlined /> CSV
             </button>
           </Space>
         }
-        style={{
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          borderTop: '3px solid #52c41a'
-        }}
+        className="pnl-ranking-card"
       >
         {sortedDealers.length === 0 ? (
           <Empty description="No dealer data available" />

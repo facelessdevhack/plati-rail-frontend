@@ -19,9 +19,7 @@ describe('Sales Dashboard access', () => {
 })
 
 const financePaths = [
-  '/profit-dashboard',
   '/pnl-dashboard',
-  '/ceo-dashboard',
   '/cost-categories',
   '/monthly-overheads',
   '/temp-costing'
@@ -34,7 +32,7 @@ const getFinancePaths = roleId =>
     .filter(path => financePaths.includes(path))
 
 describe('Finance access', () => {
-  test.each([5, 999])('shows every Finance page to admin role %s', roleId => {
+  test.each([5, 999])('shows the single P&L dashboard and Finance tools to admin role %s', roleId => {
     expect(getFinancePaths(roleId)).toEqual(financePaths)
   })
 

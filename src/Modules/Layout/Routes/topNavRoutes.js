@@ -118,12 +118,10 @@ export const topNavSections = [
   {
     key: 'finance',
     label: 'Finance',
-    defaultPath: '/profit-dashboard',
+    defaultPath: '/pnl-dashboard',
     allowedRoles: [5, 999],
     subNav: [
-      { key: 'fin-profit', label: 'Profit Dashboard', path: '/profit-dashboard', icon: 'line-chart' },
       { key: 'fin-pnl', label: 'P&L Dashboard', path: '/pnl-dashboard', icon: 'line-chart' },
-      { key: 'fin-ceo', label: 'CEO Dashboard', path: '/ceo-dashboard', icon: 'crown' },
       { key: 'fin-categories', label: 'Cost Categories', path: '/cost-categories', icon: 'setting' },
       { key: 'fin-overheads', label: 'Monthly Overheads', path: '/monthly-overheads', icon: 'bank' },
       { key: 'fin-costing', label: 'Product Costing', path: '/temp-costing', icon: 'calculator' },
