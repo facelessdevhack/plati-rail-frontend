@@ -33,7 +33,8 @@ import {
   SafetyCertificateOutlined,
   EditOutlined,
   ClockCircleOutlined,
-  StockOutlined
+  StockOutlined,
+  FileSearchOutlined
 } from '@ant-design/icons'
 import { getActiveNav, getSectionsForRole } from './Routes/topNavRoutes'
 import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
@@ -42,6 +43,7 @@ import { resetToInitialUser } from '../../redux/slices/user.slice'
 const ICON_MAP = {
   'dashboard': <DashboardOutlined />,
   'file': <FileTextOutlined />,
+  'file-search': <FileSearchOutlined />,
   'rocket': <RocketOutlined />,
   'tool': <ToolOutlined />,
   'setting': <SettingOutlined />,

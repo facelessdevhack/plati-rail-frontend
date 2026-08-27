@@ -63,6 +63,7 @@ export const topNavSections = [
       { key: 'de-daily-entries', label: 'Daily Entries', path: '/add-daily-entry', icon: 'edit' },
       { key: 'de-inwards', label: 'Inwards Entry', path: '/add-inwards-entry', icon: 'inbox' },
       { key: 'de-dealers', label: 'Dealers', path: '/dealers-list', icon: 'team' },
+      { key: 'de-bill-tally', label: 'Physical Bill Tally', path: '/physical-bill-tally', icon: 'file' },
     ]
   },
   {
@@ -92,6 +93,26 @@ export const topNavSections = [
       { key: 'pur-items', label: 'Items Master', path: '/purchase/items', icon: 'appstore' },
       { key: 'pur-categories', label: 'Categories', path: '/purchase/item-categories', icon: 'tags' },
       { key: 'pur-molds', label: 'Mold Management', path: '/mold-management', icon: 'tool' },
+    ]
+  },
+  {
+    key: 'costing-process',
+    label: 'Costing Process',
+    defaultPath: '/costing/step-1-opening-stock',
+    allowedRoles: [5, 999],
+    subNav: [
+      { key: 'cost-step1-stock-sync', label: 'Step 1 · Stock Sync', path: '/costing/step-1-opening-stock', icon: 'audit' },
+      { key: 'cost-step3-production', label: 'Step 3 · Production', path: '/costing/step-3-production-costing', icon: 'tool' },
+      { key: 'cost-step4-july-lineage', label: 'Step 4 · Sales Map', path: '/costing/step-4-july-sales-lineage', icon: 'database' },
+      { key: 'cost-source-raw-purchases', label: 'Source · Raw Purchases', path: '/costing/sources/raw-purchases', icon: 'dollar' },
+      { key: 'cost-source-fmbk', label: 'Source · FMBK In', path: '/costing/sources/fmbk-inventory-in', icon: 'dollar' },
+      { key: 'cost-source-erp-in', label: 'Source · ERP In', path: '/costing/sources/erp-inventory-in', icon: 'dollar' },
+      { key: 'cost-source-adjustments', label: 'Source · Adjustments', path: '/costing/sources/adjustments', icon: 'dollar' },
+      { key: 'cost-source-restorations', label: 'Source · Restorations', path: '/costing/sources/restorations', icon: 'database' },
+      { key: 'cost-source-opening', label: 'Source · Opening', path: '/costing/sources/opening-stock', icon: 'dollar' },
+      { key: 'cost-source-production', label: 'Source · Production', path: '/costing/sources/production', icon: 'dollar' },
+      { key: 'cost-product-movement-pricing', label: 'Movement Pricing', path: '/costing/product-movement-pricing', icon: 'dollar' },
+      { key: 'cost-tally-backup', label: 'Tally Backup Explorer', path: '/costing/tally-backup', icon: 'file-search' },
     ]
   },
   {

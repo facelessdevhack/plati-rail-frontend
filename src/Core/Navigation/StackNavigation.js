@@ -18,6 +18,13 @@ import DailyEntryWorkspace from '../../Modules/DataEntry/DailyEntryWorkspace'
 import DailyEntryAdmin from '../../Modules/DailyEntry'
 import AdminDailyEntryDealersPage from '../../Modules/DailyEntry/DailyEntryDealers'
 import AdminDealerDetails from '../../Modules/DailyEntry/Dealers/DealersDetails'
+import PhysicalBillTallyDesk from '../../Modules/DataEntry/PhysicalBillTallyDesk'
+import Step1OpeningStockPage from '../../Modules/CostManagement/Step1OpeningStockPage'
+import ProductionRawCostingPage from '../../Modules/CostManagement/ProductionRawCostingPage'
+import JulySalesLineagePage from '../../Modules/CostManagement/JulySalesLineagePage'
+import CostingSourcePricingPage from '../../Modules/CostManagement/CostingSourcePricingPage'
+import ProductMovementPricingPage from '../../Modules/CostManagement/ProductMovementPricingPage'
+import TallyBackupExplorerPage from '../../Modules/CostManagement/TallyBackupExplorerPage'
 import PrivateRoute from './PrivateRoute'
 import UnauthorizedPage from './UnauthorizedPage'
 
@@ -55,6 +62,7 @@ import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetric
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
 import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
+import LaunchOperationsDashboard from '../../Modules/LaunchOperations/LaunchOperationsDashboard'
 
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
@@ -219,6 +227,22 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[3, 999]}>
             <TopNavLayout content={<DailyEntryWorkspace initialTab='alloys' />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/physical-bill-tally'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
+            <TopNavLayout content={<PhysicalBillTallyDesk />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/physical-bill-tally-desk'
+        element={
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
+            <TopNavLayout content={<PhysicalBillTallyDesk />} />
           </PrivateRoute>
         }
       />
@@ -407,6 +431,14 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <TopNavLayout content={<DealerWarrantyDetail />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/launch-operations'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<LaunchOperationsDashboard />} />
           </PrivateRoute>
         }
       />
@@ -754,6 +786,54 @@ const StackNavigation = () => {
       />
 
       {/* Cost Management Routes */}
+      <Route
+        path='/costing/step-1-opening-stock'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<Step1OpeningStockPage />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/costing/step-3-production-costing'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<ProductionRawCostingPage />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/costing/step-4-july-sales-lineage'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<JulySalesLineagePage />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/costing/sources/:sourceTab'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<CostingSourcePricingPage />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/costing/product-movement-pricing'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<ProductMovementPricingPage />} />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path='/costing/tally-backup'
+        element={
+          <PrivateRoute allowedRoles={[5, 999]}>
+            <TopNavLayout content={<TallyBackupExplorerPage />} />
+          </PrivateRoute>
+        }
+      />
       <Route
         path='/cost-categories'
         element={

@@ -32,6 +32,7 @@ import {
   UnorderedListOutlined,
   PlusCircleOutlined,
   ImportOutlined,
+  FileSearchOutlined,
   FormOutlined
 } from '@ant-design/icons'
 
@@ -75,6 +76,14 @@ export const adminSiderRoutes = [
     <DashboardOutlined style={{ fontSize: '16px' }} />
   ),
 
+  getItemLayout(
+    <Link to='/launch-operations'>
+      <span style={{ fontWeight: 600 }}>🚦 Launch Operations</span>
+    </Link>,
+    'launch-operations',
+    <ControlOutlined style={{ fontSize: '16px' }} />
+  ),
+
   // Sales Coordination Dashboard
   getItemLayout(
     <Link to='/sales-coordinator-dashboard'>
@@ -90,6 +99,13 @@ export const adminSiderRoutes = [
       <span style={{ fontWeight: 600 }}>Daily Entries</span>
     </Link>,
     'daily-entries',
+    <FileTextOutlined style={{ fontSize: '16px' }} />
+  ),
+  getItemLayout(
+    <Link to='/physical-bill-tally'>
+      <span style={{ fontWeight: 600 }}>🧾 Physical Bill Tally</span>
+    </Link>,
+    'physical-bill-tally',
     <FileTextOutlined style={{ fontSize: '16px' }} />
   ),
 
@@ -215,6 +231,58 @@ export const adminSiderRoutes = [
     getItemLayout(
       <Link to='/stock-reconciliation'><AuditOutlined style={{ marginRight: '8px' }} />Stock Reconciliation</Link>,
       'stock-reconciliation'
+    )
+  ]),
+
+  // Costing Process
+  getItemLayout('Costing Process', 'costing-process-menu', <AuditOutlined style={{ fontSize: '16px' }} />, [
+    getItemLayout(
+      <Link to='/costing/step-1-opening-stock'><AuditOutlined style={{ marginRight: '8px' }} />Step 1 · Stock Sync</Link>,
+      'step1-opening-costing'
+    ),
+    getItemLayout(
+      <Link to='/costing/step-3-production-costing'><ToolOutlined style={{ marginRight: '8px' }} />Step 3 · Production</Link>,
+      'step3-production-costing'
+    ),
+    getItemLayout(
+      <Link to='/costing/step-4-july-sales-lineage'><DatabaseOutlined style={{ marginRight: '8px' }} />Step 4 · Sales Map</Link>,
+      'step4-july-sales-lineage'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/raw-purchases'><DollarOutlined style={{ marginRight: '8px' }} />Source · Raw Purchases</Link>,
+      'cost-source-raw-purchases'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/fmbk-inventory-in'><DollarOutlined style={{ marginRight: '8px' }} />Source · FMBK In</Link>,
+      'cost-source-fmbk'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/erp-inventory-in'><DollarOutlined style={{ marginRight: '8px' }} />Source · ERP In</Link>,
+      'cost-source-erp-in'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/adjustments'><DollarOutlined style={{ marginRight: '8px' }} />Source · Adjustments</Link>,
+      'cost-source-adjustments'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/restorations'><DatabaseOutlined style={{ marginRight: '8px' }} />Source · Restorations</Link>,
+      'cost-source-restorations'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/opening-stock'><DollarOutlined style={{ marginRight: '8px' }} />Source · Opening</Link>,
+      'cost-source-opening'
+    ),
+    getItemLayout(
+      <Link to='/costing/sources/production'><DollarOutlined style={{ marginRight: '8px' }} />Source · Production</Link>,
+      'cost-source-production'
+    ),
+    getItemLayout(
+      <Link to='/costing/product-movement-pricing'><DollarOutlined style={{ marginRight: '8px' }} />Movement Pricing</Link>,
+      'product-movement-pricing'
+    ),
+    getItemLayout(
+      <Link to='/costing/tally-backup'><FileSearchOutlined style={{ marginRight: '8px' }} />Tally Backup Explorer</Link>,
+      'tally-backup-explorer'
     )
   ]),
 

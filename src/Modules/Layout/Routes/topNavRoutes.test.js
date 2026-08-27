@@ -45,3 +45,36 @@ describe('Finance access', () => {
     }
   )
 })
+
+const costingProcessPaths = [
+  '/costing/step-1-opening-stock',
+  '/costing/step-3-production-costing',
+  '/costing/step-4-july-sales-lineage',
+  '/costing/sources/raw-purchases',
+  '/costing/sources/fmbk-inventory-in',
+  '/costing/sources/erp-inventory-in',
+  '/costing/sources/adjustments',
+  '/costing/sources/restorations',
+  '/costing/sources/opening-stock',
+  '/costing/sources/production',
+  '/costing/product-movement-pricing',
+  '/costing/tally-backup'
+]
+
+const getCostingProcessPaths = roleId =>
+  getSectionsForRole(roleId)
+    .find(section => section.key === 'costing-process')
+    ?.subNav.map(item => item.path) || []
+
+describe('Costing Process access', () => {
+  test.each([5, 999])('shows the costing workflow to admin role %s', roleId => {
+    expect(getCostingProcessPaths(roleId)).toEqual(costingProcessPaths)
+  })
+
+  test.each([1, 2, 3, 4, 6, 7, 8, 9, 10])(
+    'hides the costing workflow from non-admin role %s',
+    roleId => {
+      expect(getCostingProcessPaths(roleId)).toEqual([])
+    }
+  )
+})
