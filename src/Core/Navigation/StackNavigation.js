@@ -62,8 +62,6 @@ import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetric
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
 import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
-import LaunchOperationsDashboard from '../../Modules/LaunchOperations/LaunchOperationsDashboard'
-
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 import QuickAddInventoryAdvanced from '../../Modules/Inventory/QuickAddInventoryAdvanced'
@@ -431,14 +429,6 @@ const StackNavigation = () => {
         element={
           <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
             <TopNavLayout content={<DealerWarrantyDetail />} />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path='/launch-operations'
-        element={
-          <PrivateRoute allowedRoles={[5, 999]}>
-            <TopNavLayout content={<LaunchOperationsDashboard />} />
           </PrivateRoute>
         }
       />

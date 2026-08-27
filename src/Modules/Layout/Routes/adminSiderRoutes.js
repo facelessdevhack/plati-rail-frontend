@@ -76,14 +76,6 @@ export const adminSiderRoutes = [
     <DashboardOutlined style={{ fontSize: '16px' }} />
   ),
 
-  getItemLayout(
-    <Link to='/launch-operations'>
-      <span style={{ fontWeight: 600 }}>🚦 Launch Operations</span>
-    </Link>,
-    'launch-operations',
-    <ControlOutlined style={{ fontSize: '16px' }} />
-  ),
-
   // Sales Coordination Dashboard
   getItemLayout(
     <Link to='/sales-coordinator-dashboard'>
