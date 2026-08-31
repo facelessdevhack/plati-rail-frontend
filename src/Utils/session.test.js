@@ -68,3 +68,29 @@ test('only a 401 for the token that is still current expires the session', () =>
     config: { headers: {} }
   })).toBe(false)
 })
+
+test('a business-endpoint 401 cannot log out a healthy current session', () => {
+  const token = jwtWithExpiry(Math.floor(Date.now() / 1000) + 3600)
+  localStorage.setItem('token', token)
+
+  expect(isUnauthorizedForCurrentSession({
+    response: {
+      status: 401,
+      data: { message: 'Sales Coordination data is unavailable.' }
+    },
+    config: { headers: { Authorization: `Bearer ${token}` } }
+  })).toBe(false)
+})
+
+test('an explicit authentication 401 still expires a healthy-looking token', () => {
+  const token = jwtWithExpiry(Math.floor(Date.now() / 1000) + 3600)
+  localStorage.setItem('token', token)
+
+  expect(isUnauthorizedForCurrentSession({
+    response: {
+      status: 401,
+      data: { message: 'Authentication error, token expired.' }
+    },
+    config: { headers: { Authorization: `Bearer ${token}` } }
+  })).toBe(true)
+})

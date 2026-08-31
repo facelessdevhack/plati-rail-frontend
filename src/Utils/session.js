@@ -55,6 +55,32 @@ const getAuthorizationHeader = headers => {
   return headers.Authorization || headers.authorization || null
 }
 
+const isExplicitSessionFailure = response => {
+  const data = response?.data
+  const authCode = String(
+    data && typeof data === 'object'
+      ? data.authCode || data.errorCode || ''
+      : ''
+  ).toUpperCase()
+
+  if ([
+    'TOKEN_EXPIRED',
+    'TOKEN_INVALID',
+    'TOKEN_REQUIRED',
+    'ACCOUNT_INACTIVE'
+  ].includes(authCode)) {
+    return true
+  }
+
+  const message = String(
+    data && typeof data === 'object'
+      ? data.message || ''
+      : data || ''
+  )
+
+  return /authentication error|token (?:expired|required|failed|invalid)|not authorised.*token failed/i.test(message)
+}
+
 export const isUnauthorizedForCurrentSession = error => {
   if (error?.response?.status !== 401) return false
 
@@ -68,7 +94,13 @@ export const isUnauthorizedForCurrentSession = error => {
 
   // A response from an old request may arrive after the user has logged in
   // again. Never let that stale 401 tear down the new session.
-  return requestAuthorization === `Bearer ${currentToken}`
+  if (requestAuthorization !== `Bearer ${currentToken}`) return false
+
+  // A few legacy business endpoints still use 401 for a failed operation.
+  // Those responses must not erase a healthy login. Only expire the session
+  // when the local JWT is actually dead or the server explicitly reports an
+  // authentication failure.
+  return isTokenExpired() || isExplicitSessionFailure(error.response)
 }
 
 // End the session gracefully: clear only auth state (not the whole
