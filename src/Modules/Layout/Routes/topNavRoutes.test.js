@@ -1,5 +1,11 @@
 import { getSectionsForRole } from './topNavRoutes'
 
+test('a custom warranty registration grant exposes Warranty without unrelated Sales pages', () => {
+  const sales = getSectionsForRole(54, ['warranty.register']).find(section => section.key === 'sales')
+  expect(sales.subNav.map(item => item.path)).toEqual(['/dealer-warranty'])
+  expect(sales.defaultPath).toBe('/dealer-warranty')
+})
+
 const hasSalesDashboard = roleId =>
   getSectionsForRole(roleId).some(section =>
     section.subNav.some(item => item.path === '/admin-dashboard')

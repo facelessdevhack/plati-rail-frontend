@@ -422,7 +422,7 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]} allowedPermissions={['warranty.register', 'warranty.manage']}>
             <TopNavLayout content={<DealerWarrantyList />} />
           </PrivateRoute>
         }
@@ -430,7 +430,7 @@ const StackNavigation = () => {
       <Route
         path='/dealer-warranty/edit/:id'
         element={
-          <PrivateRoute allowedRoles={[3, 4, 5, 999]}>
+          <PrivateRoute allowedRoles={[3, 4, 5, 999]} allowedPermissions={['warranty.register', 'warranty.manage']}>
             <TopNavLayout content={<DealerWarrantyDetail />} />
           </PrivateRoute>
         }

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Image, DatePicker, message, Modal } from 'antd'
+import { Image, DatePicker, message, Modal, Button, Space } from 'antd'
 import { EditOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { warrantyService } from './services/warrantyService'
+import CreateRegistrationModal from './registration/CreateRegistrationModal'
+import { getRegistrationCapabilities } from './registration/registrationAPI'
 import moment from 'moment'
 import * as XLSX from 'xlsx'
 
@@ -24,6 +26,14 @@ const DealerWarrantyList = () => {
   const [previewImage, setPreviewImage] = useState('')
   const [previewVisible, setPreviewVisible] = useState(false)
   const [previewTitle, setPreviewTitle] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [canRegister, setCanRegister] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    getRegistrationCapabilities().then(result => { if (active) setCanRegister(result.canRegister) }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   // ─── Data ───
 
@@ -174,11 +184,12 @@ const DealerWarrantyList = () => {
       key: 'product', title: 'Product Info',
       render: (record) => (
         <div style={{ fontSize: 14, fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {record.productSpecification?.trim() && <div style={{ maxWidth: 300, whiteSpace: 'normal' }}>{record.productSpecification}</div>}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Price:</span> <span style={{ color: '#1a1a1a', fontWeight: 500 }}>{record.amount ? `₹${parseFloat(record.amount).toLocaleString('en-IN')}` : 'N/A'}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Model:</span> <span style={{ color: '#1a1a1a' }}>{record.alloyModelName || 'N/A'}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Alloy Size:</span> <span style={{ color: '#1a1a1a' }}>{record.inchesName || 'N/A'}{record.pcdName ? ` ${record.pcdName}` : ''}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Finish:</span> <span style={{ color: '#1a1a1a' }}>{record.finishName || 'N/A'}</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Quantity (units):</span> <span style={{ color: '#1a1a1a' }}>{record.noOfAlloys || record.quantity || 'N/A'}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4a90ff' }}>Quantity (units):</span> <span style={{ color: '#1a1a1a' }}>{record.noOfAlloys || record.noOfTyres || record.quantity || 'N/A'}</span></div>
         </div>
       ),
     },
@@ -202,7 +213,12 @@ const DealerWarrantyList = () => {
 
   return (
     <div style={{ width: '100%' }}>
-      <PageTitle>Dealer Warranty Registrations</PageTitle>
+      <Space className="w-full justify-between mb-4" wrap>
+        <PageTitle>Dealer Warranty Registrations</PageTitle>
+        {canRegister && <Button type="primary" onClick={() => setCreating(true)}>New registration</Button>}
+      </Space>
+      {creating && <CreateRegistrationModal onClose={() => { setCreating(false); fetchWarrantyData() }}
+        onCreated={registration => navigate(`/dealer-warranty/edit/${registration.id}`)} />}
 
       <FilterBar
         searchText={searchText}

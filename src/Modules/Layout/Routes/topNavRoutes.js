@@ -41,11 +41,12 @@ export const topNavSections = [
     label: 'Sales',
     defaultPath: '/admin-dashboard',
     allowedRoles: [3, 4, 5, 999],
+    allowedPermissions: ['warranty.register', 'warranty.manage'],
     subNav: [
       { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard', allowedRoles: [5, 999] },
-      { key: 'sales-daily-entries', label: 'Daily Entries', path: '/admin-daily-entry-dealers', icon: 'file' },
+      { key: 'sales-daily-entries', label: 'Daily Entries', path: '/admin-daily-entry-dealers', icon: 'file', allowedRoles: [3, 4, 5, 999] },
       { key: 'sales-warranty', label: 'Warranty', path: '/dealer-warranty', icon: 'safety' },
-      { key: 'sales-price-lists', label: 'Price Lists', path: '/price-lists', icon: 'tags' },
+      { key: 'sales-price-lists', label: 'Price Lists', path: '/price-lists', icon: 'tags', allowedRoles: [3, 4, 5, 999] },
     ]
   },
   {

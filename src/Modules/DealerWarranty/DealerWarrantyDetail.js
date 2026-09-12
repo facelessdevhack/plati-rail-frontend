@@ -40,6 +40,7 @@ import {
   UserOutlined
 } from '@ant-design/icons'
 import { warrantyOTPClient, warrantyService } from './services/warrantyService'
+import RegistrationConfirmation from './registration/RegistrationConfirmation'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   getAllPcd,
@@ -301,6 +302,7 @@ const DealerWarrantyDetail = () => {
 
           // Product Information
           product_type: values.productType || null,
+          product_specification: values.productSpecification || '',
 
           // Alloy-specific fields
           inches_id: values.inchesId || null,
@@ -547,6 +549,7 @@ const DealerWarrantyDetail = () => {
 
   return (
     <div style={{ width: '100%' }}>
+      <RegistrationConfirmation registrationId={id} />
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
@@ -694,6 +697,9 @@ const DealerWarrantyDetail = () => {
                 {/* ─── TAB: Product Information ─── */}
                 {activeFormTab === 'product' && (
                   <div>
+                    <Form.Item label='Product specification' name='productSpecification'>
+                      <Input.TextArea rows={3} maxLength={2000} />
+                    </Form.Item>
                     <h3 style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 600, color: '#1a1a1a', marginBottom: 16 }}>
                       Product Information
                     </h3>
