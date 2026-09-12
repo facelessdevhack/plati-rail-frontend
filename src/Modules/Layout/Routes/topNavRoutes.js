@@ -41,11 +41,9 @@ export const topNavSections = [
     label: 'Sales',
     defaultPath: '/admin-dashboard',
     allowedRoles: [3, 4, 5, 999],
-    allowedPermissions: ['warranty.register', 'warranty.manage'],
     subNav: [
       { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard', allowedRoles: [5, 999] },
       { key: 'sales-daily-entries', label: 'Daily Entries', path: '/admin-daily-entry-dealers', icon: 'file', allowedRoles: [3, 4, 5, 999] },
-      { key: 'sales-warranty', label: 'Warranty', path: '/dealer-warranty', icon: 'safety' },
       { key: 'sales-price-lists', label: 'Price Lists', path: '/price-lists', icon: 'tags', allowedRoles: [3, 4, 5, 999] },
     ]
   },
@@ -54,11 +52,13 @@ export const topNavSections = [
     label: 'Sales Coordination',
     defaultPath: '/sales-create-order',
     allowedRoles: [3, 4, 5, 7, 999],
+    allowedPermissions: ['warranty.register', 'warranty.manage'],
     subNav: [
-      { key: 'sc-create-order', label: 'Create Order', path: '/sales-create-order', icon: 'edit' },
-      { key: 'sc-dispatch', label: 'Dispatch Entries', path: '/sales-dispatch-entries', icon: 'package' },
-      { key: 'sc-pending', label: 'Pending', path: '/sales-pending-entries', icon: 'clock' },
-      { key: 'sc-inprod', label: 'In-Production', path: '/sales-inprod-entries', icon: 'factory' },
+      { key: 'sc-create-order', label: 'Create Order', path: '/sales-create-order', icon: 'edit', allowedRoles: [3, 4, 5, 7, 999] },
+      { key: 'sc-dispatch', label: 'Dispatch Entries', path: '/sales-dispatch-entries', icon: 'package', allowedRoles: [3, 4, 5, 7, 999] },
+      { key: 'sc-pending', label: 'Pending', path: '/sales-pending-entries', icon: 'clock', allowedRoles: [3, 4, 5, 7, 999] },
+      { key: 'sc-inprod', label: 'In-Production', path: '/sales-inprod-entries', icon: 'factory', allowedRoles: [3, 4, 5, 7, 999] },
+      { key: 'sc-warranty', label: 'Warranty', path: '/dealer-warranty', icon: 'safety', allowedRoles: [3, 4, 5, 999], allowedPermissions: ['warranty.register', 'warranty.manage'] },
       { key: 'sc-pricing', label: 'Pricing Entries', path: '/data-entry-pricing', icon: 'invoice', allowedRoles: [3, 4, 5, 999] },
     ]
   },

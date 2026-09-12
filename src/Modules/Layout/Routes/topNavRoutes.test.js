@@ -1,9 +1,32 @@
-import { getSectionsForRole } from './topNavRoutes'
+import { getActiveNav, getSectionsForRole } from './topNavRoutes'
 
-test('a custom warranty registration grant exposes Warranty without unrelated Sales pages', () => {
-  const sales = getSectionsForRole(54, ['warranty.register']).find(section => section.key === 'sales')
-  expect(sales.subNav.map(item => item.path)).toEqual(['/dealer-warranty'])
-  expect(sales.defaultPath).toBe('/dealer-warranty')
+test.each(['warranty.register', 'warranty.manage'])('a custom %s grant exposes Warranty in Sales Coordination without unrelated pages', permission => {
+  const sections = getSectionsForRole(54, [permission])
+  const coordination = sections.find(section => section.key === 'sales-coordination')
+  expect(coordination.subNav.map(item => item.path)).toEqual(['/dealer-warranty'])
+  expect(coordination.defaultPath).toBe('/dealer-warranty')
+  expect(sections.find(section => section.key === 'sales')).toBeUndefined()
+})
+
+test.each([3, 4, 5, 999])('moves Warranty into Sales Coordination for existing role %s', role => {
+  const sections = getSectionsForRole(role)
+  expect(sections.find(section => section.key === 'sales-coordination').subNav.some(item => item.path === '/dealer-warranty')).toBe(true)
+  expect(sections.find(section => section.key === 'sales').subNav.some(item => item.path === '/dealer-warranty')).toBe(false)
+})
+
+test('Sales Coordination membership does not grant Warranty access', () => {
+  const coordination = getSectionsForRole(7).find(section => section.key === 'sales-coordination')
+  expect(coordination.subNav.map(item => item.path)).toEqual(['/sales-create-order', '/sales-dispatch-entries', '/sales-pending-entries', '/sales-inprod-entries'])
+  expect(getSectionsForRole(7, ['warranty.register']).find(section => section.key === 'sales-coordination').subNav.some(item => item.path === '/dealer-warranty')).toBe(true)
+})
+
+test.each(['/dealer-warranty', '/dealer-warranty/edit/123'])('keeps Sales Coordination active on %s', path => {
+  expect(getActiveNav(path)).toEqual({ section: 'sales-coordination', subNavKey: 'sc-warranty' })
+})
+
+test('warranty claim grants keep their separate navigation and do not grant registration access', () => {
+  expect(getSectionsForRole(54, ['warranty_claims.view']).map(section => section.key)).toEqual(['warranty-claims'])
+  expect(getActiveNav('/warranty-claims/123').section).toBe('warranty-claims')
 })
 
 const hasSalesDashboard = roleId =>
