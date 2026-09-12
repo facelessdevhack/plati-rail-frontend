@@ -13,7 +13,7 @@ const started=async()=>{for(let n=0;n<5;n++) await Promise.resolve()}
 
 test('only starts a local worker and releases it after a scan',async()=>{
   const promise=readWarrantyCard(file());await started()
-  expect(workers[0].url).toBe('/warranty-ocr/paddle-v6-r1/card.worker.mjs')
+  expect(workers[0].url).toBe('/warranty-ocr/paddle-v6-r2/card.worker.mjs')
   expect(workers[0].options).toEqual({type:'module'})
   workers[0].onmessage({data:{type:'result',result:{fields:{customerName:'Test'},text:'Customer Name: Test',warnings:[]}}})
   expect((await promise).fields.customerName).toBe('Test')

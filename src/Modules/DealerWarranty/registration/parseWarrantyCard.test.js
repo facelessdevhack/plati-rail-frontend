@@ -55,3 +55,15 @@ Date of sale: 12/10/2020`)
   expect(fields.productInfo).toContain('P-TEST')
   expect(fields.meterReading).toBeUndefined()
 })
+
+test('recognises combined labels without treating label suffixes as customer or vehicle values',()=>{
+  expect(parseWarrantyCard('Customer Name & Number: Neha Kumar 9876543210\nCar Make & Model: Example SUV\nAlloy Size, Model & Finish: M100 18 black\nDate of Sale: 12/9/26'))
+    .toMatchObject({customerName:'Neha Kumar',mobileNumber:'9876543210',vehicleModel:'Example SUV',productType:'Alloy',productInfo:'M100 18 black',purchaseDate:'2026-09-12'})
+  expect(parseWarrantyCard('Customer Name: & NUMBER\nCar Make: & MODEL')).toEqual({})
+})
+
+test('accepts alternate field labels and valid short dates, but excludes dealer names from type detection',()=>{
+  expect(parseWarrantyCard('Buyer Name: Neha\nTelephone Number: 9876543210\nQty: 4\nSale Date: 1.9.26\nRetailer Name: Example Tyre Service'))
+    .toEqual({customerName:'Neha',mobileNumber:'9876543210',quantity:4,purchaseDate:'2026-09-01',dealerName:'Example Tyre Service'})
+  expect(parseWarrantyCard('Date of sale: 31/2/26').purchaseDate).toBeUndefined()
+})

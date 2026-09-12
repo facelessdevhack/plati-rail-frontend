@@ -4,7 +4,7 @@ const crypto = require('crypto')
 const root = path.resolve(__dirname, '..')
 const target = path.join(root, 'public/warranty-ocr')
 const cache = path.join(root, '.cache/warranty-ocr')
-const paddleTarget = path.join(target, 'paddle-v6-r1')
+const paddleTarget = path.join(target, 'paddle-v6-r2')
 const models = [
   { name: 'PP-OCRv6_small_det', file: 'detection-d218f6fb.tar', sha: 'd218f6fbf0f1c23d2161bd6ac7f5eaa6104fa89955c09290497e31008e2618e4' },
   { name: 'PP-OCRv6_small_rec', file: 'recognition-d267ab07.tar', sha: 'd267ab077a44a0eedb1ea8f8c542d263f211de8e9d7a029bf9fcfff7e5a88fb1' }

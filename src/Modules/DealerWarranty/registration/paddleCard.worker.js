@@ -1,6 +1,7 @@
 import { PaddleOCR } from '@paddleocr/paddleocr-js'
 import cvModule from '@techstark/opencv-js'
-import { parseWarrantyCardLayout } from './parseWarrantyCardLayout'
+import { getWarrantyCardRegions, parseWarrantyCardLayout } from './parseWarrantyCardLayout'
+import { refineWarrantyCard } from './refineWarrantyCard'
 
 let engine
 const base = new URL('./', self.location.href).href
@@ -43,7 +44,7 @@ self.onmessage = async ({ data }) => {
     const cv = cvModule instanceof Promise ? await cvModule : cvModule
     const source = new OffscreenCanvas(data.width, data.height)
     source.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data.pixels), data.width, data.height), 0, 0)
-    let best = { fields: {}, text: '', quality: -1, warnings: [] }
+    let best = { fields: {}, text: '', quality: -1, warnings: [] }, bestItems = [], bestDegrees = 0
     for (const degrees of [0, 270, 90, 180]) {
       progress(`Reading card${degrees ? ' and checking rotation' : ''}…`)
       const sideways = degrees % 180 !== 0
@@ -59,9 +60,48 @@ self.onmessage = async ({ data }) => {
       } finally { input.delete() }
       const parsed = parseWarrantyCardLayout(result.items)
       canvas.width = 0; canvas.height = 0
-      if (parsed.quality > best.quality) best = parsed
+      if (parsed.quality > best.quality) { best = parsed; bestItems = result.items; bestDegrees = degrees }
       if (parsed.labelCount >= 6 && Object.keys(parsed.fields).length >= 4) break
     }
+    // A second pass can separate coloured handwriting from printed grid lines.
+    // Keep the original labels as anchors; compare readings instead of guessing.
+    let secondary
+    if (best.labelCount >= 2) {
+      const sideways = bestDegrees % 180 !== 0
+      const canvas = new OffscreenCanvas(sideways ? source.height : source.width, sideways ? source.width : source.height)
+      const context = canvas.getContext('2d')
+      context.translate(canvas.width / 2, canvas.height / 2); context.rotate(bestDegrees * Math.PI / 180)
+      context.drawImage(source, -source.width / 2, -source.height / 2)
+      const colored = context.getImageData(0, 0, canvas.width, canvas.height)
+      let inkPixels = 0
+      for (let index = 0; index < colored.data.length; index += 4) {
+        const red = colored.data[index], green = colored.data[index + 1], blue = colored.data[index + 2]
+        const ink = blue - red > 12 && blue - green > 5
+        if (ink && Math.min(red, green, blue) < 160) inkPixels++
+        const shade = ink ? Math.max(0, Math.min(red, green, blue) - 40) : 255
+        colored.data[index] = colored.data[index + 1] = colored.data[index + 2] = shade
+      }
+      const coverage = inkPixels / (canvas.width * canvas.height)
+      if (coverage > 0.001 && coverage < 0.25) {
+        progress('Checking unclear handwriting…')
+        const input = cv.matFromImageData(colored)
+        try {
+          const [result] = await reader.predict(input, { textDetLimitSideLen: 1600, textDetLimitType: 'max', textRecScoreThresh: 0 })
+          const { lines, regions } = getWarrantyCardRegions(bestItems)
+          const anchors = regions.map(region => region.line)
+          const values = result.items.filter(item => {
+            const cx = item.poly.reduce((sum, point) => sum + point[0], 0) / 4
+            const cy = item.poly.reduce((sum, point) => sum + point[1], 0) / 4
+            return !anchors.some(label => cx >= label.x && cx <= label.right && cy >= label.y && cy <= label.bottom)
+          })
+          secondary = parseWarrantyCardLayout([...lines.filter(line => line.label), ...values])
+        } catch {
+          best.warnings.push('The handwriting recheck did not finish. Review the extracted details against the card.')
+        } finally { input.delete() }
+      }
+      canvas.width = 0; canvas.height = 0
+    }
+    best = refineWarrantyCard(best, secondary)
     source.width = 0; source.height = 0
     self.postMessage({ type: 'result', result: best })
   } catch (error) {

@@ -16,7 +16,7 @@ export async function readWarrantyCard(file, { onProgress = () => {}, signal } =
   const recognize = canvas => {
     check()
     if (!window.Worker || !window.OffscreenCanvas) throw new Error('This browser cannot run the card reader. Use a recent browser or enter the details manually.')
-    if (!worker) worker = new Worker(`${base}/paddle-v6-r1/card.worker.mjs`, { type: 'module' })
+    if (!worker) worker = new Worker(`${base}/paddle-v6-r2/card.worker.mjs`, { type: 'module' })
     return new Promise((resolve, reject) => {
       rejectPending = reject
       worker.onmessage = ({ data }) => {
