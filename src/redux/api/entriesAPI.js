@@ -629,6 +629,13 @@ export const getPendingEntriesAPI = createAsyncThunk(
   }
 )
 
+export const getPendingEntryOrderHistoryAPI = async ({ pendingEntryId, page = 1, pageSize = 20 }) => {
+  const response = await client.get(`/entries/pending-entries/${pendingEntryId}/order-history`, {
+    params: { page, pageSize }
+  })
+  return response.data
+}
+
 /**
  * Get all entries currently in production
  */

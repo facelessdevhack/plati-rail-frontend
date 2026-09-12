@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { message } from 'antd'
+import { Button, message } from 'antd'
 import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
 import { getPendingEntriesAPI, movePendingToMasterAPI, deletePendingEntryAPI } from '../../redux/api/entriesAPI'
 import { useDispatch } from 'react-redux'
 import moment from 'moment'
-import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 
 import PageTitle from '../../Core/Components/PageTitle'
@@ -13,6 +12,7 @@ import DataTable from '../../Core/Components/DataTable'
 import StatusBadge from '../../Core/Components/StatusBadge'
 import { ProcessButton, DeleteButton } from '../../Core/Components/ActionButton'
 import InfoBox from '../../Core/Components/InfoBox'
+import PendingOrderHistoryModal, { formatOrderTime } from './PendingOrderHistoryModal'
 
 const PendingEntriesView = () => {
   const dispatch = useDispatch()
@@ -25,6 +25,7 @@ const PendingEntriesView = () => {
   const [dateRange, setDateRange] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [historyEntry, setHistoryEntry] = useState(null)
 
   // ─── Data ───
 
@@ -113,6 +114,7 @@ const PendingEntriesView = () => {
       Date: e.dateIST ? moment(e.dateIST).format('DD MMM YYYY hh:mm A') : 'N/A',
       Dealer: e.dealerName || 'N/A', Product: e.productName || 'N/A',
       Quantity: e.quantity || 0, 'Current Stock': e.inHouseStock || 0,
+      'Times Ordered': e.orderCount || 1, 'Last Ordered (IST)': formatOrderTime(e.lastOrderedAt || e.createdAt),
       Status: e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus,
     }))
     const ws = XLSX.utils.json_to_sheet(data)
@@ -127,10 +129,10 @@ const PendingEntriesView = () => {
     const grouped = filteredEntries.reduce((g, e) => { const d = e.dealerName || 'Unknown'; if (!g[d]) g[d] = []; g[d].push(e); return g }, {})
     let html = `<html><head><style>body{font-family:Arial,sans-serif;font-size:14px;padding:20px}h1{text-align:center;color:#333;margin-bottom:30px}.dealer-header{background:#f0f2f5;padding:10px;font-weight:bold;border:1px solid #d9d9d9;margin-bottom:5px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d9d9d9;padding:8px;text-align:left}th{background:#fafafa;font-weight:bold}@media print{@page{margin:15mm}}</style></head><body><h1>Pending Entries Report - ${moment().format('DD MMM YYYY')}</h1>`
     Object.entries(grouped).forEach(([dealer, entries]) => {
-      html += `<div class="dealer-header">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Stock</th><th>Status</th></tr></thead><tbody>`
+      html += `<div class="dealer-header">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Times ordered</th><th>Last ordered (IST)</th><th>Stock</th><th>Status</th></tr></thead><tbody>`
       entries.forEach(e => {
         const date = e.dateIST ? moment(e.dateIST).format('DD MMM YYYY') : 'N/A'
-        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td style="color:${(e.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${e.inHouseStock || 0}</td><td>${e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus}</td></tr>`
+        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td>${e.orderCount || 1}</td><td>${formatOrderTime(e.lastOrderedAt || e.createdAt)}</td><td style="color:${(e.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${e.inHouseStock || 0}</td><td>${e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus}</td></tr>`
       })
       html += '</tbody></table>'
     })
@@ -181,6 +183,19 @@ const PendingEntriesView = () => {
     { key: 'dealer', dataIndex: 'dealerName', title: 'Dealers' },
     { key: 'product', dataIndex: 'productName', title: 'Product' },
     { key: 'quantity', dataIndex: 'quantity', title: 'Quantity', align: 'center' },
+    {
+      key: 'orderCount', dataIndex: 'orderCount', title: 'Times ordered', align: 'center',
+      render: (count, record) => (
+        <Button type="link" onClick={() => setHistoryEntry(record)}
+          aria-label={`View order history for entry ${record.id}`}>
+          {count || 1} {Number(count || 1) === 1 ? 'time' : 'times'} · History
+        </Button>
+      ),
+    },
+    {
+      key: 'lastOrderedAt', title: 'Last ordered (IST)',
+      render: (_, record) => formatOrderTime(record.lastOrderedAt || record.createdAt),
+    },
     {
       key: 'stock', title: 'Stock', align: 'center',
       render: (_, record) => getStockStatus(record),
@@ -250,11 +265,16 @@ const PendingEntriesView = () => {
         title="Information"
         items={[
           'These entries are waiting for stock to become available',
-          'No production plans exist for these products currently',
-          'Click "Process" when stock is available to move to entry_master',
+          'Stock or available production capacity could not fulfill these orders',
+          'Repeats from the same dealer and entering user for the same product and order type increase Times ordered; pending quantity stays unchanged',
+          'Click "History" to see when each order was recorded and its requested quantity',
+          'Click "Process" when stock is available to send the order for dispatch approval',
           'System will automatically check stock availability before processing',
         ]}
       />
+      {historyEntry && (
+        <PendingOrderHistoryModal key={historyEntry.id} entry={historyEntry} onClose={() => setHistoryEntry(null)} />
+      )}
     </div>
   )
 }

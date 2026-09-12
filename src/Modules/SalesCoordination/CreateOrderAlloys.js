@@ -48,7 +48,9 @@ const CreateOrderAlloys = () => {
 
     // Filter for today's entries only
     return coordinationEntries.filter(entry => {
-      const entryDate = entry.dateIST
+      const entryDate = entry.entryStatus === 'pending' && entry.lastOrderedAt
+        ? moment.utc(entry.lastOrderedAt).utcOffset(330)
+        : entry.dateIST
         ? moment(entry.dateIST)
         : moment.utc(entry.date || entry.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === today
@@ -128,7 +130,7 @@ const CreateOrderAlloys = () => {
           message.info('🔄 Order created! Product is currently in production.')
         } else if (responseData.routedTo === 'pending_entry_master') {
           message.warning(
-            '⏳ Order pending. Product is out of stock and not in production.'
+            responseData.isRepeat ? responseData.message : '⏳ Order pending. Stock or production capacity is unavailable.'
           )
         } else {
           message.success('Order created successfully!')

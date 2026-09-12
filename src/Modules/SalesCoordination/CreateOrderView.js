@@ -61,7 +61,9 @@ const CreateOrderView = () => {
   const allEntries = useMemo(() => {
     const today = moment().format('YYYY-MM-DD')
     return coordinationEntries.filter(e => {
-      const entryDate = e.dateIST
+      const entryDate = e.entryStatus === 'pending' && e.lastOrderedAt
+        ? moment.utc(e.lastOrderedAt).utcOffset(330)
+        : e.dateIST
         ? moment(e.dateIST)
         : moment.utc(e.date || e.created_at).utcOffset(330)
       return entryDate.format('YYYY-MM-DD') === today
@@ -160,7 +162,9 @@ const CreateOrderView = () => {
         } else if (responseData.routedTo === 'currently_inprod_master') {
           message.info('Order created! Product is currently in production.')
         } else if (responseData.routedTo === 'pending_entry_master') {
-          message.warning('Order pending — product is out of stock.')
+          message.warning(responseData.isRepeat
+            ? responseData.message
+            : 'Order pending — product is out of stock.')
         } else {
           message.success('Order created successfully!')
         }
