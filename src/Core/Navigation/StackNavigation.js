@@ -62,6 +62,9 @@ import DealerMetricsDetailsBySize from '../../Modules/DealerMetrics/DealerMetric
 import DealerMetricsForSize from '../../Modules/DealerMetrics/index-size'
 import DealerWarrantyList from '../../Modules/DealerWarranty/DealerWarrantyList'
 import DealerWarrantyDetail from '../../Modules/DealerWarranty/DealerWarrantyDetail'
+import WarrantyClaimsPage from '../../Modules/WarrantyClaims/WarrantyClaimsPage'
+import WarrantyClaimDetail from '../../Modules/WarrantyClaims/WarrantyClaimDetail'
+import { claimPermissions } from '../../Modules/WarrantyClaims/claimWorkflow'
 import BulkStockAnalysis from '../../Modules/Stock/BulkStockAnalysis'
 import InventoryManagement from '../../Modules/Inventory/InventoryManagement'
 import QuickAddInventoryAdvanced from '../../Modules/Inventory/QuickAddInventoryAdvanced'
@@ -664,6 +667,12 @@ const StackNavigation = () => {
       />
 
       {/* Sales Coordination System Routes */}
+      <Route path='/warranty-claims' element={
+        <PrivateRoute allowedPermissions={claimPermissions}><TopNavLayout content={<WarrantyClaimsPage />} /></PrivateRoute>
+      } />
+      <Route path='/warranty-claims/:id' element={
+        <PrivateRoute allowedPermissions={claimPermissions}><TopNavLayout content={<WarrantyClaimDetail />} /></PrivateRoute>
+      } />
       <Route
         path='/sales-pending-entries'
         element={

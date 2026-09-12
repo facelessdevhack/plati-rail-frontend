@@ -9,6 +9,14 @@
 
 export const topNavSections = [
   {
+    key: 'warranty-claims',
+    label: 'Warranty Claims',
+    defaultPath: '/warranty-claims',
+    allowedRoles: [999],
+    allowedPermissions: ['warranty_claims.view', 'warranty_claims.create', 'warranty_claims.review', 'warranty_claims.fulfill'],
+    subNav: [{ key: 'warranty-claims-list', label: 'Claims', path: '/warranty-claims', icon: 'safety' }]
+  },
+  {
     key: 'production',
     label: 'Production',
     defaultPath: '/production-plans-v2',
