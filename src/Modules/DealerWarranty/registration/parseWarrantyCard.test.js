@@ -36,3 +36,22 @@ test('prefills the labelled purchase date, quantity and email for a new registra
   expect(parseWarrantyCard('Date of purchase: 2026-09-10').purchaseDate).toBe('2026-09-10')
   expect(parseWarrantyCard('Purchase Date: 30/02/2026\nQuantity: 0')).toEqual({})
 })
+
+test('maps the real printed Plati card labels without confusing the vehicle and warranty numbers', () => {
+  const fields = parseWarrantyCard(`Alloy Warranty Card
+Customer Name & Contact No.: Test Customer 9876543210
+Card No.: 123456
+Dealer's Name: Example Wheels
+Car Make: I-20
+Registration No.: AB12CD1234
+Alloy Size: 18/100x4 Chrome
+Model No.: P-TEST
+No. of Pcs.: Four
+Odometer Reading:
+Date of sale: 12/10/2020`)
+  expect(fields).toMatchObject({ customerName: 'Test Customer', mobileNumber: '9876543210', warrantyCardNo: '123456',
+    dealerName: 'Example Wheels', vehicleModel: 'I-20', vehicleNo: 'AB12CD1234', quantity: 4, purchaseDate: '2020-10-12' })
+  expect(fields.productInfo).toContain('18/100x4 Chrome')
+  expect(fields.productInfo).toContain('P-TEST')
+  expect(fields.meterReading).toBeUndefined()
+})

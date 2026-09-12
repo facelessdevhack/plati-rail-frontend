@@ -5,6 +5,7 @@ const abortError = () => new DOMException('Card scan cancelled.', 'AbortError')
 export async function readWarrantyCard(file, { onProgress = () => {}, signal } = {}) {
   if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type) || file.size > 10 * 1024 * 1024) throw new Error('Choose a JPG, PNG or PDF warranty card up to 10 MB.')
   let worker, loadingTask, pdf, timer, stopped = false, rejectAbort
+  let uncertainImage = false
   const stop = () => { stopped = true; worker?.terminate().catch(() => {}); loadingTask?.destroy().catch(() => {}) }
   const check = () => { if (signal?.aborted || stopped) { stop(); throw abortError() } }
   const onAbort = () => { stop(); rejectAbort?.(abortError()) }
@@ -19,8 +20,22 @@ export async function readWarrantyCard(file, { onProgress = () => {}, signal } =
         logger: event => onProgress(event.status === 'recognizing text' ? `Reading card… ${Math.round((event.progress || 0) * 100)}%` : 'Preparing card reader…') })
       check()
     }
-    const { data } = await worker.recognize(canvas)
-    return data.text || ''
+    let best = { text: '', confidence: 0 }
+    for (const degrees of [0, 270, 90, 180]) {
+      check()
+      const { data } = await worker.recognize(canvas, { rotateRadians: degrees * Math.PI / 180 })
+      if (data.confidence > best.confidence) best = data
+      const fields = parseWarrantyCard(data.text)
+      if (data.confidence >= 75 && (fields.customerName || fields.mobileNumber || fields.warrantyCardNo)) break
+    }
+    if (best.confidence < 65) {
+      uncertainImage = true
+      // Recognizing the printed card type is useful; low-quality handwriting
+      // must not become invented customer identifiers or product details.
+      const type = parseWarrantyCard(best.text).productType
+      return type ? `Product Type: ${type}` : ''
+    }
+    return best.text || ''
   }
   const scan = async () => {
     let text = ''
@@ -65,7 +80,7 @@ export async function readWarrantyCard(file, { onProgress = () => {}, signal } =
       } finally { bitmap.close() }
     }
     check()
-    return { fields: parseWarrantyCard(text), text }
+    return { fields: parseWarrantyCard(text), text, warnings: uncertainImage ? ['The printed-text reader could not read the handwriting reliably. Use the handwriting reader or enter the remaining fields manually.'] : [] }
   }
   try {
     return await Promise.race([scan(), aborted, new Promise((_, reject) => { timer = setTimeout(() => { stop(); reject(new Error('Card reading took too long. Try a clearer image or enter the details manually.')) }, 90000) })])

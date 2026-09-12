@@ -8,3 +8,8 @@ export const requestRegistrationOtp = data => client.post(`${root}/otp`, data, {
 export const verifyRegistrationOtp = data => client.post(`${root}/verify`, data, { silent: true }).then(response => response.data)
 export const getRegistrationConfirmation = id => client.get(`${root}/${id}/confirmation`, { silent: true }).then(response => response.data.confirmation)
 export const retryRegistrationConfirmation = id => client.post(`${root}/${id}/confirmation`, {}, { silent: true }).then(response => response.data)
+export const readHandwrittenCardImages = (images, signal) => {
+  const data = new FormData()
+  images.forEach(file => data.append('images', file))
+  return client.post(`${root}/ocr`, data, { silent: true, signal, timeout: 50000, headers: { 'Content-Type': undefined } }).then(response => response.data)
+}

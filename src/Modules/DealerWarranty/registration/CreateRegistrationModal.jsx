@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Descriptions, Form, Image, Input, InputNumber, Modal, Result, Select, Space, Steps, Tag } from 'antd'
 import { ScanOutlined } from '@ant-design/icons'
-import { errorMessage, requestRegistrationOtp, retryRegistrationConfirmation, getRegistrationDealers, verifyRegistrationOtp } from './registrationAPI'
+import { errorMessage, requestRegistrationOtp, retryRegistrationConfirmation, getRegistrationCapabilities, getRegistrationDealers, verifyRegistrationOtp } from './registrationAPI'
 
 export default function CreateRegistrationModal({ onClose, onCreated }) {
   const [form] = Form.useForm()
@@ -10,6 +10,9 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [scanMessage, setScanMessage] = useState('')
+  const [scanWarnings, setScanWarnings] = useState([])
+  const [reader, setReader] = useState('printed')
+  const [handwritingAvailable, setHandwritingAvailable] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [card, setCard] = useState(null)
   const [challenge, setChallenge] = useState(null)
@@ -31,6 +34,9 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
   useEffect(() => () => { if (card?.url) URL.revokeObjectURL(card.url) }, [card])
   useEffect(() => {
     let active = true
+    getRegistrationCapabilities().then(result => {
+      if (active) { setHandwritingAvailable(result.handwritingReader); if (result.handwritingReader) setReader('handwriting') }
+    }).catch(() => {})
     getRegistrationDealers().then(rows => { if (active) setDealers(rows) })
       .catch(err => { if (active) setError(errorMessage(err)) })
       .finally(() => { if (active) setLoadingDealers(false) })
@@ -44,15 +50,24 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
     scanner.current?.abort()
     const controller = new AbortController()
     scanner.current = controller
-    setScanning(true); setError(''); setScanMessage('Reading warranty card…')
+    setScanning(true); setError(''); setScanWarnings([]); setScanMessage('Reading warranty card…')
     try {
-      const { readWarrantyCard } = await import('./readWarrantyCard')
-      const result = await readWarrantyCard(file, { signal: controller.signal, onProgress: message => { if (alive.current && !controller.signal.aborted) setScanMessage(message) } })
+      const read = reader === 'handwriting' ? (await import('./readHandwrittenCard')).readHandwrittenCard : (await import('./readWarrantyCard')).readWarrantyCard
+      const result = await read(file, { signal: controller.signal, onProgress: message => { if (alive.current && !controller.signal.aborted) setScanMessage(message) } })
       if (!alive.current || controller.signal.aborted) return
-      setCard({ name: file.name, url: file.type.startsWith('image/') ? URL.createObjectURL(file) : null })
+      setCard({ name: file.name, method: reader, url: file.type.startsWith('image/') ? URL.createObjectURL(file) : null })
+      const { dealerName, ...fields } = result.fields
       form.setFieldsValue({ customerName: '', mobileNumber: '', warrantyCardNo: '', productType: undefined,
-        productInfo: '', purchaseDate: '', vehicleNo: '', vehicleModel: '', customerEmail: '', quantity: 1,
-        ...result.fields, ocrUsed: true })
+        productInfo: '', purchaseDate: '', vehicleNo: '', vehicleModel: '', customerEmail: '', meterReading: '', quantity: undefined,
+        ...fields, ocrUsed: true })
+      const warnings = [...(result.warnings || [])]
+      if (dealerName) {
+        const normalized = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const matches = dealers.filter(dealer => normalized(dealer.dealerName) === normalized(dealerName))
+        if (matches.length === 1) form.setFieldValue('dealerId', matches[0].id)
+        else { form.setFieldValue('dealerId', undefined); warnings.push(`Dealer written on card: ${dealerName}. Select the matching dealer.`) }
+      }
+      setScanWarnings(warnings)
       setScanMessage(Object.keys(result.fields).length ? 'Card details prefilled. Review every field with the customer and correct anything that is wrong.' : 'No labelled card details could be read. Try a clearer card or enter the information manually.')
     } catch (err) { if (alive.current && !controller.signal.aborted) { setError(errorMessage(err)); setScanMessage('You can enter the card details manually.') } }
     finally { if (alive.current && !controller.signal.aborted) setScanning(false) }
@@ -92,7 +107,14 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
   return <Modal title="New warranty registration" open width={800} onCancel={busy ? undefined : onClose} maskClosable={!busy} closable={!busy} footer={null}>
     <Steps size="small" current={step} className="mb-6" items={[{ title: 'Customer and product' }, { title: 'Customer OTP' }, { title: 'Registered' }]} />
     {error && <Alert type="error" showIcon message={error} className="mb-4" />}
-    <Form form={form} layout="vertical" onFinish={sendOtp} initialValues={{ quantity: 1, ocrUsed: false, vehicleNo: '', vehicleModel: '', customerEmail: '' }} style={{ display: step === 0 ? 'block' : 'none' }}>
+    <Form form={form} layout="vertical" onFinish={sendOtp} initialValues={{ quantity: 1, ocrUsed: false, vehicleNo: '', vehicleModel: '', customerEmail: '', meterReading: '' }} style={{ display: step === 0 ? 'block' : 'none' }}>
+      <Space wrap className="mb-3">
+        <span>Card reader</span><Select aria-label="Card reader" value={reader} disabled={scanning || busy} onChange={setReader} style={{ width: 245 }} options={[
+          { value: 'handwriting', label: 'Handwritten card (AI)', disabled: !handwritingAvailable },
+          { value: 'printed', label: 'Printed text (on this device)' }
+        ]} />
+      </Space>
+      <p className="text-gray-500">{reader === 'handwriting' ? 'The card is sent to the configured AI service to read handwriting. Check every extracted value before requesting OTP.' : 'The printed-text reader runs on this device. Handwritten cards need the AI reader or manual entry.'}</p>
       <Space wrap className="mb-3">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,application/pdf" aria-label="Warranty card file" style={{ display: 'none' }} onChange={scan} />
         <Button icon={<ScanOutlined />} loading={scanning} disabled={busy} onClick={() => fileInput.current?.click()}>Upload warranty card and read details</Button>
@@ -100,7 +122,8 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
         <span className="text-gray-500">JPG, PNG or PDF · up to 10 MB / 3 pages</span>
       </Space>
       {scanMessage && <Alert type="info" showIcon message={scanMessage} className="mb-4" />}
-      {card && <Space className="mb-4">{card.url && <Image src={card.url} width={65} alt="Uploaded warranty card" />}<span>{card.name}</span><Tag>Read in your browser</Tag></Space>}
+      {scanWarnings.length > 0 && <Alert type="warning" showIcon message="Check these card details" description={<ul>{scanWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>} className="mb-4" />}
+      {card && <Space className="mb-4">{card.url && <Image src={card.url} width={65} alt="Uploaded warranty card" />}<span>{card.name}</span><Tag>{card.method === 'handwriting' ? 'Handwriting reader' : 'Read on this device'}</Tag></Space>}
       <Form.Item name="ocrUsed" hidden><Input /></Form.Item>
       <Form.Item label="Dealer" name="dealerId" rules={[{ required: true, message: 'Select the dealer who sold the product.' }]}>
         <Select showSearch optionFilterProp="label" loading={loadingDealers} disabled={busy || scanning}
@@ -119,7 +142,7 @@ export default function CreateRegistrationModal({ onClose, onCreated }) {
       <Space size="large" align="start" wrap>
         <Form.Item label="Product quantity" name="quantity" rules={[{ required: true }]}><InputNumber min={1} max={100} precision={0} /></Form.Item>
         <Form.Item label="Purchase date" name="purchaseDate" rules={[{ required: true }]}><Input type="date" /></Form.Item>
-
+        <Form.Item label="Odometer reading (optional)" name="meterReading" rules={[{ pattern: /^\d{1,9}$/, message: 'Enter the reading in whole kilometres.' }]}><Input inputMode="numeric" maxLength={9} placeholder="Kilometres" /></Form.Item>
       </Space>
       <Form.Item label="Customer email (optional)" name="customerEmail" rules={[{ type: 'email', message: 'Enter a valid email address.' }]}><Input type="email" maxLength={254} /></Form.Item>
       <p className="text-gray-500">Review these details with the customer before requesting OTP. Their warranty registration will be created after the code is verified.</p>
