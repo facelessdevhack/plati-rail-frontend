@@ -114,7 +114,7 @@ const PendingEntriesView = () => {
       Date: e.dateIST ? moment(e.dateIST).format('DD MMM YYYY hh:mm A') : 'N/A',
       Dealer: e.dealerName || 'N/A', Product: e.productName || 'N/A',
       Quantity: e.quantity || 0, 'Current Stock': e.inHouseStock || 0,
-      'Times Ordered': e.orderCount || 1, 'Last Ordered (IST)': formatOrderTime(e.lastOrderedAt || e.createdAt),
+      'Times Ordered': e.orderCount || 1, 'Last Ordered (IST)': formatOrderTime(e.updatedAt || e.lastOrderedAt || e.createdAt),
       Status: e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus,
     }))
     const ws = XLSX.utils.json_to_sheet(data)
@@ -132,7 +132,7 @@ const PendingEntriesView = () => {
       html += `<div class="dealer-header">${dealer}</div><table><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Times ordered</th><th>Last ordered (IST)</th><th>Stock</th><th>Status</th></tr></thead><tbody>`
       entries.forEach(e => {
         const date = e.dateIST ? moment(e.dateIST).format('DD MMM YYYY') : 'N/A'
-        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td>${e.orderCount || 1}</td><td>${formatOrderTime(e.lastOrderedAt || e.createdAt)}</td><td style="color:${(e.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${e.inHouseStock || 0}</td><td>${e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus}</td></tr>`
+        html += `<tr><td>${date}</td><td>${e.productName || 'N/A'}</td><td>${e.quantity || 0}</td><td>${e.orderCount || 1}</td><td>${formatOrderTime(e.updatedAt || e.lastOrderedAt || e.createdAt)}</td><td style="color:${(e.inHouseStock || 0) > 0 ? '#52c41a' : '#ff4d4f'}">${e.inHouseStock || 0}</td><td>${e.pendingStatus === 'awaiting_stock' ? 'Awaiting Stock' : e.pendingStatus}</td></tr>`
       })
       html += '</tbody></table>'
     })
@@ -194,7 +194,7 @@ const PendingEntriesView = () => {
     },
     {
       key: 'lastOrderedAt', title: 'Last ordered (IST)',
-      render: (_, record) => formatOrderTime(record.lastOrderedAt || record.createdAt),
+      render: (_, record) => formatOrderTime(record.updatedAt || record.lastOrderedAt || record.createdAt),
     },
     {
       key: 'stock', title: 'Stock', align: 'center',

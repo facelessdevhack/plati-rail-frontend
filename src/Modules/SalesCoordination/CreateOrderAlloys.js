@@ -48,8 +48,8 @@ const CreateOrderAlloys = () => {
 
     // Filter for today's entries only
     return coordinationEntries.filter(entry => {
-      const entryDate = entry.entryStatus === 'pending' && entry.lastOrderedAt
-        ? moment.utc(entry.lastOrderedAt).utcOffset(330)
+      const entryDate = entry.entryStatus === 'pending' && (entry.updatedAt || entry.lastOrderedAt)
+        ? moment.utc(entry.updatedAt || entry.lastOrderedAt).utcOffset(330)
         : entry.dateIST
         ? moment(entry.dateIST)
         : moment.utc(entry.date || entry.created_at).utcOffset(330)

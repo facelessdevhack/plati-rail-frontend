@@ -61,8 +61,8 @@ const CreateOrderView = () => {
   const allEntries = useMemo(() => {
     const today = moment().format('YYYY-MM-DD')
     return coordinationEntries.filter(e => {
-      const entryDate = e.entryStatus === 'pending' && e.lastOrderedAt
-        ? moment.utc(e.lastOrderedAt).utcOffset(330)
+      const entryDate = e.entryStatus === 'pending' && (e.updatedAt || e.lastOrderedAt)
+        ? moment.utc(e.updatedAt || e.lastOrderedAt).utcOffset(330)
         : e.dateIST
         ? moment(e.dateIST)
         : moment.utc(e.date || e.created_at).utcOffset(330)
