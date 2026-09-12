@@ -25,3 +25,5 @@ yarn-debug.log*
 yarn-error.log*
 
 /public/warranty-ocr
+
+/.cache/warranty-ocr

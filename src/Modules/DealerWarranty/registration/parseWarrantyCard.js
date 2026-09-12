@@ -6,7 +6,8 @@ const labels = [
   ['productInfo', 'product\\s*(?:info(?:rmation)?|specifications?|details)|specifications?'],
   ['vehicleNo', 'vehicle\\s*(?:no\\.?|number)|registration\\s*(?:no\\.?|number)'],
   ['vehicleModel', 'vehicle\\s*model|car\\s*make'],
-  ['model', '(?:alloy|tyre|wheel)\\s*model|model\\s*(?:no\\.?|number)?'],
+  ['modelNo', 'model\\s*(?:no\\.?|number)'],
+  ['model', '(?:alloy|tyre|wheel)\\s*model|model'],
   ['size', '(?:alloy\\s*)?size|diameter'], ['finish', 'finish'], ['pcd', 'pcd'], ['holes', 'holes'],
   ['purchaseDate', 'purchase\\s*date|date\\s*of\\s*(?:purchase|sale)|dop'],
   ['quantity', 'no\\.?\\s*of\\s*pcs\\.?|(?:product\\s*)?quantity|no\\.?\\s*of\\s*(?:alloys|tyres|tires)'],
@@ -17,6 +18,19 @@ const labels = [
 ]
 const labelPattern = new RegExp(`(?:^|\\n|\\s)(?<label>${labels.map(([, pattern]) => `(?:${pattern.replaceAll('\\s', '[ \\t]')})`).join('|')})[ \\t]*[:：#-]?[ \\t]*`, 'gi')
 const clean = value => value.replace(/\s+/g, ' ').replace(/^[\s:;|]+|[\s:;|]+$/g, '').trim()
+// Full labels and inline "Label: value" lines are both returned by PaddleOCR.
+export function identifyWarrantyLabel(text) {
+  const source = clean(String(text || ''))
+  for (const [key, pattern] of labels) {
+    const match = source.match(new RegExp(`^(${pattern})(?=$|[\\s:：#.-])[ \\t]*[:：#.-]?[ \\t]*(.*)$`, 'i'))
+    if (match && key !== 'ignore') {
+      const value = clean(match[2])
+      if (key === 'mobileNumber' && value && !/^[+\d\s-]+$/.test(value)) return null
+      return { key, label: match[1], value }
+    }
+  }
+  return null
+}
 export function parseWarrantyCard(text) {
   const source = String(text || '').replace(/\r/g, '').slice(0, 40000)
   const matches = [...source.matchAll(labelPattern)]
@@ -31,12 +45,13 @@ export function parseWarrantyCard(text) {
   const fields = {}
   if (raw.warrantyCardNo) fields.warrantyCardNo = raw.warrantyCardNo.replace(/\s*([/-])\s*/g, '$1').slice(0, 100)
   if (raw.customerName) fields.customerName = raw.customerName.replace(/(?:\+?91[\s-]*)?[6-9](?:[\s-]*\d){9}(?!\d)/, '').trim().slice(0, 150)
-  const phone = (raw.mobileNumber || source).match(/(?:\+?91[\s-]*)?([6-9](?:[\s-]*\d){9})(?!\d)/)
+  const phoneSource = /^[+\d\s-]+$/.test(raw.mobileNumber || '') ? raw.mobileNumber : raw.customerName || ''
+  const phone = phoneSource.match(/(?:\+?91[\s-]*)?([6-9](?:[\s-]*\d){9})(?!\d)/)
   if (phone) fields.mobileNumber = phone[1].replace(/\D/g, '')
   const type = raw.productType || raw.productInfo || source
   if (/alloy|wheel/i.test(type)) fields.productType = 'Alloy'
   else if (/tyre|tire/i.test(type)) fields.productType = 'Tyre'
-  const info = [raw.productInfo, ...['model', 'size', 'finish', 'pcd', 'holes'].filter(key => raw[key]).map(key => `${key.toUpperCase()}: ${raw[key]}`)].filter(Boolean).join(' · ')
+  const info = [raw.productInfo, ...['model', 'modelNo', 'size', 'finish', 'pcd', 'holes'].filter(key => raw[key]).map(key => `${key === 'modelNo' ? 'MODEL NO' : key.toUpperCase()}: ${raw[key]}`)].filter(Boolean).join(' · ')
   if (info) fields.productInfo = info.slice(0, 2000)
   if (raw.vehicleNo) fields.vehicleNo = raw.vehicleNo.slice(0, 50)
   if (raw.vehicleModel) fields.vehicleModel = raw.vehicleModel.slice(0, 100)

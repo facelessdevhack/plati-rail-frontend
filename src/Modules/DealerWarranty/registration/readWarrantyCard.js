@@ -4,90 +4,83 @@ const base = `${process.env.PUBLIC_URL || ''}/warranty-ocr`
 const abortError = () => new DOMException('Card scan cancelled.', 'AbortError')
 export async function readWarrantyCard(file, { onProgress = () => {}, signal } = {}) {
   if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type) || file.size > 10 * 1024 * 1024) throw new Error('Choose a JPG, PNG or PDF warranty card up to 10 MB.')
-  let worker, loadingTask, pdf, timer, stopped = false, rejectAbort
-  let uncertainImage = false
-  const stop = () => { stopped = true; worker?.terminate().catch(() => {}); loadingTask?.destroy().catch(() => {}) }
-  const check = () => { if (signal?.aborted || stopped) { stop(); throw abortError() } }
-  const onAbort = () => { stop(); rejectAbort?.(abortError()) }
+  let worker, loadingTask, pdf, renderTask, timer, failure, rejectPending, rejectAbort
+  const stop = error => {
+    failure = error; worker?.terminate(); rejectPending?.(error)
+    renderTask?.cancel(); loadingTask?.destroy().catch(() => {})
+  }
+  const check = () => { if (failure) throw failure; if (signal?.aborted) throw abortError() }
+  const onAbort = () => { const error = abortError(); stop(error); rejectAbort?.(error) }
   const aborted = new Promise((_, reject) => { rejectAbort = reject })
   signal?.addEventListener('abort', onAbort, { once: true })
-  const recognize = async canvas => {
+  const recognize = canvas => {
     check()
-    if (!worker) {
-      const { createWorker } = await import('tesseract.js')
-      check()
-      worker = await createWorker('eng', 1, { workerPath: `${base}/worker.min.js`, corePath: `${base}/core`, langPath: `${base}/lang`,
-        logger: event => onProgress(event.status === 'recognizing text' ? `Reading card… ${Math.round((event.progress || 0) * 100)}%` : 'Preparing card reader…') })
-      check()
-    }
-    let best = { text: '', confidence: 0 }
-    for (const degrees of [0, 270, 90, 180]) {
-      check()
-      const { data } = await worker.recognize(canvas, { rotateRadians: degrees * Math.PI / 180 })
-      if (data.confidence > best.confidence) best = data
-      const fields = parseWarrantyCard(data.text)
-      if (data.confidence >= 75 && (fields.customerName || fields.mobileNumber || fields.warrantyCardNo)) break
-    }
-    if (best.confidence < 65) {
-      uncertainImage = true
-      // Recognizing the printed card type is useful; low-quality handwriting
-      // must not become invented customer identifiers or product details.
-      const type = parseWarrantyCard(best.text).productType
-      return type ? `Product Type: ${type}` : ''
-    }
-    return best.text || ''
+    if (!window.Worker || !window.OffscreenCanvas) throw new Error('This browser cannot run the card reader. Use a recent browser or enter the details manually.')
+    if (!worker) worker = new Worker(`${base}/paddle-v6-r1/card.worker.mjs`, { type: 'module' })
+    return new Promise((resolve, reject) => {
+      rejectPending = reject
+      worker.onmessage = ({ data }) => {
+        if (failure) return
+        if (data.type === 'progress') onProgress(data.message)
+        if (data.type === 'result') { rejectPending = null; resolve(data.result) }
+        if (data.type === 'error') { rejectPending = null; reject(new Error(data.message)) }
+      }
+      worker.onerror = () => reject(new Error('The card reader could not start. Check your connection or enter the details manually.'))
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.buffer
+      worker.postMessage({ width: canvas.width, height: canvas.height, pixels }, [pixels])
+    })
   }
   const scan = async () => {
-    let text = ''
+    check()
+    const results = []
     if (file.type === 'application/pdf') {
-      // Self-hosted, lazily loaded PDF engine; documents stay in this browser.
       const pdfjs = await import(/* webpackIgnore: true */ `${base}/pdf.mjs`)
-      check()
-      pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`
+      check(); pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`
       loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false,
         standardFontDataUrl: `${base}/standard_fonts/`, cMapUrl: `${base}/cmaps/`, cMapPacked: true, wasmUrl: `${base}/wasm/` })
       pdf = await loadingTask.promise
       if (pdf.numPages > 3) throw new Error('Upload a warranty card with at most 3 pages, or enter the details manually.')
       for (let number = 1; number <= pdf.numPages; number++) {
-        check()
-        onProgress(`Reading page ${number} of ${pdf.numPages}…`)
+        check(); onProgress(`Reading page ${number} of ${pdf.numPages}…`)
         const page = await pdf.getPage(number)
         const content = await page.getTextContent()
-        const extracted = content.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('')
-        const extractedFields = parseWarrantyCard(extracted)
-        if ((extractedFields.warrantyCardNo || extractedFields.mobileNumber) && Object.keys(extractedFields).length >= 2) text += extracted + '\n'
+        const text = content.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('')
+        const fields = parseWarrantyCard(text)
+        // Complete text PDFs need no model; partially printed forms must still read handwriting.
+        if (fields.warrantyCardNo && fields.customerName && fields.mobileNumber && fields.productInfo) results.push({ fields, text, warnings: [] })
         else {
           const original = page.getViewport({ scale: 1 })
-          const viewport = page.getViewport({ scale: Math.min(2.5, 2400 / Math.max(original.width, original.height)) })
+          const viewport = page.getViewport({ scale: Math.min(2.5, 1600 / Math.max(original.width, original.height)) })
           const canvas = document.createElement('canvas')
           canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height)
-          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
-          text += await recognize(canvas) + '\n'
-          canvas.width = 0; canvas.height = 0
+          try {
+            renderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport }); await renderTask.promise
+            results.push(await recognize(canvas))
+          } finally { renderTask = null; canvas.width = 0; canvas.height = 0 }
         }
         page.cleanup()
       }
     } else {
       const bitmap = await createImageBitmap(file)
+      const canvas = document.createElement('canvas')
       try {
-        check()
-        const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height))
-        const canvas = document.createElement('canvas')
+        check(); const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
         canvas.width = Math.ceil(bitmap.width * scale); canvas.height = Math.ceil(bitmap.height * scale)
-        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-        text = await recognize(canvas)
-        canvas.width = 0; canvas.height = 0
-      } finally { bitmap.close() }
+        const context = canvas.getContext('2d'); context.fillStyle = 'white'; context.fillRect(0, 0, canvas.width, canvas.height)
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+        results.push(await recognize(canvas))
+      } finally { bitmap.close(); canvas.width = 0; canvas.height = 0 }
     }
     check()
-    return { fields: parseWarrantyCard(text), text, warnings: uncertainImage ? ['The printed-text reader could not read the handwriting reliably. Use the handwriting reader or enter the remaining fields manually.'] : [] }
+    return { fields: Object.assign({}, ...results.map(result => result.fields).reverse()), text: results.map(result => result.text).join('\n'),
+      warnings: [...new Set(results.flatMap(result => result.warnings || []))] }
   }
   try {
-    return await Promise.race([scan(), aborted, new Promise((_, reject) => { timer = setTimeout(() => { stop(); reject(new Error('Card reading took too long. Try a clearer image or enter the details manually.')) }, 90000) })])
+    return await Promise.race([scan(), aborted, new Promise((_, reject) => { timer = setTimeout(() => {
+      const error = new Error('Card reading took too long. Try a clearer image or enter the details manually.'); stop(error); reject(error)
+    }, 180000) })])
   } finally {
-    clearTimeout(timer)
-    signal?.removeEventListener('abort', onAbort)
-    await worker?.terminate().catch(() => {})
+    clearTimeout(timer); signal?.removeEventListener('abort', onAbort); worker?.terminate()
     await pdf?.destroy().catch(() => {})
   }
 }
