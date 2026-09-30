@@ -78,6 +78,7 @@ const initialState = {
     hasPreviousPage: false
   },
   allPMEntries: [],
+  paymentRequestId: null,
   pmEntryCount: 0,
   paymentEntriesPagination: {
     currentPage: 1,
@@ -432,13 +433,16 @@ export const entrySlice = createSlice({
         state.error = payload
         state.allMiddleDealers = []
       })
-      .addCase(getPaymentEntries.pending, state => {
+      .addCase(getPaymentEntries.pending, (state, action) => {
+        state.paymentRequestId = action.meta.requestId
         state.loading = true
         state.spinLoader = true
         state.status = 'pending'
         state.allPMEntries = []
       })
-      .addCase(getPaymentEntries.fulfilled, (state, { payload }) => {
+      .addCase(getPaymentEntries.fulfilled, (state, { payload, meta }) => {
+        if (meta.requestId !== state.paymentRequestId) return
+        state.paymentRequestId = null
         state.loading = false
         state.spinLoader = false
         state.status = 'fulfilled'
@@ -453,7 +457,9 @@ export const entrySlice = createSlice({
         }
         state.error = null
       })
-      .addCase(getPaymentEntries.rejected, (state, { payload }) => {
+      .addCase(getPaymentEntries.rejected, (state, { payload, meta }) => {
+        if (meta.requestId !== state.paymentRequestId) return
+        state.paymentRequestId = null
         state.loading = false
         state.spinLoader = false
         state.status = 'rejected'

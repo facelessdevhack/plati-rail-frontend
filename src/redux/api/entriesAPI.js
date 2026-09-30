@@ -326,6 +326,7 @@ export const getPaymentEntries = createAsyncThunk(
   async (
     {
       dealerId,
+      paymentId,
       page = 1,
       limit = 10,
       startDate,
@@ -344,6 +345,7 @@ export const getPaymentEntries = createAsyncThunk(
         sortField,
         sortOrder
       }
+      if (paymentId) params.paymentId = paymentId
       if (startDate && endDate) {
         params.startDate = startDate
         params.endDate = endDate
@@ -516,12 +518,19 @@ export const getAllDealersOrders = createAsyncThunk(
   }
 )
 
-export const deletePaymentEntryAPI = async ({ paymentId, reason }) => {
+export const getPaymentDeletionPreviewAPI = async paymentId => {
+  const response = await client.get(`entries/payments/${paymentId}/deletion-preview`)
+  return response.data
+}
+
+export const deletePaymentEntryAPI = async ({ paymentId, reason, releaseDependentAllocations = false, deletionPreviewToken }) => {
   try {
     const response = await client.delete(`entries/remove-payment-entry`, {
       data: {
         paymentId,
-        reason
+        reason,
+        releaseDependentAllocations,
+        deletionPreviewToken
       }
     })
     console.log(response, 'DELETE PAYMENT ENTRY RESPONSE')

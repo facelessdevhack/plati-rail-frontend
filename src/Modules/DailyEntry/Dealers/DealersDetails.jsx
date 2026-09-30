@@ -49,6 +49,7 @@ import {
   getPaymentEntries,
   checkMultipleEntriesAPI,
   deletePaymentEntryAPI,
+  getPaymentDeletionPreviewAPI,
   updatePaymentEntryAPI,
   getAllDealersOrders
 } from '../../../redux/api/entriesAPI'
@@ -107,7 +108,10 @@ const AdminDealerDetails = () => {
   const { user } = useSelector(state => state.userDetails)
 
   const navigate = useNavigate()
-  const { state } = useLocation()
+  const location = useLocation()
+  const { state } = location
+  const focusedPaymentId = new URLSearchParams(location.search).get('paymentId')
+  const selectedDates = startDate && endDate ? [moment(startDate), moment(endDate)] : null
   const { id } = useParams()
   const dispatch = useDispatch()
   const {
@@ -181,14 +185,24 @@ const AdminDealerDetails = () => {
   }, [searchQuery])
 
   useEffect(() => {
+    if (!focusedPaymentId) return
+    setActiveTab(2)
+    setSearchQuery(focusedPaymentId)
+    setCurrentPage(1)
+    setStartDate(null)
+    setEndDate(null)
+  }, [focusedPaymentId, id])
+
+  useEffect(() => {
     dispatch(
       getPaymentEntries({
         dealerId: id,
-        page: currentPage,
+        paymentId: focusedPaymentId,
+        page: focusedPaymentId ? 1 : currentPage,
         limit: pageSize,
-        startDate,
-        endDate,
-        search: debouncedPaymentSearch,
+        startDate: focusedPaymentId ? null : startDate,
+        endDate: focusedPaymentId ? null : endDate,
+        search: focusedPaymentId ? '' : debouncedPaymentSearch,
         sortField,
         sortOrder
       })
@@ -200,6 +214,7 @@ const AdminDealerDetails = () => {
     startDate,
     endDate,
     debouncedPaymentSearch,
+    focusedPaymentId,
     sortField,
     sortOrder,
     checkedEntry,
@@ -207,6 +222,9 @@ const AdminDealerDetails = () => {
   ])
 
   const handleSearchChange = event => {
+    if (focusedPaymentId) {
+      navigate(location.pathname, { replace: true, state })
+    }
     setSearchQuery(event.target.value)
     setCurrentPage(1)
   }
@@ -307,6 +325,41 @@ const AdminDealerDetails = () => {
       console.log(e, 'CHECK ENTRY ERROR')
     }
   }
+
+  const showDependentPayments = error => {
+    const { message: errorMessage, dependentPayments } = error?.response?.data || {}
+    if (error?.response?.status !== 409 || !dependentPayments?.length) return false
+
+    let warningModal
+    warningModal = Modal.warning({
+      title: 'Review dependent payments',
+      width: 600,
+      content: (
+        <div>
+          <p>{errorMessage}</p>
+          <p>Reversing one of these payments may also reopen other entries it settled. Review each payment before deleting it.</p>
+          {dependentPayments.map(payment => (
+            <p key={payment.paymentId}>
+              Payment #{payment.paymentId} · {payment.dealerName || `Dealer #${payment.dealerId}`} · {moment(payment.paymentDate).format('DD/MM/YYYY')}<br />
+              {formatINR(payment.allocatedAmount)} applied from {formatINR(payment.paymentAmount)}
+              {payment.status === 'posted' ? (
+                <AntButton type='link' onClick={() => {
+                  warningModal.destroy()
+                  setShowEditModal(false)
+                  setEditingEntry(null)
+                  navigate(`/admin-dealers/${payment.dealerId}?paymentId=${payment.paymentId}`, {
+                    state: { name: payment.dealerName }
+                  })
+                }}>Find payment</AntButton>
+              ) : ' · Ledger review required'}
+            </p>
+          ))}
+        </div>
+      )
+    })
+    return true
+  }
+
   // Middleman adjustments belong to the middleman's ledger, while their source
   // payment belongs to the original dealer. Both are reversed through the
   // source payment so the two dealer balances stay consistent.
@@ -325,40 +378,63 @@ const AdminDealerDetails = () => {
       return
     }
 
-    const entryDescription = record.description || record.productName || '-'
-    const entryAmount = record.amount ?? record.price
-    const entryDate = record.paymentDate || record.date
+    let preview
+    try {
+      setLoader(true)
+      preview = await getPaymentDeletionPreviewAPI(paymentId)
+    } catch (error) {
+      message.error(error?.response?.data?.message || 'Failed to preview payment deletion')
+      return
+    } finally {
+      setLoader(false)
+    }
+    let deletionReason = ''
 
-    Modal.confirm({
-      title: isMiddlemanAdjustment
-        ? 'Delete Linked Middleman Payment'
-        : 'Delete Payment Entry',
+    const deletionModal = Modal.confirm({
+      title: `Delete payment #${paymentId}`,
+      width: 620,
       content: (
         <div>
-          <p>
-            {isMiddlemanAdjustment
-              ? 'This will reverse the original dealer payment and this linked middleman adjustment together.'
-              : 'Are you sure you want to delete this payment entry?'}
-          </p>
-          <p><strong>Description:</strong> {entryDescription}</p>
-          <p><strong>Amount:</strong> {formatINR(entryAmount)}</p>
-          <p><strong>Date:</strong> {moment(entryDate).format('DD/MM/YYYY')}</p>
-          <p className="text-red-500 text-sm">
-            Note: This entry will be archived and can be restored if needed.
-          </p>
+          <p><strong>{preview.dealerName}</strong> · {formatINR(preview.amount)} · {moment(preview.paymentDate).format('DD/MM/YYYY')}</p>
+          <p>{preview.description || '-'}</p>
+          {preview.restoredAllocationCount > 0 && (
+            <p>This restores {formatINR(preview.restoredAmount)} as outstanding across {preview.restoredAllocationCount} entries.</p>
+          )}
+          {preview.adjustments.map(adjustment => (
+            <p key={adjustment.id}>Reverses the {formatINR(adjustment.amount)} adjustment for {adjustment.dealerName}.</p>
+          ))}
+          {preview.dependentPayments.map(payment => (
+            <p key={payment.paymentId}>
+              {formatINR(payment.releasedAmount)} becomes unallocated credit on {payment.dealerName} payment #{payment.paymentId}.
+              {' '}Its unallocated credit will be {formatINR(payment.unallocatedAfter)}.
+            </p>
+          ))}
+          <p>The payment is archived with its reversal history.</p>
+          <label htmlFor={`payment-deletion-reason-${paymentId}`}>Reason for deletion</label>
+          <Input.TextArea
+            id={`payment-deletion-reason-${paymentId}`}
+            maxLength={1000}
+            rows={2}
+            placeholder='Describe the correction'
+            onChange={event => { deletionReason = event.target.value }}
+          />
         </div>
       ),
       okText: 'Delete',
       okType: 'danger',
       cancelText: 'Cancel',
       onOk: async () => {
+        if (!deletionReason.trim()) {
+          message.error('Enter a reason for deletion')
+          throw new Error('Deletion reason is required')
+        }
         try {
           setLoader(true)
           const response = await deletePaymentEntryAPI({
             paymentId,
-            reason: isMiddlemanAdjustment
-              ? 'Deleted from linked middleman adjustment in dealer details'
-              : 'Deleted by admin from dealer details page'
+            reason: deletionReason.trim(),
+            releaseDependentAllocations: preview.requiresRelease,
+            deletionPreviewToken: preview.previewToken
           })
 
           if (response.data?.message) {
@@ -369,6 +445,11 @@ const AdminDealerDetails = () => {
             )
             // Refresh both tabs. Calling the thunk without dispatch left the
             // deleted payment visible until a manual page reload.
+            if (focusedPaymentId === String(paymentId)) {
+              navigate(location.pathname, { replace: true, state })
+              setSearchQuery('')
+              setDebouncedPaymentSearch('')
+            }
             setCheckedEntry(previous => !previous)
             await getDealerInfo()
           } else {
@@ -376,9 +457,13 @@ const AdminDealerDetails = () => {
           }
         } catch (error) {
           console.error('Error deleting payment entry:', error)
-          message.error(
-            error?.response?.data?.message || 'Failed to delete payment entry'
-          )
+          message.error(error?.response?.data?.message || 'Failed to delete payment entry')
+          if (error?.response?.data?.code === 'PAYMENT_DELETION_CHANGED') {
+            deletionModal.destroy()
+            await handleDeletePaymentEntry(record)
+            return
+          }
+          throw error
         } finally {
           setLoader(false)
         }
@@ -652,12 +737,14 @@ const AdminDealerDetails = () => {
         message.error('Unable to edit entry')
       }
     } catch (e) {
-      message.error(
-        e?.response?.data?.message ||
-        (Number(finalEditingEntry.sourceType) === 2
-          ? 'Unable to edit payment'
-          : 'Unable to edit entry')
-      )
+      if (!showDependentPayments(e)) {
+        message.error(
+          e?.response?.data?.message ||
+          (Number(finalEditingEntry.sourceType) === 2
+            ? 'Unable to edit payment'
+            : 'Unable to edit entry')
+        )
+      }
       setLoader(false)
     }
   }
@@ -784,6 +871,11 @@ const AdminDealerDetails = () => {
         {record.middlemanAmount != null && (
           <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
             Net adjustment {formatINR(record.middlemanAmount)}
+          </div>
+        )}
+        {Number(record.middlemanSettledAmount) > 0 && (
+          <div style={{ color: '#b45309', fontSize: 12 }}>
+            Settled {formatINR(record.middlemanSettledAmount)}
           </div>
         )}
       </div>
@@ -1033,7 +1125,7 @@ const AdminDealerDetails = () => {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
-      render: text => <div>{text}</div>
+      render: (text, record) => <div>#{record.id} · {text}</div>
     },
     {
       title: 'Amount',
@@ -1125,6 +1217,11 @@ const AdminDealerDetails = () => {
   ]
 
   const handleDateChange = dates => {
+    if (focusedPaymentId) {
+      navigate(location.pathname, { replace: true, state })
+      setSearchQuery('')
+      setDebouncedPaymentSearch('')
+    }
     setCurrentPage(1)
     if (dates) {
       setStartDate(dates[0].startOf('day').toISOString())
@@ -1227,6 +1324,7 @@ const AdminDealerDetails = () => {
                 />
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
+                  value={selectedDates}
                   format='DD MMM YYYY'
                   placeholder={['Start Date', 'End Date']}
                   className='plati-filter-daterange'
@@ -1434,6 +1532,7 @@ const AdminDealerDetails = () => {
                 />
                 <DatePicker.RangePicker
                   onChange={handleDateChange}
+                  value={selectedDates}
                   format='DD MMM YYYY'
                   placeholder={['Start Date', 'End Date']}
                   className='plati-filter-daterange'
@@ -1508,8 +1607,13 @@ const AdminDealerDetails = () => {
                               {moment(record.paymentDate).format('DD MMM YYYY')}<br />
                               <span style={{ color: '#9ca3af', fontSize: 12 }}>{moment(record.paymentDate).format('dddd')}</span>
                             </td>
-                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>{record.description || '-'}</td>
-                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: '#15803d' }}>{formatINR(record.amount)}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>#{record.id} · {record.description || '-'}</td>
+                            <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif", fontWeight: 500, color: '#15803d' }}>
+                              {formatINR(record.amount)}
+                              {Number(record.unallocatedAmount) > 0 && (
+                                <div style={{ fontSize: 12, color: '#6b7280' }}>Unallocated credit: {formatINR(record.unallocatedAmount)}</div>
+                              )}
+                            </td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>{getPaymentMethodLabel(record.paymentMethod)}</td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{record.transportationCharges || '-'}</td>
                             <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontFamily: "'Inter', sans-serif" }}>
@@ -1740,6 +1844,7 @@ const AdminDealerDetails = () => {
           <button
             key={tab.key}
             onClick={() => {
+              if (focusedPaymentId) navigate(location.pathname, { replace: true, state })
               setActiveTab(tab.tabKey)
               setCurrentPage(1)
               setSearchQuery('')
@@ -1816,6 +1921,7 @@ const AdminDealerDetails = () => {
           </div>
           <DatePicker.RangePicker
             onChange={handleDateChange}
+            value={selectedDates}
             style={{ width: '100%' }}
             size='large'
             placeholder={['Start Date', 'End Date']}
