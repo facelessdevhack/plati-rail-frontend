@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import Login from '../../Modules/Authentication/Login'
+import McpConnect from '../../Modules/Authentication/McpConnect'
 import InventoryDashboard from '../../Modules/Inventory/InventoryDashboard'
 import InventoryInForm from '../../Modules/Inventory/InventoryInForm'
 import AdminSalesDashboard from '../../Modules/Admin/AdminSalesDashboard'
@@ -168,6 +169,7 @@ const StackNavigation = () => {
       <Routes>
       {/* Public Routes */}
       <Route path='login' element={<Login />} />
+      <Route path='/mcp/connect' element={<McpConnect />} />
       <Route path='unauthorized' element={<UnauthorizedPage />} />
       <Route path='*' element={<MissingRoute />} />
 

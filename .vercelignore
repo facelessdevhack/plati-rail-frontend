@@ -1,0 +1,7 @@
+node_modules/
+.git/
+build/
+.cache/
+public/warranty-ocr/
+.env*
+*.log
