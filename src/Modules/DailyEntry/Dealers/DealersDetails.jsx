@@ -404,10 +404,16 @@ const AdminDealerDetails = () => {
             <p key={adjustment.id}>Reverses the {formatINR(adjustment.amount)} adjustment for {adjustment.dealerName}.</p>
           ))}
           {preview.dependentPayments.map(payment => (
-            <p key={payment.paymentId}>
-              {formatINR(payment.releasedAmount)} becomes unallocated credit on {payment.dealerName} payment #{payment.paymentId}.
-              {' '}Its unallocated credit will be {formatINR(payment.unallocatedAfter)}.
-            </p>
+            <div key={payment.paymentId}>
+              <p>{payment.dealerName} payment #{payment.paymentId}: {formatINR(payment.releasedAmount)} is released from the deleted adjustment.</p>
+              {payment.reallocatedAmount > 0 && (
+                <p>{formatINR(payment.reallocatedAmount)} will be reapplied to unpaid adjustments, oldest first.</p>
+              )}
+              {(payment.reallocations || []).map(allocation => (
+                <p key={allocation.targetId}>Adjustment #{allocation.targetId} · {allocation.label}: {formatINR(allocation.allocatedAmount)}</p>
+              ))}
+              <p>Remaining unallocated credit: {formatINR(payment.unallocatedAfter)}.</p>
+            </div>
           ))}
           <p>The payment is archived with its reversal history.</p>
           <label htmlFor={`payment-deletion-reason-${paymentId}`}>Reason for deletion</label>

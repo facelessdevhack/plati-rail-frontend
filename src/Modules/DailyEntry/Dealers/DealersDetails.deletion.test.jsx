@@ -23,7 +23,8 @@ const preview = {
   dealerName: 'Umer Enterprises', amount: 40000, paymentDate: '2026-09-11', description: 'CASH',
   previewToken: 'a'.repeat(64), requiresRelease: true, restoredAllocationCount: 2, restoredAmount: 40000,
   adjustments: [{ id: 3722, dealerName: 'Paymine', amount: 39760 }],
-  dependentPayments: [{ paymentId: 14266, dealerName: 'Paymine', releasedAmount: 39760, unallocatedAfter: 39760 }]
+  dependentPayments: [{ paymentId: 14266, dealerName: 'Paymine', releasedAmount: 39760, reallocatedAmount: 39760, unallocatedAfter: 0,
+    reallocations: [{ targetId: 3732, label: 'Another dealer', allocatedAmount: 39760 }] }]
 }
 
 let confirmations
@@ -61,7 +62,10 @@ async function openDeletion() {
 test('previews the selected settlement, requires a reason, and deletes only after confirmation', async () => {
   await openDeletion()
   expect(getPaymentDeletionPreviewAPI).toHaveBeenCalledWith(14167)
-  expect(screen.getByText(/unallocated credit on Paymine payment #14266/)).toBeTruthy()
+  expect(screen.getByText(/Paymine payment #14266/)).toBeTruthy()
+  expect(screen.getByText(/will be reapplied to unpaid adjustments, oldest first/)).toBeTruthy()
+  expect(screen.getByText(/Adjustment #3732 · Another dealer/)).toBeTruthy()
+  expect(screen.getByText(/Remaining unallocated credit: ₹0/)).toBeTruthy()
   await act(async () => { await expect(confirmations[0].onOk()).rejects.toThrow('Deletion reason is required') })
   expect(deletePaymentEntryAPI).not.toHaveBeenCalled()
   fireEvent.change(screen.getByLabelText('Reason for deletion'), { target: { value: 'Incorrect payment entry' } })
