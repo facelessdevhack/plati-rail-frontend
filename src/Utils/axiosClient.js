@@ -2,7 +2,9 @@ import axios from 'axios'
 import { startRequest, endRequest } from './globalLoading'
 import {
   handleSessionExpired,
-  isUnauthorizedForCurrentSession
+  isUnauthorizedForCurrentSession,
+  isSameAppSession,
+  isAppSessionToken
 } from './session'
 
 const commonHeader = {
@@ -42,6 +44,18 @@ client.defaults.withCredentials = false
 
 let interceptorsInstalled = false
 
+const responseSessionIsCurrent = res => {
+  const authorization = res.config?.headers?.Authorization || res.config?.headers?.get?.('Authorization')
+  const requestToken = authorization?.replace(/^Bearer /, '')
+  return !isAppSessionToken(requestToken) || isSameAppSession(requestToken, localStorage.getItem('token'))
+}
+
+const rejectStaleData = res => {
+  if (!responseSessionIsCurrent(res) && !['/auth/login', '/auth/passkeys/logout'].includes(res.config?.url)) {
+    throw Object.assign(new Error('This response belongs to a previous sign-in.'), { code: 'STALE_SESSION_RESPONSE' })
+  }
+}
+
 const setupAxiosInterceptors = () => {
   if (interceptorsInstalled) return
   interceptorsInstalled = true
@@ -50,7 +64,7 @@ const setupAxiosInterceptors = () => {
   client.interceptors.request.use(
     async config => {
       if (!config.silent) startRequest()
-      const token = localStorage.getItem('token')
+      const token = config.authToken || localStorage.getItem('token')
       // Merge Authorization header with existing headers
       config.headers = {
         ...commonHeader,
@@ -72,11 +86,10 @@ const setupAxiosInterceptors = () => {
   client.interceptors.response.use(
     res => {
       if (!res?.config?.silent) endRequest()
-      // Sliding session: the backend re-issues the JWT once it's an hour old
-      // and hands it back in this header. Swapping it in here means an
-      // actively-working user never hits the 24h hard expiry.
+      rejectStaleData(res)
+      // Renewed role claims retain the session's absolute passkey expiry.
       const renewed = res?.headers?.['x-renewed-token']
-      if (renewed) {
+      if (renewed && responseSessionIsCurrent(res)) {
         localStorage.setItem('token', renewed)
       }
       return res
@@ -119,6 +132,7 @@ warrantyClient.interceptors.request.use(
 warrantyClient.interceptors.response.use(
   res => {
     if (!res?.config?.silent) endRequest()
+    rejectStaleData(res)
     return res
   },
   error => {

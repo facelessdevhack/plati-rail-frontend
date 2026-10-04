@@ -8,13 +8,21 @@ const initialState = {
   status: 'idle',
   loggedIn: false,
   tryingAuth: false,
-  user: {}
+  user: {},
+  pendingAuth: null
 }
 
 export const userSlice = createSlice({
   name: 'userDetails',
   initialState,
   reducers: {
+    completePasskeyLogin: (state, action) => {
+      state.loggedIn = true
+      state.user = action.payload
+      state.pendingAuth = null
+      state.authError = false
+      state.error = null
+    },
     addDummyDataForUserDetails: (state, action) => {
       const dummyState = action.payload
       Object.keys(dummyState).forEach(key => (state[key] = dummyState[key]))
@@ -53,12 +61,12 @@ export const userSlice = createSlice({
     builder.addCase(userAuthenticate.fulfilled, (state, { payload }) => {
       state.loading = false
       state.status = 'fulfilled'
-      state.loggedIn = true
-      state.user = payload
+      state.loggedIn = false
+      state.user = {}
+      state.pendingAuth = payload
       state.error = null
       state.authError = false
       state.tryingAuth = false
-      console.log('AUTTTH: ', payload)
     })
     builder.addCase(userAuthenticate.rejected, (state, { payload }) => {
       state.loading = false
@@ -75,6 +83,7 @@ export const userSlice = createSlice({
 })
 
 export const {
+  completePasskeyLogin,
   updateUserData,
   resetToInitialUser,
   updateUserToken,

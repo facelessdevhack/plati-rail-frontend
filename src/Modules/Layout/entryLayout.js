@@ -12,6 +12,7 @@ import {
   MenuUnfoldOutlined
 } from '@ant-design/icons'
 import { entrySiderRoutes } from './Routes/entrySiderRoutes'
+import { signOut } from '../../Utils/passkeys'
 import { resetToInitialUser } from '../../redux/slices/user.slice'
 const { Header, Footer, Sider } = Layout
 
@@ -28,6 +29,7 @@ const EntryLayout = ({ content, title, items = entrySiderRoutes }) => {
 
   // User dropdown menu
   const userMenuItems = [
+    { key: 'passkeys', icon: <SettingOutlined />, label: 'Passkeys' },
     {
       key: 'profile',
       icon: <UserOutlined />,
@@ -49,17 +51,18 @@ const EntryLayout = ({ content, title, items = entrySiderRoutes }) => {
     }
   ]
 
-  const handleUserMenuClick = ({ key }) => {
+  const handleUserMenuClick = async ({ key }) => {
     switch (key) {
       case 'logout':
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('persist:root')
+        await signOut()
         dispatch(resetToInitialUser())
         navigate('/login')
         break
       case 'profile':
         navigate('/profile')
+        break
+      case 'passkeys':
+        navigate('/passkeys')
         break
       case 'settings':
         navigate('/settings')

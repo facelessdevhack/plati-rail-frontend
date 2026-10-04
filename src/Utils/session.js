@@ -43,9 +43,25 @@ export const isTokenExpired = () => {
   const token = localStorage.getItem('token')
   if (!token) return true
   const payload = decodeTokenPayload(token)
-  if (!payload || !payload.exp) return true
-  return payload.exp * 1000 <= Date.now()
+  if (!payload || !payload.exp || payload.kind !== 'erp-session' || !payload.amr?.includes('webauthn') || !payload.sessionExpiresAt) return true
+  return Math.min(payload.exp, payload.sessionExpiresAt) * 1000 <= Date.now()
 }
+
+export const getSessionExpiryTime = () => {
+  const payload = decodeTokenPayload(localStorage.getItem('token') || '')
+  return payload ? Math.min(payload.exp || 0, payload.sessionExpiresAt || 0) * 1000 : 0
+}
+
+export const isAppSessionToken = token => decodeTokenPayload(token || '')?.kind === 'erp-session'
+
+export const isSameAppSession = (first, second) => {
+  const a = decodeTokenPayload(first || '')
+  const b = decodeTokenPayload(second || '')
+  return a?.kind === 'erp-session' && b?.kind === 'erp-session' && !!a.sid &&
+    a.sid === b.sid && String(a.id) === String(b.id)
+}
+
+export const sessionMatchesUser = user => isSameAppSession(localStorage.getItem('token'), user?.token)
 
 const getAuthorizationHeader = headers => {
   if (!headers) return null
@@ -82,7 +98,8 @@ const isExplicitSessionFailure = response => {
 }
 
 export const isUnauthorizedForCurrentSession = error => {
-  if (error?.response?.status !== 401) return false
+  const passkeyRequired = error?.response?.status === 403 && error?.response?.data?.code === 'PASSKEY_REQUIRED'
+  if (error?.response?.status !== 401 && !passkeyRequired) return false
 
   // Login and other anonymous requests must not be treated as an expired
   // authenticated session merely because their response is 401.
@@ -100,7 +117,7 @@ export const isUnauthorizedForCurrentSession = error => {
   // Those responses must not erase a healthy login. Only expire the session
   // when the local JWT is actually dead or the server explicitly reports an
   // authentication failure.
-  return isTokenExpired() || isExplicitSessionFailure(error.response)
+  return passkeyRequired || isTokenExpired() || isExplicitSessionFailure(error.response)
 }
 
 // End the session gracefully: clear only auth state (not the whole

@@ -104,6 +104,7 @@ import DispatchToSales from '../../Modules/Production/DispatchToSales';
 import UserProductionSteps from '../../Modules/Admin/UserProductionSteps';
 import AccessControl from '../../Modules/Admin/AccessControl';
 import ForcePasswordChange from '../../Modules/Authentication/ForcePasswordChange';
+import PasskeySettings from '../../Modules/Authentication/PasskeySettings';
 import EquipmentManagement from '../../Modules/Production/EquipmentManagement';
 import StepPositionMapping from '../../Modules/Production/StepPositionMapping';
 import { InventoryLocationsPage, InventoryLocationDetailsPage, InventoryMovementsPage } from '../../Modules/InventorySystem';
@@ -174,6 +175,7 @@ const StackNavigation = () => {
       <Route path='*' element={<MissingRoute />} />
 
       {/* Private Routes */}
+      <Route path='/passkeys' element={<PrivateRoute><TopNavLayout content={<PasskeySettings />} /></PrivateRoute>} />
       <Route
         path='/admin-daily-entry-dealers'
         element={

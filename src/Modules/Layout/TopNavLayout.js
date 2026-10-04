@@ -38,6 +38,7 @@ import {
 } from '@ant-design/icons'
 import { getActiveNav, getSectionsForRole } from './Routes/topNavRoutes'
 import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
+import { signOut } from '../../Utils/passkeys'
 import { resetToInitialUser } from '../../redux/slices/user.slice'
 
 const ICON_MAP = {
@@ -97,25 +98,27 @@ const TopNavLayout = ({ content }) => {
   }, [visibleSections, activeNav.section])
 
   const userMenuItems = accessOnly
-    ? [{ key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }]
+    ? [{ key: 'passkeys', icon: <SettingOutlined />, label: 'Passkeys' }, { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }]
     : [
         { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
+        { key: 'passkeys', icon: <SettingOutlined />, label: 'Passkeys' },
         { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
         { type: 'divider' },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true }
       ]
 
-  const handleUserMenuClick = ({ key }) => {
+  const handleUserMenuClick = async ({ key }) => {
     switch (key) {
       case 'logout':
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('persist:root')
+        await signOut()
         dispatch(resetToInitialUser())
         navigate('/login')
         break
       case 'profile':
         navigate('/profile')
+        break
+      case 'passkeys':
+        navigate('/passkeys')
         break
       case 'settings':
         navigate('/settings')

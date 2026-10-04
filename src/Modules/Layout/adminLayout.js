@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons'
 import { adminSiderRoutes } from './Routes/adminSiderRoutes'
 import ProductionNotificationSystem from '../../Components/ProductionNotificationSystem'
+import { signOut } from '../../Utils/passkeys'
 import { resetToInitialUser } from '../../redux/slices/user.slice'
 const { Header, Footer, Sider } = Layout
 
@@ -30,6 +31,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
 
   // User dropdown menu
   const userMenuItems = [
+    { key: 'passkeys', icon: <SettingOutlined />, label: 'Passkeys' },
     {
       key: 'profile',
       icon: <UserOutlined />,
@@ -51,13 +53,11 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
     }
   ]
 
-  const handleUserMenuClick = ({ key }) => {
+  const handleUserMenuClick = async ({ key }) => {
     switch (key) {
       case 'logout':
         // Clear local storage
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('persist:root')
+        await signOut()
 
         // Reset Redux state
         dispatch(resetToInitialUser())
@@ -68,6 +68,9 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
       case 'profile':
         // Handle profile
         navigate('/profile')
+        break
+      case 'passkeys':
+        navigate('/passkeys')
         break
       case 'settings':
         // Handle settings

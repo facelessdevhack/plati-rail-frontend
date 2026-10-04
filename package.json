@@ -5,6 +5,7 @@
     "@ant-design/plots": "^2.4.0",
     "@paddleocr/paddleocr-js": "0.4.2",
     "@reduxjs/toolkit": "^2.2.2",
+    "@simplewebauthn/browser": "13.3.0",
     "@techstark/opencv-js": "4.10.0-release.1",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -42,6 +43,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
+    "test:passkeys": "react-scripts test --watchAll=false --runInBand src/Utils/session.test.js src/Utils/axiosClient.session.test.js src/Modules/Authentication/PasskeySignIn.test.js src/Modules/Authentication/McpConnect.test.js",
     "dev": "react-scripts start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "prebuild": "node scripts/prepare-warranty-ocr.cjs",

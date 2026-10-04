@@ -7,11 +7,12 @@ import { CustomInputWithController } from "../../Core/Components/CustomInput";
 import { userAuthenticate } from "../../redux/api/userAPI";
 import { updateUserData } from "../../redux/slices/user.slice";
 import GlobalLoader from "../../Core/Components/GlobalLoader";
+import PasskeySignIn from './PasskeySignIn';
 
 const Login = () => {
   const location = useLocation();
   const dispatch = useDispatch();
-  const { loggedIn, tryingAuth, user, error, authError } = useSelector(
+  const { tryingAuth, pendingAuth, error, authError } = useSelector(
     (state) => state.userDetails
   );
   // Set by the session-expiry redirect (Utils/session.js); any ?returnTo=
@@ -87,6 +88,7 @@ const Login = () => {
           <p className="login-welcome-subtitle">Sign in to continue.</p>
         </div>
 
+        {pendingAuth ? <PasskeySignIn key={pendingAuth.preAuthToken} pendingAuth={pendingAuth} /> : <>
         {/* Login Form */}
         <form
           onSubmit={handleSubmit((e) => onSubmit(e))}
@@ -186,6 +188,7 @@ const Login = () => {
             &copy; {new Date().getFullYear()} Plati India Pvt. Ltd. All rights reserved.
           </p>
         </form>
+        </>}
       </div>
 
       <style>{`
