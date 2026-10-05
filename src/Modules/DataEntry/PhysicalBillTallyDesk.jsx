@@ -15,6 +15,7 @@ import {
   WarningOutlined
 } from '@ant-design/icons'
 import moment from 'moment'
+import { useSelector } from 'react-redux'
 
 import PageTitle from '../../Core/Components/PageTitle'
 import DataTablePagination from '../../Core/Components/DataTablePagination'
@@ -65,6 +66,9 @@ const getBillTallyAmount = row => {
 }
 
 const PhysicalBillTallyDesk = () => {
+  const { user } = useSelector(state => state.userDetails)
+  const canViewCosting = [3, 4, 999].includes(Number(user?.roleId)) || user?.permissions?.includes('costing.view')
+  const canManageCosting = [3, 4, 999].includes(Number(user?.roleId)) || user?.permissions?.includes('costing.manage')
   const [loading, setLoading] = useState(false)
   const [entries, setEntries] = useState([])
   const [summary, setSummary] = useState({
@@ -717,7 +721,7 @@ const PhysicalBillTallyDesk = () => {
 
       {/* ─── Main Section Navigation Tabs ─── */}
       <div style={{ display: 'flex', gap: 8, borderBottom: `2px solid ${BORDER}`, marginBottom: 20, overflowX: 'auto' }}>
-        {MAIN_TABS.map(tab => (
+        {MAIN_TABS.filter(tab => !COST_LEDGER_TABS[tab.id] || canViewCosting).map(tab => (
           <button
             key={tab.id}
             onClick={() => {
@@ -1114,7 +1118,7 @@ const PhysicalBillTallyDesk = () => {
                         </Tooltip>
 
                         {/* Raw / Finished Finish Costing Calculator Button */}
-                        {((Number(row.sourceType) === 1 || Number(row.sourceType) === 5) && isRawFinishProduct(row.description)) && (
+                        {(canManageCosting && (Number(row.sourceType) === 1 || Number(row.sourceType) === 5) && isRawFinishProduct(row.description)) && (
                           <Tooltip title="Calculate & Stamp Raw Finish Wheel Costing 🧮">
                             <button
                               onClick={() => openRawFinishCostingModal(row)}
@@ -1128,7 +1132,7 @@ const PhysicalBillTallyDesk = () => {
                             </button>
                           </Tooltip>
                         )}
-                        {(Number(row.sourceType) === 1 || Number(row.sourceType) === 5) && isFinishedFinishProduct(row.description) && (
+                        {canManageCosting && (Number(row.sourceType) === 1 || Number(row.sourceType) === 5) && isFinishedFinishProduct(row.description) && (
                           <Tooltip title="Calculate & Stamp Finished Finish Wheel Costing 🧮">
                             <button
                               onClick={() => openRawFinishCostingModal(row)}

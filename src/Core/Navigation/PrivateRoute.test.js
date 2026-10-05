@@ -25,3 +25,22 @@ test.each([
   )
   expect(screen.getByText(expected)).toBeTruthy()
 })
+
+test.each([
+  [{ roleId: 5, permissions: ['inventory.manage'] }, 'Access denied'],
+  [{ roleId: 5, permissions: ['costing.view'] }, 'Costing'],
+  [{ roleId: 999, permissions: [] }, 'Costing']
+])('costing direct links enforce the named permission for %j', (user, expected) => {
+  useSelector.mockReturnValue({ loggedIn: true, user })
+  render(
+    <MemoryRouter initialEntries={['/costing/step-1-opening-stock']}>
+      <Routes>
+        <Route path='/costing/step-1-opening-stock' element={
+          <PrivateRoute allowedPermissions={['costing.view']}><div>Costing</div></PrivateRoute>
+        } />
+        <Route path='/unauthorized' element={<div>Access denied</div>} />
+      </Routes>
+    </MemoryRouter>
+  )
+  expect(screen.getByText(expected)).toBeTruthy()
+})

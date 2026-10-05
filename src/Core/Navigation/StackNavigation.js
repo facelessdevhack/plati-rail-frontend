@@ -813,7 +813,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/step-1-opening-stock'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<Step1OpeningStockPage />} />
           </PrivateRoute>
         }
@@ -821,7 +821,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/step-3-production-costing'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<ProductionRawCostingPage />} />
           </PrivateRoute>
         }
@@ -829,7 +829,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/step-4-july-sales-lineage'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<JulySalesLineagePage />} />
           </PrivateRoute>
         }
@@ -837,7 +837,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/sources/:sourceTab'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<CostingSourcePricingPage />} />
           </PrivateRoute>
         }
@@ -845,7 +845,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/product-movement-pricing'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<ProductMovementPricingPage />} />
           </PrivateRoute>
         }
@@ -853,7 +853,7 @@ const StackNavigation = () => {
       <Route
         path='/costing/tally-backup'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<TallyBackupExplorerPage />} />
           </PrivateRoute>
         }
@@ -861,7 +861,7 @@ const StackNavigation = () => {
       <Route
         path='/cost-categories'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<CostCategoriesPage />} />
           </PrivateRoute>
         }
@@ -869,7 +869,7 @@ const StackNavigation = () => {
       <Route
         path='/monthly-overheads'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<MonthlyOverheadsPage />} />
           </PrivateRoute>
         }
@@ -877,7 +877,7 @@ const StackNavigation = () => {
       <Route
         path='/profit-dashboard'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <Navigate to='/pnl-dashboard' replace />
           </PrivateRoute>
         }
@@ -885,7 +885,7 @@ const StackNavigation = () => {
       <Route
         path='/pnl-dashboard'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             {/* One authoritative FIFO-based P&L view for both finance and CEO routes. */}
             <TopNavLayout content={<CEODashboard />} />
           </PrivateRoute>
@@ -894,7 +894,7 @@ const StackNavigation = () => {
       <Route
         path='/ceo-dashboard'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <Navigate to='/pnl-dashboard' replace />
           </PrivateRoute>
         }
@@ -914,7 +914,7 @@ const StackNavigation = () => {
       <Route
         path='/temp-costing'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['costing.view']}>
             <TopNavLayout content={<TempCostingView />} />
           </PrivateRoute>
         }

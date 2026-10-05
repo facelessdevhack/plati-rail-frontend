@@ -67,15 +67,15 @@ const financePaths = [
   '/temp-costing'
 ]
 
-const getFinancePaths = roleId =>
-  getSectionsForRole(roleId)
+const getFinancePaths = (roleId, permissions = []) =>
+  getSectionsForRole(roleId, permissions)
     .flatMap(section => section.subNav)
     .map(item => item.path)
     .filter(path => financePaths.includes(path))
 
 describe('Finance access', () => {
   test.each([5, 999])('shows the single P&L dashboard and Finance tools to admin role %s', roleId => {
-    expect(getFinancePaths(roleId)).toEqual(financePaths)
+    expect(getFinancePaths(roleId, ['costing.view'])).toEqual(financePaths)
   })
 
   test.each([1, 2, 3, 4, 6, 7, 8, 9, 10])(
@@ -101,14 +101,14 @@ const costingProcessPaths = [
   '/costing/tally-backup'
 ]
 
-const getCostingProcessPaths = roleId =>
-  getSectionsForRole(roleId)
+const getCostingProcessPaths = (roleId, permissions = []) =>
+  getSectionsForRole(roleId, permissions)
     .find(section => section.key === 'costing-process')
     ?.subNav.map(item => item.path) || []
 
 describe('Costing Process access', () => {
   test.each([5, 999])('shows the costing workflow to admin role %s', roleId => {
-    expect(getCostingProcessPaths(roleId)).toEqual(costingProcessPaths)
+    expect(getCostingProcessPaths(roleId, ['costing.view'])).toEqual(costingProcessPaths)
   })
 
   test.each([1, 2, 3, 4, 6, 7, 8, 9, 10])(
@@ -117,4 +117,11 @@ describe('Costing Process access', () => {
       expect(getCostingProcessPaths(roleId)).toEqual([])
     }
   )
+})
+
+test('an Admin without costing grants keeps operational pages but loses all costing navigation', () => {
+  expect(getFinancePaths(5)).toEqual([])
+  expect(getCostingProcessPaths(5)).toEqual([])
+  const keys = getSectionsForRole(5).map(section => section.key)
+  expect(keys).toEqual(expect.arrayContaining(['production', 'sales', 'inventory', 'purchase']))
 })

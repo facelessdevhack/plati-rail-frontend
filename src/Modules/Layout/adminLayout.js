@@ -24,6 +24,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { user } = useSelector(state => state.userDetails)
+  const canViewCosting = Number(user?.roleId) === 999 || user?.permissions?.includes('costing.view')
   const canViewSalesOverview = Number(user?.roleId) === 999 || user?.permissions?.includes('sales.overview.view')
   const {
     token: { colorBgContainer }
@@ -285,7 +286,10 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
             selectedKeys={getActiveMenuKey}
             defaultOpenKeys={getOpenKeys}
             mode='inline'
-            items={items.filter(item => item.label?.props?.to !== '/admin-dashboard' || canViewSalesOverview)}
+            items={items.filter(item =>
+              (item.label?.props?.to !== '/admin-dashboard' || canViewSalesOverview) &&
+              (!['costing-process-menu', 'cost-management-menu'].includes(item.key) && item.label?.props?.to !== '/temp-costing' || canViewCosting)
+            )}
             className='border-none bg-transparent'
             style={{
               background: 'transparent',

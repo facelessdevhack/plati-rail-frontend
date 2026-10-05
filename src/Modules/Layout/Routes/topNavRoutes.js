@@ -109,7 +109,8 @@ export const topNavSections = [
     key: 'costing-process',
     label: 'Costing Process',
     defaultPath: '/costing/step-1-opening-stock',
-    allowedRoles: [5, 999],
+    allowedRoles: [999],
+    allowedPermissions: ['costing.view'],
     subNav: [
       { key: 'cost-step1-stock-sync', label: 'Step 1 · Stock Sync', path: '/costing/step-1-opening-stock', icon: 'audit' },
       { key: 'cost-step3-production', label: 'Step 3 · Production', path: '/costing/step-3-production-costing', icon: 'tool' },
@@ -129,7 +130,8 @@ export const topNavSections = [
     key: 'finance',
     label: 'Finance',
     defaultPath: '/pnl-dashboard',
-    allowedRoles: [5, 999],
+    allowedRoles: [999],
+    allowedPermissions: ['costing.view'],
     subNav: [
       { key: 'fin-pnl', label: 'P&L Dashboard', path: '/pnl-dashboard', icon: 'line-chart' },
       { key: 'fin-categories', label: 'Cost Categories', path: '/cost-categories', icon: 'setting' },

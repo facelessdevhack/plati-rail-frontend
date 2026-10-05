@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import { client } from '../../Utils/axiosClient'
 import {
   Card,
@@ -49,6 +50,8 @@ const { TabPane } = Tabs
 const { Search } = Input
 
 const InventoryManagement = () => {
+  const { user } = useSelector(state => state.userDetails)
+  const canViewCosting = Number(user?.roleId) !== 5 || user?.permissions?.includes('costing.view')
   const { inventory, loading, error, refetch } = useInventory()
   const {
     updateStock,
@@ -615,7 +618,7 @@ const InventoryManagement = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        {canViewCosting && <Col span={6}>
           <Card>
             <Statistic
               title='Total Inventory Value'
@@ -625,7 +628,7 @@ const InventoryManagement = () => {
               formatter={value => value.toLocaleString()}
             />
           </Card>
-        </Col>
+        </Col>}
       </Row>
 
       {/* Search and Filters */}

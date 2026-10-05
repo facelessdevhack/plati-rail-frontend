@@ -54,6 +54,8 @@ const { Option } = Select
 const StockManagementDashboard = () => {
   console.log('=== StockManagementDashboard component STARTED ===')
   const dispatch = useDispatch()
+  const { user } = useSelector(state => state.userDetails)
+  const canManageCosting = [4, 999].includes(Number(user?.roleId)) || user?.permissions?.includes('costing.manage')
   console.log('=== dispatch created ===')
   console.log('useSelector about to run...')
   
@@ -785,7 +787,7 @@ const StockManagementDashboard = () => {
             </Col>
           </Row>
 
-          <Form.Item
+          {canManageCosting && <Form.Item
             name="costing"
             label="Cost Price (Optional)"
             rules={[{ type: 'number', min: 0, message: 'Cost cannot be negative' }]}
@@ -795,7 +797,7 @@ const StockManagementDashboard = () => {
               placeholder="Enter cost price"
               min={0}
             />
-          </Form.Item>
+          </Form.Item>}
 
           <div className="flex justify-end gap-2">
             <Button onClick={() => setAddModalVisible(false)}>
