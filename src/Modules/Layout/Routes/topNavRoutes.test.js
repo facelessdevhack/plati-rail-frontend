@@ -1,4 +1,4 @@
-import { getActiveNav, getSectionsForRole } from './topNavRoutes'
+import { getActiveNav, getLandingPath, getSectionsForRole } from './topNavRoutes'
 
 test.each(['warranty.register', 'warranty.manage'])('a custom %s grant exposes Warranty in Sales Coordination without unrelated pages', permission => {
   const sections = getSectionsForRole(54, [permission])
@@ -29,14 +29,27 @@ test('warranty claim grants keep their separate navigation and do not grant regi
   expect(getActiveNav('/warranty-claims/123').section).toBe('warranty-claims')
 })
 
-const hasSalesDashboard = roleId =>
-  getSectionsForRole(roleId).some(section =>
+const hasSalesDashboard = (roleId, permissions = []) =>
+  getSectionsForRole(roleId, permissions).some(section =>
     section.subNav.some(item => item.path === '/admin-dashboard')
   )
 
 describe('Sales Dashboard access', () => {
-  test.each([5, 999])('shows the dashboard to admin role %s', roleId => {
-    expect(hasSalesDashboard(roleId)).toBe(true)
+  test('requires a personal Sales Overview grant for Admin accounts', () => {
+    expect(hasSalesDashboard(5)).toBe(false)
+    expect(hasSalesDashboard(5, ['dashboard.view', 'dashboard.analytics'])).toBe(false)
+    expect(hasSalesDashboard(5, ['sales.overview.view'])).toBe(true)
+    expect(hasSalesDashboard(999)).toBe(true)
+  })
+
+  test('restricted Admin accounts keep their other pages and land on Daily Entries', () => {
+    const sales = getSectionsForRole(5).find(section => section.key === 'sales')
+    expect(sales.subNav.map(item => item.path)).toEqual(['/admin-daily-entry-dealers', '/price-lists'])
+    expect(sales.defaultPath).toBe('/admin-daily-entry-dealers')
+    expect(getLandingPath(5)).toBe('/admin-daily-entry-dealers')
+    expect(getLandingPath(5, ['sales.overview.view'])).toBe('/admin-dashboard')
+    expect(getLandingPath(999)).toBe('/admin-dashboard')
+    expect(getLandingPath(4)).toBe('/admin-daily-entry-dealers')
   })
 
   test.each([1, 2, 3, 4, 6, 7, 8, 9, 10])(

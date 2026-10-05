@@ -41,8 +41,9 @@ export const topNavSections = [
     label: 'Sales',
     defaultPath: '/admin-dashboard',
     allowedRoles: [3, 4, 5, 999],
+    allowedPermissions: ['sales.overview.view'],
     subNav: [
-      { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard', allowedRoles: [5, 999] },
+      { key: 'sales-dashboard', label: 'Dashboard', path: '/admin-dashboard', icon: 'dashboard', allowedRoles: [999], allowedPermissions: ['sales.overview.view'] },
       { key: 'sales-daily-entries', label: 'Daily Entries', path: '/admin-daily-entry-dealers', icon: 'file', allowedRoles: [3, 4, 5, 999] },
       { key: 'sales-price-lists', label: 'Price Lists', path: '/price-lists', icon: 'tags', allowedRoles: [3, 4, 5, 999] },
     ]
@@ -175,6 +176,14 @@ export const roleLandingPaths = {
   10: '/purchase/indents',
 }
 
+export function getLandingPath(roleId, permissions = []) {
+  const id = Number(roleId)
+  if (id === 5 && !permissions.includes('sales.overview.view')) {
+    return '/admin-daily-entry-dealers'
+  }
+  return roleLandingPaths[id]
+}
+
 /**
  * Find which primary section and sub-nav item is active based on the current path
  */
@@ -200,8 +209,8 @@ export function getActiveNav(pathname) {
 /**
  * Filter sections based on user role.
  * Sub-nav items may carry their own allowedRoles when the route behind them is
- * stricter than the section (e.g. /admin-dashboard is 5/999 while the Sales
- * section is visible to 3/4 too). The section's defaultPath resolves to the
+ * stricter than the section (e.g. /admin-dashboard requires its own permission
+ * while Sales is visible to 3/4/5 too). The section's defaultPath resolves to the
  * first sub-nav item the role can actually open, so clicking a section never
  * lands on /unauthorized.
  */

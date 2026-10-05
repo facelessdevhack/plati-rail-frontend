@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { client } from '../../Utils/axiosClient'
+import { mergeAuthenticatedUser } from '../../redux/slices/user.slice'
 import Login from '../../Modules/Authentication/Login'
 import McpConnect from '../../Modules/Authentication/McpConnect'
 import InventoryDashboard from '../../Modules/Inventory/InventoryDashboard'
@@ -9,7 +11,7 @@ import AdminSalesDashboard from '../../Modules/Admin/AdminSalesDashboard'
 import { MissingRoute } from './MissingRoute'
 import AdminLayout from '../../Modules/Layout/adminLayout'
 import TopNavLayout from '../../Modules/Layout/TopNavLayout'
-import { roleLandingPaths } from '../../Modules/Layout/Routes/topNavRoutes'
+import { getLandingPath } from '../../Modules/Layout/Routes/topNavRoutes'
 import EntryDashboard from '../../Modules/DataEntry/EntryDashboard'
 import { entrySiderRoutes } from '../../Modules/Layout/Routes/entrySiderRoutes'
 import AddStock from '../../Modules/Stock/AddStock'
@@ -113,8 +115,27 @@ import TempCostingView from '../../Modules/Admin/TempCostingView';
 
 const StackNavigation = () => {
   const { loggedIn, user } = useSelector(state => state.userDetails)
+  const dispatch = useDispatch()
+  const [accessLoaded, setAccessLoaded] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Refresh persisted permissions before rendering protected pages after reload.
+  useEffect(() => {
+    let cancelled = false
+    setAccessLoaded(false)
+    if (loggedIn) {
+      client.get('/rbac/me', { silent: true, timeout: 10000 })
+        .then(response => {
+          if (!cancelled) dispatch(mergeAuthenticatedUser(response.data.user))
+        })
+        .catch(() => {
+          if (!cancelled) dispatch(mergeAuthenticatedUser({ permissions: [] }))
+        })
+        .finally(() => { if (!cancelled) setAccessLoaded(true) })
+    }
+    return () => { cancelled = true }
+  }, [loggedIn, dispatch])
 
   // Helper function to get sidebar routes based on roleId
   const getSidebarRoutes = (roleId) => {
@@ -132,7 +153,7 @@ const StackNavigation = () => {
   }
 
   useEffect(() => {
-    if (loggedIn && user) {
+    if (loggedIn && user && accessLoaded) {
       // Only navigate if the user is on the login page or root
       if (location.pathname === '/login' || location.pathname === '/') {
         // Deep-link return: PrivateRoute passes the blocked destination via
@@ -156,12 +177,14 @@ const StackNavigation = () => {
           permissions.has('users.view') || permissions.has('roles.view')
             ? '/access-control'
             : null
-        navigate(safeReturnTo || roleLandingPaths[roleId] || permissionLanding || '/unauthorized', {
+        navigate(safeReturnTo || getLandingPath(roleId, user.permissions) || permissionLanding || '/unauthorized', {
           replace: true
         })
       }
     }
-  }, [loggedIn, user, navigate, location])
+  }, [loggedIn, user, accessLoaded, navigate, location])
+
+  if (loggedIn && !accessLoaded) return null
 
   return (
     <>
@@ -408,7 +431,7 @@ const StackNavigation = () => {
       <Route
         path='/admin-dashboard'
         element={
-          <PrivateRoute allowedRoles={[5, 999]}>
+          <PrivateRoute allowedPermissions={['sales.overview.view']}>
             <TopNavLayout content={<AdminSalesDashboard />} />
           </PrivateRoute>
         }

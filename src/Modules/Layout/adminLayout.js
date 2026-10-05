@@ -24,6 +24,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { user } = useSelector(state => state.userDetails)
+  const canViewSalesOverview = Number(user?.roleId) === 999 || user?.permissions?.includes('sales.overview.view')
   const {
     token: { colorBgContainer }
   } = theme.useToken()
@@ -284,7 +285,7 @@ const AdminLayout = ({ content, title, items = adminSiderRoutes }) => {
             selectedKeys={getActiveMenuKey}
             defaultOpenKeys={getOpenKeys}
             mode='inline'
-            items={items}
+            items={items.filter(item => item.label?.props?.to !== '/admin-dashboard' || canViewSalesOverview)}
             className='border-none bg-transparent'
             style={{
               background: 'transparent',
