@@ -55,6 +55,26 @@ const getAuthorizationHeader = headers => {
   return headers.Authorization || headers.authorization || null
 }
 
+export const acceptSessionRenewal = response => {
+  const renewed = response?.headers?.['x-renewed-token']
+  const current = localStorage.getItem('token')
+  // A late response must not revive a logout or overwrite a subsequent login.
+  if (!renewed || !current || getAuthorizationHeader(response?.config?.headers) !== `Bearer ${current}`) return false
+
+  const previous = decodeTokenPayload(current)
+  const next = decodeTokenPayload(renewed)
+  const userId = payload => payload?.id ?? payload?.user_id ?? payload?.userId
+  if (!previous || !next || userId(previous) == null || String(userId(previous)) !== String(userId(next))) return false
+  // Browser revalidation can retain an old X-Renewed-Token header from a cached
+  // 200 when the server returns 304 without a renewal. Never roll back a JWT.
+  if (!Number.isFinite(next.exp) || !Number.isFinite(previous.exp) ||
+    next.exp * 1000 <= Date.now() || next.exp < previous.exp ||
+    (Number.isFinite(previous.iat) && (!Number.isFinite(next.iat) || next.iat < previous.iat))) return false
+
+  localStorage.setItem('token', renewed)
+  return true
+}
+
 const isExplicitSessionFailure = response => {
   const data = response?.data
   const authCode = String(

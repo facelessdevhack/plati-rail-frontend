@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { startRequest, endRequest } from './globalLoading'
 import {
+  acceptSessionRenewal,
   handleSessionExpired,
   isUnauthorizedForCurrentSession
 } from './session'
@@ -75,10 +76,7 @@ const setupAxiosInterceptors = () => {
       // Sliding session: the backend re-issues the JWT once it's an hour old
       // and hands it back in this header. Swapping it in here means an
       // actively-working user never hits the 24h hard expiry.
-      const renewed = res?.headers?.['x-renewed-token']
-      if (renewed) {
-        localStorage.setItem('token', renewed)
-      }
+      acceptSessionRenewal(res)
       return res
     },
     async error => {
