@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState } from 'react'
 import { message, Modal } from 'antd'
-import { ReloadOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
+import { ReloadOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
+import * as XLSX from 'xlsx'
 import { getAllDealers } from '../../redux/api/stockAPI'
 import { client } from '../../Utils/axiosClient'
 
 import PageTitle from '../../Core/Components/PageTitle'
 import FilterBar from '../../Core/Components/FilterBar'
-import DataTable from '../../Core/Components/DataTable'
 import StatusBadge from '../../Core/Components/StatusBadge'
 import DataTablePagination from '../../Core/Components/DataTablePagination'
 
@@ -24,10 +24,14 @@ const AdminDailyEntryDealersPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [recalculatingAll, setRecalculatingAll] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  // Reuse the listing's salesperson scope for every export page.
+  const salesId = searchParams.get('salesId') || ([3, 5, 999].includes(Number(user.roleId)) ? undefined : user.userId)
+  const overdueOnly = searchParams.get('overdue') === 'true'
 
   // ─── Data ───
 
-  useEffect(() => { fetchDealers() }, [currentPage, pageSize, searchQuery])
+  useEffect(() => { fetchDealers() }, [currentPage, pageSize, searchQuery, salesId, overdueOnly])
 
   const fetchDealers = async () => {
     setLoading(true)
@@ -37,17 +41,47 @@ const AdminDailyEntryDealersPage = () => {
       // compares against dealers_master.assigned_sales_person_id, which is a
       // sales_master.id — not a users.user_id — so it only fits actual
       // salesperson accounts mapped to that table.
-      const requestedSalesId = searchParams.get('salesId')
-      const seesAllDealers = [3, 5, 999].includes(Number(user.roleId))
-      if (requestedSalesId) params.id = requestedSalesId
-      else if (!seesAllDealers) params.id = user.userId
-      if (searchParams.get('overdue') === 'true') params.overdue = true
+      if (salesId) params.id = salesId
+      if (overdueOnly) params.overdue = true
       if (searchQuery) params.search = searchQuery
       await dispatch(getAllDealers(params))
     } catch (error) {
       console.error('Error fetching dealers:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const exportOverdue = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const rows = []
+      let page = 1
+      let hasNextPage
+      do {
+        const { data } = await client.get('/master/all-dealers', {
+          params: { salesId, search: searchQuery || undefined, overdue: true, page, limit: 100 },
+        })
+        rows.push(...data.data.map(dealer => ({
+          Dealer: dealer.label,
+          'Overdue Amount (INR)': Number(dealer.overdueAmount),
+        })))
+        hasNextPage = data.pagination.hasNextPage
+        page += 1
+      } while (hasNextPage)
+
+      if (rows.length === 0) { message.info('No overdue dealers to export.'); return }
+      const sheet = XLSX.utils.json_to_sheet(rows)
+      sheet['!cols'] = [{ wch: 60 }, { wch: 25 }]
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Overdue Dealers')
+      XLSX.writeFile(workbook, 'Overdue_Dealers.xlsx')
+      message.success('Overdue Excel exported!')
+    } catch (error) {
+      message.error('Could not export overdue dealers. Please try again.')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -152,8 +186,8 @@ const AdminDailyEntryDealersPage = () => {
   // ─── Render ───
 
   return (
-    <div style={{ width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+    <div className="daily-entry-dealers" style={{ width: '100%' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <PageTitle>Daily Dealer Sales Entries</PageTitle>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, paddingTop: 8 }}>
           <button
@@ -194,7 +228,13 @@ const AdminDailyEntryDealersPage = () => {
         dealerOptions={[]}
         onRefresh={fetchDealers}
         loading={loading}
-        exportMenuItems={[]}
+        exportMenuItems={[{
+          key: 'overdue-excel',
+          label: exporting ? 'Exporting overdue…' : 'Overdue only (Excel)',
+          icon: <FileExcelOutlined />,
+          disabled: exporting,
+          onClick: exportOverdue,
+        }]}
       />
 
       <div style={{
@@ -257,6 +297,11 @@ const AdminDailyEntryDealersPage = () => {
           onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
         />
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .daily-entry-dealers h1 { font-size: 28px !important; line-height: 1.2 !important; }
+        }
+      `}</style>
     </div>
   )
 }
