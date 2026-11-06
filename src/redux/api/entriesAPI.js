@@ -101,30 +101,34 @@ export const editEntryAPI = async ({
   sourceType,
   description
 }) => {
-  try {
-    const response = await client.put('entries/edit-entry', {
+  // Dealer rows alias charge amount/description as price/productName.
+  // Send charge fields only; sales columns do not exist in charges_master.
+  if (Number(sourceType) === 4) {
+    return client.put('entries/edit-entry', {
       id,
       dealerId,
-      dealerName,
-      productId,
-      productName,
-      productType,
-      quantity,
-      price,
-      isClaim,
-      transportationType,
-      transportationCharges,
-      isRepair,
-      amount,
-      sourceType,
-      description
+      sourceType: 4,
+      amount: amount ?? price,
+      description: description ?? productName
     })
-    console.log(response, 'EDIT ENTRY RESPONSE')
-    return response
-  } catch (e) {
-    console.log('ERROR FROM EDIT ENTRY', e)
-    return e
   }
+  return client.put('entries/edit-entry', {
+    id,
+    dealerId,
+    dealerName,
+    productId,
+    productName,
+    productType,
+    quantity,
+    price,
+    isClaim,
+    transportationType,
+    transportationCharges,
+    isRepair,
+    amount,
+    sourceType,
+    description
+  })
 }
 
 export const removeEntryAPI = async ({ entryId }) => {
